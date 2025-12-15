@@ -104,7 +104,7 @@ const AdminProfilePage = async () => {
               className="w-6 h-6"
             />
             <div>
-              <h1 className="text-xl font-semibold capitalize">{admin.role}</h1>
+              <h1 className="text-xl font-semibold capitalize">{admin.linkedUser?.role}</h1>
               <span className="text-sm text-gray-400">Role</span>
             </div>
           </div>

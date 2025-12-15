@@ -3,6 +3,7 @@
 import { useSignIn, useUser, useSession } from '@clerk/nextjs'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
+import { redirect } from 'next/navigation'
 
 import PasswordLogin from '@/components/auth/PasswordLogin'
 import OTPLogin from '@/components/auth/OTPLogin'
@@ -10,6 +11,9 @@ import LoginMethodToggle from '@/components/auth/LoginMethodToggle'
 import ErrorMessage from '@/components/auth/ErrorMessage'
 
 export default function Page() {
+  if (process.env.NEXT_PUBLIC_DISABLE_AUTH === 'true') {
+    redirect('/')
+  }
   const { isLoaded: isUserLoaded, isSignedIn, user } = useUser()
   const { isLoaded: isSignInLoaded, signIn } = useSignIn()
   const { isLoaded: isSessionLoaded } = useSession()

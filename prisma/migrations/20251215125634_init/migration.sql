@@ -42,7 +42,6 @@ CREATE TABLE "Admin" (
     "dob" TIMESTAMP(3),
     "img" TEXT,
     "bloodType" "BloodType",
-    "role" TEXT NOT NULL DEFAULT 'admin',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "clerk_id" TEXT,
     "profileId" TEXT,
@@ -62,8 +61,8 @@ CREATE TABLE "Grade" (
 -- CreateTable
 CREATE TABLE "class" (
     "id" SERIAL NOT NULL,
-    "name" TEXT NOT NULL,
-    "section" TEXT,
+    "name" TEXT,
+    "section" TEXT NOT NULL,
     "supervisorId" TEXT,
     "gradeId" INTEGER NOT NULL,
 
@@ -170,7 +169,12 @@ CREATE TABLE "Student" (
     "id" TEXT NOT NULL,
     "username" TEXT NOT NULL,
     "name" TEXT NOT NULL,
-    "parentName" TEXT,
+    "motherName" TEXT,
+    "fatherName" TEXT,
+    "penNo" TEXT,
+    "studentAadhar" TEXT,
+    "fatherAadhar" TEXT,
+    "motherAadhar" TEXT,
     "email" TEXT,
     "phone" TEXT NOT NULL,
     "address" TEXT NOT NULL,
@@ -249,8 +253,8 @@ CREATE TABLE "FeeStructure" (
 CREATE TABLE "FeeTransaction" (
     "id" SERIAL NOT NULL,
     "studentId" TEXT NOT NULL,
-    "term" TEXT NOT NULL,
     "studentFeesId" INTEGER NOT NULL,
+    "term" "Term" NOT NULL,
     "amount" DOUBLE PRECISION NOT NULL DEFAULT 0,
     "discountAmount" DOUBLE PRECISION NOT NULL DEFAULT 0,
     "fineAmount" DOUBLE PRECISION NOT NULL DEFAULT 0,
@@ -261,9 +265,10 @@ CREATE TABLE "FeeTransaction" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "remarks" TEXT,
-    "deletedAt" TIMESTAMP(3),
+    "academicYear" "AcademicYear" NOT NULL DEFAULT 'Y2024_2025',
     "transactionType" TEXT NOT NULL DEFAULT 'PAYMENT',
     "updatedByName" TEXT,
+    "deletedAt" TIMESTAMP(3),
 
     CONSTRAINT "FeeTransaction_pkey" PRIMARY KEY ("id")
 );
@@ -272,17 +277,17 @@ CREATE TABLE "FeeTransaction" (
 CREATE TABLE "StudentFees" (
     "id" SERIAL NOT NULL,
     "studentId" TEXT NOT NULL,
+    "feeStructureId" INTEGER NOT NULL,
+    "academicYear" "AcademicYear" NOT NULL DEFAULT 'Y2024_2025',
+    "term" "Term" NOT NULL,
     "paidAmount" INTEGER NOT NULL DEFAULT 0,
     "abacusPaidAmount" INTEGER,
-    "feeStructureId" INTEGER NOT NULL,
     "discountAmount" INTEGER NOT NULL DEFAULT 0,
     "fineAmount" INTEGER NOT NULL DEFAULT 0,
     "receiptDate" TIMESTAMP(3),
     "receivedDate" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP,
     "paymentMode" "PaymentMode" NOT NULL DEFAULT 'CASH',
-    "academicYear" "AcademicYear" NOT NULL DEFAULT 'Y2024_2025',
     "receiptNo" TEXT,
-    "term" TEXT NOT NULL,
     "remarks" TEXT DEFAULT '',
     "updatedByName" TEXT,
 
@@ -319,7 +324,7 @@ CREATE TABLE "Attendance" (
 CREATE TABLE "CancelledReceipt" (
     "id" TEXT NOT NULL,
     "studentId" TEXT NOT NULL,
-    "term" TEXT NOT NULL,
+    "term" "Term" NOT NULL,
     "originalReceiptNo" TEXT NOT NULL,
     "cancelledDate" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "cancelledBy" TEXT,
@@ -420,6 +425,9 @@ CREATE INDEX "Lesson_subjectId_idx" ON "Lesson"("subjectId");
 CREATE INDEX "Lesson_teacherId_idx" ON "Lesson"("teacherId");
 
 -- CreateIndex
+CREATE INDEX "Lesson_day_period_idx" ON "Lesson"("day", "period");
+
+-- CreateIndex
 CREATE INDEX "Announcement_classId_idx" ON "Announcement"("classId");
 
 -- CreateIndex
@@ -427,6 +435,12 @@ CREATE INDEX "Event_classId_idx" ON "Event"("classId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Exam_title_key" ON "Exam"("title");
+
+-- CreateIndex
+CREATE INDEX "ExamGradeSubject_examId_idx" ON "ExamGradeSubject"("examId");
+
+-- CreateIndex
+CREATE INDEX "ExamGradeSubject_gradeId_idx" ON "ExamGradeSubject"("gradeId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "ExamGradeSubject_examId_gradeId_subjectId_key" ON "ExamGradeSubject"("examId", "gradeId", "subjectId");
@@ -439,6 +453,9 @@ CREATE INDEX "Homework_gradeId_idx" ON "Homework"("gradeId");
 
 -- CreateIndex
 CREATE INDEX "Homework_groupId_idx" ON "Homework"("groupId");
+
+-- CreateIndex
+CREATE INDEX "Homework_date_idx" ON "Homework"("date");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Result_studentId_examId_subjectId_key" ON "Result"("studentId", "examId", "subjectId");
@@ -496,6 +513,9 @@ CREATE INDEX "Teacher_clerk_id_idx" ON "Teacher"("clerk_id");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "FeeStructure_gradeId_term_academicYear_key" ON "FeeStructure"("gradeId", "term", "academicYear");
+
+-- CreateIndex
+CREATE INDEX "FeeTransaction_studentId_academicYear_idx" ON "FeeTransaction"("studentId", "academicYear");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "StudentFees_studentId_academicYear_term_key" ON "StudentFees"("studentId", "academicYear", "term");

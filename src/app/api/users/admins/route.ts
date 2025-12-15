@@ -57,7 +57,7 @@ export async function POST(req: Request) {
 
     // ✅ Step 3: Check if username already exists for a role
     const existingRole = await prisma.linkedUser.findFirst({
-      where: { username: data.username },
+      where: { username: data.username, role: "admin" },
     });
 
     if (existingRole) {
