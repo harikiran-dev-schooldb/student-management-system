@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import Dropdown from "./Dropdown";
-import { useTranslation } from "next-i18next";
+import { useTranslation } from "react-i18next";
 
 type Role = "admin" | "teacher" | "student";
 

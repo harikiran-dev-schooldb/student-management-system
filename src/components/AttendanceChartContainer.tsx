@@ -1,47 +1,22 @@
 import Image from "next/image";
 import AttendanceChart from "./AttendanceChart";
-import prisma from "@/lib/prisma";
 
-// Helper function to get the start of the week (Monday at 00:00:00)
-const getStartOfWeek = (date: Date) => {
-  const dayOfWeek = date.getDay();
-  const daysSinceMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-  const startOfWeek = new Date(date);
-  startOfWeek.setDate(date.getDate() - daysSinceMonday);
-  startOfWeek.setHours(0, 0, 0, 0);
-  return startOfWeek;
-};
+interface AttendanceRecord {
+  date: Date;
+  present: boolean;
+}
 
-// Helper function to get the end of the week (Sunday at 23:59:59)
-const getEndOfWeek = (date: Date) => {
-  const dayOfWeek = date.getDay();
-  const daysUntilSunday = dayOfWeek === 0 ? 0 : 7 - dayOfWeek;
-  const endOfWeek = new Date(date);
-  endOfWeek.setDate(date.getDate() + daysUntilSunday);
-  endOfWeek.setHours(23, 59, 59, 999);
-  return endOfWeek;
-};
+interface AttendanceChartContainerProps {
+  records: AttendanceRecord[];
+}
 
-const AttendanceChartContainer = async () => {
-  const today = new Date();
-  const lastMonday = getStartOfWeek(today);
-  const endOfWeek = getEndOfWeek(today);
-
-  const resData = await prisma.attendance.findMany({
-    where: {
-      date: {
-        gte: lastMonday,
-        lte: endOfWeek,
-      },
-    },
-    select: {
-      date: true,
-      present: true,
-    },
-  });
-
+const AttendanceChartContainer = ({ records }: AttendanceChartContainerProps) => {
   const daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  const attendanceMap: { [key: string]: { present: number; absent: number } } = {
+
+  const attendanceMap: Record<
+    string,
+    { present: number; absent: number }
+  > = {
     Mon: { present: 0, absent: 0 },
     Tue: { present: 0, absent: 0 },
     Wed: { present: 0, absent: 0 },
@@ -50,17 +25,17 @@ const AttendanceChartContainer = async () => {
     Sat: { present: 0, absent: 0 },
   };
 
-  resData.forEach(item => {
-    const itemDate = new Date(item.date);
-    const dayIndex = itemDate.getDay() === 0 ? 6 : itemDate.getDay() - 1;
-    const dayName = daysOfWeek[dayIndex];
+  records.forEach((item) => {
+    const d = new Date(item.date);
+    const index = d.getDay() === 0 ? 6 : d.getDay() - 1;
+    const day = daysOfWeek[index];
 
-    if (attendanceMap[dayName]) {
-      if (item.present) {
-        attendanceMap[dayName].present += 1;
-      } else {
-        attendanceMap[dayName].absent += 1;
-      }
+    if (!attendanceMap[day]) return;
+
+    if (item.present) {
+      attendanceMap[day].present += 1;
+    } else {
+      attendanceMap[day].absent += 1;
     }
   });
 
@@ -73,10 +48,13 @@ const AttendanceChartContainer = async () => {
   return (
     <div className="h-full p-4 bg-white dark:bg-gray-900 rounded-lg">
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-gray-500 dark:text-gray-300">Attendance</h1>
+        <h1 className="text-lg font-semibold text-gray-500 dark:text-gray-300">
+          Attendance
+        </h1>
         <Image src="/moreDark.png" alt="More" width={20} height={20} />
       </div>
-      <AttendanceChart data={data} darkMode={true} />
+
+      <AttendanceChart data={data} darkMode />
     </div>
   );
 };

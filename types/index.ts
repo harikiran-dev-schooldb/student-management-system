@@ -183,19 +183,20 @@ export type AnnouncementList = Announcement & {
   };
 };
 
+
 export type AttendanceResponse = {
   attendance: Attendance[];
   students: (Student & {
     Class: {
-      id: number;
       section: string | null;
-      gradeId: number;
       Grade: {
         level: string;
       };
-    };
+    } | null;
   })[];
 };
+
+
 
 export type ClassList = {
   id: number;

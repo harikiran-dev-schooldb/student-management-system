@@ -6,19 +6,52 @@ export default async function NavbarServer() {
   const user = await currentUser();
   if (!user) return null;
 
-  const profile = await prisma.profile.findUnique({
-    where: { clerk_id: user.id },
-    include: {
-      users: {
-        include: {
-          admin: true,
-          teacher: true,
-          student: { include: { Class: true } },
+  const profile = await prisma.profile.findFirst({
+  where: {
+    clerk_id: user.id,
+  },
+  select: {
+    activeUser: {
+      select: {
+        username: true,
+      },
+    },
+    users: {
+      select: {
+        id: true,
+        username: true,
+        role: true,
+
+        admin: {
+          select: {
+            name: true,
+          },
+        },
+        teacher: {
+          select: {
+            name: true,
+          },
+        },
+        student: {
+          select: {
+            name: true,
+            Class: {
+              select: {
+                name: true,
+              },
+            },
+          },
         },
       },
-      activeUser: true,
     },
-  });
+  },
+});
+
+
+  if (!profile) {
+  return <NavbarClient roles={[]} activeUser={null} />;
+}
+
 
   const roles = profile?.users.map((u) => ({
     id: u.id,
@@ -31,7 +64,9 @@ export default async function NavbarServer() {
   return (
     <NavbarClient
       roles={roles ?? []}
-      activeUser={profile?.activeUser ? { username: profile.activeUser.username } : null}
+      activeUser={
+        profile?.activeUser ? { username: profile.activeUser.username } : null
+      }
     />
   );
 }

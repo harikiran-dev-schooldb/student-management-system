@@ -8,31 +8,30 @@ datasource db {
 }
 
 model Admin {
-  id         String    @id @default(cuid())
-  username   String    @unique
-  password   String    // Should always be hashed before storing
+  id         String     @id @default(cuid())
+  username   String     @unique
+  password   String // Should always be hashed before storing
   name       String
   parentName String
-  gender     Gender   @default(Male)// Use enum for controlled values
-  email      String?   @unique
-  phone      String   @unique
+  gender     Gender     @default(Male) // Use enum for controlled values
+  email      String?    @unique
+  phone      String     @unique
   address    String
   dob        DateTime?
   img        String?
   bloodType  BloodType? // Use enum for blood types
-  createdAt  DateTime  @default(now())
-  clerk_id   String?   @unique
+  createdAt  DateTime   @default(now())
+  clerk_id   String?    @unique
 
   // Relations
-  profile      Profile?    @relation(fields: [profileId], references: [id])
-  profileId    String?
+  profile   Profile? @relation(fields: [profileId], references: [id])
+  profileId String?
 
   linkedUser   LinkedUser? @relation(fields: [linkedUserId], references: [id])
   linkedUserId String?     @unique
 
   @@index([username, email, phone])
 }
-
 
 model Grade {
   id                Int                @id @default(autoincrement())
@@ -46,7 +45,7 @@ model Grade {
 
 model Class {
   id              Int              @id @default(autoincrement())
-  name            String?        
+  name            String?
   section         String // e.g., "A", "B"
   supervisorId    String?          @unique
   gradeId         Int
@@ -214,15 +213,15 @@ model Student {
   linkedUserId String?     @unique
   linkedUser   LinkedUser? @relation(fields: [linkedUserId], references: [id])
 
-  @@index([classId])                     // already exists
-  @@index([clerk_id])                    // already exists
-  @@index([status])                      // filtering active/inactive
-  @@index([gender])                      // faster gender filter
-  @@index([academicYear])                // if you filter by year often
-  @@index([name])                        // speeds up "contains" search on name
-  @@index([phone])                       // useful if searching by phone
-  @@index([status, classId])             // compound: list active students by class
-  @@index([status, gender])              // compound: filter active boys/girls
+  @@index([classId]) // already exists
+  @@index([clerk_id]) // already exists
+  @@index([status]) // filtering active/inactive
+  @@index([gender]) // faster gender filter
+  @@index([academicYear]) // if you filter by year often
+  @@index([name]) // speeds up "contains" search on name
+  @@index([phone]) // useful if searching by phone
+  @@index([status, classId]) // compound: list active students by class
+  @@index([status, gender]) // compound: filter active boys/girls
 }
 
 model Subject {
@@ -293,70 +292,72 @@ model FeeStructure {
 
   @@unique([gradeId, term, academicYear])
 }
+
 model FeeTransaction {
-  id              Int           @id @default(autoincrement())
+  id              Int          @id @default(autoincrement())
   studentId       String
   studentFeesId   Int
   term            Term
-  amount          Float         @default(0)
-  discountAmount  Float         @default(0)
-  fineAmount      Float         @default(0)
+  amount          Float        @default(0)
+  discountAmount  Float        @default(0)
+  fineAmount      Float        @default(0)
   receiptDate     DateTime
-  receivedDate    DateTime?     @default(now())
+  receivedDate    DateTime?    @default(now())
   receiptNo       String
-  paymentMode     PaymentMode   @default(CASH)
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  paymentMode     PaymentMode  @default(CASH)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
   remarks         String?
-  academicYear    AcademicYear  @default(Y2024_2025) // 🎯 Added field
-  transactionType String        @default("PAYMENT")  // or "CANCELLED"
+  academicYear    AcademicYear @default(Y2024_2025) // 🎯 Added field
+  transactionType String       @default("PAYMENT") // or "CANCELLED"
   updatedByName   String?
   deletedAt       DateTime?
 
-  studentFees     StudentFees   @relation("FeeTransactionStudentFees", fields: [studentFeesId], references: [id], onDelete: Cascade)
-  student         Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentFees StudentFees @relation("FeeTransactionStudentFees", fields: [studentFeesId], references: [id], onDelete: Cascade)
+  student     Student     @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
+  @@index([receiptDate])
+  @@index([academicYear, receiptDate])
   @@index([studentId, academicYear])
 }
 
 model StudentFees {
-  id               Int              @id @default(autoincrement())
+  id               Int          @id @default(autoincrement())
   studentId        String
   feeStructureId   Int
-  academicYear     AcademicYear     @default(Y2024_2025)
+  academicYear     AcademicYear @default(Y2024_2025)
   term             Term
-  paidAmount       Int              @default(0)
+  paidAmount       Int          @default(0)
   abacusPaidAmount Int?
-  discountAmount   Int              @default(0)
-  fineAmount       Int              @default(0)
+  discountAmount   Int          @default(0)
+  fineAmount       Int          @default(0)
   receiptDate      DateTime?
-  receivedDate     DateTime?        @default(now())
-  paymentMode      PaymentMode      @default(CASH)
+  receivedDate     DateTime?    @default(now())
+  paymentMode      PaymentMode  @default(CASH)
   receiptNo        String?
-  remarks          String?          @default("")
+  remarks          String?      @default("")
   updatedByName    String?
 
-  feeTransactions  FeeTransaction[] @relation("FeeTransactionStudentFees")
-  feeStructure     FeeStructure     @relation(fields: [feeStructureId], references: [id])
-  student          Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  feeTransactions FeeTransaction[] @relation("FeeTransactionStudentFees")
+  feeStructure    FeeStructure     @relation(fields: [feeStructureId], references: [id])
+  student         Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([studentId, academicYear, term], name: "studentId_academicYear_term")
 }
 
 model StudentTotalFees {
-  id                  Int      @id @default(autoincrement())
-  studentId           String   @unique
-  totalPaidAmount     Float    @default(0)
-  totalDiscountAmount Float    @default(0)
-  totalFineAmount     Float    @default(0)
-  totalAbacusAmount   Float    @default(0)
-  totalFeeAmount      Float    @default(0)
-  dueAmount           Float    @default(0)
-  status              String   @default("Not Paid")
+  id                  Int    @id @default(autoincrement())
+  studentId           String @unique
+  totalPaidAmount     Float  @default(0)
+  totalDiscountAmount Float  @default(0)
+  totalFineAmount     Float  @default(0)
+  totalAbacusAmount   Float  @default(0)
+  totalFeeAmount      Float  @default(0)
+  dueAmount           Float  @default(0)
+  status              String @default("Not Paid")
 
-  student             Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
 }
-
 
 model Attendance {
   id        Int      @id @default(autoincrement())
@@ -410,7 +411,7 @@ model PermissionSlip {
 
 model Profile {
   id       String  @id @default(cuid())
-  clerk_id String?  @unique
+  clerk_id String? @unique
   phone    String?
 
   users        LinkedUser[]
@@ -421,6 +422,9 @@ model Profile {
   admin   Admin[]
   student Student[]
   teacher Teacher[]
+
+  @@index([clerk_id])
+  @@index([phone])
 }
 
 model LinkedUser {
@@ -505,9 +509,7 @@ enum Period {
   BREAK1
   BREAK2
   LUNCH
-
 }
-
 
 enum BloodType {
   A_POS

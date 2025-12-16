@@ -1,68 +1,84 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Prisma } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 
-// --------------------------------------------------
-// PostgreSQL Adapter (REQUIRED in Prisma 7)
-// --------------------------------------------------
+/* --------------------------------------------------
+   PostgreSQL Adapter (Prisma 7)
+-------------------------------------------------- */
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
 const adapter = new PrismaPg(pool);
 
-// --------------------------------------------------
-// Base Prisma Client (used inside extensions)
-// --------------------------------------------------
-const basePrismaClientSingleton = () => {
-  return new PrismaClient({
+/* --------------------------------------------------
+   Base Prisma Client
+-------------------------------------------------- */
+
+const createBasePrismaClient = () =>
+  new PrismaClient({
     adapter,
-    log: [
-      { emit: "event", level: "query" },
-      { emit: "stdout", level: "error" },
-      { emit: "stdout", level: "warn" },
-    ],
+    log:
+      process.env.NODE_ENV === "production"
+        ? [
+            { level: "query", emit: "event" }, // required for $on("query")
+            { level: "error", emit: "stdout" },
+            { level: "warn", emit: "stdout" },
+          ]
+        : [{ level: "error", emit: "stdout" }], // dev: no query spam
   });
-};
+
+/* --------------------------------------------------
+   Global typings (Next.js safe)
+-------------------------------------------------- */
 
 declare global {
-  // Base client (real PrismaClient)
-  var prismaBaseGlobal:
-    | ReturnType<typeof basePrismaClientSingleton>
+  var prismaBase:
+    | ReturnType<typeof createBasePrismaClient>
     | undefined;
 
-  // Extended client (Prisma 7 dynamic type)
-  var prismaGlobal:
+  var prisma:
     | ReturnType<typeof createExtendedPrisma>
     | undefined;
 }
+
+/* --------------------------------------------------
+   Prisma Extensions
+-------------------------------------------------- */
 
 const createExtendedPrisma = (base: PrismaClient) =>
   base.$extends({
     query: {
       class: {
         async create({ args, query }) {
-          const d = args.data as {
+          const data = args.data as {
             gradeId?: number;
             section?: string;
             name?: string;
           };
 
-          if (d.gradeId && d.section) {
+          if (data.gradeId && data.section) {
             const grade = await base.grade.findUnique({
-              where: { id: d.gradeId },
+              where: { id: data.gradeId },
               select: { level: true },
             });
 
             if (grade?.level) {
-              d.name = `${grade.level} - ${d.section}`;
+              const className = `${grade.level} - ${data.section}`;
+              data.name = className;
 
-              const existing = await base.class.findFirst({
-                where: { gradeId: d.gradeId, section: d.section },
+              const exists = await base.class.findFirst({
+                where: {
+                  gradeId: data.gradeId,
+                  section: data.section,
+                },
               });
 
-              if (existing) {
-                throw new Error(`Duplicate class "${d.name}" already exists.`);
+              if (exists) {
+                throw new Error(
+                  `Duplicate class "${className}" already exists.`
+                );
               }
             }
           }
@@ -71,22 +87,22 @@ const createExtendedPrisma = (base: PrismaClient) =>
         },
 
         async update({ args, query }) {
-          const d = args.data as {
+          const data = args.data as {
             gradeId?: number;
             section?: string;
             name?: string;
           };
 
-          let { gradeId, section } = d;
+          let { gradeId, section } = data;
 
           if (!gradeId || !section) {
-            const existing = await base.class.findUnique({
+            const current = await base.class.findUnique({
               where: args.where as any,
               select: { gradeId: true, section: true },
             });
 
-            gradeId ??= existing?.gradeId;
-            section ??= existing?.section;
+            gradeId ??= current?.gradeId;
+            section ??= current?.section;
           }
 
           if (gradeId && section) {
@@ -112,7 +128,7 @@ const createExtendedPrisma = (base: PrismaClient) =>
                 );
               }
 
-              d.name = newName;
+              data.name = newName;
             }
           }
 
@@ -122,36 +138,40 @@ const createExtendedPrisma = (base: PrismaClient) =>
     },
   });
 
+/* --------------------------------------------------
+   Singleton base client
+-------------------------------------------------- */
 
-
-// --------------------------------------------------
-// Reuse base client in dev
-// --------------------------------------------------
 const base =
-  globalThis.prismaBaseGlobal ?? basePrismaClientSingleton();
+  globalThis.prismaBase ?? createBasePrismaClient();
 
 if (process.env.NODE_ENV !== "production") {
-  globalThis.prismaBaseGlobal = base;
+  globalThis.prismaBase = base;
 }
 
-// --------------------------------------------------
-// Prisma Client with Extensions
-// --------------------------------------------------
+/* --------------------------------------------------
+   Extended Prisma client
+-------------------------------------------------- */
+
 const prisma =
-  globalThis.prismaGlobal ??
-  createExtendedPrisma(base);
+  globalThis.prisma ?? createExtendedPrisma(base);
 
 if (process.env.NODE_ENV !== "production") {
-  globalThis.prismaGlobal = prisma;
+  globalThis.prisma = prisma;
 }
 
-// --------------------------------------------------
-// Slow Query Logger
-// --------------------------------------------------
-base.$on("query", (e) => {
-  if (e.duration > 100) {
-    console.warn(`⚠️ Slow Query (${e.duration}ms): ${e.query}`);
-  }
-});
+/* --------------------------------------------------
+   Slow Query Logger (production only)
+-------------------------------------------------- */
+
+if (process.env.NODE_ENV === "production") {
+  base.$on("query", (e: Prisma.QueryEvent) => {
+    if (e.duration > 300) {
+      console.warn(
+        `⚠️ Slow Query (${e.duration}ms)\n${e.query}`
+      );
+    }
+  });
+}
 
 export default prisma;

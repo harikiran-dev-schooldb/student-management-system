@@ -1,37 +1,64 @@
-import prisma from "@/lib/prisma";
+import { format } from "date-fns";
 
-const EventList = async ({ dateParam }: { dateParam: string | undefined }) => {
-  const date = dateParam ? new Date(dateParam) : new Date();
+export interface Event {
+  id: number;
+  title: string;
+  description: string;
+  startTime: Date;
+  endTime: Date;
+  classId: number | null;
+}
 
-  const data = await prisma.event.findMany({
-    take: 5,
-    orderBy: { startTime: "desc" },
-    where: {
-      startTime: {
-        gte: new Date(date.setHours(0, 0, 0, 0)),
-        lte: new Date(date.setHours(23, 59, 59, 999)),
-      },
-    },
-  });
+interface EventListProps {
+  events: Event[];
+  dateParam?: string;
+}
 
-  return data.map((event) => (
-    <div
-      key={event.id}
-      className="p-5 rounded-md border-t-4 border-gray-200 dark:border-gray-700 odd:border-t-LamaSky even:border-t-LamaPurple bg-white dark:bg-gray-900"
-    >
-      <div className="flex items-center justify-between">
-        <h1 className="font-semibold text-black dark:text-black">{event.title}</h1>
-        <span className="text-xs text-black dark:text-black">
-          {event.startTime.toLocaleTimeString("en-UK", {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: false,
-          })}
-        </span>
+const EventList = ({ events, dateParam }: EventListProps) => {
+  const selectedDate = dateParam ? new Date(dateParam) : null;
+
+  const filteredEvents = selectedDate
+    ? events.filter((event) => {
+        const d = new Date(event.startTime);
+        return (
+          d.getFullYear() === selectedDate.getFullYear() &&
+          d.getMonth() === selectedDate.getMonth() &&
+          d.getDate() === selectedDate.getDate()
+        );
+      })
+    : events;
+
+  if (filteredEvents.length === 0) {
+    return (
+      <div className="text-sm text-gray-500 dark:text-gray-400">
+        No events for the selected date
       </div>
-      <p className="mt-2 text-sm text-black dark:text-black">{event.description}</p>
-    </div>
-  ));
+    );
+  }
+
+  return (
+    <>
+      {filteredEvents.map((event) => (
+        <div
+          key={event.id}
+          className="p-5 rounded-md border-t-4 border-gray-200 dark:border-gray-700 odd:border-t-LamaSky even:border-t-LamaPurple bg-white dark:bg-gray-900"
+        >
+          <div className="flex items-center justify-between">
+            <h1 className="font-semibold text-black dark:text-black">
+              {event.title}
+            </h1>
+            <span className="text-xs text-black dark:text-black">
+              {format(new Date(event.startTime), "HH:mm")}
+            </span>
+          </div>
+
+          <p className="mt-2 text-sm text-black dark:text-black">
+            {event.description}
+          </p>
+        </div>
+      ))}
+    </>
+  );
 };
 
 export default EventList;

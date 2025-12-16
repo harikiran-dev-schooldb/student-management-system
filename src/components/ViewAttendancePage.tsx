@@ -10,6 +10,17 @@ interface Props {
   teacherClassId?: number;
 }
 
+const getStudentClassName = (student: any) => {
+  const grade = student?.Class?.Grade?.level;
+  const section = student?.Class?.section;
+
+  if (grade && section) {
+    return `${grade} - ${section}`;
+  }
+
+  return "N/A";
+};
+
 export default function ViewAttendancePage({ role, teacherClassId }: Props) {
   const today = new Date().toISOString().split("T")[0];
   const [from, setFrom] = useState(today);
@@ -25,7 +36,9 @@ export default function ViewAttendancePage({ role, teacherClassId }: Props) {
     role === "teacher" && teacherClassId ? teacherClassId : ""
   );
 
-  const [filterStatus, setFilterStatus] = useState<"all" | "present" | "absent">("all");
+  const [filterStatus, setFilterStatus] = useState<
+    "all" | "present" | "absent"
+  >("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -85,7 +98,10 @@ export default function ViewAttendancePage({ role, teacherClassId }: Props) {
     if (from && to) fetchAttendance();
   }, [from, to]);
 
-  const updateAttendance = async (attendanceId: number, currentStatus: boolean) => {
+  const updateAttendance = async (
+    attendanceId: number,
+    currentStatus: boolean
+  ) => {
     const newStatus = !currentStatus;
     const res = await fetch(`/api/attendance/update`, {
       method: "PUT",
@@ -132,7 +148,11 @@ export default function ViewAttendancePage({ role, teacherClassId }: Props) {
     const worksheet = workbook.addWorksheet("Attendance");
 
     const uniqueDates = Array.from(
-      new Set(filteredAttendance.map((a) => new Date(a.date).toLocaleDateString("en-GB")))
+      new Set(
+        filteredAttendance.map((a) =>
+          new Date(a.date).toLocaleDateString("en-GB")
+        )
+      )
     );
 
     worksheet.columns = [
@@ -148,7 +168,7 @@ export default function ViewAttendancePage({ role, teacherClassId }: Props) {
       const row: any = {
         studentId: student.id,
         studentName: student.name,
-        className: student.Class.Grade.level + student.Class.section || "N/A",
+        className: getStudentClassName(student),
       };
 
       uniqueDates.forEach((date) => {
@@ -165,8 +185,18 @@ export default function ViewAttendancePage({ role, teacherClassId }: Props) {
       const newRow = worksheet.addRow(row);
       uniqueDates.forEach((date) => {
         const cell = newRow.getCell(date);
-        if (cell.value === "Present") cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "C6EFCE" } };
-        if (cell.value === "Absent") cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFC7CE" } };
+        if (cell.value === "Present")
+          cell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "C6EFCE" },
+          };
+        if (cell.value === "Absent")
+          cell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FFC7CE" },
+          };
       });
     });
 
@@ -179,12 +209,16 @@ export default function ViewAttendancePage({ role, teacherClassId }: Props) {
 
   return (
     <div className="p-4 space-y-4 bg-white dark:bg-gray-900 min-h-screen rounded-md">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Attendance Report</h1>
+      <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+        Attendance Report
+      </h1>
 
       {/* Filters */}
       <div className="flex flex-wrap gap-4 items-end">
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">From:</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            From:
+          </label>
           <input
             type="date"
             value={from}
@@ -193,7 +227,9 @@ export default function ViewAttendancePage({ role, teacherClassId }: Props) {
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">To:</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            To:
+          </label>
           <input
             type="date"
             value={to}
@@ -205,7 +241,9 @@ export default function ViewAttendancePage({ role, teacherClassId }: Props) {
         {role === "admin" && (
           <>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Grade:</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Grade:
+              </label>
               <select
                 className="border px-2 py-1 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 dark:border-gray-700"
                 value={selectedGrade}
@@ -221,7 +259,9 @@ export default function ViewAttendancePage({ role, teacherClassId }: Props) {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Class:</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Class:
+              </label>
               <select
                 className="border px-2 py-1 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 dark:border-gray-700"
                 value={selectedClass}
@@ -278,7 +318,9 @@ export default function ViewAttendancePage({ role, teacherClassId }: Props) {
 
       {/* Attendance table */}
       {loading ? (
-        <p className="mt-6 text-gray-600 dark:text-gray-400">Loading attendance...</p>
+        <p className="mt-6 text-gray-600 dark:text-gray-400">
+          Loading attendance...
+        </p>
       ) : paginatedAttendance.length > 0 ? (
         <div className="overflow-x-auto mt-4">
           <table className="min-w-full border table-fixed bg-white dark:bg-gray-800 dark:border-gray-700">
@@ -286,7 +328,9 @@ export default function ViewAttendancePage({ role, teacherClassId }: Props) {
               <tr className="bg-gray-200 dark:bg-gray-700 text-left text-sm text-gray-900 dark:text-gray-100">
                 <th className="p-2 border dark:border-gray-700 w-28">Date</th>
                 <th className="p-2 border dark:border-gray-700 w-20">ID</th>
-                <th className="p-2 border dark:border-gray-700 w-64">Student Name</th>
+                <th className="p-2 border dark:border-gray-700 w-64">
+                  Student Name
+                </th>
                 <th className="p-2 border dark:border-gray-700 w-28">Class</th>
                 <th className="p-2 border dark:border-gray-700 w-24">Status</th>
                 <th className="p-2 border dark:border-gray-700 w-24">Action</th>
@@ -294,7 +338,9 @@ export default function ViewAttendancePage({ role, teacherClassId }: Props) {
             </thead>
             <tbody>
               {paginatedAttendance.map((a) => {
-                const student = records.students.find((s) => s.id === a.studentId);
+                const student = records.students.find(
+                  (s) => s.id === a.studentId
+                );
                 if (!student) return null;
                 return (
                   <tr
@@ -304,9 +350,16 @@ export default function ViewAttendancePage({ role, teacherClassId }: Props) {
                     <td className="p-1 border dark:border-gray-700">
                       {new Date(a.date).toLocaleDateString()}
                     </td>
-                    <td className="p-1 border dark:border-gray-700">{student.id}</td>
-                    <td className="p-2 border dark:border-gray-700 truncate">{student.name}</td>
-                    <td className="p-2 border dark:border-gray-700">{student.Class.Grade.level + student.Class.section || "N/A"}</td>
+                    <td className="p-1 border dark:border-gray-700">
+                      {student.id}
+                    </td>
+                    <td className="p-2 border dark:border-gray-700 truncate">
+                      {student.name}
+                    </td>
+                    <td className="p-2 border dark:border-gray-700">
+                      {getStudentClassName(student)}
+                    </td>
+
                     <td
                       className={`p-1 border dark:border-gray-700 font-semibold ${
                         a.present ? "text-green-600" : "text-red-600"
@@ -318,7 +371,9 @@ export default function ViewAttendancePage({ role, teacherClassId }: Props) {
                       <button
                         onClick={() => updateAttendance(a.id, a.present)}
                         className={`px-2 py-1 text-white rounded ${
-                          a.present ? "bg-green-500 hover:bg-green-600" : "bg-red-500 hover:bg-red-600"
+                          a.present
+                            ? "bg-green-500 hover:bg-green-600"
+                            : "bg-red-500 hover:bg-red-600"
                         }`}
                       >
                         Edit
@@ -352,7 +407,9 @@ export default function ViewAttendancePage({ role, teacherClassId }: Props) {
           </div>
         </div>
       ) : (
-        <p className="mt-4 text-gray-600 dark:text-gray-400">No attendance records found.</p>
+        <p className="mt-4 text-gray-600 dark:text-gray-400">
+          No attendance records found.
+        </p>
       )}
     </div>
   );
