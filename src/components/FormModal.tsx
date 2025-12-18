@@ -1,7 +1,6 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import React, { Dispatch, SetStateAction, useState } from "react";
 import { toast } from "react-toastify";
@@ -135,7 +134,7 @@ return (
       className={`${size} flex items-center justify-center rounded-full ${bgColor}`}
       onClick={() => setOpen(true)}
     >
-      <Image src={`/${type}.png`} alt="" width={16} height={16} />
+      <img src={`/${type}.png`} alt="" width={16} height={16} />
     </button>
 
     {open && (
@@ -149,7 +148,7 @@ return (
               className="absolute top-4 left-4 text-black dark:text-white"
               title="Reset"
             >
-              <Image src="/reset.png" alt="Reset" width={14} height={14} />
+              <img src="/reset.png" alt="Reset" width={14} height={14} />
             </button>
           )}
 
@@ -158,7 +157,7 @@ return (
             className="absolute cursor-pointer top-4 right-4"
             onClick={() => setOpen(false)}
           >
-            <Image src="/close.png" alt="Close" width={14} height={14} />
+            <img src="/close.png" alt="Close" width={14} height={14} />
           </div>
 
           {/* Form Container */}

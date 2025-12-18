@@ -1,6 +1,5 @@
 "use client";
-import Image from "next/image";
-import { PieChart, Pie, Sector, Cell, ResponsiveContainer } from "recharts";
+import { PieChart, Pie, ResponsiveContainer } from "recharts";
 
 const data = [
   { name: "Group A", value: 92, fill: "#C3EBFA" },
@@ -12,7 +11,7 @@ const Performance = () => {
     <div className="relative p-4 bg-white rounded-md h-80">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Performance</h1>
-        <Image src="/moreDark.png" alt="" width={16} height={16} />
+        <img src="/moreDark.png" alt="" width={16} height={16} />
       </div>
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>

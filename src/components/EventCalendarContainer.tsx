@@ -1,4 +1,3 @@
-import Image from "next/image";
 import EventCalendar from "./EventCalendar";
 import EventList from "./EventList";
 
@@ -41,7 +40,7 @@ const EventCalendarContainer = ({
         <h1 className="my-4 text-xl font-semibold text-black dark:text-gray-300">
           Events
         </h1>
-        <Image src="/moreDark.png" alt="More" width={20} height={20} />
+        <img src="/moreDark.png" alt="More" width={20} height={20} />
       </div>
 
       <div className="flex flex-col gap-4">

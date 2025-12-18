@@ -8,7 +8,6 @@ import prisma from "@/lib/prisma";
 import { ITEM_PER_PAGE } from "@/lib/settings";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
 import { Grade, Prisma, Subject, Teacher } from "@prisma/client";
-import Image from "next/image";
 import { SearchParams } from "../../../../../types";
 import ResetFiltersButton from "@/components/ResetFiltersButton";
 
@@ -106,10 +105,10 @@ const SubjectList = async ({ searchParams }: { searchParams: Promise<SearchParam
             <ResetFiltersButton basePath="/list/subjects" />
             <div className="flex items-center self-end gap-4">
               <button className="flex items-center justify-center w-8 h-8 rounded-full bg-LamaYellow dark:brightness-90">
-                <Image src="/filter.png" alt="" width={14} height={14} />
+                <img src="/filter.png" alt="" width={14} height={14} />
               </button>
               <button className="flex items-center justify-center w-8 h-8 rounded-full bg-LamaYellow dark:brightness-90">
-                <Image src="/sort.png" alt="" width={14} height={14} />
+                <img src="/sort.png" alt="" width={14} height={14} />
               </button>
               {role === "admin" && <FormContainer table="subject" type="create" />}
             </div>

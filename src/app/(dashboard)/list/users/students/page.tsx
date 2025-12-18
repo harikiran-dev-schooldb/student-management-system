@@ -11,7 +11,6 @@ import prisma from "@/lib/prisma";
 import { ITEM_PER_PAGE } from "@/lib/settings";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
 import { $Enums, Prisma, Student } from "@prisma/client";
-import Image from "next/image";
 import Link from "next/link";
 import { SearchParams, StudentsList } from "../../../../../../types";
 import ResetFiltersButton from "@/components/ResetFiltersButton";
@@ -25,7 +24,7 @@ const renderRow = (item: StudentsList, role: string | null) => (
     className="text-sm border-b border-gray-200 even:bg-gray-50 hover:bg-gray-100 dark:border-gray-700 dark:even:bg-gray-800 dark:hover:bg-gray-700"
   >
     <td className="flex items-center gap-2 p-2">
-      <Image
+      <img
         src={item.img || (item.gender === "Male" ? "/male.png" : "/female.png")}
         alt={item.name}
         width={40}
@@ -50,7 +49,7 @@ const renderRow = (item: StudentsList, role: string | null) => (
       <div className="flex items-center gap-2">
         <Link href={`/list/users/students/${item.id}`}>
           <button className="flex items-center justify-center w-7 h-7 rounded-full bg-LamaSky dark:bg-LamaSky">
-            <Image src="/view.png" alt="View" width={16} height={16} />
+            <img src="/view.png" alt="View" width={16} height={16} />
           </button>
         </Link>
 
@@ -137,6 +136,7 @@ const StudentListPage = async ({
       OR: [
         { name: { contains: search, mode: "insensitive" } },
         { id: { contains: search } },
+        { phone: { contains: search } },
       ],
     }),
     ...(gender && { gender: gender as any }),
@@ -198,7 +198,7 @@ const StudentListPage = async ({
             <ResetFiltersButton basePath={Path} />
             <div className="flex items-center self-end gap-4">
               <button className="flex items-center justify-center w-8 h-8 rounded-full bg-LamaYellow dark:bg-LamaYellow">
-                <Image src="/filter.png" alt="" width={14} height={14} />
+                <img src="/filter.png" alt="" width={14} height={14} />
               </button>
               <SortButton sortKey="id" />
               {role === "admin" && (

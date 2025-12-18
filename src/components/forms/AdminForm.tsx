@@ -8,7 +8,6 @@ import React, { Dispatch, SetStateAction, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 import { CldUploadWidget } from "next-cloudinary";
-import Image from "next/image";
 
 // Custom hook for API calls
 const useApiRequest = () => {
@@ -198,7 +197,7 @@ const AdminForm = ({
         }}>
           {({ open }) => (
             <div className="flex items-center gap-2 text-xs text-gray-500 cursor-pointer" onClick={() => open()}>
-              <Image src="/upload.png" alt="Upload" width={28} height={28} />
+              <img src="/upload.png" alt="Upload" width={28} height={28} />
               <span>Upload a photo</span>
             </div>
           )}

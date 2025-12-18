@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import Dropdown from "./Dropdown";
 import { useTranslation } from "react-i18next";
@@ -177,7 +176,7 @@ export default function Menu({ role }: MenuProps) {
                            hover:bg-LamaSkyLight dark:hover:bg-gray-700
                            lg:justify-start"
               >
-                <Image src={item.icon} alt={item.label} width={20} height={20} />
+                <img src={item.icon} alt={item.label} width={20} height={20} />
                 <span className="hidden lg:block">{t(item.label)}</span>
               </Link>
             )

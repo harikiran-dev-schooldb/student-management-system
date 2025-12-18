@@ -11,6 +11,7 @@ import {
   Homework,
   Messages,
   PaymentMode,
+  Prisma,
   Student,
 } from "@prisma/client";
 
@@ -314,3 +315,32 @@ export type MessageList = Messages & {
     };
   } | null;
 };
+
+export type FeeColectList =
+  Prisma.StudentGetPayload<{
+    select: {
+      id: true;
+      name: true;
+      gender: true;
+      fatherName: true;
+      phone: true;
+      img: true;
+      Class: {
+        select: {
+          section: true;
+          Grade: {
+            select: {
+              id: true;
+              level: true;
+            };
+          };
+        };
+      };
+      totalFees: {
+        select: {
+          totalDiscountAmount: true;
+        };
+      };
+    };
+  }>;
+

@@ -3,7 +3,6 @@ import FormContainer from "@/components/FormContainer";
 import StudentAttendanceCard from "@/components/StudentAttendanceCard";
 import prisma from "@/lib/prisma";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -39,7 +38,7 @@ const StudentFeePage = async ({ params }: StudentFeePageProps) => {
           <div className="flex flex-col gap-4 lg:flex-row">
             <div className="flex flex-1 gap-4 px-4 py-6 rounded-md bg-LamaSky dark:bg-gray-800">
               <div className="w-1/3">
-                <Image
+                <img
                   src={student.img || (student.gender === "Male" ? "/male.png" : "/female.png")}
                   alt={student.name}
                   width={144}
@@ -64,11 +63,11 @@ const StudentFeePage = async ({ params }: StudentFeePageProps) => {
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-medium text-gray-700 dark:text-gray-300">
                   <div className="flex items-center w-full gap-2 md:w-1/3 lg:w-full 2xl:w-1/3">
-                    <Image src="/blood.png" alt="" width={14} height={14} />
+                    <img src="/blood.png" alt="" width={14} height={14} />
                     <span>{student.bloodType || "-"}</span>
                   </div>
                   <div className="flex items-center w-full gap-2 md:w-1/3 lg:w-full 2xl:w-1/3">
-                    <Image src="/date.png" alt="" width={14} height={14} />
+                    <img src="/date.png" alt="" width={14} height={14} />
                     <span>
                       {student.dob
                         ? new Intl.DateTimeFormat("en-GB").format(new Date(student.dob))
@@ -76,11 +75,11 @@ const StudentFeePage = async ({ params }: StudentFeePageProps) => {
                     </span>
                   </div>
                   <div className="flex items-center w-full gap-2 md:w-1/3 lg:w-full 2xl:w-1/3">
-                    <Image src="/mail.png" alt="" width={14} height={14} />
+                    <img src="/mail.png" alt="" width={14} height={14} />
                     <span>{student.email || "-"}</span>
                   </div>
                   <div className="flex items-center w-full gap-2 md:w-1/3 lg:w-full 2xl:w-1/3">
-                    <Image src="/phone.png" alt="" width={14} height={14} />
+                    <img src="/phone.png" alt="" width={14} height={14} />
                     <span>{student.phone || "-"}</span>
                   </div>
                 </div>

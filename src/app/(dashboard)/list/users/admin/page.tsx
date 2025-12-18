@@ -6,7 +6,6 @@ import prisma from "@/lib/prisma";
 import { ITEM_PER_PAGE } from "@/lib/settings";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
 import { Admin, Prisma } from "@prisma/client";
-import Image from "next/image";
 import { SearchParams } from "../../../../../../types";
 import { GenderFilter } from "@/components/FilterDropdown";
 import ResetFiltersButton from "@/components/ResetFiltersButton";
@@ -17,7 +16,7 @@ const renderRow = (item: AdminList, role: string | null) => (
   <>
   
     <td className="flex items-center gap-2 p-2">
-      <Image
+      <img
         src={item.img || "/profile.png"}
         alt={item.name}
         width={40}
@@ -105,7 +104,7 @@ const AdminListPage = async ({ searchParams }: { searchParams: Promise<SearchPar
           <ResetFiltersButton basePath={Path} />
           <div className="flex items-center self-end gap-4">
             <button className="flex items-center justify-center w-8 h-8 rounded-full bg-LamaYellow">
-              <Image src="/filter.png" alt="" width={14} height={14} />
+              <img src="/filter.png" alt="" width={14} height={14} />
             </button>
             <SortButton sortKey="id" />
             <FormContainer table="admin" type="create" />

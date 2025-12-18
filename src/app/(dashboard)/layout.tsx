@@ -1,6 +1,5 @@
 import MenuWrapper from "@/components/MenuWrapper";
 import Navbar from "@/components/Navbar";
-import Image from "next/image";
 import Link from "next/link";
 import "@/lib/i18n";
 
@@ -17,7 +16,7 @@ export default function DashboardLayout({
           href="/"
           className="flex items-center justify-center gap-2 p-4 lg:justify-start"
         >
-          <Image src="/logo.png" alt="logo" width={50} height={50} />
+          <img src="/logo.png" alt="logo" width={50} height={50} />
           <span className="hidden font-bold lg:block dark:text-gray-100">
             Kotak Salesian School
           </span>

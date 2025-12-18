@@ -4,7 +4,6 @@ import Pagination from "@/components/Pagination";
 import Table from "@/components/Table";
 import TableSearch from "@/components/TableSearch";
 import prisma from "@/lib/prisma";
-import Image from "next/image";
 import { ITEM_PER_PAGE } from "@/lib/settings";
 import { Class, Prisma, Student, Subject, Teacher } from "@prisma/client";
 import Link from "next/link";
@@ -26,8 +25,8 @@ const renderRow = (item: TeachersList, role: string | null) => (
   <tr className="text-sm border-b border-gray-200 even:bg-gray-50 hover:bg-gray-100 dark:border-gray-700 dark:even:bg-gray-800 dark:hover:bg-gray-700" key={item.id}>
     {/* Info */}
     <td className="flex items-center gap-2 p-2">
-      <Image
-        src={item.img || (item.gender === "Male" ? "/maleteacher.png" : "/femaleteacher.png")}
+      <img
+        src={item.img ||(item.gender === "Male" ? "/maleteacher.png" : "/femaleteacher.png")}
         alt={item.name}
         width={40}
         height={40}
@@ -63,7 +62,7 @@ const renderRow = (item: TeachersList, role: string | null) => (
       <div className="flex items-center gap-2">
         <Link href={`/list/users/teachers/${item.id}`}>
           <button className="flex items-center justify-center rounded-full w-7 h-7 bg-LamaSky dark:bg-LamaSky">
-            <Image src="/view.png" alt="View" width={16} height={16} />
+            <img src="/view.png" alt="View" width={16} height={16} />
           </button>
         </Link>
         {role === "admin" && <FormContainer table="teacher" type="delete" id={item.id} />}
@@ -149,7 +148,7 @@ const TeacherListPage = async ({ searchParams }: { searchParams: Promise<SearchP
 
           <div className="flex items-center gap-4">
             <button className="flex items-center justify-center w-8 h-8 rounded-full bg-LamaYellow dark:bg-LamaYellow">
-              <Image src="/filter.png" alt="Filter" width={14} height={14} />
+              <img src="/filter.png" alt="Filter" width={14} height={14} />
             </button>
             <SortButton sortKey="id" />
             <FormContainer table="teacher" type="create" />

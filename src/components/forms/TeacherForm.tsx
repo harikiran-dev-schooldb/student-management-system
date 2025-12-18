@@ -8,7 +8,6 @@ import { teacherschema, Teacherschema } from "@/lib/formValidationSchemas";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import { CldUploadWidget } from "next-cloudinary";
-import Image from "next/image";
 
 const TeacherForm = ({
     type,
@@ -139,7 +138,7 @@ const TeacherForm = ({
                 }}>
                     {({ open }) => (
                         <div className="flex items-center gap-2 text-xs text-gray-500 cursor-pointer" onClick={() => open()}>
-                            <Image src="/upload.png" alt="" width={28} height={28} />
+                            <img src="/upload.png" alt="" width={28} height={28} />
                             <span>Upload a photo</span>
                         </div>
                     )}

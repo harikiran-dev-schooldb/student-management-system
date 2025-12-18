@@ -105,6 +105,20 @@ export async function POST(req: Request) {
       // ✅ Step 5: Create Student record linked to parent’s Clerk ID
       console.log("Creating student with ID:", id);
 
+      // 1️⃣ Create LinkedUser
+      const linkedUser = await tx.linkedUser.create({
+        data: {
+          username, // s17166
+          role: "student",
+          profileId: profile.id,
+        },
+      });
+
+      await tx.profile.update({
+        where: { id: profile.id },
+        data: { activeUserId: linkedUser.id },
+      });
+
       const studentData: any = {
         id,
         username,
@@ -125,6 +139,7 @@ export async function POST(req: Request) {
         academicYear: normalizedYear as AcademicYear,
         clerk_id: parentUser.id,
         profileId: profile.id,
+        linkedUserId: linkedUser.id,
       };
 
       // ✅ Only add dob if provided

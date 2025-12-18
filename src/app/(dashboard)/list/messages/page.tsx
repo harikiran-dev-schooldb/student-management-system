@@ -5,7 +5,6 @@ import FormContainer from "@/components/FormContainer";
 import Pagination from "@/components/Pagination";
 import Table from "@/components/Table";
 import TableSearch from "@/components/TableSearch";
-import Image from "next/image";
 import SortButton from "@/components/SortButton";
 import { MessageList, SearchParams } from "../../../../../types";
 import ResetFiltersButton from "@/components/ResetFiltersButton";
@@ -194,7 +193,7 @@ const MessagesList = async ({
           <ResetFiltersButton basePath="/list/messages" />
           <div className="flex items-center self-end gap-4">
             <button className="flex items-center justify-center w-8 h-8 rounded-full bg-LamaYellow dark:bg-LamaYellow">
-              <Image src="/filter.png" alt="" width={14} height={14} />
+              <img src="/filter.png" alt="" width={14} height={14} />
             </button>
             <SortButton sortKey="id" />
             {(role === "admin" || role === "teacher") && (

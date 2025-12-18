@@ -14,23 +14,37 @@ const StudentPage = async () => {
 
   // 🔒 Only allow student role
   if (!userId || role !== "student") {
-    return <UnauthorizedReload />
+    return <UnauthorizedReload />;
   }
 
   // Students array should contain the active student
   const student = students?.[0] || null;
   if (!student) {
     return (
-      <p className="text-center text-red-500">
-        ⚠️ No student data available.
-      </p>
+      <p className="text-center text-red-500">⚠️ No student data available.</p>
     );
   }
 
   // Fetch student with class relation
   const fullStudent = await prisma.student.findUnique({
     where: { id: student.studentId },
-    include: { Class: true, attendances: true },
+    select: {
+      id: true,
+
+      Class: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+
+      attendances: {
+        select: {
+          date: true,
+          present: true,
+        },
+      },
+    },
   });
 
   if (!fullStudent?.Class) {
@@ -54,18 +68,20 @@ const StudentPage = async () => {
   return (
     <div className="flex flex-col gap-4 p-4 xl:flex-row">
       <div className="w-full xl:w-2/3">
-        <div className="h-full p-4 bg-white rounded-md">
+        <div className="h-full p-4 bg-white dark:bg-gray-900 rounded-md">
           <h1 className="text-xl font-semibold">
             Time-Table ({fullStudent.Class.name})
             <ClassTimetableContainer classId={fullStudent.Class.id} />
-            </h1>
+          </h1>
         </div>
       </div>
       <div className="flex flex-col w-full gap-8 xl:w-1/3">
-        <AttendanceCalendar attendanceData={fullStudent.attendances.map(a => ({
-          date: a.date,
-          present: a.present // true/false or null for holiday
-        }))} />
+        <AttendanceCalendar
+          attendanceData={fullStudent.attendances.map((a) => ({
+            date: a.date,
+            present: a.present, // true/false or null for holiday
+          }))}
+        />
 
         <Messages />
       </div>

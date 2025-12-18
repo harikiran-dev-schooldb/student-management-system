@@ -1,6 +1,5 @@
 export const dynamic = "force-dynamic";
 
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import prisma from "@/lib/prisma";
@@ -31,7 +30,7 @@ const AdminProfilePage = async () => {
         {/* ADMIN INFO CARD */}
         <div className="flex flex-col lg:flex-row gap-4 px-4 py-6 rounded-md bg-LamaSky">
           <div className="w-1/3">
-            <Image
+            <img
               src={
                 admin.img ||
                 (admin.gender === "Male" ? "/male.png" : "/female.png")
@@ -49,7 +48,7 @@ const AdminProfilePage = async () => {
             </p>
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-medium">
               <div className="flex items-center gap-2 w-full md:w-1/3">
-                <Image
+                <img
                   src="/blood.png"
                   alt="Blood Type"
                   width={14}
@@ -58,7 +57,7 @@ const AdminProfilePage = async () => {
                 <span>{admin.bloodType || "N/A"}</span>
               </div>
               <div className="flex items-center gap-2 w-full md:w-1/3">
-                <Image src="/date.png" alt="DOB" width={14} height={14} />
+                <img src="/date.png" alt="DOB" width={14} height={14} />
                 <span>
                   {admin.dob
                     ? new Intl.DateTimeFormat("en-GB").format(
@@ -68,11 +67,11 @@ const AdminProfilePage = async () => {
                 </span>
               </div>
               <div className="flex items-center gap-2 w-full md:w-1/3">
-                <Image src="/mail.png" alt="Email" width={14} height={14} />
+                <img src="/mail.png" alt="Email" width={14} height={14} />
                 <span>{admin.email || "-"}</span>
               </div>
               <div className="flex items-center gap-2 w-full md:w-1/3">
-                <Image src="/phone.png" alt="Phone" width={14} height={14} />
+                <img src="/phone.png" alt="Phone" width={14} height={14} />
                 <span>{admin.phone || "-"}</span>
               </div>
             </div>
@@ -82,7 +81,7 @@ const AdminProfilePage = async () => {
         {/* SMALL INFO CARDS */}
         <div className="flex flex-wrap justify-between gap-4">
           <div className="bg-white p-4 rounded-md flex gap-4 w-full md:w-[48%] xl:w-[45%]">
-            <Image
+            <img
               src="/singleBranch.png"
               alt=""
               width={24}
@@ -96,7 +95,7 @@ const AdminProfilePage = async () => {
           </div>
 
           <div className="bg-white p-4 rounded-md flex gap-4 w-full md:w-[48%] xl:w-[45%]">
-            <Image
+            <img
               src="/role.png"
               alt="Role"
               width={24}

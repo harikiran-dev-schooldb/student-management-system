@@ -1,4 +1,3 @@
-import Image from "next/image";
 import AttendanceChart from "./AttendanceChart";
 
 interface AttendanceRecord {
@@ -51,7 +50,7 @@ const AttendanceChartContainer = ({ records }: AttendanceChartContainerProps) =>
         <h1 className="text-lg font-semibold text-gray-500 dark:text-gray-300">
           Attendance
         </h1>
-        <Image src="/moreDark.png" alt="More" width={20} height={20} />
+        <img src="/moreDark.png" alt="More" width={20} height={20} />
       </div>
 
       <AttendanceChart data={data} darkMode />

@@ -10,7 +10,6 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
-import Image from "next/image";
 
 type ChartData = {
   date: string;
@@ -33,7 +32,7 @@ export default function FinanceChart({ data }: FinanceChartProps) {
         <h1 className="text-lg font-semibold text-black dark:text-gray-300">
           Payments Collected (Last 30 Days)
         </h1>
-        <Image src="/moreDark.png" alt="More options" width={20} height={20} />
+        <img src="/moreDark.png" alt="More options" width={20} height={20} />
       </div>
 
       <ResponsiveContainer width="100%" height="90%">

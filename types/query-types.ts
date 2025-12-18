@@ -238,3 +238,76 @@ export const MessagesSelect = {
 export type MessagesList = Prisma.MessagesGetPayload<{
   select: typeof MessagesSelect;
 }>;
+
+// -------------------------------
+// 🔹 Fee Collect Page
+// -------------------------------
+export const StudentFeeSelect = {
+  id: true,
+  name: true,
+  gender: true,
+  fatherName: true,
+  phone: true,
+  img: true,
+
+  // 👇 Class + Grade
+  Class: {
+    select: {
+      section: true,
+      Grade: {
+        select: {
+          id: true,
+          level: true,
+        },
+      },
+    },
+  },
+
+  totalFees: {
+    select: {
+      totalDiscountAmount: true,
+    },
+  },
+} satisfies Prisma.StudentSelect;
+
+export type StudentFeeList =
+  Prisma.StudentGetPayload<{
+    select: typeof StudentFeeSelect;
+  }>;
+
+// -------------------------------
+// 🔹 Exam List Page
+// -------------------------------
+export const ExamListSelect = {
+  id: true,
+  title: true,
+
+  examGradeSubjects: {
+    select: {
+      date: true,
+      startTime: true,
+      maxMarks: true,
+
+      Grade: {
+        select: {
+          id: true,
+          level: true,
+        },
+      },
+
+      Subject: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+    },
+  },
+} satisfies Prisma.ExamSelect;
+
+export type ExamsList =
+  Prisma.ExamGetPayload<{
+    select: typeof ExamListSelect;
+  }>;
+
+

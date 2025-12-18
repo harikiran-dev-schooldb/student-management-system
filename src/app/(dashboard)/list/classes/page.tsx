@@ -7,7 +7,6 @@ import prisma from "@/lib/prisma";
 import { ITEM_PER_PAGE } from "@/lib/settings";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
 import { Prisma } from "@prisma/client";
-import Image from "next/image";
 import { ClassList, SearchParams } from "../../../../../types";
 import ResetFiltersButton from "@/components/ResetFiltersButton";
 import { ClassSelect } from "../../../../../types/query-types";
@@ -105,7 +104,7 @@ const ClassesList = async ({
           <ResetFiltersButton basePath="/list/classes" />
           <div className="flex items-center self-end gap-4">
             <button className="flex items-center justify-center w-8 h-8 rounded-full bg-LamaYellow dark:brightness-90">
-              <Image src="/filter.png" alt="" width={14} height={14} />
+              <img src="/filter.png" alt="" width={14} height={14} />
             </button>
             <SortButton sortKey="id" />
             {role === "admin" && <FormContainer table="class" type="create" />}

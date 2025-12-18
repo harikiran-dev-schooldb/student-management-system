@@ -1,6 +1,5 @@
 "use client";
 import React from "react";
-import Image from "next/image";
 import { RadialBarChart, RadialBar, ResponsiveContainer } from "recharts";
 
 const CountChart = ({ male, female }: { male: number; female: number }) => {
@@ -27,7 +26,7 @@ const CountChart = ({ male, female }: { male: number; female: number }) => {
                     />
                 </RadialBarChart>
             </ResponsiveContainer>
-            <Image
+            <img
                 src="/maleFemale.png"
                 alt=""
                 width={70}

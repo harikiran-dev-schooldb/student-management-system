@@ -8,10 +8,10 @@ import { ITEM_PER_PAGE } from "@/lib/settings";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
 import { Prisma } from "@prisma/client";
 import { endOfDay, startOfDay } from "date-fns";
-import Image from "next/image";
 import { Exams, SearchParams } from "../../../../../types";
 import ResetFiltersButton from "@/components/ResetFiltersButton";
 import TitleFilterDropdown from "@/components/TitleFilterDropdown";
+import { ExamListSelect } from "../../../../../types/query-types";
 
 // Extended Exam type
 
@@ -69,7 +69,7 @@ const ExamsList = async ({
   const params = await searchParams;
   const { page, date, gradeId, ...queryParams } = params;
   const p = page ? (Array.isArray(page) ? page[0] : page) : "1";
-  const { role, userId } = await fetchUserInfo();
+  const { role, students } = await fetchUserInfo();
   const columns = getColumns(role);
 
   const sortOrder = params.sort === "asc" ? "asc" : "desc";
@@ -94,14 +94,32 @@ const ExamsList = async ({
   }
 
   // Student restriction
-  if (role === "student" && userId) {
+  // Student restriction (FIXED)
+  if (role === "student" && students?.length) {
+    const studentId = students[0].studentId;
+
     const student = await prisma.student.findUnique({
-      where: { id: userId },
-      select: { Class: { select: { gradeId: true } } },
+      where: { id: studentId },
+      select: {
+        Class: {
+          select: {
+            gradeId: true,
+          },
+        },
+      },
     });
+
     if (student?.Class?.gradeId) {
       examGradeSubjectsWhere.gradeId = student.Class.gradeId;
     }
+  }
+
+  if (role === "student" && !examGradeSubjectsWhere.gradeId) {
+    return (
+      <p className="text-center text-red-500">
+        ⚠️ Unable to determine student grade.
+      </p>
+    );
   }
 
   // Date filter
@@ -146,33 +164,19 @@ const ExamsList = async ({
     prisma.exam.findMany({
       where: query,
       orderBy: [{ [sortKey]: sortOrder }, { id: "desc" }],
-      include: {
+      select: {
+        ...ExamListSelect,
         examGradeSubjects: {
           where: Object.keys(examGradeSubjectsWhere).length
             ? examGradeSubjectsWhere
             : undefined,
-          select: {
-            date: true,
-            startTime: true,
-            maxMarks: true,
-            Grade: {
-              select: {
-                id: true,
-                level: true,
-              },
-            },
-            Subject: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-          },
+          select: ExamListSelect.examGradeSubjects.select,
         },
       },
       take: ITEM_PER_PAGE,
       skip: ITEM_PER_PAGE * (parseInt(p) - 1),
     }),
+
     prisma.exam.count({ where: query }),
   ]);
 
@@ -203,10 +207,10 @@ const ExamsList = async ({
             <ResetFiltersButton basePath={Path} />
             <div className="flex items-center self-end gap-4">
               <button className="flex items-center justify-center w-8 h-8 rounded-full bg-LamaYellow dark:bg-LamaYellow">
-                <Image src="/filter.png" alt="Filter" width={14} height={14} />
+                <img src="/filter.png" alt="Filter" width={14} height={14} />
               </button>
               <button className="flex items-center justify-center w-8 h-8 rounded-full bg-LamaYellow dark:bg-LamaYellow">
-                <Image src="/sort.png" alt="Sort" width={14} height={14} />
+                <img src="/sort.png" alt="Sort" width={14} height={14} />
               </button>
               {(role === "admin" || role === "teacher") && (
                 <FormContainer table="exam" type="create" />

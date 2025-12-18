@@ -1,7 +1,6 @@
 "use client"; // Client Component
 
 import { useRouter, useSearchParams } from "next/navigation";
-import Image from "next/image";
 import { useState, useEffect } from "react";
 
 interface SortButtonProps {
@@ -38,7 +37,7 @@ const SortButton: React.FC<SortButtonProps> = ({ sortKey }) => {
       className="flex items-center justify-center w-8 h-8 rounded-full bg-LamaYellow"
       title={`Sort by ${sortKey} (${sortOrder})`}
     >
-      <Image src="/sort.png" alt="Sort" width={14} height={14} />
+      <img src="/sort.png" alt="Sort" width={14} height={14} />
     </button>
   );
 };

@@ -8,7 +8,6 @@ import TableSearch from "@/components/TableSearch";
 import prisma from "@/lib/prisma";
 import { ITEM_PER_PAGE } from "@/lib/settings";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
-import Image from "next/image";
 import { FeesList, SearchParams } from "../../../../../../types";
 import ResetFiltersButton from "@/components/ResetFiltersButton";
 import AcademicYearDropdown from "@/components/dropdowns/AcademicYearDropdown";
@@ -148,7 +147,7 @@ const FeesListPage = async ({
             <ResetFiltersButton basePath={Path} />
             <div className="flex items-center self-end gap-4">
               <button className="flex items-center justify-center w-8 h-8 rounded-full bg-LamaYellow">
-                <Image src="/filter.png" alt="Filter" width={14} height={14} />
+                <img src="/filter.png" alt="Filter" width={14} height={14} />
               </button>
               <SortButton sortKey="level" />
               {role === "admin" && <FormContainer table="fees" type="create" />}

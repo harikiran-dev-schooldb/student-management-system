@@ -11,20 +11,17 @@ import { getGroupedStudentFees } from "@/lib/fees";
 import prisma from "@/lib/prisma";
 import { ITEM_PER_PAGE } from "@/lib/settings";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
-import {
-  Prisma,
-} from "@prisma/client";
-import Image from "next/image";
+import { Prisma } from "@prisma/client";
 import { SearchParams, StudentsFeeReportList } from "../../../../../../types";
-
-
-
-// Fetch once globally
-const rawGroupedFees = await getGroupedStudentFees();
+import ResetFiltersButton from "@/components/ResetFiltersButton";
 
 // Render each row
-const renderRow = (item: StudentsFeeReportList, role: string | null) => {
-  const studentFee = rawGroupedFees.find((fee) => fee.studentId === item.id);
+const renderRow = (
+  item: StudentsFeeReportList,
+  role: string | null,
+  feeMap: Map<string, any>
+) => {
+  const studentFee = feeMap.get(item.id);
 
   const totalFees =
     item.Class?.Grade?.feestructure?.reduce((acc, fee) => {
@@ -41,7 +38,7 @@ const renderRow = (item: StudentsFeeReportList, role: string | null) => {
       className="text-sm border-b border-gray-100 dark:border-gray-700 even:bg-slate-50 dark:even:bg-gray-800 hover:bg-LamaPurpleLight dark:hover:bg-gray-700 transition-colors"
     >
       <td className="flex items-center gap-2 p-2 text-gray-800 dark:text-gray-200">
-        <Image
+        <img
           src={
             item.img || (item.gender === "Male" ? "/male.png" : "/female.png")
           }
@@ -165,13 +162,23 @@ const StudentListPage = async ({
   ]);
 
   const columns = getColumns(role);
+  // ✅ NOW data exists
+  const studentIds = data.map((s) => s.id);
+
+  // ✅ Fetch fees ONLY for these students
+  const rawGroupedFees = await getGroupedStudentFees(studentIds);
+
+  // ✅ Build map ONCE
+  const feeMap = new Map(rawGroupedFees.map((fee) => [fee.studentId, fee]));
 
   const Path = "/list/reports/student-fees";
 
   return (
     <div className="flex-1 p-4 m-4 mt-0 bg-white dark:bg-gray-900 rounded-md text-black dark:text-white">
       <div className="flex items-center justify-between mb-3">
-        <h1 className="hidden text-lg font-semibold md:block">All Students ({count})</h1>
+        <h1 className="hidden text-lg font-semibold md:block">
+          All Students ({count})
+        </h1>
 
         <div className="flex flex-col items-center w-full gap-4 md:flex-row md:w-auto">
           <TableSearch />
@@ -184,7 +191,7 @@ const StudentListPage = async ({
           <div className="flex flex-col md:flex-row items-center gap-4 w-full">
             <div className="flex items-center gap-4">
               <button className="flex items-center justify-center w-8 h-8 rounded-full bg-LamaYellow dark:bg-LamaYellow">
-                <Image src="/filter.png" alt="filter" width={14} height={14} />
+                <img src="/filter.png" alt="filter" width={14} height={14} />
               </button>
               <SortButton sortKey="id" />
               <DownloadExcelButton />
@@ -195,7 +202,7 @@ const StudentListPage = async ({
 
       <Table
         columns={columns}
-        renderRow={(item) => renderRow(item, role)}
+        renderRow={(item) => renderRow(item, role, feeMap)}
         data={data}
       />
       <Pagination page={parseInt(p)} count={count} />

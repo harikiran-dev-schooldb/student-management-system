@@ -1,4 +1,3 @@
-import Image from "next/image";
 
 interface UserCardProps {
   type: "admin" | "teacher" | "student";
@@ -15,7 +14,7 @@ const UserCard = ({ type, count }: UserCardProps) => {
         <span className="text-[10px] px-2 py-1 rounded-full bg-white text-green-600 font-semibold">
           2024/25
         </span>
-        <Image src="/more.png" alt="More" width={20} height={20} />
+        <img src="/more.png" alt="More" width={20} height={20} />
       </div>
 
       {/* Count */}

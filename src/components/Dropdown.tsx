@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useTranslation } from "react-i18next";
 
 interface DropdownItem {
@@ -90,7 +89,7 @@ export default function Dropdown({ icon, label, items }: DropdownProps) {
         aria-haspopup="true"
         aria-expanded={isOpen ? "true" : "false"}
       >
-        <Image src={icon} alt={label} width={20} height={20} className="min-w-[20px]" />
+        <img src={icon} alt={label} width={20} height={20} className="min-w-[20px]" />
         <span className="hidden lg:block">{t(label)}</span>
         <svg
           className={`w-4 h-4 ml-auto transition-transform transform ${isOpen ? "rotate-180" : ""}`}
@@ -132,7 +131,7 @@ export default function Dropdown({ icon, label, items }: DropdownProps) {
                          rounded-md whitespace-nowrap"
               role="menuitem"
             >
-              <Image src={item.icon} alt={item.label} width={18} height={18} className="min-w-[18px]" />
+              <img src={item.icon} alt={item.label} width={18} height={18} className="min-w-[18px]" />
               <span>{t(item.label)}</span>
             </Link>
           ))}

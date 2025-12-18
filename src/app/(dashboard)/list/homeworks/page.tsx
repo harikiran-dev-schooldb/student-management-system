@@ -7,7 +7,6 @@ import TableSearch from "@/components/TableSearch";
 import prisma from "@/lib/prisma";
 import { ITEM_PER_PAGE } from "@/lib/settings";
 import { Prisma } from "@prisma/client";
-import Image from "next/image";
 import SortButton from "@/components/SortButton";
 import { Homeworks, SearchParams } from "../../../../../types";
 import ResetFiltersButton from "@/components/ResetFiltersButton";
@@ -167,7 +166,7 @@ const HomeworkListPage = async ({
 
           <div className="flex items-center gap-4">
             <button className="flex items-center justify-center w-8 h-8 rounded-full bg-LamaYellow dark:bg-LamaYellow">
-              <Image src="/filter.png" alt="" width={14} height={14} />
+              <img src="/filter.png" alt="" width={14} height={14} />
             </button>
             <SortButton sortKey={sortKey} />
             {(role === "admin" || role === "teacher") && (

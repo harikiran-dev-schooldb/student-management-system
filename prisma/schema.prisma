@@ -41,6 +41,8 @@ model Grade {
   Homework          Homework[]
   classes           Class[]
   subjects          Subject[]          @relation("SubjectGrades")
+
+  @@index([level])
 }
 
 model Class {
@@ -213,15 +215,8 @@ model Student {
   linkedUserId String?     @unique
   linkedUser   LinkedUser? @relation(fields: [linkedUserId], references: [id])
 
-  @@index([classId]) // already exists
-  @@index([clerk_id]) // already exists
-  @@index([status]) // filtering active/inactive
-  @@index([gender]) // faster gender filter
-  @@index([academicYear]) // if you filter by year often
-  @@index([name]) // speeds up "contains" search on name
-  @@index([phone]) // useful if searching by phone
-  @@index([status, classId]) // compound: list active students by class
-  @@index([status, gender]) // compound: filter active boys/girls
+  @@index([classId, gender, status])
+  @@index([academicYear, classId, gender, status])
 }
 
 model Subject {
@@ -369,6 +364,8 @@ model Attendance {
   Student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([studentId, date])
+  @@index([classId, date])
+  @@index([studentId, classId])
 }
 
 model CancelledReceipt {

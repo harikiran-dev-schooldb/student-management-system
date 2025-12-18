@@ -5,7 +5,6 @@ import FormContainer from "@/components/FormContainer";
 import StudentAttendanceCard from "@/components/StudentAttendanceCard";
 import prisma from "@/lib/prisma";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -36,7 +35,7 @@ const SingleStudentPage = async ({ params }: StudentSinglePageProps) => {
           {/* USER INFO CARD */}
           <div className="flex flex-1 gap-4 px-4 py-6 rounded-md bg-LamaSky dark:bg-gray-800">
             <div className="w-1/3">
-              <Image
+              <img
                 src={
                   student.img ||
                   (student.gender === "Male" ? "/male.png" : "/female.png")
@@ -67,11 +66,11 @@ const SingleStudentPage = async ({ params }: StudentSinglePageProps) => {
               </div>
               <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-medium text-gray-700 dark:text-gray-300">
                 <div className="flex items-center w-full gap-2 md:w-1/3 lg:w-full 2xl:w-1/3">
-                  <Image src="/blood.png" alt="" width={14} height={14} />
+                  <img src="/blood.png" alt="" width={14} height={14} />
                   <span>{student.bloodType || "-"}</span>
                 </div>
                 <div className="flex items-center w-full gap-2 md:w-1/3 lg:w-full 2xl:w-1/3">
-                  <Image src="/date.png" alt="" width={14} height={14} />
+                  <img src="/date.png" alt="" width={14} height={14} />
                   <span>
                     {student.dob
                       ? new Intl.DateTimeFormat("en-GB").format(
@@ -81,11 +80,11 @@ const SingleStudentPage = async ({ params }: StudentSinglePageProps) => {
                   </span>
                 </div>
                 <div className="flex items-center w-full gap-2 md:w-1/3 lg:w-full 2xl:w-1/3">
-                  <Image src="/mail.png" alt="" width={14} height={14} />
+                  <img src="/mail.png" alt="" width={14} height={14} />
                   <span>{student.email || "-"}</span>
                 </div>
                 <div className="flex items-center w-full gap-2 md:w-1/3 lg:w-full 2xl:w-1/3">
-                  <Image src="/phone.png" alt="" width={14} height={14} />
+                  <img src="/phone.png" alt="" width={14} height={14} />
                   <span>{student.phone || "-"}</span>
                 </div>
               </div>
@@ -96,7 +95,7 @@ const SingleStudentPage = async ({ params }: StudentSinglePageProps) => {
           <div className="flex flex-wrap justify-between flex-1 gap-4">
             {/** Attendance Card **/}
             <div className="bg-white dark:bg-gray-800 p-4 rounded-md flex gap-4 w-full md:w-[48%] xl:w-[45%] 2xl:w-[48%]">
-              <Image
+              <img
                 src="/singleAttendance.png"
                 alt=""
                 width={24}
@@ -110,7 +109,7 @@ const SingleStudentPage = async ({ params }: StudentSinglePageProps) => {
 
             {/** Grade Card **/}
             <div className="bg-white dark:bg-gray-800 p-4 rounded-md flex gap-4 w-full md:w-[48%] xl:w-[45%] 2xl:w-[48%]">
-              <Image
+              <img
                 src="/singleBranch.png"
                 alt=""
                 width={24}
@@ -129,7 +128,7 @@ const SingleStudentPage = async ({ params }: StudentSinglePageProps) => {
 
             {/** Lessons Card **/}
             <div className="bg-white dark:bg-gray-800 p-4 rounded-md flex gap-4 w-full md:w-[48%] xl:w-[45%] 2xl:w-[48%]">
-              <Image
+              <img
                 src="/singleLesson.png"
                 alt=""
                 width={24}
@@ -148,7 +147,7 @@ const SingleStudentPage = async ({ params }: StudentSinglePageProps) => {
 
             {/** Class Name Card **/}
             <div className="bg-white dark:bg-gray-800 p-4 rounded-md flex gap-4 w-full md:w-[48%] xl:w-[45%] 2xl:w-[48%]">
-              <Image
+              <img
                 src="/singleClass.png"
                 alt=""
                 width={24}

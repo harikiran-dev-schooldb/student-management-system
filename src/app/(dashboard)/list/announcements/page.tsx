@@ -7,7 +7,6 @@ import prisma from "@/lib/prisma";
 import { ITEM_PER_PAGE } from "@/lib/settings";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
 import { Prisma } from "@prisma/client";
-import Image from "next/image";
 import { AnnouncementList } from "../../../../../types";
 import { AnnouncementSelect } from "../../../../../types/query-types";
 
@@ -120,10 +119,10 @@ const AnnouncementsList = async ({
           <ResetFiltersButton basePath="/list/announcements" />
           <div className="flex items-center self-end gap-4">
             <button className="flex items-center justify-center w-8 h-8 rounded-full bg-LamaYellow">
-              <Image src="/filter.png" alt="" width={14} height={14} />
+              <img src="/filter.png" alt="" width={14} height={14} />
             </button>
             <button className="flex items-center justify-center w-8 h-8 rounded-full bg-LamaYellow">
-              <Image src="/sort.png" alt="" width={14} height={14} />
+              <img src="/sort.png" alt="" width={14} height={14} />
             </button>
             {role === "admin" && (
               <FormContainer table="announcement" type="create" />
