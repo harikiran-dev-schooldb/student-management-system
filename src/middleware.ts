@@ -9,8 +9,7 @@ export default clerkMiddleware(() => {
 
 export const config = {
   matcher: [
-    "/((?!_next|static|favicon.ico|unauthorized|sign-in|sign-up|api/health).*)",
-    "/api/(?!health).*",
+    "/((?!_next|static|favicon.ico|unauthorized|sign-in|sign-up).*)",
+    "/api/(.*)",
   ],
 };
-
