@@ -13,7 +13,9 @@ const FeesTableContainer = async ({
   studentId,
   mode,
 }: FeesTableContainerProps) => {
-  // 1. Fetch Student
+  /* -------------------------------------------------
+     1. Fetch Student
+  --------------------------------------------------*/
   const student = await prisma.student.findUnique({
     where: { id: studentId },
     include: { Class: { include: { Grade: true } } },
@@ -24,44 +26,78 @@ const FeesTableContainer = async ({
   const gradeId = student.Class?.gradeId;
   if (!gradeId) return <div>Grade not found for student</div>;
 
-  // 2. Fetch Fee Structures
-  const feeStructures = await prisma.feeStructure.findMany({
-    where: { gradeId },
-    orderBy: { term: "asc" },
-  });
-
-  // 3. Fetch Student Fees
+  /* -------------------------------------------------
+     2. Fetch Student Fees (SOURCE OF TRUTH)
+  --------------------------------------------------*/
   const studentFees = await prisma.studentFees.findMany({
     where: { studentId },
     include: { feeTransactions: true },
   });
 
-  // 4. Merge Data
+  if (studentFees.length === 0) {
+    return (
+      <div className="w-full">
+        <h1 className="text-lg font-semibold mb-4">
+          {mode === "collect" ? "Collect Fees" : "Cancel Fees"}
+        </h1>
+        <p className="text-sm text-gray-500">
+          No fees have been assigned to this student yet.
+        </p>
+      </div>
+    );
+  }
+
+  /* -------------------------------------------------
+     3. Determine Assigned Academic Years
+  --------------------------------------------------*/
+  const assignedYears: AcademicYear[] = [
+    ...new Set(studentFees.map((sf) => sf.academicYear)),
+  ];
+
+  /* -------------------------------------------------
+     4. Fetch Fee Structures ONLY for assigned years
+  --------------------------------------------------*/
+  const feeStructures = await prisma.feeStructure.findMany({
+    where: {
+      gradeId,
+      academicYear: { in: assignedYears },
+    },
+    orderBy: [{ academicYear: "asc" }, { term: "asc" }],
+  });
+
+  /* -------------------------------------------------
+     5. Merge (NORMALIZE null → undefined)
+  --------------------------------------------------*/
   const transformedData: StudentFee[] = feeStructures.map((fee) => {
     const matchingPayment = studentFees.find(
       (sf) => sf.feeStructureId === fee.id
     );
 
     return {
-      id: matchingPayment?.id || 0,
-      academicYear: fee.academicYear as AcademicYear,
-      feeStructureId: fee.id,
+      id: matchingPayment?.id ?? 0,
       studentId,
+      academicYear: fee.academicYear,
+      feeStructureId: fee.id,
       term: fee.term,
-      paidAmount: matchingPayment?.paidAmount || 0,
-      discountAmount: matchingPayment?.discountAmount || 0,
-      fineAmount: matchingPayment?.fineAmount || 0,
+
+      paidAmount: matchingPayment?.paidAmount ?? 0,
+      discountAmount: matchingPayment?.discountAmount ?? 0,
+      fineAmount: matchingPayment?.fineAmount ?? 0,
       abacusPaidAmount: matchingPayment?.abacusPaidAmount ?? null,
-      receiptDate: matchingPayment?.receiptDate?.toISOString() ?? undefined, // ✅ changed
-      receiptNo: matchingPayment?.receiptNo ?? undefined, // ✅ added for completeness
-      remarks: matchingPayment?.remarks ?? undefined, // ✅ added
-      paymentMode: matchingPayment?.paymentMode ?? "CASH", // ✅ always a valid PaymentMode
+
+      // ⬇️ Normalize Prisma nulls
+      receiptDate: matchingPayment?.receiptDate?.toISOString() ?? undefined,
+      receiptNo: matchingPayment?.receiptNo ?? undefined,
+      remarks: matchingPayment?.remarks ?? undefined,
+      paymentMode: matchingPayment?.paymentMode ?? "CASH",
+
       feeStructure: {
         id: fee.id,
         termFees: fee.termFees ?? 0,
         abacusFees: fee.abacusFees ?? 0,
-        dueDate: fee.dueDate?.toISOString?.() ?? undefined, // ✅ changed
+        dueDate: fee.dueDate?.toISOString() ?? undefined,
       },
+
       feeTransactions:
         matchingPayment?.feeTransactions?.map((tx) => ({
           receiptNo: tx.receiptNo ?? undefined,
@@ -70,41 +106,15 @@ const FeesTableContainer = async ({
     };
   });
 
-  // 5. Totals
-  const totalFees = feeStructures.reduce(
-    (sum, f) => sum + f.termFees + (f.abacusFees || 0),
-    0
-  );
-  const totalPaid = transformedData.reduce((sum, f) => sum + f.paidAmount, 0);
-  const totalDiscount = transformedData.reduce(
-    (sum, f) => sum + f.discountAmount,
-    0
-  );
-  const totalDue = totalFees - (totalPaid + totalDiscount);
-
+  /* -------------------------------------------------
+     6. Render
+  --------------------------------------------------*/
   return (
     <div className="w-full">
       <h1 className="text-lg font-semibold mb-4">
         {mode === "collect" ? "Collect Fees" : "Cancel Fees"}
       </h1>
 
-      {/* Summary Cards */}
-      <div className="flex flex-wrap gap-4 mb-4 text-lg font-semibold">
-        <div className="px-4 py-2 rounded-lg bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 shadow">
-          Total Fees: ₹{totalFees}
-        </div>
-        <div className="px-4 py-2 rounded-lg bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 shadow">
-          Total Paid: ₹{totalPaid}
-        </div>
-        <div className="px-4 py-2 rounded-lg bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 shadow">
-          Total Discount: ₹{totalDiscount}
-        </div>
-        <div className="px-4 py-2 rounded-lg bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 shadow">
-          Total Due: ₹{totalDue}
-        </div>
-      </div>
-
-      {/* Client-side table */}
       <FeesTable data={transformedData} mode={mode} />
     </div>
   );

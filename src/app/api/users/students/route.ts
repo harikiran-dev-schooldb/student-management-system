@@ -188,7 +188,10 @@ export async function POST(req: Request) {
 
       // ✅ Prevent duplicates
       const existingFees = await tx.studentFees.findMany({
-        where: { studentId: newStudent.id },
+        where: {
+          studentId: newStudent.id,
+          academicYear: normalizedYear as AcademicYear,
+        },
       });
 
       console.log("🧾 Existing student fees count:", existingFees.length);
@@ -204,8 +207,6 @@ export async function POST(req: Request) {
             discountAmount: 0,
             fineAmount: 0,
             abacusPaidAmount: 0,
-            paymentMode: "CASH",
-            receiptDate: new Date(),
           })),
         });
 

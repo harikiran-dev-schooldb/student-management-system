@@ -8,6 +8,12 @@ SELECT column_name, data_type
 FROM information_schema.columns
 WHERE table_name = 'Student';
 
+SELECT *
+FROM "StudentFees"
+WHERE "studentId" = '17159'
+  AND "academicYear" = 'Y2024_2025';
+
+
 -- 3. 1. Generate reset statements for all sequences
 
 -- This generates ALTER SEQUENCE statements for all serial/bigserial columns

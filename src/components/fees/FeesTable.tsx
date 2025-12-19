@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   useReactTable,
   getCoreRowModel,
@@ -17,10 +17,9 @@ interface FeesTableProps {
 }
 
 // ✅ Date formatter
-function formatDate(value: string | Date | undefined | null) {
+function formatDate(value?: string | Date | null) {
   if (!value) return "-";
-  const date = new Date(value);
-  return date.toLocaleDateString("en-GB").replace(/\//g, "-");
+  return new Date(value).toLocaleDateString("en-GB").replace(/\//g, "-");
 }
 
 const FeesTable: React.FC<FeesTableProps> = ({ data, mode }) => {
@@ -32,13 +31,26 @@ const FeesTable: React.FC<FeesTableProps> = ({ data, mode }) => {
     null
   );
   const [amount, setAmount] = useState<number>(0);
-  const [receiptDate, setReceiptDate] = useState<string>("");
   const [discount, setDiscount] = useState<number>(0);
   const [fine, setFine] = useState<number>(0);
   const [receiptNo, setReceiptNo] = useState<string>("");
+  const [receiptDate, setReceiptDate] = useState<string>("");
   const [remarks, setRemarks] = useState<string>("");
   const [selectedPaymentMode, setSelectedPaymentMode] =
     useState<string>("CASH");
+
+  const academicYears = useMemo(() => {
+    return Array.from(new Set(data.map((d) => d.academicYear))).sort((a, b) => {
+      // Extract start year from Y2024_2025
+      const startA = Number(a.slice(1, 5));
+      const startB = Number(b.slice(1, 5));
+      return startA - startB; // latest year first
+    });
+  }, [data]);
+
+  const [selectedAcademicYear, setSelectedAcademicYear] = useState<
+    string | null
+  >(null);
 
   // Helpers
   function getTotalFees(fee: StudentFee) {
@@ -69,6 +81,7 @@ const FeesTable: React.FC<FeesTableProps> = ({ data, mode }) => {
   // ✅ Collect action
   const handleCollect = useCallback((fee: StudentFee) => {
     const dueAmount = calculateDueAmount(fee);
+
     setCurrentStudentFee(fee);
     setAmount(dueAmount > 0 ? dueAmount : 0);
     setDiscount(0);
@@ -77,60 +90,67 @@ const FeesTable: React.FC<FeesTableProps> = ({ data, mode }) => {
     setReceiptNo(fee.receiptNo || fee.feeTransactions?.[0]?.receiptNo || "");
     setRemarks(
       fee.remarks ||
-        `Collected Fees for ${fee.term} on ${formatDate(new Date().toISOString())}`
+        `Collected Fees for ${fee.term} on ${formatDate(
+          new Date().toISOString()
+        )}`
     );
     setIsModalOpen(true);
   }, []);
 
   // ✅ Cancel action
-  const handleCancel = useCallback(async (fee: StudentFee, remarks: string) => {
-    if (!fee.studentId || !fee.term) {
-      toast.error("Missing studentId or term");
-      return;
-    }
-
-    const confirmed = window.confirm(`Cancel fees for ${fee.term}?`);
-    if (!confirmed) return;
-
-    try {
-      const cancelRes = await fetch("/api/fees/cancel-transactions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          studentId: fee.studentId,
-          term: fee.term,
-          academicYear: fee.academicYear, // ✅ ensure correct year
-        }),
-      });
-
-      if (!cancelRes.ok) {
-        const { message } = await cancelRes.json();
-        toast.error(`Cancel failed: ${message}`);
+  const handleCancel = useCallback(
+    async (fee: StudentFee, remarks: string) => {
+      if (!fee.studentId || !fee.term) {
+        toast.error("Missing studentId or term");
         return;
       }
 
-      setRowData((prev) =>
-        prev.map((f) =>
-          f.studentId === fee.studentId && f.term === fee.term
-            ? {
-                ...f,
-                paidAmount: 0,
-                discountAmount: 0,
-                fineAmount: 0,
-                remarks: "Cancelled",
-              }
-            : f
-        )
+      const confirmed = window.confirm(
+        `Cancel fees for ${fee.term} for ${fee.academicYear}?`
       );
+      if (!confirmed) return;
 
-      toast.success("Fees cancelled successfully!");
-      router.push(`/list/fees/cancel/${fee.studentId}`);
-      router.refresh();
-    } catch (err) {
-      console.error(err);
-      toast.error("Error cancelling fees.");
-    }
-  }, [router]);
+      try {
+        const cancelRes = await fetch("/api/fees/cancel-transactions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            studentId: fee.studentId,
+            term: fee.term,
+            academicYear: fee.academicYear, // ✅ ensure correct year
+          }),
+        });
+
+        if (!cancelRes.ok) {
+          const { message } = await cancelRes.json();
+          toast.error(`Cancel failed: ${message}`);
+          return;
+        }
+
+        setRowData((prev) =>
+          prev.map((f) =>
+            f.studentId === fee.studentId && f.term === fee.term
+              ? {
+                  ...f,
+                  paidAmount: 0,
+                  discountAmount: 0,
+                  fineAmount: 0,
+                  remarks: "Cancelled",
+                }
+              : f
+          )
+        );
+
+        toast.success("Fees cancelled successfully!");
+        router.push(`/list/fees/cancel/${fee.studentId}`);
+        router.refresh();
+      } catch (err) {
+        console.error(err);
+        toast.error("Error cancelling fees.");
+      }
+    },
+    [router]
+  );
 
   // ✅ Submit form
   const handleFormSubmit = async () => {
@@ -169,8 +189,8 @@ const FeesTable: React.FC<FeesTableProps> = ({ data, mode }) => {
             ? {
                 ...f,
                 paidAmount: (f.paidAmount ?? 0) + amount,
-                discountAmount: discount,
-                fineAmount: fine,
+                discountAmount: (f.discountAmount ?? 0) + discount,
+                fineAmount: (f.fineAmount ?? 0) + fine,
                 receiptNo,
                 remarks,
               }
@@ -189,101 +209,217 @@ const FeesTable: React.FC<FeesTableProps> = ({ data, mode }) => {
   };
 
   // ✅ Columns
-  const columns = React.useMemo<ColumnDef<StudentFee>[]>(() => [
-    { accessorKey: "term", header: "Term" },
-    {
-      accessorFn: (row) => row.feeStructure?.dueDate,
-      id: "dueDate",
-      header: "Due Date",
-      cell: ({ cell }) => formatDate(cell.getValue<string>()),
-    },
-    {
-      accessorFn: (row) => getTotalFees(row),
-      id: "totalFees",
-      header: "Total Fees",
-      cell: ({ cell }) => `₹${(cell.getValue<number>() ?? 0).toFixed(2)}`,
-    },
-    {
-      accessorKey: "paidAmount",
-      header: "Paid Amount",
-      cell: ({ cell }) => `₹${(cell.getValue<number>() ?? 0).toFixed(2)}`,
-    },
-    {
-      accessorKey: "discountAmount",
-      header: "Discount",
-      cell: ({ cell }) => `₹${(cell.getValue<number>() ?? 0).toFixed(2)}`,
-    },
-    {
-      id: "dueAmount",
-      header: "Due Amount",
-      cell: ({ row }) => {
-        const dueAmount = calculateDueAmount(row.original);
-        return (
-          <span className={dueAmount > 0 ? "text-red-500" : "text-green-500"}>
-            ₹{dueAmount.toFixed(2)}
-          </span>
-        );
+  const columns = useMemo<ColumnDef<StudentFee>[]>(
+    () => [
+      { accessorKey: "term", header: "Term" },
+      {
+        accessorFn: (row) => row.feeStructure?.dueDate,
+        id: "dueDate",
+        header: "Due Date",
+        cell: ({ cell }) => formatDate(cell.getValue<string>()),
       },
-    },
-    {
-      accessorFn: (row) => row.feeTransactions?.[0]?.receiptNo || "-",
-      id: "receiptNo",
-      header: "FB No",
-    },
-    {
-      accessorFn: (row) => row.receiptDate,
-      id: "receiptDate",
-      header: "Receipt Date",
-      cell: ({ cell }) => formatDate(cell.getValue<string>()),
-    },
-    {
-      accessorFn: (row) => row.feeTransactions?.[0]?.remarks || "-",
-      id: "remarks",
-      header: "Remarks",
-    },
-    { accessorKey: "paymentMode", header: "Payment Mode" },
-    {
-      id: "actions",
-      header: "Actions",
-      cell: ({ row }) => {
-        const { isCollectDisabled, isZero } = getFeeStatus(row.original);
-        if (mode === "collect") {
-          return (
-            !isCollectDisabled && (
-              <button
-                onClick={() => handleCollect(row.original)}
-                className="px-2 py-1 rounded bg-green-500 text-white hover:bg-green-600"
-              >
-                Collect
-              </button>
-            )
-          );
-        }
-        if (mode === "cancel") {
-          return (
-            !isZero && (
-              <button
-                onClick={() => handleCancel(row.original, remarks)}
-                className="px-2 py-1 rounded bg-red-500 text-white hover:bg-red-600"
-              >
-                Cancel
-              </button>
-            )
-          );
-        }
-        return null;
+      {
+        accessorFn: (row) => getTotalFees(row),
+        id: "totalFees",
+        header: "Total Fees",
+        cell: ({ cell }) => `₹${(cell.getValue<number>() ?? 0).toFixed(2)}`,
       },
-    },
-  ], [mode, handleCollect, handleCancel, remarks]);
+      {
+        accessorKey: "paidAmount",
+        header: "Paid Amount",
+        cell: ({ cell }) => `₹${(cell.getValue<number>() ?? 0).toFixed(2)}`,
+      },
+      {
+        accessorKey: "discountAmount",
+        header: "Discount",
+        cell: ({ cell }) => `₹${(cell.getValue<number>() ?? 0).toFixed(2)}`,
+      },
+      {
+        id: "dueAmount",
+        header: "Due Amount",
+        cell: ({ row }) => {
+          const dueAmount = calculateDueAmount(row.original);
+          return (
+            <span className={dueAmount > 0 ? "text-red-500" : "text-green-500"}>
+              ₹{dueAmount.toFixed(2)}
+            </span>
+          );
+        },
+      },
+      {
+        accessorFn: (row) => row.feeTransactions?.[0]?.receiptNo || "-",
+        id: "receiptNo",
+        header: "FB No",
+      },
+      {
+        accessorFn: (row) => row.receiptDate,
+        id: "receiptDate",
+        header: "Receipt Date",
+        cell: ({ cell }) => formatDate(cell.getValue<string>()),
+      },
+      {
+        accessorFn: (row) => row.feeTransactions?.[0]?.remarks || "-",
+        id: "remarks",
+        header: "Remarks",
+      },
+      { accessorKey: "paymentMode", header: "Payment Mode" },
+      {
+        id: "actions",
+        header: "Actions",
+        cell: ({ row }) => {
+          const { isCollectDisabled, isZero } = getFeeStatus(row.original);
+          if (mode === "collect") {
+            return (
+              !isCollectDisabled && (
+                <button
+                  onClick={() => handleCollect(row.original)}
+                  className="px-2 py-1 rounded bg-green-500 text-white hover:bg-green-600"
+                >
+                  Collect
+                </button>
+              )
+            );
+          }
+          if (mode === "cancel") {
+            return (
+              !isZero && (
+                <button
+                  onClick={() => handleCancel(row.original, remarks)}
+                  className="px-2 py-1 rounded bg-red-500 text-white hover:bg-red-600"
+                >
+                  Cancel
+                </button>
+              )
+            );
+          }
+          return null;
+        },
+      },
+    ],
+    [mode, handleCollect, handleCancel, remarks]
+  );
+
+  const TERM_ORDER: Record<string, number> = {
+    TERM_1: 1,
+    TERM_2: 2,
+    TERM_3: 3,
+    FINAL: 4,
+  };
+
+  const filteredData = useMemo(() => {
+    const baseData =
+      selectedAcademicYear === null
+        ? rowData
+        : rowData.filter((row) => row.academicYear === selectedAcademicYear);
+
+    return [...baseData].sort((a, b) => {
+      // 1️⃣ Sort by academic year (oldest → latest)
+      const yearA = Number(a.academicYear.slice(1, 5)); // Y2024_2025 → 2024
+      const yearB = Number(b.academicYear.slice(1, 5));
+
+      if (yearA !== yearB) {
+        return yearA - yearB;
+      }
+
+      // 2️⃣ If same academic year, sort by term
+      return (TERM_ORDER[a.term] ?? 99) - (TERM_ORDER[b.term] ?? 99);
+    });
+  }, [rowData, selectedAcademicYear]);
 
   const table = useReactTable({
-    data: rowData ?? [],
+    data: filteredData,
     columns,
     getCoreRowModel: getCoreRowModel(),
   });
 
+  const summary = useMemo(() => {
+    const totalFees = filteredData.reduce(
+      (sum, f) =>
+        sum +
+        (f.feeStructure?.termFees ?? 0) +
+        (f.feeStructure?.abacusFees ?? 0),
+      0
+    );
+
+    const totalPaid = filteredData.reduce(
+      (sum, f) => sum + (f.paidAmount ?? 0),
+      0
+    );
+
+    const totalDiscount = filteredData.reduce(
+      (sum, f) => sum + (f.discountAmount ?? 0),
+      0
+    );
+
+    const totalDue = totalFees - (totalPaid + totalDiscount);
+
+    return {
+      totalFees,
+      totalPaid,
+      totalDiscount,
+      totalDue,
+    };
+  }, [filteredData]);
+
   return (
     <div className="overflow-x-auto">
+      {/* Summary Cards */}
+      <div className="flex flex-wrap gap-4 mb-4 text-lg font-semibold">
+        <div className="px-4 py-2 rounded-lg bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 shadow">
+          Total Fees: ₹{summary.totalFees}
+        </div>
+        <div className="px-4 py-2 rounded-lg bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 shadow">
+          Total Paid: ₹{summary.totalPaid}
+        </div>
+        <div className="px-4 py-2 rounded-lg bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 shadow">
+          Total Discount: ₹{summary.totalDiscount}
+        </div>
+        <div className="px-4 py-2 rounded-lg bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 shadow">
+          Total Due: ₹{summary.totalDue}
+        </div>
+      </div>
+
+      <div className="mb-6 flex items-center gap-4">
+        <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+          Academic Year
+        </span>
+
+        <div className="flex rounded-full bg-gray-100 dark:bg-gray-800 p-1 shadow-inner">
+          {/* ALL */}
+          <button
+            onClick={() => setSelectedAcademicYear(null)}
+            className={`px-4 py-1.5 text-sm rounded-full transition-all duration-200
+        ${
+          selectedAcademicYear === null
+            ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-md"
+            : "text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+        }`}
+          >
+            All
+          </button>
+
+          {academicYears.map((year) => {
+            const isActive = selectedAcademicYear === year;
+
+            return (
+              <button
+                key={year}
+                onClick={() => setSelectedAcademicYear(year)}
+                className={`px-4 py-1.5 text-sm rounded-full transition-all duration-200
+            ${
+              isActive
+                ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-md"
+                : "text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+            }`}
+              >
+                {year.replace("_", " - ")}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/*TABLE*/}
       <div className="min-w-full rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
         <table className="min-w-full text-sm text-gray-800 dark:text-gray-200">
           <thead className="bg-gray-100 dark:bg-gray-800">
@@ -296,7 +432,10 @@ const FeesTable: React.FC<FeesTableProps> = ({ data, mode }) => {
                   >
                     {header.isPlaceholder
                       ? null
-                      : flexRender(header.column.columnDef.header, header.getContext())}
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
                   </th>
                 ))}
               </tr>
@@ -326,9 +465,16 @@ const FeesTable: React.FC<FeesTableProps> = ({ data, mode }) => {
 
             {/* Summary */}
             <div className="space-y-1 text-sm text-gray-700 dark:text-gray-300">
-              <p><strong>Total Fees:</strong> ₹{getTotalFees(currentStudentFee)}</p>
-              <p><strong>Paid:</strong> ₹{currentStudentFee.paidAmount || 0}</p>
-              <p><strong>Balance:</strong> ₹{calculateDueAmount(currentStudentFee)}</p>
+              <p>
+                <strong>Total Fees:</strong> ₹{getTotalFees(currentStudentFee)}
+              </p>
+              <p>
+                <strong>Paid:</strong> ₹{currentStudentFee.paidAmount || 0}
+              </p>
+              <p>
+                <strong>Balance:</strong> ₹
+                {calculateDueAmount(currentStudentFee)}
+              </p>
             </div>
 
             {/* Inputs */}
@@ -344,7 +490,9 @@ const FeesTable: React.FC<FeesTableProps> = ({ data, mode }) => {
               </div>
 
               <div>
-                <label className="block mb-1 text-sm font-medium">Discount</label>
+                <label className="block mb-1 text-sm font-medium">
+                  Discount
+                </label>
                 <input
                   type="number"
                   value={discount}
@@ -364,7 +512,9 @@ const FeesTable: React.FC<FeesTableProps> = ({ data, mode }) => {
               </div>
 
               <div>
-                <label className="block mb-1 text-sm font-medium">Remarks</label>
+                <label className="block mb-1 text-sm font-medium">
+                  Remarks
+                </label>
                 <textarea
                   value={remarks}
                   onChange={(e) => setRemarks(e.target.value)}
@@ -373,7 +523,9 @@ const FeesTable: React.FC<FeesTableProps> = ({ data, mode }) => {
               </div>
 
               <div>
-                <label className="block mb-1 text-sm font-medium">Payment Mode</label>
+                <label className="block mb-1 text-sm font-medium">
+                  Payment Mode
+                </label>
                 <select
                   value={selectedPaymentMode}
                   onChange={(e) => setSelectedPaymentMode(e.target.value)}
@@ -387,7 +539,9 @@ const FeesTable: React.FC<FeesTableProps> = ({ data, mode }) => {
               </div>
 
               <div>
-                <label className="block mb-1 text-sm font-medium">Receipt Date</label>
+                <label className="block mb-1 text-sm font-medium">
+                  Receipt Date
+                </label>
                 <input
                   type="date"
                   value={receiptDate}

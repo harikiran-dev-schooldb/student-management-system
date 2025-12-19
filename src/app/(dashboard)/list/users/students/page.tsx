@@ -37,7 +37,11 @@ const renderRow = (item: StudentsList, role: string | null) => (
       </div>
     </td>
 
-    {role === "admin" && <td>{item.Class.Grade.level} - {item.Class.section}</td>}
+    {role === "admin" && (
+      <td>
+        {item.Class.Grade.level} - {item.Class.section}
+      </td>
+    )}
     <td className="hidden md:table-cell">{item.fatherName || "N/A"}</td>
     <td className="hidden md:table-cell">{item.motherName || "N/A"}</td>
     <td className="hidden md:table-cell">
@@ -170,9 +174,9 @@ const StudentListPage = async ({
   const Path = `/list/users/students`;
 
   return (
-    <div className="flex-1 p-4 m-4 mt-0 bg-white dark:bg-gray-900 rounded-md text-black dark:text-white">
+    <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm p-4">
       {/* Top Controls */}
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-4">
         <h1 className="hidden text-lg font-semibold md:block">
           All Students ({count})
         </h1>
@@ -210,13 +214,16 @@ const StudentListPage = async ({
       </div>
 
       {/* Table */}
+      <div className="overflow-x-auto rounded-md border">
       <Table
         columns={columns}
         renderRow={(item) => renderRow(item, role)}
         data={data}
       />
+      </div>
 
       {/* Pagination */}
+      
       <Pagination page={parseInt(p)} count={count} />
     </div>
   );
