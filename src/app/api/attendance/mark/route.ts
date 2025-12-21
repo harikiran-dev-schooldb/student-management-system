@@ -1,160 +1,130 @@
 import prisma from "@/lib/prisma";
 import { getMessageContent } from "@/lib/utils/messageUtils";
 import { NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
 import { MessageType } from "../../../../../types";
+import { Prisma } from "@prisma/client";
 
 export async function POST(req: Request) {
   try {
     const data = await req.json();
 
     if (!Array.isArray(data) || data.length === 0) {
-      return NextResponse.json({ error: "Invalid or empty data" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid or empty data" },
+        { status: 400 }
+      );
     }
 
-    const operations: Prisma.PrismaPromise<any>[] = [];
+    const attendanceDate = new Date(data[0].date);
+    const dateOnly = new Date(attendanceDate.toISOString().split("T")[0]);
 
-    // Step 1: Build attendance key and collect IDs
-    const attendanceKeys = new Set<string>();
-    const absentStudentIds = new Set<string>();
-    const attendanceMap = new Map<string, any>();
+    const presentIds: string[] = [];
+    const absentIds: string[] = [];
+    const createPayload: any[] = [];
 
+    const studentClassMap = new Map<string, number>();
+
+    // Step 1: Prepare data
     for (const entry of data) {
-      const dateStr = new Date(entry.date).toISOString().split("T")[0];
-      const key = `${entry.studentId}_${dateStr}`;
-      attendanceKeys.add(key);
-      if (!entry.present) {
-        absentStudentIds.add(entry.studentId);
+      studentClassMap.set(entry.studentId, entry.classId);
+
+      if (entry.present) {
+        presentIds.push(entry.studentId);
+      } else {
+        absentIds.push(entry.studentId);
       }
-      attendanceMap.set(key, { ...entry, date: new Date(entry.date) });
+
+      createPayload.push({
+        studentId: entry.studentId,
+        classId: entry.classId,
+        date: dateOnly,
+        present: entry.present,
+      });
     }
 
-    // Step 2: Fetch existing attendance in one query
-    const existingRecords = await prisma.attendance.findMany({
+    // Step 2: Find existing records
+    const existing = await prisma.attendance.findMany({
       where: {
-        OR: Array.from(attendanceKeys).map((key) => {
-          const [studentId, dateStr] = key.split("_");
-          return {
-            studentId,
-            date: new Date(dateStr),
-          };
-        }),
+        studentId: { in: [...presentIds, ...absentIds] },
+        date: dateOnly,
       },
+      select: { studentId: true },
     });
 
-    const existingMap = new Map<string, { id: string }>();
-    for (const record of existingRecords) {
-      const dateStr = record.date.toISOString().split("T")[0];
-      const key = `${record.studentId}_${dateStr}`;
-      existingMap.set(key, { id: String(record.id) });
+    const existingIds = new Set(existing.map((e) => e.studentId));
 
+    const toCreate = createPayload.filter((a) => !existingIds.has(a.studentId));
+
+    const tx: Prisma.PrismaPromise<any>[] = [];
+
+    tx.push(
+      prisma.attendance.updateMany({
+        where: { studentId: { in: presentIds }, date: dateOnly },
+        data: { present: true },
+      })
+    );
+
+    tx.push(
+      prisma.attendance.updateMany({
+        where: { studentId: { in: absentIds }, date: dateOnly },
+        data: { present: false },
+      })
+    );
+
+    if (toCreate.length > 0) {
+      tx.push(
+        prisma.attendance.createMany({
+          data: toCreate,
+          skipDuplicates: true,
+        })
+      );
     }
 
-    // Step 3: Process operations (create/update)
-    for (const key of attendanceKeys) {
-      const entry = attendanceMap.get(key);
-      const { studentId, present, date, ...rest } = entry;
+    await prisma.$transaction(tx);
 
-      if (existingMap.has(key)) {
-        const existing = existingMap.get(key);
-        operations.push(
-          prisma.attendance.update({
-            where: { id: parseInt(existing!.id) },
-            data: { present },
-          })
-        );
-      } else {
-        operations.push(
-          prisma.attendance.create({
-            data: {
-              ...rest,
-              studentId,
-              present,
-              date,
-            },
-          })
-        );
-      }
-    }
-
-    // Step 4: Fetch student + class info for absentees
+    // Step 4: Fetch absent student info
     const absentStudents = await prisma.student.findMany({
-      where: { id: { in: Array.from(absentStudentIds) }, status: "ACTIVE" },
+      where: {
+        id: { in: absentIds },
+        status: "ACTIVE",
+      },
       select: {
         id: true,
         name: true,
         Class: {
           select: {
-            id: true,
             name: true,
-            Grade: {
-              select: { level: true },
-            },
           },
         },
       },
     });
 
-    const studentInfoMap = new Map<string, typeof absentStudents[0]>();
-    for (const student of absentStudents) {
-      studentInfoMap.set(student.id, student);
+    // Step 5: Create messages (NO transaction)
+    if (absentStudents.length > 0) {
+      await prisma.messages.createMany({
+        data: absentStudents.map((student) => ({
+          message: getMessageContent("ABSENT" as MessageType, {
+            name: student.name,
+            className: student.Class?.name ?? "Unknown",
+          }),
+          type: "ABSENT",
+          date: dateOnly,
+          studentId: student.id,
+          classId: studentClassMap.get(student.id)!,
+        })),
+      });
     }
 
-    // Step 5: Prepare messages for absentees
-    for (const key of attendanceKeys) {
-      const entry = attendanceMap.get(key);
-      if (!entry.present) {
-        const student = studentInfoMap.get(entry.studentId);
-        if (student) {
-          const studentName = student.name;
-          const className = student.Class?.name || "Unknown";
-
-          const message = getMessageContent("ABSENT" as MessageType, {
-            name: studentName,
-            className,
-          });
-
-          operations.push(
-            prisma.messages.create({
-              data: {
-                message,
-                type: "ABSENT",
-                date: entry.date,
-                classId: entry.classId,
-                studentId: entry.studentId,
-              },
-            })
-          );
-        }
-      }
-    }
-
-    // Step 6: Execute all DB operations
-    await prisma.$transaction(operations);
-
-    return NextResponse.json({ success: true, count: operations.length });
-  } catch (error) {
-    console.error("❌ Attendance error:", JSON.stringify(error, null, 2));
-    return NextResponse.json({ error: "Failed to save attendance" }, { status: 500 });
-  }
-}
-
-export async function GET() {
-  try {
-    const absentees = await prisma.messages.findMany({
-      where: { type: "ABSENT" },
-      orderBy: { date: "desc" },
-      include: {
-        Student: { select: { name: true } },
-        Class: { select: { name: true, section: true } },
-      },
+    return NextResponse.json({
+      success: true,
+      created: toCreate.length,
+      present: presentIds.length,
+      absent: absentIds.length,
     });
-
-    return NextResponse.json(absentees, { status: 200 });
-  } catch (err) {
-    console.error("Error fetching attendance messages:", err);
+  } catch (error) {
+    console.error("❌ Attendance error:", error);
     return NextResponse.json(
-      { success: false, message: "Failed to fetch attendance messages" },
+      { error: "Failed to save attendance" },
       { status: 500 }
     );
   }
