@@ -20,13 +20,27 @@ CREATE TABLE Announcement (
     classId INT REFERENCES Class(id) ON DELETE SET NULL
 );
 
-CREATE TABLE Attendance (
-    id SERIAL PRIMARY KEY,
-    date TIMESTAMP NOT NULL,
-    present BOOLEAN NOT NULL,
-    studentId TEXT REFERENCES Student(id) ON DELETE CASCADE,
-    classId INT REFERENCES Class(id) ON DELETE CASCADE
+CREATE TABLE attendance (
+    id          SERIAL PRIMARY KEY,
+    date        TIMESTAMP NOT NULL,
+    present     BOOLEAN NOT NULL DEFAULT true,
+    student_id  TEXT NOT NULL,
+    class_id    INTEGER NOT NULL,
+
+    CONSTRAINT fk_attendance_class
+        FOREIGN KEY (class_id)
+        REFERENCES class(id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_attendance_student
+        FOREIGN KEY (student_id)
+        REFERENCES student(id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT attendance_student_date_unique
+        UNIQUE (student_id, date)
 );
+
 
 CREATE TABLE Class (
     id SERIAL PRIMARY KEY,

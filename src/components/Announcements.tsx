@@ -57,8 +57,8 @@ const Messages = async ({
               key={msg.id}
               className={clsx("p-4 rounded-md", {
                 "bg-LamaSkyLight": index === 0,
-                "bg-LamaPurple": index === 1,
-                "bg-LamaYellow": index === 2,
+                "bg-LamaPurpleLight": index === 1,
+                "bg-LamaPinkLight": index === 2,
                 "dark:text-gray-500": true, // ensure text contrast
               })}
             >

@@ -5,12 +5,12 @@ import Papa from "papaparse";
 import axios from "axios";
 
 type LessonCSV = {
+  gradeId: string;
   classId: string;
   subjectId: string;
-  teacherId?: string;
+  teacherId: string;
   day: string;
-  startTime: string;
-  endTime: string;
+  period: string;
 };
 
 export default function BulkLessonsUpload() {
@@ -31,12 +31,14 @@ export default function BulkLessonsUpload() {
         const err: string[] = [];
 
         parsed.forEach((row, index) => {
-          const missing = [];
+          const missing: string[] = [];
+
+          if (!row.gradeId) missing.push("gradeId");
           if (!row.classId) missing.push("classId");
           if (!row.subjectId) missing.push("subjectId");
+          if (!row.teacherId) missing.push("teacherId");
           if (!row.day) missing.push("day");
-          if (!row.startTime) missing.push("startTime");
-          if (!row.endTime) missing.push("endTime");
+          if (!row.period) missing.push("period");
 
           if (missing.length > 0) {
             err.push(`Row ${index + 2}: missing ${missing.join(", ")}`);
@@ -54,7 +56,9 @@ export default function BulkLessonsUpload() {
     setMessage("");
 
     try {
-      const response = await axios.post("/api/lessons/bulk", { lessons });
+      const response = await axios.post("/api/lessons/bulk", {
+        lessons,
+      });
 
       setMessage(response.data.message);
       setErrors(response.data.errors || []);
@@ -70,14 +74,14 @@ export default function BulkLessonsUpload() {
   };
 
   return (
-    <div className="space-y-6 p-6 bg-white dark:bg-gray-900 text-black dark:text-white rounded shadow">
+    <div className="space-y-6 p-6 bg-white dark:bg-gray-900 rounded shadow">
       <h1 className="text-xl font-semibold">Bulk Upload Lessons</h1>
 
       <input
         type="file"
         accept=".csv"
         onChange={handleFileChange}
-        className="block w-full text-sm text-gray-500 dark:text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-blue-600 dark:file:bg-blue-700 file:text-white hover:file:bg-blue-700 dark:hover:file:bg-blue-800"
+        className="block w-full text-sm text-gray-500 dark:text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-LamaPurple dark:file:bg-purple-700 file:text-black dark:file:text-white hover:file:bg-LamaPurpleLight dark:hover:file:bg-purple-600"
       />
 
       {errors.length > 0 && (
@@ -99,7 +103,7 @@ export default function BulkLessonsUpload() {
                 {Object.keys(lessons[0]).map((key) => (
                   <th
                     key={key}
-                    className="px-4 py-2 border-b font-semibold text-gray-700 dark:text-gray-300 dark:border-gray-600"
+                    className="px-4 py-2 border-b text-gray-700 dark:text-gray-300 dark:border-gray-600"
                   >
                     {key}
                   </th>
@@ -108,14 +112,11 @@ export default function BulkLessonsUpload() {
             </thead>
             <tbody>
               {lessons.map((lesson, i) => (
-                <tr
-                  key={i}
-                  className="even:bg-gray-50 dark:even:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-800"
-                >
+                <tr key={i} className="even:bg-gray-50 dark:even:bg-gray-700">
                   {Object.values(lesson).map((val, j) => (
                     <td
                       key={j}
-                      className="px-4 py-1 border-b text-gray-800 dark:text-gray-200 dark:border-gray-600"
+                      className="px-4 py-1 border-b dark:border-gray-600"
                     >
                       {val || "-"}
                     </td>
@@ -138,7 +139,9 @@ export default function BulkLessonsUpload() {
       )}
 
       {message && (
-        <p className="text-green-600 dark:text-green-400 font-medium">{message}</p>
+        <p className="text-green-600 dark:text-green-400 font-medium">
+          {message}
+        </p>
       )}
     </div>
   );

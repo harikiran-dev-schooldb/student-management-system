@@ -11,7 +11,11 @@ import { fetchUserInfo } from "@/lib/utils/server-utils";
 import { getTermStatus } from "@/lib/utils/getTermStatus";
 import { $Enums, Prisma } from "@prisma/client";
 import Link from "next/link";
-import { FeeColectList, SearchParams, StudentList } from "../../../../../../types";
+import {
+  FeeColectList,
+  SearchParams,
+  StudentList,
+} from "../../../../../../types";
 import ResetFiltersButton from "@/components/ResetFiltersButton";
 import { StudentFeeSelect } from "../../../../../../types/query-types";
 
@@ -53,9 +57,8 @@ const renderRow = (
           className="object-cover w-10 h-10 rounded-full md:hidden xl:block"
         />
         <div className="flex flex-col">
-          <h3 className="font-semibold">{item.name}</h3>
           <h3 className="font-semibold">
-            {item.Class?.Grade?.level}-{item.Class?.section}
+            {item.name} ({item.Class?.Grade?.level}-{item.Class?.section})
           </h3>
           <p className="text-xs">{item.id}</p>
         </div>
@@ -70,9 +73,9 @@ const renderRow = (
       <td
         className={clsx(
           "hidden md:table-cell",
-          status === "Fully Paid" && "text-green-600 dark:text-green-400",
+          status === "Fully Paid" && "text-LamaGreen dark:text-LamaGreen",
           status === "Not Paid" && "text-red-600 dark:text-red-400",
-          status.includes("Term") && "text-yellow-500 dark:text-yellow-400"
+          status.includes("Term") && "text-LamaYellow dark:text-LamaYellow"
         )}
       >
         {status}

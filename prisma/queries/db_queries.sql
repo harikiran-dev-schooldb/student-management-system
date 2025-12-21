@@ -167,8 +167,15 @@ SELECT id, clerk_id, length(clerk_id), encode(clerk_id::bytea, 'escape')
 FROM "Student"
 WHERE id = 15616;
 
+SELECT * FROM "Attendance";
+
 DELETE FROM "class";
 
+DROP TABLE "Attendance";
+
+SELECT migration_name, finished_at
+FROM _prisma_migrations
+ORDER BY finished_at;
 
 
 

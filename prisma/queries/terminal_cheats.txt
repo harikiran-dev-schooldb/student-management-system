@@ -1,0 +1,11 @@
+# 1. (Optional) Remove old migration files if you want a completely fresh history
+rm -rf prisma/migrations
+
+# 2. Reset the database, apply all migrations, and run seeds
+npx prisma migrate reset
+
+# 3. Or, to skip confirmation and seeding
+npx prisma migrate reset --force --skip-seed
+
+# 4. (If needed) Generate a new initial migration after clearing the folder
+npx prisma migrate dev --name init

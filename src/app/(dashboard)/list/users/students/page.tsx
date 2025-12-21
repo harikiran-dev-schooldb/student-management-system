@@ -10,7 +10,7 @@ import TableSearch from "@/components/TableSearch";
 import prisma from "@/lib/prisma";
 import { ITEM_PER_PAGE } from "@/lib/settings";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
-import { $Enums, Prisma, Student } from "@prisma/client";
+import { $Enums, Prisma } from "@prisma/client";
 import Link from "next/link";
 import { SearchParams, StudentsList } from "../../../../../../types";
 import ResetFiltersButton from "@/components/ResetFiltersButton";
@@ -23,7 +23,7 @@ const renderRow = (item: StudentsList, role: string | null) => (
     key={item.id}
     className="text-sm border-b border-gray-200 even:bg-gray-50 hover:bg-gray-100 dark:border-gray-700 dark:even:bg-gray-800 dark:hover:bg-gray-700"
   >
-    <td className="flex items-center gap-2 p-2">
+    <td className="flex items-center gap-3 px-4 py-3">
       <img
         src={item.img || (item.gender === "Male" ? "/male.png" : "/female.png")}
         alt={item.name}
@@ -52,7 +52,7 @@ const renderRow = (item: StudentsList, role: string | null) => (
     <td className="p-2">
       <div className="flex items-center gap-2">
         <Link href={`/list/users/students/${item.id}`}>
-          <button className="flex items-center justify-center w-7 h-7 rounded-full bg-LamaSky dark:bg-LamaSky">
+          <button className="flex items-center justify-center w-8 h-8 rounded-full bg-LamaSky hover:opacity-90">
             <img src="/view.png" alt="View" width={16} height={16} />
           </button>
         </Link>
@@ -181,7 +181,7 @@ const StudentListPage = async ({
           All Students ({count})
         </h1>
 
-        <div className="flex flex-col items-center w-full gap-4 md:flex-row md:w-auto">
+        <div className="flex flex-wrap items-center gap-4 px-4 py-3 rounded-lg bg-gray-50 dark:bg-gray-800">
           <TableSearch />
           {role === "admin" && (
             <>
@@ -215,15 +215,15 @@ const StudentListPage = async ({
 
       {/* Table */}
       <div className="overflow-x-auto rounded-md border">
-      <Table
-        columns={columns}
-        renderRow={(item) => renderRow(item, role)}
-        data={data}
-      />
+        <Table
+          columns={columns}
+          renderRow={(item) => renderRow(item, role)}
+          data={data}
+        />
       </div>
 
       {/* Pagination */}
-      
+
       <Pagination page={parseInt(p)} count={count} />
     </div>
   );

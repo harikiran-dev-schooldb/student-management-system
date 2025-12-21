@@ -25,16 +25,19 @@ export default async function NavbarServer() {
         admin: {
           select: {
             name: true,
+            img:true,
           },
         },
         teacher: {
           select: {
             name: true,
+            img:true,
           },
         },
         student: {
           select: {
             name: true,
+            img:true,
             Class: {
               select: {
                 name: true,
@@ -59,6 +62,7 @@ export default async function NavbarServer() {
     name: u.admin?.name ?? u.teacher?.name ?? u.student?.name ?? u.username,
     className: u.student?.Class?.name ?? undefined,
     role: u.role,
+    img: u.admin?.img ?? u.teacher?.img ?? u.student?.img ?? null,
   }));
 
   return (

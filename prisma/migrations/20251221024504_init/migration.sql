@@ -404,6 +404,9 @@ CREATE INDEX "Admin_username_email_phone_idx" ON "Admin"("username", "email", "p
 CREATE UNIQUE INDEX "Grade_level_key" ON "Grade"("level");
 
 -- CreateIndex
+CREATE INDEX "Grade_level_idx" ON "Grade"("level");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "class_supervisorId_key" ON "class"("supervisorId");
 
 -- CreateIndex
@@ -467,31 +470,10 @@ CREATE UNIQUE INDEX "Student_username_key" ON "Student"("username");
 CREATE UNIQUE INDEX "Student_linkedUserId_key" ON "Student"("linkedUserId");
 
 -- CreateIndex
-CREATE INDEX "Student_classId_idx" ON "Student"("classId");
+CREATE INDEX "Student_classId_gender_status_idx" ON "Student"("classId", "gender", "status");
 
 -- CreateIndex
-CREATE INDEX "Student_clerk_id_idx" ON "Student"("clerk_id");
-
--- CreateIndex
-CREATE INDEX "Student_status_idx" ON "Student"("status");
-
--- CreateIndex
-CREATE INDEX "Student_gender_idx" ON "Student"("gender");
-
--- CreateIndex
-CREATE INDEX "Student_academicYear_idx" ON "Student"("academicYear");
-
--- CreateIndex
-CREATE INDEX "Student_name_idx" ON "Student"("name");
-
--- CreateIndex
-CREATE INDEX "Student_phone_idx" ON "Student"("phone");
-
--- CreateIndex
-CREATE INDEX "Student_status_classId_idx" ON "Student"("status", "classId");
-
--- CreateIndex
-CREATE INDEX "Student_status_gender_idx" ON "Student"("status", "gender");
+CREATE INDEX "Student_academicYear_classId_gender_status_idx" ON "Student"("academicYear", "classId", "gender", "status");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Subject_name_key" ON "Subject"("name");
@@ -515,6 +497,12 @@ CREATE INDEX "Teacher_clerk_id_idx" ON "Teacher"("clerk_id");
 CREATE UNIQUE INDEX "FeeStructure_gradeId_term_academicYear_key" ON "FeeStructure"("gradeId", "term", "academicYear");
 
 -- CreateIndex
+CREATE INDEX "FeeTransaction_receiptDate_idx" ON "FeeTransaction"("receiptDate");
+
+-- CreateIndex
+CREATE INDEX "FeeTransaction_academicYear_receiptDate_idx" ON "FeeTransaction"("academicYear", "receiptDate");
+
+-- CreateIndex
 CREATE INDEX "FeeTransaction_studentId_academicYear_idx" ON "FeeTransaction"("studentId", "academicYear");
 
 -- CreateIndex
@@ -522,6 +510,12 @@ CREATE UNIQUE INDEX "StudentFees_studentId_academicYear_term_key" ON "StudentFee
 
 -- CreateIndex
 CREATE UNIQUE INDEX "StudentTotalFees_studentId_key" ON "StudentTotalFees"("studentId");
+
+-- CreateIndex
+CREATE INDEX "Attendance_classId_date_idx" ON "Attendance"("classId", "date");
+
+-- CreateIndex
+CREATE INDEX "Attendance_studentId_classId_idx" ON "Attendance"("studentId", "classId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Attendance_studentId_date_key" ON "Attendance"("studentId", "date");
@@ -540,6 +534,12 @@ CREATE UNIQUE INDEX "Profile_clerk_id_key" ON "Profile"("clerk_id");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Profile_activeUserId_key" ON "Profile"("activeUserId");
+
+-- CreateIndex
+CREATE INDEX "Profile_clerk_id_idx" ON "Profile"("clerk_id");
+
+-- CreateIndex
+CREATE INDEX "Profile_phone_idx" ON "Profile"("phone");
 
 -- CreateIndex
 CREATE INDEX "_SubjectGrades_B_index" ON "_SubjectGrades"("B");
