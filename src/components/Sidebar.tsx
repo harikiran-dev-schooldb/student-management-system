@@ -14,20 +14,29 @@ export default function SidebarShell({
   return (
     <aside
       className={`
-        h-screen
-        transition-all duration-300
-        ${isOpen ? "w-64" : "w-20"}
-        hidden md:flex flex-col
-        border-r
-        bg-white dark:bg-gradient-to-b dark:from-[#0f172a] dark:to-[#020617]
-        border-gray-200 dark:border-white/10
-        text-gray-700 dark:text-gray-200
-        /* Ensure the sidebar itself doesn't clip children */
-        relative z-40
-      `}
+    h-screen transition-all duration-300 flex-col border-r
+    bg-white dark:bg-gradient-to-b dark:from-[#0f172a] dark:to-[#020617]
+    border-gray-200 dark:border-white/10
+    text-gray-700 dark:text-gray-200
+    
+    fixed inset-y-0 left-0 z-[100] 
+    
+    md:relative md:z-40
+    
+    /* VISIBILITY & WIDTH LOGIC */
+    ${
+      isOpen
+        ? "flex w-64 translate-x-0"
+        : "w-0 -translate-x-full md:flex md:w-20 md:translate-x-0 hidden"
+    }
+  `}
     >
       {/* TOP SECTION: Logo & Toggle */}
-      <div className={`flex items-center ${isOpen ? "justify-between" : "justify-center"} px-4 py-3 h-20`}>
+      <div
+        className={`flex items-center ${
+          isOpen ? "justify-between" : "justify-center"
+        } px-4 py-3 h-20`}
+      >
         {isOpen && (
           <Link href="/" className="flex items-center gap-2 p-2">
             <img src="/logo.png" alt="logo" width={40} height={40} />
@@ -44,7 +53,7 @@ export default function SidebarShell({
       </div>
 
       {/* MENU SECTION: The scrollable area */}
-      <div 
+      <div
         className={`
           flex-1 px-2 
           /* CRITICAL: Allow dropdowns to fly out to the right */

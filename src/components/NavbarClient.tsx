@@ -1,5 +1,7 @@
 "use client";
 
+import { Menu } from "lucide-react";
+import { useSidebar } from "./context/SidebarContext";
 import SwitchUser from "./SwitchUser";
 import TableSearch from "./TableSearch";
 import ThemeToggle from "./ThemeToggle";
@@ -47,13 +49,16 @@ function Avatar({ img, name }: { img?: string | null; name: string }) {
 
 export default function NavbarClient({ roles, activeUser }: NavbarClientProps) {
   const activeRole = roles.find((r) => r.username === activeUser?.username);
+  const { toggle } = useSidebar();
 
   return (
     <div className="flex items-center justify-between px-3 py-4 bg-white dark:bg-gray-800 shadow-md">
       <div className="flex items-center gap-3">
         {/* Sidebar Toggle */}
-        
 
+        <button onClick={toggle} className="md:hidden mr-4">
+          <Menu size={24} />
+        </button>
         {/* Search (desktop only) */}
         <div className="hidden md:block">
           <TableSearch />

@@ -4,6 +4,7 @@ import Link from "next/link";
 import Dropdown from "./Dropdown";
 import { useTranslation } from "react-i18next";
 import { useSidebar } from "@/components/context/SidebarContext"; // Import the hook
+import { usePathname } from "next/navigation";
 
 type Role = "admin" | "teacher" | "student";
 
@@ -295,11 +296,19 @@ function updateMenuItem(item: MenuItem, role: Role): MenuItem | null {
 }
 
 export default function Menu({ role }: MenuProps) {
+  const pathname = usePathname();
   const { t } = useTranslation();
-  const { isOpen } = useSidebar();
+  const { isOpen, toggle } = useSidebar();
   const isCollapsed = !isOpen;
 
-  // Filter + transform menu items
+  // Logic to auto-close sidebar on mobile after clicking
+  const handleLinkClick = () => {
+    if (window.innerWidth < 768 && isOpen) {
+      toggle();
+    }
+  };
+
+  // Filter + transform menu items logic (updateMenuItem call remains same)
   const updatedMenu: MenuItemSection[] = menuItems
     .map((section) => {
       const filteredItems = section.items
@@ -312,19 +321,21 @@ export default function Menu({ role }: MenuProps) {
     .filter((section): section is MenuItemSection => section !== null);
 
   return (
-    <div className="mt-4 text-sm">
+    <div className="mt-4 flex flex-col gap-1 px-2">
       {updatedMenu.map((section) => (
-        <div key={section.title} className="flex flex-col gap-2">
-          {/* Section Title */}
+        <div key={section.title} className="flex flex-col gap-1">
+          {/* Section Title - Compact styling */}
           {section.title && !isCollapsed && (
-            <span className="my-4 font-light text-gray-500 dark:text-gray-400">
+            <span className="mt-4 mb-2 px-4 text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">
               {t(section.title)}
             </span>
           )}
 
           {/* Menu Items */}
-          {section.items.map((item) =>
-            item.dropdown ? (
+          {section.items.map((item) => {
+            const isActive = pathname === item.href;
+            
+            return item.dropdown ? (
               <Dropdown
                 key={item.label}
                 icon={item.icon}
@@ -336,31 +347,34 @@ export default function Menu({ role }: MenuProps) {
               <Link
                 key={item.label}
                 href={item.href}
+                onClick={handleLinkClick}
                 className={`
-  flex items-center
-  ${isCollapsed ? "justify-center px-2" : "gap-4 px-3"}
-  py-2 rounded-md text-gray-600 dark:text-gray-300
-  hover:bg-LamaSkyLight dark:hover:bg-gray-700
-  hover:text-white
-  transition-all
-`}
+                  flex items-center transition-all duration-200 rounded-md
+                  ${isCollapsed ? "justify-center px-2" : "gap-3 px-4"}
+                  py-2
+                  ${
+                    isActive
+                      ? "bg-blue-50 text-blue-600 dark:bg-gray-700 dark:text-white"
+                      : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#1e293b]"
+                  }
+                `}
               >
-                {/* Icon */}
                 <img
                   src={item.icon}
-                  alt={item.label}
-                  width={20}
-                  height={20}
-                  className="shrink-0"
+                  alt=""
+                  width={18} // Matching Dropdown icons
+                  height={18}
+                  className={`shrink-0 ${isActive ? "opacity-100" : "opacity-70"}`}
                 />
 
-                {/* Label (VISIBLE ON ALL SCREENS) */}
                 {!isCollapsed && (
-                  <span className="whitespace-nowrap">{t(item.label)}</span>
+                  <span className="text-[13px] font-medium whitespace-nowrap">
+                    {t(item.label)}
+                  </span>
                 )}
               </Link>
-            )
-          )}
+            );
+          })}
         </div>
       ))}
     </div>

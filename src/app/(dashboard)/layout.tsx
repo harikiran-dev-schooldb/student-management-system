@@ -1,6 +1,6 @@
 import Navbar from "@/components/Navbar";
 import MenuWrapper from "@/components/MenuWrapper";
-import { SidebarProvider } from "@/components/context/SidebarContext";
+import { SidebarProvider, useSidebar } from "@/components/context/SidebarContext";
 import SidebarShell from "@/components/Sidebar";
 
 export default function DashboardLayout({
@@ -22,5 +22,18 @@ export default function DashboardLayout({
         </div>
       </div>
     </SidebarProvider>
+  );
+}
+
+// Component for the dark overlay on mobile
+function SidebarOverlay() {
+  const { isOpen, toggle } = useSidebar();
+  if (!isOpen) return null;
+
+  return (
+    <div 
+      className="fixed inset-0 bg-black/50 z-[90] md:hidden" 
+      onClick={toggle}
+    />
   );
 }
