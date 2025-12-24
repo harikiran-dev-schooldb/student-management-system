@@ -8,7 +8,6 @@ import {
   Exam,
   FeeTransaction,
   Grade,
-  Homework,
   Messages,
   PaymentMode,
   Prisma,
@@ -343,4 +342,29 @@ export type FeeColectList =
       };
     };
   }>;
+
+
+export type AttendanceList = {
+  id: number;
+  date: string; // ISO string
+  present: boolean;
+  studentId: string;
+  classId: number;
+
+  class: {
+    id: number;
+    section: string | null;
+    gradeId: number;
+
+    Grade: {
+      level: string;
+    };
+  };
+
+  Student: {
+    id: string;
+    name: string;
+    phone:string;
+  };
+};
 

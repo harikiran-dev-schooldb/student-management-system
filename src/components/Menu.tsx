@@ -3,11 +3,13 @@
 import Link from "next/link";
 import Dropdown from "./Dropdown";
 import { useTranslation } from "react-i18next";
+import { useSidebar } from "@/components/context/SidebarContext"; // Import the hook
 
 type Role = "admin" | "teacher" | "student";
 
 interface MenuProps {
   role: Role;
+  isCollapsed?: boolean;
 }
 
 interface MenuItem {
@@ -27,73 +29,218 @@ const menuItems: MenuItemSection[] = [
   {
     title: "",
     items: [
-      { icon: "/home.png", label: "Home", href: "/", visible: ["admin", "teacher", "student"] },
+      {
+        icon: "/home.png",
+        label: "Home",
+        href: "/",
+        visible: ["admin", "teacher", "student"],
+      },
       {
         icon: "/profile.png",
         label: "Users",
         href: "#",
         visible: ["admin"],
         dropdown: [
-          { icon: "/student.png", label: "Students", href: "/list/users/students", visible: ["admin"] },
-          { icon: "/teacher.png", label: "Teachers", href: "/list/users/teachers", visible: ["admin"] },
-          { icon: "/admin.png", label: "Admins", href: "/list/users/admin", visible: ["admin"] },
+          {
+            icon: "/student.png",
+            label: "Students",
+            href: "/list/users/students",
+            visible: ["admin"],
+          },
+          {
+            icon: "/teacher.png",
+            label: "Teachers",
+            href: "/list/users/teachers",
+            visible: ["admin"],
+          },
+          {
+            icon: "/admin.png",
+            label: "Admins",
+            href: "/list/users/admin",
+            visible: ["admin"],
+          },
         ],
       },
-      { icon: "/student.png", label: "Students", href: "/list/users/students", visible: ["teacher"] },
+      {
+        icon: "/student.png",
+        label: "Students",
+        href: "/list/users/students",
+        visible: ["teacher"],
+      },
       {
         icon: "/attendance.png",
         label: "Attendance",
         href: "#",
         visible: ["admin", "teacher"],
         dropdown: [
-          { icon: "/lesson.png", label: "Mark Attendance", href: "/list/attendance/mark_attendance", visible: ["admin", "teacher"] },
-          { icon: "/attendance.png", label: "View Attendance", href: "/list/attendance/view", visible: ["admin", "teacher"] },
+          {
+            icon: "/lesson.png",
+            label: "Mark Attendance",
+            href: "/list/attendance/mark_attendance",
+            visible: ["admin", "teacher"],
+          },
+          {
+            icon: "/attendance.png",
+            label: "View Attendance",
+            href: "/list/attendance/view",
+            visible: ["admin", "teacher"],
+          },
         ],
       },
-      { icon: "/homework.png", label: "Homeworks", href: "/list/homeworks", visible: ["admin", "teacher", "student"] },
+      {
+        icon: "/homework.png",
+        label: "Homeworks",
+        href: "/list/homeworks",
+        visible: ["admin", "teacher", "student"],
+      },
       {
         icon: "/fees.png",
         label: "Fees",
         href: "#",
         visible: ["admin", "teacher"],
         dropdown: [
-          { icon: "/fees.png", label: "Fee Collection", href: "/list/fees/collect", visible: ["admin", "teacher"], },
-          { icon: "/student.png", label: "Student Fee Report", href: "/list/reports/student-fees", visible: ["admin"] },
-          { icon: "/report.png", label: "Day Wise Report", href: "/list/reports/daywise-fees", visible: ["admin"] },
-          { icon: "/edit.png", label: "Fee Management", href: "/list/fees/feemanagement", visible: ["admin"] },
+          {
+            icon: "/fees.png",
+            label: "Fee Collection",
+            href: "/list/fees/collect",
+            visible: ["admin", "teacher"],
+          },
+          {
+            icon: "/student.png",
+            label: "Student Fee Report",
+            href: "/list/reports/student-fees",
+            visible: ["admin"],
+          },
+          {
+            icon: "/report.png",
+            label: "Day Wise Report",
+            href: "/list/reports/daywise-fees",
+            visible: ["admin"],
+          },
+          {
+            icon: "/edit.png",
+            label: "Fee Management",
+            href: "/list/fees/feemanagement",
+            visible: ["admin"],
+          },
         ],
       },
-      { icon: "/message.png", label: "Messages", href: "/list/messages", visible: ["admin", "teacher", "student"] },
-      { icon: "/subject.png", label: "Subjects", href: "/list/subjects", visible: ["admin"] },
-      { icon: "/class.png", label: "Classes", href: "/list/classes", visible: ["admin"] },
-      { icon: "/lesson.png", label: "Time Table", href: "/list/lessons", visible: ["admin", "teacher"] },
-      { icon: "/exam.png", label: "Exams", href: "/list/exams", visible: ["admin", "teacher", "student"] },
-      { icon: "/result.png", label: "View Results", href: "/list/results/view", visible: ["student"] },
+      {
+        icon: "/message.png",
+        label: "Messages",
+        href: "/list/messages",
+        visible: ["admin", "teacher", "student"],
+      },
+      {
+        icon: "/subject.png",
+        label: "Subjects",
+        href: "/list/subjects",
+        visible: ["admin"],
+      },
+      {
+        icon: "/class.png",
+        label: "Classes",
+        href: "/list/classes",
+        visible: ["admin"],
+      },
+      {
+        icon: "/lesson.png",
+        label: "Time Table",
+        href: "/list/lessons",
+        visible: ["admin", "teacher"],
+      },
+      {
+        icon: "/exam.png",
+        label: "Exams",
+        href: "/list/exams",
+        visible: ["admin", "teacher", "student"],
+      },
+      {
+        icon: "/result.png",
+        label: "View Results",
+        href: "/list/results/view",
+        visible: ["student"],
+      },
       {
         icon: "/result.png",
         label: "Results",
         href: "#",
         visible: ["admin", "teacher"],
         dropdown: [
-          { icon: "/result.png", label: "View Results", href: "/list/results/view", visible: ["admin", "teacher"] },
-          { icon: "/lesson.png", label: "Marks Entry", href: "/list/results/marks-entry", visible: ["admin", "teacher"] },
+          {
+            icon: "/result.png",
+            label: "View Results",
+            href: "/list/results/view",
+            visible: ["admin", "teacher"],
+          },
+          {
+            icon: "/lesson.png",
+            label: "Marks Entry",
+            href: "/list/results/marks-entry",
+            visible: ["admin", "teacher"],
+          },
         ],
       },
-      { icon: "/exam.png", label: "Permissions", href: "/list/permissions", visible: ["admin"] },
+      {
+        icon: "/exam.png",
+        label: "Permissions",
+        href: "/list/permissions",
+        visible: ["admin"],
+      },
       {
         icon: "/warning.png",
         label: "Import Data",
         href: "#",
         visible: ["admin"],
         dropdown: [
-          { icon: "/class.png", label: "Grades", href: "/list/reports/bulk-import/grades", visible: ["admin"] },
-          { icon: "/fees.png", label: "Fees Structure", href: "/list/reports/bulk-import/feestructure", visible: ["admin"] },
-          { icon: "/teacher.png", label: "Teachers", href: "/list/reports/bulk-import/teachers", visible: ["admin"] },
-          { icon: "/class.png", label: "Classes", href: "/list/reports/bulk-import/classes", visible: ["admin"] },
-          { icon: "/student.png", label: "Students", href: "/list/reports/bulk-import/students", visible: ["admin"] },
-          { icon: "/subject.png", label: "Subjects", href: "/list/reports/bulk-import/subjects", visible: ["admin"] },
-          { icon: "/fees.png", label: "Fee Collection", href: "/list/reports/bulk-import/feecollection", visible: ["admin"] },
-          { icon: "/lesson.png", label: "Time Table", href: "/list/reports/bulk-import/lessons", visible: ["admin"] },
+          {
+            icon: "/class.png",
+            label: "Grades",
+            href: "/list/reports/bulk-import/grades",
+            visible: ["admin"],
+          },
+          {
+            icon: "/fees.png",
+            label: "Fees Structure",
+            href: "/list/reports/bulk-import/feestructure",
+            visible: ["admin"],
+          },
+          {
+            icon: "/teacher.png",
+            label: "Teachers",
+            href: "/list/reports/bulk-import/teachers",
+            visible: ["admin"],
+          },
+          {
+            icon: "/class.png",
+            label: "Classes",
+            href: "/list/reports/bulk-import/classes",
+            visible: ["admin"],
+          },
+          {
+            icon: "/student.png",
+            label: "Students",
+            href: "/list/reports/bulk-import/students",
+            visible: ["admin"],
+          },
+          {
+            icon: "/subject.png",
+            label: "Subjects",
+            href: "/list/reports/bulk-import/subjects",
+            visible: ["admin"],
+          },
+          {
+            icon: "/fees.png",
+            label: "Fee Collection",
+            href: "/list/reports/bulk-import/feecollection",
+            visible: ["admin"],
+          },
+          {
+            icon: "/lesson.png",
+            label: "Time Table",
+            href: "/list/reports/bulk-import/lessons",
+            visible: ["admin"],
+          },
         ],
       },
     ],
@@ -101,9 +248,19 @@ const menuItems: MenuItemSection[] = [
   {
     title: "OTHERS",
     items: [
-      { icon: "/profile.png", label: "Profile", href: "/list/profiles", visible: ["teacher", "student", "admin"] },
-      { icon: "/setting.png", label: "Settings", href: "/settings", visible: ["admin", "teacher", "student"] },
-      { icon: "/logout.png", label: "Logout", href: "/logout", visible: ["admin", "teacher", "student"] },
+      {
+        icon: "/profile.png",
+        label: "Profile",
+        href: "/list/profiles",
+        visible: ["teacher", "student", "admin"],
+      },
+      // { icon: "/setting.png", label: "Settings", href: "/settings", visible: ["admin", "teacher", "student"] },
+      {
+        icon: "/logout.png",
+        label: "Logout",
+        href: "/logout",
+        visible: ["admin", "teacher", "student"],
+      },
     ],
   },
 ];
@@ -128,14 +285,19 @@ function updateMenuItem(item: MenuItem, role: Role): MenuItem | null {
   }
 
   // Filter dropdown items by role
-  const filteredDropdown = item.dropdown?.filter((sub) => sub.visible.includes(role));
-  if (item.dropdown && (!filteredDropdown || filteredDropdown.length === 0)) return null;
+  const filteredDropdown = item.dropdown?.filter((sub) =>
+    sub.visible.includes(role)
+  );
+  if (item.dropdown && (!filteredDropdown || filteredDropdown.length === 0))
+    return null;
 
   return { ...item, dropdown: filteredDropdown };
 }
 
 export default function Menu({ role }: MenuProps) {
   const { t } = useTranslation();
+  const { isOpen } = useSidebar();
+  const isCollapsed = !isOpen;
 
   // Filter + transform menu items
   const updatedMenu: MenuItemSection[] = menuItems
@@ -153,11 +315,14 @@ export default function Menu({ role }: MenuProps) {
     <div className="mt-4 text-sm">
       {updatedMenu.map((section) => (
         <div key={section.title} className="flex flex-col gap-2">
-          {section.title && (
-            <span className="hidden my-4 mb-4 font-light text-gray-500 dark:text-gray-400 lg:block">
+          {/* Section Title */}
+          {section.title && !isCollapsed && (
+            <span className="my-4 font-light text-gray-500 dark:text-gray-400">
               {t(section.title)}
             </span>
           )}
+
+          {/* Menu Items */}
           {section.items.map((item) =>
             item.dropdown ? (
               <Dropdown
@@ -165,19 +330,34 @@ export default function Menu({ role }: MenuProps) {
                 icon={item.icon}
                 label={t(item.label)}
                 items={item.dropdown}
+                isCollapsed={isCollapsed}
               />
             ) : (
               <Link
                 key={item.label}
                 href={item.href}
-                className="flex items-center justify-center gap-6 py-2 
-                           rounded-md md:px-4 
-                           text-gray-700 dark:text-gray-200 
-                           hover:bg-LamaSkyLight dark:hover:bg-gray-700
-                           lg:justify-start"
+                className={`
+  flex items-center
+  ${isCollapsed ? "justify-center px-2" : "gap-4 px-3"}
+  py-2 rounded-md text-gray-600 dark:text-gray-300
+  hover:bg-LamaSkyLight dark:hover:bg-gray-700
+  hover:text-white
+  transition-all
+`}
               >
-                <img src={item.icon} alt={item.label} width={20} height={20} />
-                <span className="hidden lg:block">{t(item.label)}</span>
+                {/* Icon */}
+                <img
+                  src={item.icon}
+                  alt={item.label}
+                  width={20}
+                  height={20}
+                  className="shrink-0"
+                />
+
+                {/* Label (VISIBLE ON ALL SCREENS) */}
+                {!isCollapsed && (
+                  <span className="whitespace-nowrap">{t(item.label)}</span>
+                )}
               </Link>
             )
           )}

@@ -20,10 +20,10 @@ import { StudentSelect } from "../../../../../../types/query-types";
 // Render a single table row
 const renderRow = (item: StudentsList, role: string | null) => (
   <tr
-    key={item.id}
     className="text-sm border-b border-gray-200 even:bg-gray-50 hover:bg-gray-100 dark:border-gray-700 dark:even:bg-gray-800 dark:hover:bg-gray-700"
+    key={item.id}
   >
-    <td className="flex items-center gap-3 px-4 py-3">
+    <td className="flex items-center gap-2 p-2">
       <img
         src={item.img || (item.gender === "Male" ? "/male.png" : "/female.png")}
         alt={item.name}
@@ -174,14 +174,14 @@ const StudentListPage = async ({
   const Path = `/list/users/students`;
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm p-4">
+    <div className="flex-1 p-4 m-4 mt-0 bg-white rounded-md dark:bg-gray-900">
       {/* Top Controls */}
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-4">
-        <h1 className="hidden text-lg font-semibold md:block">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <h1 className="text-lg font-semibold text-gray-800 dark:text-gray-100 hidden md:block">
           All Students ({count})
         </h1>
 
-        <div className="flex flex-wrap items-center gap-4 px-4 py-3 rounded-lg bg-gray-50 dark:bg-gray-800">
+        <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
           <TableSearch />
           {role === "admin" && (
             <>
@@ -199,8 +199,8 @@ const StudentListPage = async ({
             </>
           )}
           <div className="flex flex-col items-center w-full gap-4 md:flex-row md:w-auto">
-            <ResetFiltersButton basePath={Path} />
-            <div className="flex items-center self-end gap-4">
+            <div className="flex items-center gap-4">
+              <ResetFiltersButton basePath={Path} />
               <button className="flex items-center justify-center w-8 h-8 rounded-full bg-LamaYellow dark:bg-LamaYellow">
                 <img src="/filter.png" alt="" width={14} height={14} />
               </button>
@@ -214,13 +214,11 @@ const StudentListPage = async ({
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto rounded-md border">
-        <Table
-          columns={columns}
-          renderRow={(item) => renderRow(item, role)}
-          data={data}
-        />
-      </div>
+      <Table
+        columns={columns}
+        renderRow={(item) => renderRow(item, role)}
+        data={data}
+      />
 
       {/* Pagination */}
 

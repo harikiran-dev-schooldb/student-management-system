@@ -1,6 +1,7 @@
 "use client";
 
 import SwitchUser from "./SwitchUser";
+import TableSearch from "./TableSearch";
 import ThemeToggle from "./ThemeToggle";
 
 import Image from "next/image";
@@ -49,8 +50,18 @@ export default function NavbarClient({ roles, activeUser }: NavbarClientProps) {
 
   return (
     <div className="flex items-center justify-between px-3 py-4 bg-white dark:bg-gray-800 shadow-md">
+      <div className="flex items-center gap-3">
+        {/* Sidebar Toggle */}
+        
+
+        {/* Search (desktop only) */}
+        <div className="hidden md:block">
+          <TableSearch />
+        </div>
+      </div>
+
       {/* ICONS + USER */}
-      <div className="flex items-center justify-end w-full gap-4 md:gap-6">
+      <div className="flex items-center gap-3 md:gap-6">
         {/* Messages */}
         <div className="flex items-center justify-center bg-gray-100 dark:bg-LamaPurple rounded-full cursor-pointer w-8 h-8 hover:bg-gray-200 dark:hover:bg-gray-600 transition">
           <img src="/message.png" alt="Messages" width={20} height={20} />

@@ -1,7 +1,7 @@
 "use client";
 
-import { useForm } from "react-hook-form";
 import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
 import { Class, Grade, Student } from "@prisma/client";
 import { toast } from "react-toastify";
 
@@ -12,149 +12,152 @@ interface Props {
 
 export default function MarkAttendancePage({ role, teacherClassId }: Props) {
   const { register, handleSubmit } = useForm();
-  const [classes, setClasses] = useState<Class[]>([]);
+  const today = new Date().toISOString().split("T")[0];
+
   const [grades, setGrades] = useState<Grade[]>([]);
+  const [classes, setClasses] = useState<Class[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
+
   const [selectedGrade, setSelectedGrade] = useState<number | null>(null);
   const [selectedClass, setSelectedClass] = useState<number | null>(
     role === "teacher" ? teacherClassId ?? null : null
   );
-  const [attendanceStatus, setAttendanceStatus] = useState<{ [key: string]: boolean }>({});
-  const today = new Date().toISOString().split("T")[0];
-  const [allMarkedAbsent, setAllMarkedAbsent] = useState(false);
 
+  const [attendance, setAttendance] = useState<Record<string, boolean>>({});
+  const [allAbsent, setAllAbsent] = useState(false);
+
+  /* -------------------- Load Grades -------------------- */
   useEffect(() => {
     if (role === "admin") {
       fetch("/api/grades")
-        .then((res) => res.json())
+        .then((r) => r.json())
         .then(setGrades);
     }
   }, [role]);
 
+  /* -------------------- Load Classes -------------------- */
   useEffect(() => {
     if (role === "admin" && selectedGrade) {
       fetch(`/api/classes?gradeId=${selectedGrade}`)
-        .then((res) => res.json())
+        .then((r) => r.json())
         .then(setClasses);
     }
   }, [role, selectedGrade]);
 
-  const fetchStudents = () => {
-    let fetchUrl: string;
+  /* -------------------- Fetch Students -------------------- */
+  const fetchStudents = async () => {
+    let url = "/api/students";
 
     if (role === "teacher" && teacherClassId) {
-      fetchUrl = `/api/students?classId=${teacherClassId}`;
+      url += `?classId=${teacherClassId}`;
     } else if (selectedClass) {
-      fetchUrl = `/api/students?classId=${selectedClass}`;
+      url += `?classId=${selectedClass}`;
     } else if (selectedGrade) {
-      fetchUrl = `/api/students?gradeId=${selectedGrade}`;
-    } else {
-      fetchUrl = `/api/students`;
+      url += `?gradeId=${selectedGrade}`;
     }
 
-    fetch(fetchUrl)
-      .then((res) => res.json())
-      .then((fetchedStudents: any[]) => {
-        setStudents(fetchedStudents);
+    const data = await fetch(url).then((r) => r.json());
+    setStudents(data);
 
-        const initialStatus: { [key: string]: boolean } = {};
-        fetchedStudents.forEach((student) => {
-          initialStatus[student.id] = true;
-        });
-        setAttendanceStatus(initialStatus);
-      });
+    const initial: Record<string, boolean> = {};
+    data.forEach((s: Student) => (initial[s.id] = true));
+    setAttendance(initial);
+    setAllAbsent(false);
   };
 
+  /* -------------------- Toggle Student -------------------- */
+  const toggleStudent = (id: string) => {
+    setAttendance((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  /* -------------------- Mark All -------------------- */
+  const markAll = (present: boolean) => {
+    const updated: Record<string, boolean> = {};
+    students.forEach((s) => (updated[s.id] = present));
+    setAttendance(updated);
+    setAllAbsent(!present);
+  };
+
+  /* -------------------- Submit -------------------- */
   const onSubmit = async (data: any) => {
     if (!students.length) {
-      alert("No students loaded.");
+      toast("No students loaded");
       return;
     }
 
-    const attendanceData = students.map((student) => ({
-      studentId: student.id,
-      classId: student.classId,
+    const payload = students.map((s) => ({
+      studentId: s.id,
+      classId: s.classId,
       date: data.date,
-      present: attendanceStatus[student.id] ?? true,
+      present: attendance[s.id] ?? true,
     }));
 
     try {
       const res = await fetch("/api/attendance/mark", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(attendanceData),
+        body: JSON.stringify(payload),
       });
 
-      if (!res.ok) throw new Error("Failed to mark attendance");
+      if (!res.ok) throw new Error();
 
-      toast("Attendance has been submitted");
+      toast("Attendance submitted successfully");
       setTimeout(() => window.location.reload(), 500);
-    } catch (error) {
-      toast("Error submitting Attendance");
-      console.error("Error submitting attendance:", error);
+    } catch {
+      toast("Failed to submit attendance");
     }
   };
 
-  const handleCheckboxChange = (studentId: string) => {
-    setAttendanceStatus((prevStatus) => ({
-      ...prevStatus,
-      [studentId]: !prevStatus[studentId],
-    }));
-  };
-
+  /* ====================================================== */
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 p-6">
-      <div className="flex-1 p-4 m-4 mt-0 bg-white dark:bg-gray-900 rounded-md">
-        <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-gray-100">
-          Mark Attendance
-        </h2>
+    <form onSubmit={handleSubmit(onSubmit)} className="p-4 space-y-6">
+      {/* ---------------- Header ---------------- */}
+      <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-gray-100">
+        Mark Attendance
+      </h1>
 
-        <div className="flex gap-4 w-full">
-          {/* Date input */}
-          <div className="space-y-2">
-            <label className="block font-semibold text-gray-700 dark:text-gray-300">
-              Date:
-            </label>
+      {/* ---------------- Filters ---------------- */}
+      <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+          {/* Date */}
+          <div>
+            <label className="text-sm font-medium">Date</label>
             <input
               type="date"
               defaultValue={today}
               {...register("date")}
-              className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+              className="w-full mt-1 border px-3 py-2 rounded"
             />
           </div>
 
-          {/* Grade & Class (admin only) */}
+          {/* Admin Only */}
           {role === "admin" && (
             <>
-              <div className="space-y-2">
-                <label className="block font-semibold text-gray-700 dark:text-gray-300">
-                  Grade:
-                </label>
+              <div>
+                <label className="text-sm font-medium">Grade</label>
                 <select
                   onChange={(e) => setSelectedGrade(Number(e.target.value))}
-                  className="w-full px-3 py-2.5 border rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                  className="w-full mt-1 border px-3 py-2 rounded"
                 >
                   <option value="">Select Grade</option>
-                  {grades.map((grade) => (
-                    <option key={grade.id} value={grade.id}>
-                      {grade.level}
+                  {grades.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.level}
                     </option>
                   ))}
                 </select>
               </div>
 
-              <div className="space-y-2">
-                <label className="block font-semibold text-gray-700 dark:text-gray-300">
-                  Class:
-                </label>
+              <div>
+                <label className="text-sm font-medium">Class</label>
                 <select
                   onChange={(e) => setSelectedClass(Number(e.target.value))}
-                  className="w-full px-3 py-2.5 border rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                  className="w-full mt-1 border px-3 py-2 rounded"
                 >
                   <option value="">Select Class</option>
-                  {classes.map((cls) => (
-                    <option key={cls.id} value={cls.id}>
-                      {cls.section}
+                  {classes.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.section}
                     </option>
                   ))}
                 </select>
@@ -162,98 +165,85 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
             </>
           )}
 
-          {/* Get students */}
-          <div className="flex items-end">
-            <button
-              type="button"
-              className="bg-green-600 hover:bg-green-700 text-white w-full px-3 py-2.5 border rounded-md"
-              onClick={fetchStudents}
-            >
-              Get Students
-            </button>
-          </div>
+          {/* Fetch */}
+          <button
+            type="button"
+            onClick={fetchStudents}
+            className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded"
+          >
+            Get Students
+          </button>
         </div>
       </div>
 
-      <div className="flex-1 p-4 m-4 mt-0 bg-white dark:bg-gray-900 rounded-md">
-        {students.length > 0 && (
-          <div className="flex justify-end">
-            {allMarkedAbsent ? (
-              <button
-                type="button"
-                onClick={() => {
-                  const updated: { [key: string]: boolean } = {};
-                  students.forEach((student) => {
-                    updated[student.id] = true;
-                  });
-                  setAttendanceStatus(updated);
-                  setAllMarkedAbsent(false);
-                }}
-                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md"
-              >
-                Mark All Present
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => {
-                  const updated: { [key: string]: boolean } = {};
-                  students.forEach((student) => {
-                    updated[student.id] = false;
-                  });
-                  setAttendanceStatus(updated);
-                  setAllMarkedAbsent(true);
-                }}
-                className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md"
-              >
-                Mark All Absent
-              </button>
-            )}
-          </div>
-        )}
+      {/* ---------------- Actions ---------------- */}
+      {students.length > 0 && (
+        <div className="flex justify-between items-center">
+          <p className="font-medium">
+            Students: {students.length}
+          </p>
 
-        {students.length > 0 && (
-          <div>
-            <h3 className="font-bold mt-0 text-gray-900 dark:text-gray-100">
-              Students: {students.length}
-            </h3>
-            <div className="max-h-[500px] overflow-y-scroll border rounded p-2 bg-LamaSkyLight dark:bg-gray-800 shadow-inner mt-2">
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                {students.map((student: any) => {
-                  const isAbsent = !attendanceStatus[student.id];
-                  return (
-                    <div
-                      key={student.id}
-                      onClick={() => handleCheckboxChange(student.id)}
-                      className={`p-2 rounded-md shadow hover:scale-110 cursor-pointer transition-transform duration-300 ${
-                        isAbsent ? "bg-red-500 hover:bg-red-600" : "bg-green-600 hover:bg-green-700"
-                      }`}
-                    >
-                      <div className="text-sm font-bold text-white">
-                        {student.name} ({student.Class?.name ?? "N/A"})
-                      </div>
-                      <div className="text-sm text-white mt-1 font-bold">
-                        Adm No: {student.id}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {students.length > 0 && (
-          <div className="flex justify-end mt-4">
+          {allAbsent ? (
             <button
-              type="submit"
-              className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-md mt-2"
+              type="button"
+              onClick={() => markAll(true)}
+              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded"
             >
-              Submit Attendance
+              Mark All Present
             </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => markAll(false)}
+              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded"
+            >
+              Mark All Absent
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* ---------------- Students Grid ---------------- */}
+      {students.length > 0 && (
+        <div className="max-h-[520px] overflow-y-auto border rounded-lg p-3 bg-white dark:bg-gray-900">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+            {students.map((s) => {
+              const absent = !attendance[s.id];
+              return (
+                <button
+                  type="button"
+                  key={s.id}
+                  onClick={() => toggleStudent(s.id)}
+                  className={`rounded-lg p-3 text-left transition
+                    ${absent
+                      ? "bg-red-500 hover:bg-red-600"
+                      : "bg-green-600 hover:bg-green-700"}
+                    text-white`}
+                >
+                  <div className="font-semibold text-sm">
+                    {s.name}
+                  </div>
+                  <div className="text-xs mt-1">
+                    Adm No: {s.id}
+                  </div>
+                </button>
+              );
+            })}
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* ---------------- Submit ---------------- */}
+      {students.length > 0 && (
+        <div className="flex justify-end">
+          <button
+            type="submit"
+            className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded"
+          >
+            Submit Attendance
+          </button>
+        </div>
+      )}
     </form>
   );
 }

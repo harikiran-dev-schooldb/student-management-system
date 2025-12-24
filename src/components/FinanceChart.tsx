@@ -47,7 +47,10 @@ export default function FinanceChart({ data }: FinanceChartProps) {
             </linearGradient>
           </defs>
 
-          <CartesianGrid strokeDasharray="3 3" stroke="#ccc dark:stroke-gray-700" />
+          <CartesianGrid
+            strokeDasharray="3 3"
+            stroke="#ccc dark:stroke-gray-700"
+          />
           <XAxis
             dataKey="date"
             tick={{ fill: "#6b7280", color: "currentColor" }}
@@ -69,7 +72,11 @@ export default function FinanceChart({ data }: FinanceChartProps) {
           <Legend
             align="center"
             verticalAlign="top"
-            wrapperStyle={{ paddingTop: "10px", paddingBottom: "30px", color: "#000" }}
+            wrapperStyle={{
+              paddingTop: "10px",
+              paddingBottom: "30px",
+              color: "#000",
+            }}
           />
           <Area
             type="monotone"
@@ -78,6 +85,9 @@ export default function FinanceChart({ data }: FinanceChartProps) {
             fillOpacity={1}
             fill="url(#colorCollected)"
             strokeWidth={3}
+            isAnimationActive={true}
+            animationDuration={1200} // ⏱ duration in ms
+            animationEasing="ease-out"
           />
         </AreaChart>
       </ResponsiveContainer>

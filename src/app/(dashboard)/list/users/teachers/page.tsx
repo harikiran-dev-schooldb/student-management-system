@@ -17,23 +17,31 @@ import { GenderFilter } from "@/components/FilterDropdown";
 // -------------------- Types --------------------
 type TeachersList = Teacher & {
   subjects: { Subject: Subject }[];
-  class?: Class & { students: Student[] } | null;
+  class?: (Class & { students: Student[] }) | null;
 };
 
 // -------------------- Table Row --------------------
 const renderRow = (item: TeachersList, role: string | null) => (
-  <tr className="text-sm border-b border-gray-200 even:bg-gray-50 hover:bg-gray-100 dark:border-gray-700 dark:even:bg-gray-800 dark:hover:bg-gray-700" key={item.id}>
+  <tr
+    className="text-sm border-b border-gray-200 even:bg-gray-50 hover:bg-gray-100 dark:border-gray-700 dark:even:bg-gray-800 dark:hover:bg-gray-700"
+    key={item.id}
+  >
     {/* Info */}
     <td className="flex items-center gap-2 p-2">
       <img
-        src={item.img ||(item.gender === "Male" ? "/maleteacher.png" : "/femaleteacher.png")}
+        src={
+          item.img ||
+          (item.gender === "Male" ? "/maleteacher.png" : "/femaleteacher.png")
+        }
         alt={item.name}
         width={40}
         height={40}
         className="object-cover w-10 h-10 rounded-full md:hidden xl:block"
       />
       <div className="flex flex-col">
-        <h3 className="font-semibold text-gray-900 dark:text-gray-100">{item.name}</h3>
+        <h3 className="font-semibold text-gray-900 dark:text-gray-100">
+          {item.name}
+        </h3>
         <p className="text-xs text-gray-600 dark:text-gray-400">{item.id}</p>
       </div>
     </td>
@@ -44,18 +52,26 @@ const renderRow = (item: TeachersList, role: string | null) => (
     </td>
 
     {/* Phone */}
-    <td className="px-2 w-36 md:table-cell text-gray-700 dark:text-gray-200">{item.phone}</td>
+    <td className="px-2 w-36 md:table-cell text-gray-700 dark:text-gray-200">
+      {item.phone}
+    </td>
 
     {/* Gender */}
-    <td className="hidden md:table-cell text-gray-700 dark:text-gray-200">{item.gender}</td>
+    <td className="hidden md:table-cell text-gray-700 dark:text-gray-200">
+      {item.gender}
+    </td>
 
     {/* DOB */}
     <td className="hidden md:table-cell text-gray-700 dark:text-gray-200">
-      {item.dob ? new Date(item.dob).toLocaleDateString("en-GB").replace(/\//g, "-") : "N/A"}
+      {item.dob
+        ? new Date(item.dob).toLocaleDateString("en-GB").replace(/\//g, "-")
+        : "N/A"}
     </td>
 
     {/* Address */}
-    <td className="hidden md:table-cell text-gray-700 dark:text-gray-200">{item.address}</td>
+    <td className="hidden md:table-cell text-gray-700 dark:text-gray-200">
+      {item.address}
+    </td>
 
     {/* Actions */}
     <td className="p-2">
@@ -65,7 +81,9 @@ const renderRow = (item: TeachersList, role: string | null) => (
             <img src="/view.png" alt="View" width={16} height={16} />
           </button>
         </Link>
-        {role === "admin" && <FormContainer table="teacher" type="delete" id={item.id} />}
+        {role === "admin" && (
+          <FormContainer table="teacher" type="delete" id={item.id} />
+        )}
       </div>
     </td>
   </tr>
@@ -75,7 +93,7 @@ const renderRow = (item: TeachersList, role: string | null) => (
 const getColumns = (role: string | null) => [
   { header: "Name", accessor: "info" },
   { header: "Classes", accessor: "classes", className: "hidden md:table-cell" },
-  { header: "Phone", accessor: "phone", className: "lg:table-cell" },
+  { header: "Phone", accessor: "phone", className: "hidden md:table-cell" },
   { header: "Gender", accessor: "gender", className: "hidden md:table-cell" },
   { header: "DOB", accessor: "dob", className: "hidden md:table-cell" },
   { header: "Address", accessor: "address", className: "hidden lg:table-cell" },
@@ -83,7 +101,11 @@ const getColumns = (role: string | null) => [
 ];
 
 // -------------------- Page --------------------
-const TeacherListPage = async ({ searchParams }: { searchParams: Promise<SearchParams> }) => {
+const TeacherListPage = async ({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) => {
   const { role } = await fetchUserInfo();
   const columns = getColumns(role);
   const params = await searchParams;
@@ -92,7 +114,9 @@ const TeacherListPage = async ({ searchParams }: { searchParams: Promise<SearchP
 
   const query: Prisma.TeacherWhereInput = {};
 
-  const normalize = (value: string | string[] | undefined): string | undefined => (Array.isArray(value) ? value[0] : value);
+  const normalize = (
+    value: string | string[] | undefined
+  ): string | undefined => (Array.isArray(value) ? value[0] : value);
 
   // -------------------- Filter Parsing --------------------
   for (const [key, value] of Object.entries(queryParams)) {
@@ -106,7 +130,9 @@ const TeacherListPage = async ({ searchParams }: { searchParams: Promise<SearchP
       case "search":
         query.OR = [
           { name: { contains: normalizedValue, mode: "insensitive" } },
-          { class: { name: { contains: normalizedValue, mode: "insensitive" } } },
+          {
+            class: { name: { contains: normalizedValue, mode: "insensitive" } },
+          },
         ];
         break;
       case "gender":
@@ -151,7 +177,9 @@ const TeacherListPage = async ({ searchParams }: { searchParams: Promise<SearchP
               <img src="/filter.png" alt="Filter" width={14} height={14} />
             </button>
             <SortButton sortKey="id" />
+            {role === "admin" && (
             <FormContainer table="teacher" type="create" />
+            )}
           </div>
         </div>
       </div>

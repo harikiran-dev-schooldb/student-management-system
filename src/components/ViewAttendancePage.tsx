@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useState, useMemo } from "react";
+
+import { useEffect, useMemo, useState } from "react";
 import { Class, Grade } from "@prisma/client";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
@@ -13,22 +14,19 @@ interface Props {
 const getStudentClassName = (student: any) => {
   const grade = student?.Class?.Grade?.level;
   const section = student?.Class?.section;
-
-  if (grade && section) {
-    return `${grade} - ${section}`;
-  }
-
-  return "N/A";
+  return grade && section ? `${grade} - ${section}` : "N/A";
 };
 
 export default function ViewAttendancePage({ role, teacherClassId }: Props) {
   const today = new Date().toISOString().split("T")[0];
+
   const [from, setFrom] = useState(today);
   const [to, setTo] = useState(today);
   const [records, setRecords] = useState<AttendanceResponse>({
     attendance: [],
     students: [],
   });
+
   const [grades, setGrades] = useState<Grade[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
   const [selectedGrade, setSelectedGrade] = useState<string | number>("");
@@ -36,24 +34,26 @@ export default function ViewAttendancePage({ role, teacherClassId }: Props) {
     role === "teacher" && teacherClassId ? teacherClassId : ""
   );
 
+  const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<
     "all" | "present" | "absent"
   >("all");
-  const [searchQuery, setSearchQuery] = useState("");
+
   const [loading, setLoading] = useState(false);
 
-  // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const recordsPerPage = 30;
 
+  /* -------------------- Fetch Attendance -------------------- */
   const fetchAttendance = async () => {
     setLoading(true);
     try {
       let url = `/api/attendance/range?from=${from}&to=${to}`;
+
       if (role === "admin") {
         if (selectedGrade) url += `&gradeId=${selectedGrade}`;
         if (selectedClass) url += `&classId=${selectedClass}`;
-      } else if (role === "teacher" && teacherClassId) {
+      } else if (teacherClassId) {
         url += `&classId=${teacherClassId}`;
       }
 
@@ -62,92 +62,91 @@ export default function ViewAttendancePage({ role, teacherClassId }: Props) {
       setRecords(data);
       setCurrentPage(1);
     } catch (err) {
-      console.error("Error fetching attendance:", err);
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  // Auto-fetch grades/classes for admin or teacher
+  /* -------------------- Fetch Grades / Classes -------------------- */
   useEffect(() => {
-    const fetchGradesAndClasses = async () => {
+    const load = async () => {
       if (role === "admin") {
-        const gradeRes = await fetch("/api/grades");
-        const gradeData = await gradeRes.json();
-        setGrades(gradeData);
+        const g = await fetch("/api/grades").then((r) => r.json());
+        setGrades(g);
 
         if (selectedGrade) {
-          const classRes = await fetch(`/api/classes?gradeId=${selectedGrade}`);
-          const classData = await classRes.json();
-          setClasses(classData);
+          const c = await fetch(`/api/classes?gradeId=${selectedGrade}`).then(
+            (r) => r.json()
+          );
+          setClasses(c);
         } else {
           setClasses([]);
         }
-      } else if (role === "teacher" && teacherClassId) {
-        const classRes = await fetch(`/api/classes?id=${teacherClassId}`);
-        const classData = await classRes.json();
-        setClasses(Array.isArray(classData) ? classData : [classData]);
+      } else if (teacherClassId) {
+        const c = await fetch(`/api/classes?id=${teacherClassId}`).then((r) =>
+          r.json()
+        );
+        setClasses(Array.isArray(c) ? c : [c]);
       }
     };
 
-    fetchGradesAndClasses();
-  }, [selectedGrade, role, teacherClassId]);
+    load();
+  }, [role, selectedGrade, teacherClassId]);
 
-  // Auto-fetch when date range changes
   useEffect(() => {
-    if (from && to) fetchAttendance();
+    fetchAttendance();
   }, [from, to]);
 
-  const updateAttendance = async (
-    attendanceId: number,
-    currentStatus: boolean
-  ) => {
-    const newStatus = !currentStatus;
-    const res = await fetch(`/api/attendance/update`, {
+  /* -------------------- Update Attendance -------------------- */
+  const updateAttendance = async (id: number, present: boolean) => {
+    const res = await fetch("/api/attendance/update", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ attendanceId, present: newStatus }),
+      body: JSON.stringify({ attendanceId: id, present: !present }),
     });
 
     if (res.ok) {
       setRecords((prev) => ({
         ...prev,
         attendance: prev.attendance.map((a) =>
-          a.id === attendanceId ? { ...a, present: newStatus } : a
+          a.id === id ? { ...a, present: !present } : a
         ),
       }));
-    } else {
-      console.error("Failed to update attendance");
     }
   };
 
+  /* -------------------- Filtering -------------------- */
   const filteredAttendance = useMemo(() => {
     return records.attendance.filter((a) => {
       const student = records.students.find((s) => s.id === a.studentId);
-      const matchesStatus =
+
+      const statusMatch =
         filterStatus === "all" ||
         (filterStatus === "present" && a.present) ||
         (filterStatus === "absent" && !a.present);
-      const matchesSearch =
+
+      const searchMatch =
         !searchQuery ||
         student?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         student?.id.toString().includes(searchQuery);
-      return matchesStatus && matchesSearch;
-    });
-  }, [records, filterStatus, searchQuery]);
 
-  // Pagination logic
+      return statusMatch && searchMatch;
+    });
+  }, [records, searchQuery, filterStatus]);
+
   const totalPages = Math.ceil(filteredAttendance.length / recordsPerPage);
-  const paginatedAttendance = filteredAttendance.slice(
+  const paginated = filteredAttendance.slice(
     (currentPage - 1) * recordsPerPage,
     currentPage * recordsPerPage
   );
 
+  /* -------------------- Export Excel -------------------- */
   const exportToExcel = async () => {
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet("Attendance");
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("Attendance");
 
-    const uniqueDates = Array.from(
+    const dates = Array.from(
       new Set(
         filteredAttendance.map((a) =>
           new Date(a.date).toLocaleDateString("en-GB")
@@ -155,262 +154,255 @@ export default function ViewAttendancePage({ role, teacherClassId }: Props) {
       )
     );
 
-    worksheet.columns = [
-      { header: "Student ID", key: "studentId", width: 12 },
-      { header: "Student Name", key: "studentName", width: 30 },
-      { header: "Class", key: "className", width: 12 },
-      ...uniqueDates.map((date) => ({ header: date, key: date, width: 12 })),
+    ws.columns = [
+      { header: "ID", key: "id", width: 10 },
+      { header: "Name", key: "name", width: 30 },
+      { header: "Class", key: "class", width: 15 },
+      ...dates.map((d) => ({ header: d, key: d, width: 12 })),
     ];
 
-    worksheet.getRow(1).font = { bold: true };
-
-    records.students.forEach((student) => {
+    records.students.forEach((s) => {
       const row: any = {
-        studentId: student.id,
-        studentName: student.name,
-        className: getStudentClassName(student),
+        id: s.id,
+        name: s.name,
+        class: getStudentClassName(s),
       };
 
-      uniqueDates.forEach((date) => {
+      dates.forEach((d) => {
         const a = filteredAttendance.find(
-          (att) =>
-            att.studentId === student.id &&
-            new Date(att.date).toLocaleDateString("en-GB") === date
+          (x) =>
+            x.studentId === s.id &&
+            new Date(x.date).toLocaleDateString("en-GB") === d
         );
-        if (a) {
-          row[date] = a.present ? "Present" : "Absent";
-        }
+        row[d] = a ? (a.present ? "Present" : "Absent") : "";
       });
 
-      const newRow = worksheet.addRow(row);
-      uniqueDates.forEach((date) => {
-        const cell = newRow.getCell(date);
-        if (cell.value === "Present")
-          cell.fill = {
-            type: "pattern",
-            pattern: "solid",
-            fgColor: { argb: "C6EFCE" },
-          };
-        if (cell.value === "Absent")
-          cell.fill = {
-            type: "pattern",
-            pattern: "solid",
-            fgColor: { argb: "FFC7CE" },
-          };
-      });
+      ws.addRow(row);
     });
 
-    const buffer = await workbook.xlsx.writeBuffer();
-    const blob = new Blob([buffer], {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    });
-    saveAs(blob, `Attendance_${from}_to_${to}.xlsx`);
+    const buffer = await wb.xlsx.writeBuffer();
+    saveAs(new Blob([buffer]), `Attendance_${from}_to_${to}.xlsx`);
   };
 
-  return (
-    <div className="p-4 space-y-4 bg-white dark:bg-gray-900 min-h-screen rounded-md">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-        Attendance Report
-      </h1>
+  /* ============================================================ */
+  /* ============================================================ */
+return (
+  <div className="p-4 space-y-5 bg-white dark:bg-gray-900 min-h-screen">
+    <h1 className="text-xl sm:text-2xl font-semibold">
+      Attendance Report
+    </h1>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-4 items-end">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-            From:
-          </label>
-          <input
-            type="date"
-            value={from}
-            onChange={(e) => setFrom(e.target.value)}
-            className="border px-2 py-1 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 dark:border-gray-700"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-            To:
-          </label>
-          <input
-            type="date"
-            value={to}
-            onChange={(e) => setTo(e.target.value)}
-            className="border px-2 py-1 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 dark:border-gray-700"
-          />
-        </div>
+    {/* ---------------- Filters ---------------- */}
+    <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg space-y-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
+        <input
+          type="date"
+          value={from}
+          onChange={(e) => setFrom(e.target.value)}
+          className="w-full border px-3 py-2 rounded"
+        />
+        <input
+          type="date"
+          value={to}
+          onChange={(e) => setTo(e.target.value)}
+          className="w-full border px-3 py-2 rounded"
+        />
 
         {role === "admin" && (
           <>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Grade:
-              </label>
-              <select
-                className="border px-2 py-1 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 dark:border-gray-700"
-                value={selectedGrade}
-                onChange={(e) => setSelectedGrade(e.target.value)}
-              >
-                <option value="">Select Grade</option>
-                {grades.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.level}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <select
+              value={selectedGrade}
+              onChange={(e) => setSelectedGrade(e.target.value)}
+              className="w-full border px-3 py-2 rounded"
+            >
+              <option value="">Select Grade</option>
+              {grades.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.level}
+                </option>
+              ))}
+            </select>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Class:
-              </label>
-              <select
-                className="border px-2 py-1 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 dark:border-gray-700"
-                value={selectedClass}
-                onChange={(e) => setSelectedClass(e.target.value)}
-                disabled={!selectedGrade}
-              >
-                <option value="">Select Class</option>
-                {classes.map((cls) => (
-                  <option key={cls.id} value={cls.id}>
-                    {cls.section}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <select
+              value={selectedClass}
+              onChange={(e) => setSelectedClass(e.target.value)}
+              disabled={!selectedGrade}
+              className="w-full border px-3 py-2 rounded"
+            >
+              <option value="">Select Class</option>
+              {classes.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.section}
+                </option>
+              ))}
+            </select>
           </>
         )}
 
         <button
           onClick={fetchAttendance}
           disabled={loading}
-          className={`px-3 py-1 rounded text-white ${
-            loading ? "bg-gray-500" : "bg-green-600 hover:bg-green-700"
-          }`}
+          className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded"
         >
           {loading ? "Loading..." : "Get Attendance"}
         </button>
       </div>
 
-      {/* Search and filter */}
-      <div className="flex flex-wrap gap-4 items-center mt-4">
+      <div className="flex flex-col sm:flex-row gap-3">
         <input
-          type="text"
           placeholder="Search by name or ID"
-          className="border px-2 py-1 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 dark:border-gray-700"
+          className="w-full sm:w-64 border px-3 py-2 rounded"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
+
         <select
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value as any)}
-          className="border px-2 py-1 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 dark:border-gray-700"
+          className="w-full sm:w-40 border px-3 py-2 rounded"
         >
           <option value="all">All</option>
           <option value="present">Present</option>
           <option value="absent">Absent</option>
         </select>
+
         <button
           onClick={exportToExcel}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded"
+          className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
         >
           Export Excel
         </button>
       </div>
+    </div>
 
-      {/* Attendance table */}
-      {loading ? (
-        <p className="mt-6 text-gray-600 dark:text-gray-400">
-          Loading attendance...
-        </p>
-      ) : paginatedAttendance.length > 0 ? (
-        <div className="overflow-x-auto mt-4">
-          <table className="min-w-full border table-fixed bg-white dark:bg-gray-800 dark:border-gray-700">
-            <thead>
-              <tr className="bg-gray-200 dark:bg-gray-700 text-left text-sm text-gray-900 dark:text-gray-100">
-                <th className="p-2 border dark:border-gray-700 w-28">Date</th>
-                <th className="p-2 border dark:border-gray-700 w-20">ID</th>
-                <th className="p-2 border dark:border-gray-700 w-64">
-                  Student Name
-                </th>
-                <th className="p-2 border dark:border-gray-700 w-28">Class</th>
-                <th className="p-2 border dark:border-gray-700 w-24">Status</th>
-                <th className="p-2 border dark:border-gray-700 w-24">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginatedAttendance.map((a) => {
-                const student = records.students.find(
-                  (s) => s.id === a.studentId
-                );
-                if (!student) return null;
-                return (
-                  <tr
-                    key={a.id}
-                    className="border-b text-sm text-gray-900 dark:text-gray-100 dark:border-gray-700"
-                  >
-                    <td className="p-1 border dark:border-gray-700">
-                      {new Date(a.date).toLocaleDateString()}
-                    </td>
-                    <td className="p-1 border dark:border-gray-700">
-                      {student.id}
-                    </td>
-                    <td className="p-2 border dark:border-gray-700 truncate">
-                      {student.name}
-                    </td>
-                    <td className="p-2 border dark:border-gray-700">
-                      {getStudentClassName(student)}
-                    </td>
+    {/* ---------------- Desktop Directory Header ---------------- */}
+    <div className="hidden md:grid grid-cols-[3fr_1fr_1fr_1fr_auto] gap-4 px-4 py-2 text-xs font-medium text-gray-500">
+      <div>Student</div>
+      <div>Date</div>
+      <div>Class</div>
+      <div>Status</div>
+      <div className="text-right">Actions</div>
+    </div>
 
-                    <td
-                      className={`p-1 border dark:border-gray-700 font-semibold ${
-                        a.present ? "text-green-600" : "text-red-600"
-                      }`}
-                    >
-                      {a.present ? "Present" : "Absent"}
-                    </td>
-                    <td className="p-1 border dark:border-gray-700">
-                      <button
-                        onClick={() => updateAttendance(a.id, a.present)}
-                        className={`px-2 py-1 text-white rounded ${
-                          a.present
-                            ? "bg-green-500 hover:bg-green-600"
-                            : "bg-red-500 hover:bg-red-600"
-                        }`}
-                      >
-                        Edit
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+    {/* ---------------- Desktop Directory Rows ---------------- */}
+    <div className="hidden md:block divide-y">
+      {paginated.map((a) => {
+        const s = records.students.find((x) => x.id === a.studentId);
+        if (!s) return null;
 
-          {/* Pagination Controls */}
-          <div className="flex justify-center items-center mt-4 gap-2">
-            <button
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage((p) => p - 1)}
-              className="px-3 py-1 bg-gray-300 dark:bg-gray-700 rounded disabled:opacity-50"
+        return (
+          <div
+            key={a.id}
+            className="grid grid-cols-[3fr_1fr_1fr_1fr_auto] gap-4 px-4 py-3 items-center hover:bg-gray-50 transition"
+          >
+            {/* Student */}
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="h-9 w-9 rounded-full bg-blue-100 flex items-center justify-center text-sm font-medium text-blue-700">
+                {s.name.charAt(0)}
+              </div>
+
+              <div className="min-w-0">
+                <p className="font-medium truncate">{s.name}</p>
+                <p className="text-xs text-gray-500">ID: {s.id}</p>
+              </div>
+            </div>
+
+            {/* Date */}
+            <div className="text-sm text-gray-700">
+              {new Date(a.date).toLocaleDateString()}
+            </div>
+
+            {/* Class */}
+            <div className="text-sm text-gray-700">
+              {getStudentClassName(s)}
+            </div>
+
+            {/* Status */}
+            <div
+              className={`text-sm font-medium ${
+                a.present ? "text-green-600" : "text-red-600"
+              }`}
             >
-              Prev
-            </button>
-            <span className="text-gray-800 dark:text-gray-200 text-sm">
-              Page {currentPage} of {totalPages}
-            </span>
+              {a.present ? "Present" : "Absent"}
+            </div>
+
+            {/* Action */}
+            <div className="flex justify-end">
+              <button
+                onClick={() => updateAttendance(a.id, a.present)}
+                className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-gray-200"
+                title="Edit Attendance"
+              >
+                ✏️
+              </button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+
+    {/* ---------------- Mobile Cards ---------------- */}
+    <div className="md:hidden space-y-3">
+      {paginated.map((a) => {
+        const s = records.students.find((x) => x.id === a.studentId);
+        if (!s) return null;
+
+        return (
+          <div key={a.id} className="border rounded-lg p-3 space-y-2">
+            <div className="flex justify-between">
+              <span className="font-medium">{s.name}</span>
+              <span
+                className={
+                  a.present ? "text-green-600" : "text-red-600"
+                }
+              >
+                {a.present ? "Present" : "Absent"}
+              </span>
+            </div>
+
+            <p className="text-sm text-gray-500">
+              {s.id} · {getStudentClassName(s)}
+            </p>
+
+            <p className="text-sm text-gray-500">
+              {new Date(a.date).toLocaleDateString()}
+            </p>
+
             <button
-              disabled={currentPage === totalPages}
-              onClick={() => setCurrentPage((p) => p + 1)}
-              className="px-3 py-1 bg-gray-300 dark:bg-gray-700 rounded disabled:opacity-50"
+              onClick={() => updateAttendance(a.id, a.present)}
+              className="w-full py-2 bg-gray-800 text-white rounded"
             >
-              Next
+              Toggle Status
             </button>
           </div>
-        </div>
-      ) : (
-        <p className="mt-4 text-gray-600 dark:text-gray-400">
-          No attendance records found.
-        </p>
-      )}
+        );
+      })}
     </div>
-  );
+
+    {/* ---------------- Pagination ---------------- */}
+    {totalPages > 1 && (
+      <div className="flex justify-center gap-3 pt-4">
+        <button
+          disabled={currentPage === 1}
+          onClick={() => setCurrentPage((p) => p - 1)}
+          className="px-4 py-2 border rounded"
+        >
+          Prev
+        </button>
+
+        <span className="text-sm">
+          Page {currentPage} of {totalPages}
+        </span>
+
+        <button
+          disabled={currentPage === totalPages}
+          onClick={() => setCurrentPage((p) => p + 1)}
+          className="px-4 py-2 border rounded"
+        >
+          Next
+        </button>
+      </div>
+    )}
+  </div>
+);
 }
