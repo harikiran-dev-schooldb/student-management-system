@@ -121,16 +121,19 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
       </h1>
 
       {/* ---------------- Filters ---------------- */}
-      <div className="bg-gray-50 dark:bg-[#121727] rounded-lg p-4 space-y-4">
+      <div className="bg-gray-50 dark:bg-[#121727] rounded-lg p-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
           {/* Date */}
-          <div>
-            <label className="text-sm font-medium">Date</label>
+          <div className="space-y-1">
+            <label className="text-sm font-mediu">Date</label>
             <input
               type="date"
               defaultValue={today}
               {...register("date")}
-              className="w-full mt-1 border px-3 py-2 rounded"
+              className="w-full h-10 px-3 rounded-md 
+               dark:bg-[#121727] dark:text-white 
+               border 
+               focus:outline-none focus:ring-2 focus:ring-LamaPurpleLight"
             />
           </div>
 
@@ -141,7 +144,10 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
                 <label className="text-sm font-medium">Grade</label>
                 <select
                   onChange={(e) => setSelectedGrade(Number(e.target.value))}
-                  className="w-full mt-1 border px-3 py-2 rounded"
+                  className="w-full h-10 px-3 rounded-md 
+               dark:bg-[#121727] dark:text-white 
+               border 
+               focus:outline-none focus:ring-2 focus:ring-LamaPurpleLight"
                 >
                   <option value="">Select Grade</option>
                   {grades.map((g) => (
@@ -156,7 +162,10 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
                 <label className="text-sm font-medium">Class</label>
                 <select
                   onChange={(e) => setSelectedClass(Number(e.target.value))}
-                  className="w-full mt-1 border px-3 py-2 rounded"
+                  className="w-full h-10 px-3 rounded-md 
+               dark:bg-[#121727] dark:text-white 
+               border 
+               focus:outline-none focus:ring-2 focus:ring-LamaPurpleLight"
                 >
                   <option value="">Select Class</option>
                   {classes.map((c) => (
@@ -169,14 +178,16 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
             </>
           )}
 
-          {/* Fetch */}
-          <button
-            type="button"
-            onClick={fetchStudents}
-            className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded"
-          >
-            Get Students
-          </button>
+          {/* Button */}
+          <div className="flex items-end">
+            <button
+              type="button"
+              onClick={fetchStudents}
+              className="w-full h-10 bg-green-700 hover:bg-green-600 text-white rounded-md"
+            >
+              Get Students
+            </button>
+          </div>
         </div>
       </div>
 

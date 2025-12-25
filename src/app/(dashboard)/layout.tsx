@@ -1,10 +1,7 @@
 import Navbar from "@/components/Navbar";
 import MenuWrapper from "@/components/MenuWrapper";
-import {
-  SidebarProvider,
-  useSidebar,
-} from "@/components/context/SidebarContext";
 import SidebarShell from "@/components/Sidebar";
+import { SidebarProvider } from "@/components/context/SidebarContext";
 
 export default function DashboardLayout({
   children,
@@ -13,20 +10,22 @@ export default function DashboardLayout({
 }) {
   return (
     <SidebarProvider>
-      <div className="flex h-screen overflow-hidden">
-        {/* Sidebar controls its own width */}
+      <div className="flex h-screen bg-white dark:bg-[#121727]">
+        {/* Sidebar */}
         <SidebarShell>
           <MenuWrapper />
         </SidebarShell>
 
-        {/* Main column */}
-        <div className="flex flex-col flex-1 overflow-hidden">
+        {/* Main Content Area */}
+        <div className="flex flex-col flex-1 min-w-0">
+          {/* Top Navbar */}
           <Navbar />
 
-          <main className="flex-1 overflow-y-auto">{children}</main>
+          {/* Page Content */}
+          <main className="flex-1 overflow-y-auto bg-white dark:bg-[#121727]">
+            {children}
+          </main>
         </div>
-
-        {/* <SidebarOverlay /> */}
       </div>
     </SidebarProvider>
   );

@@ -24,7 +24,7 @@ export default function SidebarShell({
 
     ${
       isOpen
-        ? "flex w-[200px] md:w-64 translate-x-0"
+        ? "flex w-[200px] md:w-48 translate-x-0"
         : "hidden md:flex md:w-20 md:translate-x-0"
     }
   `}

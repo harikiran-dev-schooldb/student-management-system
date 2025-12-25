@@ -96,7 +96,7 @@ export default function ViewAttendancePage({ role, teacherClassId }: Props) {
 
   useEffect(() => {
     fetchAttendance();
-  }, [from, to]);
+  }, [from, to, selectedGrade, selectedClass, role, teacherClassId]);
 
   /* -------------------- Update Attendance -------------------- */
   const updateAttendance = async (id: number, present: boolean) => {
@@ -117,9 +117,16 @@ export default function ViewAttendancePage({ role, teacherClassId }: Props) {
   };
 
   /* -------------------- Filtering -------------------- */
+
+  const studentMap = useMemo(() => {
+    const map = new Map();
+    records.students.forEach((s) => map.set(s.id, s));
+    return map;
+  }, [records.students]);
+
   const filteredAttendance = useMemo(() => {
     return records.attendance.filter((a) => {
-      const student = records.students.find((s) => s.id === a.studentId);
+      const student = studentMap.get(a.studentId);
 
       const statusMatch =
         filterStatus === "all" ||
@@ -186,223 +193,242 @@ export default function ViewAttendancePage({ role, teacherClassId }: Props) {
 
   /* ============================================================ */
   /* ============================================================ */
-return (
-  <div className="p-4 space-y-5 bg-white dark:bg-gray-900 min-h-screen">
-    <h1 className="text-xl sm:text-2xl font-semibold">
-      Attendance Report
-    </h1>
+  return (
+    <div className="p-4 space-y-5 bg-white dark:bg-gray-900 min-h-screen">
+      <h1 className="text-xl sm:text-2xl font-semibold dark:bg-[#121727] dark:text-gray-100">
+        Attendance Report
+      </h1>
 
-    {/* ---------------- Filters ---------------- */}
-    <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg space-y-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
-        <input
-          type="date"
-          value={from}
-          onChange={(e) => setFrom(e.target.value)}
-          className="w-full border px-3 py-2 rounded"
-        />
-        <input
-          type="date"
-          value={to}
-          onChange={(e) => setTo(e.target.value)}
-          className="w-full border px-3 py-2 rounded"
-        />
-
-        {role === "admin" && (
-          <>
-            <select
-              value={selectedGrade}
-              onChange={(e) => setSelectedGrade(e.target.value)}
-              className="w-full border px-3 py-2 rounded"
-            >
-              <option value="">Select Grade</option>
-              {grades.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.level}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={selectedClass}
-              onChange={(e) => setSelectedClass(e.target.value)}
-              disabled={!selectedGrade}
-              className="w-full border px-3 py-2 rounded"
-            >
-              <option value="">Select Class</option>
-              {classes.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.section}
-                </option>
-              ))}
-            </select>
-          </>
-        )}
-
-        <button
-          onClick={fetchAttendance}
-          disabled={loading}
-          className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded"
-        >
-          {loading ? "Loading..." : "Get Attendance"}
-        </button>
-      </div>
-
-      <div className="flex flex-col sm:flex-row gap-3">
-        <input
-          placeholder="Search by name or ID"
-          className="w-full sm:w-64 border px-3 py-2 rounded"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
-
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value as any)}
-          className="w-full sm:w-40 border px-3 py-2 rounded"
-        >
-          <option value="all">All</option>
-          <option value="present">Present</option>
-          <option value="absent">Absent</option>
-        </select>
-
-        <button
-          onClick={exportToExcel}
-          className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
-        >
-          Export Excel
-        </button>
-      </div>
-    </div>
-
-    {/* ---------------- Desktop Directory Header ---------------- */}
-    <div className="hidden md:grid grid-cols-[3fr_1fr_1fr_1fr_auto] gap-4 px-4 py-2 text-xs font-medium text-gray-500">
-      <div>Student</div>
-      <div>Date</div>
-      <div>Class</div>
-      <div>Status</div>
-      <div className="text-right">Actions</div>
-    </div>
-
-    {/* ---------------- Desktop Directory Rows ---------------- */}
-    <div className="hidden md:block divide-y">
-      {paginated.map((a) => {
-        const s = records.students.find((x) => x.id === a.studentId);
-        if (!s) return null;
-
-        return (
-          <div
-            key={a.id}
-            className="grid grid-cols-[3fr_1fr_1fr_1fr_auto] gap-4 px-4 py-3 items-center hover:bg-gray-50 transition"
-          >
-            {/* Student */}
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="h-9 w-9 rounded-full bg-blue-100 flex items-center justify-center text-sm font-medium text-blue-700">
-                {s.name.charAt(0)}
-              </div>
-
-              <div className="min-w-0">
-                <p className="font-medium truncate">{s.name}</p>
-                <p className="text-xs text-gray-500">ID: {s.id}</p>
-              </div>
-            </div>
-
-            {/* Date */}
-            <div className="text-sm text-gray-700">
-              {new Date(a.date).toLocaleDateString()}
-            </div>
-
-            {/* Class */}
-            <div className="text-sm text-gray-700">
-              {getStudentClassName(s)}
-            </div>
-
-            {/* Status */}
-            <div
-              className={`text-sm font-medium ${
-                a.present ? "text-green-600" : "text-red-600"
-              }`}
-            >
-              {a.present ? "Present" : "Absent"}
-            </div>
-
-            {/* Action */}
-            <div className="flex justify-end">
-              <button
-                onClick={() => updateAttendance(a.id, a.present)}
-                className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-gray-200"
-                title="Edit Attendance"
-              >
-                ✏️
-              </button>
-            </div>
+      {/* ---------------- Filters ---------------- */}
+      <div className="bg-gray-100 dark:bg-[#121727] p-4 rounded-lg space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+          {/* From Date */}
+          <div className="space-y-1">
+            <label className="text-sm font-medium">From</label>
+            <input
+              type="date"
+              value={from}
+              onChange={(e) => setFrom(e.target.value)}
+              className="w-full h-10 px-3 rounded-md 
+               dark:bg-[#121727] dark:text-white 
+               border 
+               focus:outline-none focus:ring-2 focus:ring-LamaPurpleLight"
+            />
           </div>
-        );
-      })}
-    </div>
 
-    {/* ---------------- Mobile Cards ---------------- */}
-    <div className="md:hidden space-y-3">
-      {paginated.map((a) => {
-        const s = records.students.find((x) => x.id === a.studentId);
-        if (!s) return null;
+          {/* To Date */}
+          <div className="space-y-1">
+            <label className="text-sm font-medium">To</label>
+            <input
+              type="date"
+              value={to}
+              onChange={(e) => setTo(e.target.value)}
+              className="w-full h-10 px-3 rounded-md 
+               dark:bg-[#121727] dark:text-white 
+               border 
+               focus:outline-none focus:ring-2 focus:ring-LamaPurpleLight"
+            />
+          </div>
 
-        return (
-          <div key={a.id} className="border rounded-lg p-3 space-y-2">
-            <div className="flex justify-between">
-              <span className="font-medium">{s.name}</span>
-              <span
-                className={
+          {role === "admin" && (
+            <>
+              <select
+                value={selectedGrade}
+                onChange={(e) => setSelectedGrade(e.target.value)}
+                className="w-full h-10 px-3 rounded-md 
+               dark:bg-[#121727] dark:text-white 
+               border 
+               focus:outline-none focus:ring-2 focus:ring-LamaPurpleLight"
+              >
+                <option value="">Select Grade</option>
+                {grades.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.level}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={selectedClass}
+                onChange={(e) => setSelectedClass(e.target.value)}
+                disabled={!selectedGrade}
+                className="w-full h-10 px-3 rounded-md 
+               dark:bg-[#121727] dark:text-white 
+               border 
+               focus:outline-none focus:ring-2 focus:ring-LamaPurpleLight"
+              >
+                <option value="">Select Class</option>
+                {classes.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.section}
+                  </option>
+                ))}
+              </select>
+            </>
+          )}
+
+          <button
+            disabled={loading}
+            className={`w-full py-2 rounded text-white ${
+              loading
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-green-600 hover:bg-green-700"
+            }`}
+          >
+            {loading ? "Loading..." : "Get Attendance"}
+          </button>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-3">
+          <input
+            placeholder="Search by name or ID"
+            className="w-full h-10 sm:w-64 border dark:bg-[#121727] dark:text-white px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-LamaPurpleLight"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value as any)}
+            className="w-full h-10 sm:w-64 border dark:bg-[#121727] dark:text-white px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-LamaPurpleLight"
+          >
+            <option value="all">All</option>
+            <option value="present">Present</option>
+            <option value="absent">Absent</option>
+          </select>
+          <button
+            onClick={exportToExcel}
+            className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
+          >
+            Export Excel
+          </button>
+        </div>
+      </div>
+
+      {/* ---------------- Desktop Directory Header ---------------- */}
+      <div className="hidden md:grid grid-cols-[3fr_1fr_1fr_1fr_auto] gap-4 px-4 py-2 text-xs font-medium text-gray-500">
+        <div>Student</div>
+        <div>Date</div>
+        <div>Class</div>
+        <div>Status</div>
+        <div className="text-right">Actions</div>
+      </div>
+
+      {/* ---------------- Desktop Directory Rows ---------------- */}
+      <div className="hidden md:block divide-y">
+        {paginated.map((a) => {
+          const s = records.students.find((x) => x.id === a.studentId);
+          if (!s) return null;
+
+          return (
+            <div
+              key={a.id}
+              className="grid grid-cols-[3fr_1fr_1fr_1fr_auto] gap-4 px-4 py-3 items-center hover:bg-gray-50 transition"
+            >
+              {/* Student */}
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="h-9 w-9 rounded-full bg-blue-100 flex items-center justify-center text-sm font-medium text-blue-700">
+                  {s.name.charAt(0)}
+                </div>
+
+                <div className="min-w-0">
+                  <p className="font-medium truncate">{s.name}</p>
+                  <p className="text-xs text-gray-500">ID: {s.id}</p>
+                </div>
+              </div>
+
+              {/* Date */}
+              <div className="text-sm text-gray-700">
+                {new Date(a.date).toLocaleDateString()}
+              </div>
+
+              {/* Class */}
+              <div className="text-sm text-gray-700">
+                {getStudentClassName(s)}
+              </div>
+
+              {/* Status */}
+              <div
+                className={`text-sm font-medium ${
                   a.present ? "text-green-600" : "text-red-600"
-                }
+                }`}
               >
                 {a.present ? "Present" : "Absent"}
-              </span>
+              </div>
+
+              {/* Action */}
+              <div className="flex justify-end">
+                <button
+                  onClick={() => updateAttendance(a.id, a.present)}
+                  className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-gray-200"
+                  title="Edit Attendance"
+                >
+                  ✏️
+                </button>
+              </div>
             </div>
-
-            <p className="text-sm text-gray-500">
-              {s.id} · {getStudentClassName(s)}
-            </p>
-
-            <p className="text-sm text-gray-500">
-              {new Date(a.date).toLocaleDateString()}
-            </p>
-
-            <button
-              onClick={() => updateAttendance(a.id, a.present)}
-              className="w-full py-2 bg-gray-800 text-white rounded"
-            >
-              Toggle Status
-            </button>
-          </div>
-        );
-      })}
-    </div>
-
-    {/* ---------------- Pagination ---------------- */}
-    {totalPages > 1 && (
-      <div className="flex justify-center gap-3 pt-4">
-        <button
-          disabled={currentPage === 1}
-          onClick={() => setCurrentPage((p) => p - 1)}
-          className="px-4 py-2 border rounded"
-        >
-          Prev
-        </button>
-
-        <span className="text-sm">
-          Page {currentPage} of {totalPages}
-        </span>
-
-        <button
-          disabled={currentPage === totalPages}
-          onClick={() => setCurrentPage((p) => p + 1)}
-          className="px-4 py-2 border rounded"
-        >
-          Next
-        </button>
+          );
+        })}
       </div>
-    )}
-  </div>
-);
+
+      {/* ---------------- Mobile Cards ---------------- */}
+      <div className="md:hidden space-y-3">
+        {paginated.map((a) => {
+          const s = records.students.find((x) => x.id === a.studentId);
+          if (!s) return null;
+
+          return (
+            <div key={a.id} className="border rounded-lg p-3 space-y-2">
+              <div className="flex justify-between">
+                <span className="font-medium">{s.name}</span>
+                <span className={a.present ? "text-green-600" : "text-red-600"}>
+                  {a.present ? "Present" : "Absent"}
+                </span>
+              </div>
+
+              <p className="text-sm text-gray-500">
+                {s.id} · {getStudentClassName(s)}
+              </p>
+
+              <p className="text-sm text-gray-500">
+                {new Date(a.date).toLocaleDateString()}
+              </p>
+
+              <button
+                onClick={() => updateAttendance(a.id, a.present)}
+                className="w-full py-2 bg-gray-800 text-white rounded"
+              >
+                Toggle Status
+              </button>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ---------------- Pagination ---------------- */}
+      {totalPages > 1 && (
+        <div className="flex justify-center gap-3 pt-4">
+          <button
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage((p) => p - 1)}
+            className="px-4 py-2 border rounded"
+          >
+            Prev
+          </button>
+
+          <span className="text-sm">
+            Page {currentPage} of {totalPages}
+          </span>
+
+          <button
+            disabled={currentPage === totalPages}
+            onClick={() => setCurrentPage((p) => p + 1)}
+            className="px-4 py-2 border rounded"
+          >
+            Next
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }

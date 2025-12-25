@@ -47,7 +47,7 @@ const renderRow = (item: SubjectListType, role: string | null) => {
 
 const getColumns = (role: string | null) => [
   { header: "Subject", accessor: "name" },
-  { header: "Grades", accessor: "grades" },
+  { header: "Grades", accessor: "grades", className: "hidden md:table-cell" },
   ...(role === "admin" ? [{ header: "Actions", accessor: "action" }] : []),
 ];
 
@@ -102,12 +102,12 @@ const SubjectList = async ({ searchParams }: { searchParams: Promise<SearchParam
           <ClassFilterDropdown classes={classes} grades={grades} basePath="/list/subjects" />
           <div className="flex flex-col items-center w-full gap-4 md:flex-row md:w-auto">
             <TableSearch />
-            <ResetFiltersButton basePath="/list/subjects" />
             <div className="flex items-center self-end gap-4">
-              <button className="flex items-center justify-center w-8 h-8 rounded-full bg-LamaYellow dark:brightness-90">
+            <ResetFiltersButton basePath="/list/subjects" />
+              <button className="flex items-center justify-center w-8 h-8 rounded-full bg-LamaYellow dark:bg-LamaYellow ">
                 <img src="/filter.png" alt="" width={14} height={14} />
               </button>
-              <button className="flex items-center justify-center w-8 h-8 rounded-full bg-LamaYellow dark:brightness-90">
+              <button className="flex items-center justify-center w-8 h-8 rounded-full bg-LamaYellow dark:bg-LamaYellow">
                 <img src="/sort.png" alt="" width={14} height={14} />
               </button>
               {role === "admin" && <FormContainer table="subject" type="create" />}

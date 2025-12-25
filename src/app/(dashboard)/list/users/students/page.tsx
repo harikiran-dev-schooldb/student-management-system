@@ -81,6 +81,7 @@ const getColumns = (role: string | null) => [
   { header: "Actions", accessor: "action" },
 ];
 
+
 const StudentListPage = async ({
   searchParams,
 }: {
@@ -137,7 +138,7 @@ const StudentListPage = async ({
         { phone: { contains: search } },
       ],
     }),
-    ...(gender && { gender: gender as any }),
+    ...(gender ? { gender: gender as $Enums.Gender } : {}),
     ...(role === "teacher" && teacherClassId
       ? { classId: teacherClassId }
       : {}),

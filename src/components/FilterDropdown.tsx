@@ -1,4 +1,5 @@
 "use client";
+export const revalidate = 60;
 import { LessonDay } from "@prisma/client";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -210,30 +211,30 @@ const StudentStatusFilter = ({ basePath }: StudentStatusFilterProps) => {
 const GenderFilter = ({ basePath }: { basePath: string }) => {
   const router = useRouter();
   const searchParams = useSearchParams();
+
   const currentGender = searchParams.get("gender") || "";
 
-  useEffect(() => {
-    if (!searchParams.get("gender")) {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set("gender", "");
-      router.replace(`${basePath}?${params.toString()}`, { scroll: false });
-    }
-  }, [searchParams, basePath, router]);
-
-  const handleGenderChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const newGender = event.target.value;
+  const handleGenderChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
     const params = new URLSearchParams(searchParams.toString());
-    if (newGender) params.set("gender", newGender);
-    else params.delete("gender");
-    router.push(`${basePath}?${params.toString()}`, { scroll: false });
+
+    if (value) {
+      params.set("gender", value);
+    } else {
+      params.delete("gender");
+    }
+
+    router.replace(`${basePath}?${params.toString()}`, {
+      scroll: false,
+    });
   };
 
   return (
-    <div className="relative w-full md:w-auto mt-4 md:mt-0">
+    <div className="relative w-full md:w-auto">
       <select
         className={dropdownUI}
-        onChange={handleGenderChange}
         value={currentGender}
+        onChange={handleGenderChange}
       >
         <option value="">Select Gender</option>
         <option value="Male">Male</option>
@@ -242,6 +243,7 @@ const GenderFilter = ({ basePath }: { basePath: string }) => {
     </div>
   );
 };
+
 
 /* ---------------- Day Filter ---------------- */
 export const getTodayLessonDay = (): LessonDay => {
