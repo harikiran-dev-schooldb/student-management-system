@@ -167,7 +167,14 @@ SELECT id, clerk_id, length(clerk_id), encode(clerk_id::bytea, 'escape')
 FROM "Student"
 WHERE id = 15616;
 
-SELECT * FROM "Attendance";
+SELECT * FROM "Attendance" ;
+SELECT *
+FROM "Attendance"
+WHERE "date" >= '2025-12-21 00:00:00'
+  AND "date" <  '2025-12-22 00:00:00';
+
+DELETE FROM "Attendance" WHERE "date" >= '2025-12-21 00:00:00'
+  AND "date" <  '2025-12-22 00:00:00';
 
 DELETE FROM "class";
 

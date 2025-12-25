@@ -43,7 +43,6 @@ const renderRow = (item: StudentsList, role: string | null) => (
       </td>
     )}
     <td className="hidden md:table-cell">{item.fatherName || "N/A"}</td>
-    <td className="hidden md:table-cell">{item.motherName || "N/A"}</td>
     <td className="hidden md:table-cell">
       {new Date(item.dob).toLocaleDateString("en-GB").replace(/\//g, "-")}
     </td>
@@ -73,13 +72,8 @@ const getColumns = (role: string | null) => [
   { header: "Student Name", accessor: "name" },
   ...(role === "admin" ? [{ header: "Class", accessor: "class" }] : []),
   {
-    header: "Father Name",
+    header: "Parent Name",
     accessor: "fatherName",
-    className: "hidden md:table-cell",
-  },
-  {
-    header: "Mother Name",
-    accessor: "motherName",
     className: "hidden md:table-cell",
   },
   { header: "DOB", accessor: "dob", className: "hidden md:table-cell" },
@@ -174,7 +168,7 @@ const StudentListPage = async ({
   const Path = `/list/users/students`;
 
   return (
-    <div className="flex-1 p-4 m-4 mt-0 bg-white rounded-md dark:bg-gray-900">
+    <div className="flex-1 p-4 mt-0 bg-white dark:bg-gray-900">
       {/* Top Controls */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <h1 className="text-lg font-semibold text-gray-800 dark:text-gray-100 hidden md:block">

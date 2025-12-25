@@ -46,12 +46,10 @@ const renderRow = (item: AdminList, role: string | null) => (
     <td className="hidden md:table-cell">{item.gender}</td>
 
     {/* Parent */}
-    <td className="hidden md:table-cell">
-      {item.parentName || "N/A"}
-    </td>
+    <td className="hidden md:table-cell">{item.parentName || "N/A"}</td>
 
     {/* DOB */}
-    <td>
+    <td className="hidden md:table-cell">
       {item.dob
         ? new Date(item.dob).toLocaleDateString("en-GB").replace(/\//g, "-")
         : "N/A"}
@@ -76,8 +74,12 @@ const renderRow = (item: AdminList, role: string | null) => (
 const getColumns = (role: string | null) => [
   { header: "Admin Name", accessor: "info" },
   { header: "Gender", accessor: "gender", className: "hidden md:table-cell" },
-  { header: "Parent Name", accessor: "parentName", className: "hidden md:table-cell" },
-  { header: "DOB", accessor: "dob" },
+  {
+    header: "Parent Name",
+    accessor: "parentName",
+    className: "hidden md:table-cell",
+  },
+  { header: "DOB", accessor: "dob", className: "hidden md:table-cell" },
   { header: "Mobile", accessor: "phone" },
   ...(role === "admin" ? [{ header: "Actions", accessor: "action" }] : []),
 ];
@@ -96,8 +98,9 @@ const AdminListPage = async ({
   const p = page ? (Array.isArray(page) ? page[0] : page) : "1";
 
   const sortOrder = params.sort === "desc" ? "desc" : "asc";
-  const sortKey =
-    Array.isArray(params.sortKey) ? params.sortKey[0] : params.sortKey || "id";
+  const sortKey = Array.isArray(params.sortKey)
+    ? params.sortKey[0]
+    : params.sortKey || "id";
 
   const query: Prisma.AdminWhereInput = {};
 
@@ -140,7 +143,7 @@ const AdminListPage = async ({
   const Path = "/list/users/admin";
 
   return (
-    <div className="flex-1 p-4 m-4 mt-0 bg-white rounded-md dark:bg-gray-900">
+    <div className="flex-1 p-4 bg-white dark:bg-gray-900">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <h1 className="hidden md:block text-lg font-semibold text-gray-800 dark:text-gray-100">
@@ -150,16 +153,14 @@ const AdminListPage = async ({
         <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
           <TableSearch />
           <GenderFilter basePath={Path} />
-          <ResetFiltersButton basePath={Path} />
 
           <div className="flex items-center gap-4">
+            <ResetFiltersButton basePath={Path} />
             <button className="flex items-center justify-center w-8 h-8 rounded-full bg-LamaYellow">
               <img src="/filter.png" alt="Filter" width={14} height={14} />
             </button>
             <SortButton sortKey="id" />
-            {role === "admin" && (
-              <FormContainer table="admin" type="create" />
-            )}
+            {role === "admin" && <FormContainer table="admin" type="create" />}
           </div>
         </div>
       </div>

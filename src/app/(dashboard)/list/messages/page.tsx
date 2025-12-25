@@ -10,6 +10,7 @@ import { MessageList, SearchParams } from "../../../../../types";
 import ResetFiltersButton from "@/components/ResetFiltersButton";
 import { fetchUserInfo, getClassIdForRole } from "@/lib/utils/server-utils";
 import { MessagesSelect } from "../../../../../types/query-types";
+import ClassFilterDropdown from "@/components/FilterDropdown";
 
 const renderRow = (item: MessageList, role: string | null) => (
   <tr
@@ -91,7 +92,6 @@ const renderRow = (item: MessageList, role: string | null) => (
   </tr>
 );
 
-
 const getColumns = (role: string | null) => [
   { header: "Date", accessor: "date", className: "hidden md:table-cell" },
   ...(role === "teacher" || role === "admin"
@@ -100,7 +100,6 @@ const getColumns = (role: string | null) => [
         {
           header: "Student Name",
           accessor: "student",
-          className: "hidden md:table-cell",
         },
         {
           header: "Class",
@@ -109,7 +108,7 @@ const getColumns = (role: string | null) => [
         },
       ]
     : []),
-  { header: "Message", accessor: "message", className: "hidden md:table-cell" },
+  { header: "Message", accessor: "message" },
   ...(role === "admin" || role === "teacher"
     ? [{ header: "Actions", accessor: "action" }]
     : []),
@@ -128,6 +127,14 @@ const MessagesList = async ({
 
   const columns = getColumns(role);
 
+  const gradeId = Array.isArray(queryParams.gradeId)
+    ? queryParams.gradeId[0]
+    : queryParams.gradeId;
+
+  const classId = Array.isArray(queryParams.classId)
+    ? queryParams.classId[0]
+    : queryParams.classId;
+
   const sortOrder = params.sort === "asc" ? "asc" : "desc";
   const sortKey = Array.isArray(params.sortKey)
     ? params.sortKey[0]
@@ -139,6 +146,24 @@ const MessagesList = async ({
 
   // Get user class(es)
   const userClassId = await getClassIdForRole(role, userId);
+
+  const filterConditions: Prisma.MessagesWhereInput[] = [];
+
+  // Grade filter (via Class → Grade)
+  if (gradeId && !classId) {
+    filterConditions.push({
+      Class: {
+        gradeId: Number(gradeId),
+      },
+    });
+  }
+
+  // Class filter (direct)
+  if (classId && (role !== "teacher" || Number(classId) === teacherClassId)) {
+    filterConditions.push({
+      classId: Number(classId),
+    });
+  }
 
   // Base role filter
   const roleFilter: Prisma.MessagesWhereInput = {};
@@ -167,9 +192,13 @@ const MessagesList = async ({
   }
 
   // Combine filters safely
-  const query: Prisma.MessagesWhereInput = searchFilter
-    ? { AND: [roleFilter, searchFilter] }
-    : roleFilter;
+  const query: Prisma.MessagesWhereInput = {
+    AND: [
+      roleFilter,
+      ...(searchFilter ? [searchFilter] : []),
+      ...filterConditions,
+    ],
+  };
 
   const [data, count] = await prisma.$transaction([
     prisma.messages.findMany({
@@ -182,16 +211,33 @@ const MessagesList = async ({
     prisma.messages.count({ where: query }),
   ]);
 
+  const Path = `/list/messages`;
+
+  const classes = await prisma.class.findMany({
+    where: gradeId ? { gradeId: Number(gradeId) } : {},
+  });
+
+  const grades = await prisma.grade.findMany();
+
   return (
-    <div className="flex-1 p-4 m-4 mt-0 bg-white dark:bg-gray-900 dark:text-gray-100 rounded-md transition-colors duration-300">
+    <div className="flex-1 p-4 bg-white dark:bg-gray-900 dark:text-gray-100 transition-colors duration-300">
       <div className="flex items-center justify-between">
         <h1 className="hidden text-lg font-semibold md:block">
           All Messages ({count})
         </h1>
         <div className="flex flex-col items-center w-full gap-4 md:flex-row md:w-auto">
           <TableSearch />
-          <ResetFiltersButton basePath="/list/messages" />
+          {role === "admin" && (
+            <>
+              <ClassFilterDropdown
+                classes={classes}
+                grades={grades}
+                basePath={Path}
+              />
+            </>
+          )}
           <div className="flex items-center self-end gap-4">
+            <ResetFiltersButton basePath={Path} />
             <button className="flex items-center justify-center w-8 h-8 rounded-full bg-LamaYellow dark:bg-LamaYellow">
               <img src="/filter.png" alt="" width={14} height={14} />
             </button>

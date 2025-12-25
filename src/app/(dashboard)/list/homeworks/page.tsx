@@ -145,7 +145,7 @@ const HomeworkListPage = async ({
   const Path = `/list/homeworks`;
 
   return (
-    <div className="flex-1 p-4 m-4 mt-0 bg-white dark:bg-gray-900 rounded-md text-black dark:text-white">
+    <div className="flex-1 p-4 bg-white dark:bg-gray-900 text-black dark:text-white">
       {/* Top Controls */}
       <div className="flex items-center justify-between mb-3">
         <h1 className="hidden text-lg font-semibold md:block">
@@ -162,9 +162,9 @@ const HomeworkListPage = async ({
               basePath={Path}
             />
           )}
-          <ResetFiltersButton basePath={Path} />
 
           <div className="flex items-center gap-4">
+            <ResetFiltersButton basePath={Path} />
             <button className="flex items-center justify-center w-8 h-8 rounded-full bg-LamaYellow dark:bg-LamaYellow">
               <img src="/filter.png" alt="" width={14} height={14} />
             </button>

@@ -10,7 +10,6 @@ export const StudentSelect = {
   status: true,
   classId: true,
   fatherName: true,
-  motherName: true,
   phone: true,
   dob: true,
   img: true,

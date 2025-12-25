@@ -296,6 +296,10 @@ function updateMenuItem(item: MenuItem, role: Role): MenuItem | null {
 }
 
 export default function Menu({ role }: MenuProps) {
+  if (!role) {
+    return <div className="p-4 text-gray-400 text-sm">Loading menu...</div>;
+  }
+
   const pathname = usePathname();
   const { t } = useTranslation();
   const { isOpen, toggle } = useSidebar();
@@ -334,7 +338,7 @@ export default function Menu({ role }: MenuProps) {
           {/* Menu Items */}
           {section.items.map((item) => {
             const isActive = pathname === item.href;
-            
+
             return item.dropdown ? (
               <Dropdown
                 key={item.label}
@@ -364,7 +368,9 @@ export default function Menu({ role }: MenuProps) {
                   alt=""
                   width={18} // Matching Dropdown icons
                   height={18}
-                  className={`shrink-0 ${isActive ? "opacity-100" : "opacity-70"}`}
+                  className={`shrink-0 ${
+                    isActive ? "opacity-100" : "opacity-70"
+                  }`}
                 />
 
                 {!isCollapsed && (

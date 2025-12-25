@@ -45,7 +45,7 @@ const LessonsListPage = async ({
   const Path = "/list/lessons";
 
   return (
-    <div className="flex-1 p-4 m-4 mt-0 bg-white dark:bg-gray-900 rounded-md text-black dark:text-white">
+    <div className="flex-1 p-4 bg-white dark:bg-gray-900 text-black dark:text-white">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-lg font-semibold text-black dark:text-white">Timetable</h1>
 

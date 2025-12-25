@@ -102,7 +102,11 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
       if (!res.ok) throw new Error();
 
       toast("Attendance submitted successfully");
-      setTimeout(() => window.location.reload(), 500);
+
+      // reset local state instead
+      setStudents([]);
+      setAttendance({});
+      setAllAbsent(false);
     } catch {
       toast("Failed to submit attendance");
     }
@@ -112,12 +116,12 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="p-4 space-y-6">
       {/* ---------------- Header ---------------- */}
-      <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-gray-100">
+      <h1 className="text-xl sm:text-2xl font-semibold dark:bg-[#121727] dark:text-gray-100">
         Mark Attendance
       </h1>
 
       {/* ---------------- Filters ---------------- */}
-      <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 space-y-4">
+      <div className="bg-gray-50 dark:bg-[#121727] rounded-lg p-4 space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
           {/* Date */}
           <div>
@@ -179,9 +183,7 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
       {/* ---------------- Actions ---------------- */}
       {students.length > 0 && (
         <div className="flex justify-between items-center">
-          <p className="font-medium">
-            Students: {students.length}
-          </p>
+          <p className="font-medium">Students: {students.length}</p>
 
           {allAbsent ? (
             <button
@@ -205,7 +207,7 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
 
       {/* ---------------- Students Grid ---------------- */}
       {students.length > 0 && (
-        <div className="max-h-[520px] overflow-y-auto border rounded-lg p-3 bg-white dark:bg-gray-900">
+        <div className="max-h-[520px] overflow-y-auto border rounded-lg p-3 bg-white dark:bg-[#121727]">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
             {students.map((s) => {
               const absent = !attendance[s.id];
@@ -215,17 +217,15 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
                   key={s.id}
                   onClick={() => toggleStudent(s.id)}
                   className={`rounded-lg p-3 text-left transition
-                    ${absent
-                      ? "bg-red-500 hover:bg-red-600"
-                      : "bg-green-600 hover:bg-green-700"}
+                    ${
+                      absent
+                        ? "bg-red-500 hover:bg-red-600"
+                        : "bg-green-600 hover:bg-green-700"
+                    }
                     text-white`}
                 >
-                  <div className="font-semibold text-sm">
-                    {s.name}
-                  </div>
-                  <div className="text-xs mt-1">
-                    Adm No: {s.id}
-                  </div>
+                  <div className="font-semibold text-sm">{s.name}</div>
+                  <div className="text-xs mt-1">Adm No: {s.id}</div>
                 </button>
               );
             })}

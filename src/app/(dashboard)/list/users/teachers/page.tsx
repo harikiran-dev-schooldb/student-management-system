@@ -160,7 +160,7 @@ const TeacherListPage = async ({
   const Path = "/list/users/teachers";
 
   return (
-    <div className="flex-1 p-4 m-4 mt-0 bg-white rounded-md dark:bg-gray-900">
+    <div className="flex-1 p-4 bg-white dark:bg-gray-900">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <h1 className="text-lg font-semibold text-gray-800 dark:text-gray-100 hidden md:block">
@@ -170,15 +170,15 @@ const TeacherListPage = async ({
         <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
           <TableSearch />
           <GenderFilter basePath={Path} />
-          <ResetFiltersButton basePath={Path} />
 
           <div className="flex items-center gap-4">
+            <ResetFiltersButton basePath={Path} />
             <button className="flex items-center justify-center w-8 h-8 rounded-full bg-LamaYellow dark:bg-LamaYellow">
               <img src="/filter.png" alt="Filter" width={14} height={14} />
             </button>
             <SortButton sortKey="id" />
             {role === "admin" && (
-            <FormContainer table="teacher" type="create" />
+              <FormContainer table="teacher" type="create" />
             )}
           </div>
         </div>

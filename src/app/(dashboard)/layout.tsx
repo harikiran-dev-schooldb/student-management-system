@@ -1,6 +1,9 @@
 import Navbar from "@/components/Navbar";
 import MenuWrapper from "@/components/MenuWrapper";
-import { SidebarProvider, useSidebar } from "@/components/context/SidebarContext";
+import {
+  SidebarProvider,
+  useSidebar,
+} from "@/components/context/SidebarContext";
 import SidebarShell from "@/components/Sidebar";
 
 export default function DashboardLayout({
@@ -10,30 +13,21 @@ export default function DashboardLayout({
 }) {
   return (
     <SidebarProvider>
-      <div className="flex h-screen overflow-hidden bg-[#F7F8FA] dark:bg-gray-900">
-        {/* SIDEBAR (controls its own width) */}
+      <div className="flex h-screen overflow-hidden">
+        {/* Sidebar controls its own width */}
         <SidebarShell>
           <MenuWrapper />
         </SidebarShell>
-        {/* MAIN CONTENT */}
-        <div className="flex-1 flex flex-col bg-[#F7F8FA] dark:bg-gray-900">
+
+        {/* Main column */}
+        <div className="flex flex-col flex-1 overflow-hidden">
           <Navbar />
-          <div className="flex-1 overflow-y-auto mt-3 w-full">{children}</div>
+
+          <main className="flex-1 overflow-y-auto">{children}</main>
         </div>
+
+        {/* <SidebarOverlay /> */}
       </div>
     </SidebarProvider>
-  );
-}
-
-// Component for the dark overlay on mobile
-function SidebarOverlay() {
-  const { isOpen, toggle } = useSidebar();
-  if (!isOpen) return null;
-
-  return (
-    <div 
-      className="fixed inset-0 bg-black/50 z-[90] md:hidden" 
-      onClick={toggle}
-    />
   );
 }

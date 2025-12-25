@@ -52,7 +52,7 @@ export default function NavbarClient({ roles, activeUser }: NavbarClientProps) {
   const { toggle } = useSidebar();
 
   return (
-    <div className="flex items-center justify-between px-3 py-4 bg-white dark:bg-gray-800 shadow-md">
+    <div className="flex items-center justify-between px-3 py-4 bg-white dark:bg-[#121727] shadow-md">
       <div className="flex items-center gap-3">
         {/* Sidebar Toggle */}
 

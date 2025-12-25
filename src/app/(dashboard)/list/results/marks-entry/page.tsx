@@ -104,7 +104,7 @@ export default function MarksEntryForm() {
   };
 
   return (
-    <div className="flex-1 p-4 m-4 mt-0 bg-white dark:bg-gray-900 rounded-md shadow-md">
+    <div className="flex-1 p-4 bg-white dark:bg-gray-900 shadow-md">
       <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-100">Enter Marks</h2>
 
       <div className="flex flex-wrap gap-4 mt-4">

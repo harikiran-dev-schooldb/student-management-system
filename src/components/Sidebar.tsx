@@ -15,19 +15,17 @@ export default function SidebarShell({
     <aside
       className={`
     h-screen transition-all duration-300 flex-col border-r
-    bg-white dark:bg-gradient-to-b dark:from-[#0f172a] dark:to-[#020617]
+    bg-white dark:bg-[#121727]
     border-gray-200 dark:border-white/10
     text-gray-700 dark:text-gray-200
-    
-    fixed inset-y-0 left-0 z-[100] 
-    
+
+    fixed inset-y-0 left-0 z-[100]
     md:relative md:z-40
-    
-    /* VISIBILITY & WIDTH LOGIC */
+
     ${
       isOpen
-        ? "flex w-64 translate-x-0"
-        : "w-0 -translate-x-full md:flex md:w-20 md:translate-x-0 hidden"
+        ? "flex w-[200px] md:w-64 translate-x-0"
+        : "hidden md:flex md:w-20 md:translate-x-0"
     }
   `}
     >
@@ -45,7 +43,7 @@ export default function SidebarShell({
 
         <button
           onClick={toggle}
-          className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          className="p-2 rounded-md hover:bg-LamaSkyLight dark:hover:bg-gray-700 transition-colors"
           aria-label="Toggle sidebar"
         >
           <Menu size={20} />

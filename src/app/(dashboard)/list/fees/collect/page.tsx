@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import ClassFilterDropdown, { StatusFilter } from "@/components/FilterDropdown";
+import ClassFilterDropdown, { GenderFilter, StatusFilter } from "@/components/FilterDropdown";
 import Pagination from "@/components/Pagination";
 import SortButton from "@/components/SortButton";
 import Table from "@/components/Table";
@@ -190,7 +190,7 @@ const StudentFeeListPage = async ({
   const [data, count] = await prisma.$transaction([
     prisma.student.findMany({
       orderBy: [
-        { [sortKey]: sortOrder },
+        { [sortKey]: sortOrder }, 
         { classId: "asc" },
         { gender: "desc" },
         { name: "asc" },
@@ -215,7 +215,7 @@ const StudentFeeListPage = async ({
   const Path = "/list/fees/collect";
 
   return (
-    <div className="flex-1 p-4 m-4 mt-0 bg-white dark:bg-gray-900 rounded-md text-black dark:text-white">
+    <div className="flex-1 p-4 bg-white dark:bg-gray-900 text-black dark:text-white">
       {/* Top Controls */}
       <div className="flex items-center justify-between mb-3">
         <h1 className="hidden text-lg font-semibold md:block">
@@ -234,10 +234,11 @@ const StudentFeeListPage = async ({
               grades={grades}
               basePath={Path}
             />
+            <GenderFilter basePath={Path} />
             <StatusFilter basePath={Path} />
             <div className="flex flex-col md:flex-row items-center gap-4 w-full">
-              <ResetFiltersButton basePath={Path} />
               <div className="flex items-center gap-4">
+              <ResetFiltersButton basePath={Path} />
                 <button className="flex items-center justify-center w-8 h-8 rounded-full bg-LamaYellow dark:bg-LamaYellow">
                   <img src="/filter.png" alt="" width={14} height={14} />
                 </button>

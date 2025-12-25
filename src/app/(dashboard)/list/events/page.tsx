@@ -162,7 +162,7 @@ const EventsList = async ({
   ]);
 
   return (
-    <div className="flex-1 p-4 m-4 mt-0 bg-white rounded-md">
+    <div className="flex-1 p-4 bg-white">
       {/* TOP: Description */}
       <div className="flex items-center justify-between">
         <h1 className="hidden text-lg font-semibold md:block">All Events</h1>

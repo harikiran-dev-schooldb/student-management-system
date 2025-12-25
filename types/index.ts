@@ -245,7 +245,16 @@ export type StudentList = {
   totalFees?: { totalDiscountAmount: number | null } | null;
 };
 
-export type StudentsList = Student & {
+export type StudentsList = {
+  id: string;
+  name: string;
+  img: string | null;
+  gender: "Male" | "Female" | string;
+  fatherName: string | null;
+  dob: Date | string;
+  phone: string | null;
+  status: string;
+
   Class: {
     id: number;
     section: string | null;
@@ -255,6 +264,7 @@ export type StudentsList = Student & {
     };
   };
 };
+
 
 export type FeesList = Grade & {
   feestructure: FeeStructure[];

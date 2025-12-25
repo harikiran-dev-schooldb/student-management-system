@@ -94,7 +94,7 @@ const SubjectList = async ({ searchParams }: { searchParams: Promise<SearchParam
   ]);
 
   return (
-    <div className="flex-1 p-4 m-4 mt-0 bg-white dark:bg-gray-900 rounded-md text-black dark:text-white">
+    <div className="flex-1 p-4 bg-white dark:bg-gray-900 text-black dark:text-white">
       {/* Top Controls */}
       <div className="flex items-center justify-between mb-3">
         <h1 className="hidden text-lg font-semibold md:block">All Subjects ({count})</h1>
