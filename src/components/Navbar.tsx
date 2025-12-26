@@ -1,6 +1,7 @@
 import NavbarClient from "./NavbarClient";
 import { currentUser } from "@clerk/nextjs/server";
 import prisma from "@/lib/prisma";
+import { ProfileWithUsersSelect } from "../../types/query-types";
 
 export default async function NavbarServer() {
   const user = await currentUser();
@@ -10,44 +11,7 @@ export default async function NavbarServer() {
   where: {
     clerk_id: user.id,
   },
-  select: {
-    activeUser: {
-      select: {
-        username: true,
-      },
-    },
-    users: {
-      select: {
-        id: true,
-        username: true,
-        role: true,
-
-        admin: {
-          select: {
-            name: true,
-            img:true,
-          },
-        },
-        teacher: {
-          select: {
-            name: true,
-            img:true,
-          },
-        },
-        student: {
-          select: {
-            name: true,
-            img:true,
-            Class: {
-              select: {
-                name: true,
-              },
-            },
-          },
-        },
-      },
-    },
-  },
+  select: ProfileWithUsersSelect,
 });
 
 

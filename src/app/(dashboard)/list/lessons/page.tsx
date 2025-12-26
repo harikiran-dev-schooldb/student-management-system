@@ -16,7 +16,11 @@ const LessonsListPage = async ({
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) => {
   const params = await searchParams;
-  const { role, teacherId: userTeacherId, classId: userClassId } = await fetchUserInfo();
+  const {
+    role,
+    teacherId: userTeacherId,
+    classId: userClassId,
+  } = await fetchUserInfo();
 
   // Normalize query params
   const selectedTeacherId = Array.isArray(params.teacherId)
@@ -29,9 +33,15 @@ const LessonsListPage = async ({
     : undefined;
 
   // Fetch data for dropdowns
-  const classes = await prisma.class.findMany({ select: { id: true, section: true, gradeId: true } });
-  const grades = await prisma.grade.findMany({select: { id: true, level: true }});
-  const teachers = await prisma.teacher.findMany({select: { id: true, name: true }});
+  const classes = await prisma.class.findMany({
+    select: { id: true, section: true, gradeId: true },
+  });
+  const grades = await prisma.grade.findMany({
+    select: { id: true, level: true },
+  });
+  const teachers = await prisma.teacher.findMany({
+    select: { id: true, name: true },
+  });
 
   const classData = classes.map((cls) => ({
     id: cls.id,
@@ -47,21 +57,40 @@ const LessonsListPage = async ({
   return (
     <div className="flex-1 p-4 bg-white dark:bg-gray-900 text-black dark:text-white">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-lg font-semibold text-black dark:text-white">Timetable</h1>
+        <h1 className="hidden text-lg font-semibold md:block">Schedule</h1>
 
+        {/* Filters only for admin */}
         {/* Filters only for admin */}
         {role === "admin" && (
           <div className="flex flex-col items-center w-full gap-4 md:flex-row md:w-auto">
-            <div className="flex flex-wrap gap-4">
-              <TableSearch />
-              <TeacherFilterDropdown teachers={teacherData}  />
-              <ClassFilterDropdown
-                classes={classData}
-                grades={gradeData}
-                basePath={Path}
-              />
-              <FormContainer table="lesson" type="create" />
-              <ResetFiltersButton basePath={Path} />
+            <div className="flex flex-wrap gap-4 w-full md:w-auto">
+              {/* Search */}
+              <div className="order-1 md:order-1 w-full md:w-auto">
+                <TableSearch />
+              </div>
+
+              {/* Teacher */}
+              <div className="order-2 md:order-2 w-full md:w-auto">
+                <TeacherFilterDropdown teachers={teacherData} />
+              </div>
+
+              {/* Class (anchor point for mobile) */}
+              <div className="order-3 md:order-3 w-full md:w-auto">
+                <ClassFilterDropdown
+                  classes={classData}
+                  grades={gradeData}
+                  basePath={Path}
+                />
+              </div>
+
+              {/* Reset + Create → same line */}
+              <div className="order-4 md:order-4 flex items-center gap-2 w-full md:w-auto md:justify-end">
+                <ResetFiltersButton basePath={Path} />
+                <FormContainer table="lesson" type="create" />
+              </div>
+
+              {/* Create Lesson → LAST on mobile */}
+              <div className="order-5 md:order-5 w-full md:w-auto"></div>
             </div>
           </div>
         )}
@@ -81,7 +110,9 @@ const LessonsListPage = async ({
       ) : role === "student" ? (
         <ClassTimetableContainer classId={userClassId || classes[0]?.id || 1} />
       ) : (
-        <p className="text-gray-500 dark:text-gray-400">No timetable available</p>
+        <p className="text-gray-500 dark:text-gray-400">
+          No timetable available
+        </p>
       )}
     </div>
   );

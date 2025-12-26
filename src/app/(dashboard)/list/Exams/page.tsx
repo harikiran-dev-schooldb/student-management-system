@@ -12,6 +12,7 @@ import { Exams, SearchParams } from "../../../../../types";
 import ResetFiltersButton from "@/components/ResetFiltersButton";
 import TitleFilterDropdown from "@/components/TitleFilterDropdown";
 import { ExamListSelect } from "../../../../../types/query-types";
+import SortButton from "@/components/SortButton";
 
 // Extended Exam type
 
@@ -160,7 +161,7 @@ const ExamsList = async ({
   if (Object.keys(examGradeSubjectsWhere).length > 0)
     query.examGradeSubjects = { some: examGradeSubjectsWhere };
 
-  const [exams, count] = await prisma.$transaction([
+  const [data, count] = await prisma.$transaction([
     prisma.exam.findMany({
       where: query,
       orderBy: [{ [sortKey]: sortOrder }, { id: "desc" }],
@@ -187,11 +188,9 @@ const ExamsList = async ({
   return (
     <div className="flex-1 p-4 bg-white dark:bg-gray-900 text-black dark:text-white">
       {/* HEADER */}
-      <div className="flex items-center justify-between">
-        <h1 className="hidden text-lg font-semibold md:block text-black dark:text-white">
-          All Exams
-        </h1>
-        <div className="flex items-center gap-4">
+      <div className="flex items-center justify-between mb-3">
+        <h1 className="hidden text-lg font-semibold md:block">Exams</h1>
+        <div className="flex flex-col items-center w-full gap-4 md:flex-row md:w-auto">
           <TableSearch />
           <TitleFilterDropdown basePath={Path} />
           <DateFilter basePath={Path} />
@@ -204,14 +203,12 @@ const ExamsList = async ({
             />
           )}
           <div className="flex flex-col items-center w-full gap-4 md:flex-row md:w-auto">
-            <ResetFiltersButton basePath={Path} />
             <div className="flex items-center self-end gap-4">
+              <ResetFiltersButton basePath={Path} />
               <button className="flex items-center justify-center w-8 h-8 rounded-full bg-LamaYellow dark:bg-LamaYellow">
                 <img src="/filter.png" alt="Filter" width={14} height={14} />
               </button>
-              <button className="flex items-center justify-center w-8 h-8 rounded-full bg-LamaYellow dark:bg-LamaYellow">
-                <img src="/sort.png" alt="Sort" width={14} height={14} />
-              </button>
+              <SortButton sortKey="id" />
               {(role === "admin" || role === "teacher") && (
                 <FormContainer table="exam" type="create" />
               )}
@@ -221,13 +218,11 @@ const ExamsList = async ({
       </div>
 
       {/* TABLE */}
-      <div className="space-y-6">
         <Table
           columns={columns}
           renderRow={(item) => renderRow(item, role)}
-          data={exams}
+          data={data}
         />
-      </div>
 
       {/* PAGINATION */}
       <Pagination page={parseInt(p)} count={count} />

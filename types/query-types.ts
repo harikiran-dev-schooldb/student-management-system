@@ -310,3 +310,49 @@ export type ExamsList =
   }>;
 
 
+
+export const ProfileWithUsersSelect = {
+  activeUser: {
+    select: {
+      username: true,
+    },
+  },
+  users: {
+    select: {
+      id: true,
+      username: true,
+      role: true,
+
+      admin: {
+        select: {
+          name: true,
+          img: true,
+        },
+      },
+
+      teacher: {
+        select: {
+          name: true,
+          img: true,
+        },
+      },
+
+      student: {
+        select: {
+          name: true,
+          img: true,
+          Class: {
+            select: {
+              name: true,
+            },
+          },
+        },
+      },
+    },
+  },
+} satisfies Prisma.ProfileSelect;
+
+export type ProfileWithUsers = Prisma.ProfileGetPayload<{
+  select: typeof ProfileWithUsersSelect;
+}>;
+
