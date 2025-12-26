@@ -8,11 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/components/ui/avatar"; 
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Check } from "lucide-react";
 
 type Role = {
@@ -35,7 +31,8 @@ function getInitials(name?: string) {
   const parts = name.trim().split(" ");
   if (parts.length === 1) return parts[0][0]?.toUpperCase() ?? "?";
   return (
-    (parts[0][0] ?? "").toUpperCase() + (parts[parts.length - 1][0] ?? "").toUpperCase()
+    (parts[0][0] ?? "").toUpperCase() +
+    (parts[parts.length - 1][0] ?? "").toUpperCase()
   );
 }
 
@@ -59,21 +56,25 @@ export default function SwitchUser({ roles, activeUsername }: Props) {
     <DropdownMenu>
       {/* Avatar Trigger */}
       <DropdownMenuTrigger asChild>
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
+        <button
+          type="button"
           className="rounded-full focus:outline-none shadow-md"
         >
-          <Avatar className="w-10 h-10 ring-2 ring-gray-200">
-            {activeRole?.imageUrl ? (
-              <AvatarImage src={activeRole.imageUrl} alt={activeRole.name} />
-            ) : (
-              <AvatarFallback>
-                {getInitials(activeRole?.name)}
-              </AvatarFallback>
-            )}
-          </Avatar>
-        </motion.button>
+          <motion.span
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            tabIndex={-1} // ⬅️ CRITICAL
+            className="inline-flex rounded-full"
+          >
+            <Avatar className="w-10 h-10 ring-2 ring-gray-200">
+              {activeRole?.imageUrl ? (
+                <AvatarImage src={activeRole.imageUrl} alt={activeRole.name} />
+              ) : (
+                <AvatarFallback>{getInitials(activeRole?.name)}</AvatarFallback>
+              )}
+            </Avatar>
+          </motion.span>
+        </button>
       </DropdownMenuTrigger>
 
       {/* Dropdown */}
@@ -99,9 +100,7 @@ export default function SwitchUser({ roles, activeUsername }: Props) {
                 {r.imageUrl ? (
                   <AvatarImage src={r.imageUrl} alt={r.name} />
                 ) : (
-                  <AvatarFallback>
-                    {getInitials(r.name)}
-                  </AvatarFallback>
+                  <AvatarFallback>{getInitials(r.name)}</AvatarFallback>
                 )}
               </Avatar>
 

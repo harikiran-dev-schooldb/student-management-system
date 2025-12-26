@@ -2,17 +2,19 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { useSidebar } from "@/components/context/SidebarContext";
+import { ChevronRight } from "lucide-react";
 
 interface DropdownItem {
-  icon: string;
+  icon: React.ElementType;
   label: string;
   href: string;
 }
 
 interface DropdownProps {
-  icon: string;
+  icon: React.ReactNode;
   label: string;
   items: DropdownItem[];
   isCollapsed?: boolean;
@@ -26,125 +28,144 @@ export default function Dropdown({
 }: DropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { t } = useTranslation();
+  const pathname = usePathname();
   const { toggle, isOpen: isSidebarOpen } = useSidebar();
-  
-  const dropdownRef = useRef<HTMLDivElement>(null);
+
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [mounted, setMounted] = useState(false);
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
 
-  useEffect(() => {
-    setMounted(true);
-    return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    };
-  }, []);
+  /* ---------------- Active Parent Logic ---------------- */
 
-  if (!mounted) return null;
+  const isChildActive = items.some((item) => pathname.startsWith(item.href));
 
-  // --- Handlers ---
+  /* ---------------- Hover / Click Handling ---------------- */
 
-  const handleMouseEnter = () => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-    }
+  const openDropdown = () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
     setIsOpen(true);
   };
 
-  const handleMouseLeave = () => {
-    // 500ms buffer to allow user to move mouse into the fly-out menu
+  const closeDropdown = () => {
     timeoutRef.current = setTimeout(() => {
       setIsOpen(false);
-    }, 500);
+    }, 250);
+  };
+
+  const handleTriggerClick = () => {
+    if (isMobile) {
+      setIsOpen((prev) => !prev);
+    }
   };
 
   const handleItemClick = () => {
     setIsOpen(false);
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    
-    // If we are on mobile (sidebar behaves as overlay), close the whole sidebar
-    if (window.innerWidth < 768 && isSidebarOpen) {
+
+    // Close sidebar on mobile
+    if (isMobile && isSidebarOpen) {
       toggle();
     }
   };
 
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
+
+  /* ---------------- Render ---------------- */
+
   return (
     <div
       className="relative w-full"
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      ref={dropdownRef}
+      onMouseEnter={!isMobile ? openDropdown : undefined}
+      onMouseLeave={!isMobile ? closeDropdown : undefined}
     >
-      {/* Main Button Trigger */}
+      {/* Trigger */}
       <button
         type="button"
+        onClick={handleTriggerClick}
         className={`
-          flex items-center w-full transition-all duration-200
+          group flex w-full items-center rounded-md py-2 transition-colors
           ${isCollapsed ? "justify-center px-2" : "gap-3 px-4"}
-          py-2 rounded-md
-          text-gray-700 dark:text-gray-200
-          hover:bg-gray-100 dark:hover:bg-[#1e293b]
-          ${isOpen ? "bg-gray-100 dark:bg-[#1e293b]" : ""}
+
+          ${
+            isChildActive || isOpen
+              ? "bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white"
+              : "text-gray-600 dark:text-gray-400"
+          }
+
+          hover:bg-gray-100 hover:text-gray-900
+          dark:hover:bg-gray-800 dark:hover:text-white
         `}
       >
-        <img src={icon} alt="" width={18} height={18} className="shrink-0 opacity-80" />
+        {/* Icon + Tooltip */}
+        <div className="relative">
+          {icon}
+
+          {/* Tooltip when collapsed */}
+          
+        </div>
 
         {!isCollapsed && (
           <>
-            <span className="whitespace-nowrap flex-1 text-left text-[13px] font-medium">
+            <span className="flex-1 text-left text-sm font-medium whitespace-nowrap">
               {t(label)}
             </span>
-            <svg
-              className={`w-3.5 h-3.5 transition-transform duration-300 ${
+
+            <ChevronRight
+              size={14}
+              className={`transition-transform duration-300 ${
                 isOpen ? "rotate-90" : ""
               }`}
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-            >
-              <path
-                fillRule="evenodd"
-                d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
-                clipRule="evenodd"
-              />
-            </svg>
+            />
           </>
         )}
       </button>
 
-      {/* Sub-Items Menu (Compact Fly-out) */}
+      {/* Fly-out (Slide Animation) */}
       <div
         className={`
-          absolute z-[100] w-48 rounded-lg shadow-2xl
-          bg-white dark:bg-[#1e293b]
-          border border-gray-200 dark:border-white/10
-          transition-all duration-200 origin-left
-          
-          /* Positioning: To the right with a small gap */
-          left-full top-0 ml-3
-
-          /* Visibility Logic */
-          ${isOpen ? "opacity-100 scale-100 visible" : "opacity-0 scale-95 invisible pointer-events-none"}
+          absolute left-full top-1 ml-4 z-50 w-52
+          rounded-lg border
+          bg-white dark:bg-[#0f172a]
+          border-gray-200 dark:border-white/10
+          shadow-xl
+          transition-all duration-200
+          ${
+            isOpen
+              ? "opacity-100 translate-x-0 visible"
+              : "opacity-0 translate-x-2 invisible pointer-events-none"
+          }
         `}
       >
-        <div className="py-1.5 px-1">
-          {items.map((item) => (
-            <Link
-              key={item.label}
-              href={item.href}
-              onClick={handleItemClick}
-              className="
-                flex items-center gap-2.5 px-3 py-1.5 
-                text-[12px] font-medium
-                text-gray-600 dark:text-gray-200 
-                hover:bg-gray-50 dark:hover:bg-gray-700/50 
-                rounded-md transition-colors
-              "
-            >
-              <img src={item.icon} alt="" width={14} height={14} className="shrink-0" />
-              <span>{t(item.label)}</span>
-            </Link>
-          ))}
+        <div className="p-1.5">
+          {items.map((item) => {
+            const Icon = item.icon;
+            const active = pathname.startsWith(item.href);
+
+            return (
+              <Link
+                key={item.label}
+                href={item.href}
+                onClick={handleItemClick}
+                className={`
+                  flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium
+                  transition-colors
+                  ${
+                    active
+                      ? "bg-indigo-500/10 text-indigo-500"
+                      : "text-gray-700 dark:text-gray-300"
+                  }
+                  hover:bg-gray-100 dark:hover:bg-gray-700/50
+                  hover:text-gray-900 dark:hover:text-white
+                `}
+              >
+                <Icon size={14} />
+                <span>{t(item.label)}</span>
+              </Link>
+            );
+          })}
         </div>
       </div>
     </div>

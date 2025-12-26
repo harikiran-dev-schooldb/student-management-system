@@ -1,246 +1,237 @@
 "use client";
 
 import Link from "next/link";
-import Dropdown from "./Dropdown";
-import { useTranslation } from "react-i18next";
-import { useSidebar } from "@/components/context/SidebarContext"; // Import the hook
 import { usePathname } from "next/navigation";
+import { useTranslation } from "react-i18next";
+import { useSidebar } from "@/components/context/SidebarContext";
+import Dropdown from "./Dropdown";
+
+import {
+  Home,
+  Users,
+  User,
+  GraduationCap,
+  CalendarCheck,
+  BookOpenCheck,
+  IndianRupee,
+  MessageSquareText,
+  Layers,
+  School,
+  Clock,
+  FileText,
+  BarChart3,
+  ShieldCheck,
+  Upload,
+  LogOut,
+  BarChart2,
+  Edit,
+} from "lucide-react";
 
 type Role = "admin" | "teacher" | "student";
 
-interface MenuProps {
-  role: Role;
-  isCollapsed?: boolean;
-}
-
 interface MenuItem {
-  icon: string;
   label: string;
   href: string;
+  icon: React.ElementType;
   visible: Role[];
   dropdown?: MenuItem[];
 }
 
-interface MenuItemSection {
-  title: string;
+interface MenuSection {
+  title?: string;
   items: MenuItem[];
 }
 
-const menuItems: MenuItemSection[] = [
+const menuSections: MenuSection[] = [
   {
-    title: "",
     items: [
       {
-        icon: "/home.png",
         label: "Home",
         href: "/",
+        icon: Home,
         visible: ["admin", "teacher", "student"],
       },
       {
-        icon: "/profile.png",
         label: "Users",
         href: "#",
+        icon: Users,
         visible: ["admin"],
         dropdown: [
           {
-            icon: "/student.png",
             label: "Students",
             href: "/list/users/students",
+            icon: GraduationCap,
             visible: ["admin"],
           },
           {
-            icon: "/teacher.png",
             label: "Teachers",
             href: "/list/users/teachers",
+            icon: User,
             visible: ["admin"],
           },
           {
-            icon: "/admin.png",
             label: "Admins",
             href: "/list/users/admin",
+            icon: ShieldCheck,
             visible: ["admin"],
           },
         ],
       },
       {
-        icon: "/student.png",
-        label: "Students",
-        href: "/list/users/students",
-        visible: ["teacher"],
-      },
-      {
-        icon: "/attendance.png",
         label: "Attendance",
         href: "#",
+        icon: CalendarCheck,
         visible: ["admin", "teacher"],
         dropdown: [
           {
-            icon: "/lesson.png",
             label: "Mark Attendance",
             href: "/list/attendance/mark_attendance",
+            icon: CalendarCheck,
             visible: ["admin", "teacher"],
           },
           {
-            icon: "/attendance.png",
             label: "View Attendance",
             href: "/list/attendance/view",
+            icon: BarChart3,
             visible: ["admin", "teacher"],
           },
         ],
       },
       {
-        icon: "/homework.png",
         label: "Homeworks",
         href: "/list/homeworks",
+        icon: BookOpenCheck,
         visible: ["admin", "teacher", "student"],
       },
       {
-        icon: "/fees.png",
         label: "Fees",
         href: "#",
+        icon: IndianRupee,
         visible: ["admin", "teacher"],
         dropdown: [
           {
-            icon: "/fees.png",
             label: "Fee Collection",
             href: "/list/fees/collect",
+            icon: IndianRupee,
             visible: ["admin", "teacher"],
           },
           {
-            icon: "/student.png",
             label: "Student Fee Report",
             href: "/list/reports/student-fees",
+            icon: FileText,
             visible: ["admin"],
           },
           {
-            icon: "/report.png",
             label: "Day Wise Report",
             href: "/list/reports/daywise-fees",
-            visible: ["admin"],
-          },
-          {
-            icon: "/edit.png",
-            label: "Fee Management",
-            href: "/list/fees/feemanagement",
+            icon: BarChart3,
             visible: ["admin"],
           },
         ],
       },
       {
-        icon: "/message.png",
         label: "Messages",
         href: "/list/messages",
+        icon: MessageSquareText,
         visible: ["admin", "teacher", "student"],
       },
       {
-        icon: "/subject.png",
         label: "Subjects",
         href: "/list/subjects",
+        icon: Layers,
         visible: ["admin"],
       },
       {
-        icon: "/class.png",
         label: "Classes",
         href: "/list/classes",
+        icon: School,
         visible: ["admin"],
       },
       {
-        icon: "/lesson.png",
         label: "Time Table",
         href: "/list/lessons",
+        icon: Clock,
         visible: ["admin", "teacher"],
       },
       {
-        icon: "/exam.png",
         label: "Exams",
         href: "/list/exams",
+        icon: FileText,
         visible: ["admin", "teacher", "student"],
       },
       {
-        icon: "/result.png",
-        label: "View Results",
-        href: "/list/results/view",
-        visible: ["student"],
-      },
-      {
-        icon: "/result.png",
         label: "Results",
         href: "#",
+        icon: BarChart3,
         visible: ["admin", "teacher"],
         dropdown: [
           {
-            icon: "/result.png",
-            label: "View Results",
-            href: "/list/results/view",
-            visible: ["admin", "teacher"],
-          },
-          {
-            icon: "/lesson.png",
             label: "Marks Entry",
             href: "/list/results/marks-entry",
-            visible: ["admin", "teacher"],
+            icon: Edit,
+            visible: ["admin", "teacher", "student"],
+          },
+          {
+            label: "View Results",
+            href: "/list/results/view",
+            icon: BarChart2,
+            visible: ["admin", "teacher", "student"],
           },
         ],
       },
       {
-        icon: "/exam.png",
-        label: "Permissions",
-        href: "/list/permissions",
-        visible: ["admin"],
-      },
-      {
-        icon: "/warning.png",
         label: "Import Data",
         href: "#",
+        icon: Upload,
         visible: ["admin"],
         dropdown: [
           {
-            icon: "/class.png",
             label: "Grades",
             href: "/list/reports/bulk-import/grades",
+            icon: School,
             visible: ["admin"],
           },
           {
-            icon: "/fees.png",
             label: "Fees Structure",
             href: "/list/reports/bulk-import/feestructure",
+            icon: IndianRupee,
             visible: ["admin"],
           },
           {
-            icon: "/teacher.png",
             label: "Teachers",
             href: "/list/reports/bulk-import/teachers",
+            icon: User,
             visible: ["admin"],
           },
           {
-            icon: "/class.png",
             label: "Classes",
             href: "/list/reports/bulk-import/classes",
+            icon: School,
             visible: ["admin"],
           },
           {
-            icon: "/student.png",
             label: "Students",
             href: "/list/reports/bulk-import/students",
+            icon: GraduationCap,
             visible: ["admin"],
           },
           {
-            icon: "/subject.png",
             label: "Subjects",
             href: "/list/reports/bulk-import/subjects",
+            icon: Layers,
             visible: ["admin"],
           },
           {
-            icon: "/fees.png",
-            label: "Fee Collection",
+            label: "Fees Collection",
             href: "/list/reports/bulk-import/feecollection",
+            icon: IndianRupee,
             visible: ["admin"],
           },
           {
-            icon: "/lesson.png",
             label: "Time Table",
             href: "/list/reports/bulk-import/lessons",
-            visible: ["admin"],
+            icon: Clock,
+            visible: ["admin", "teacher"],
           },
         ],
       },
@@ -250,139 +241,105 @@ const menuItems: MenuItemSection[] = [
     title: "OTHERS",
     items: [
       {
-        icon: "/profile.png",
         label: "Profile",
         href: "/list/profiles",
-        visible: ["teacher", "student", "admin"],
+        icon: User,
+        visible: ["admin", "teacher", "student"],
       },
-      // { icon: "/setting.png", label: "Settings", href: "/settings", visible: ["admin", "teacher", "student"] },
       {
-        icon: "/logout.png",
         label: "Logout",
         href: "/logout",
+        icon: LogOut,
         visible: ["admin", "teacher", "student"],
       },
     ],
   },
 ];
 
-/**
- * Dynamically adjust menu items based on role
- */
-function updateMenuItem(item: MenuItem, role: Role): MenuItem | null {
-  // Home should redirect to /<role>
-  if (item.label === "Home") {
-    return { ...item, href: `/${role}` };
-  }
-
-  // Profile should redirect to role-specific profile
-  if (item.label === "Profile") {
-    const profileHref: Record<Role, string> = {
-      student: "/list/profiles/student",
-      teacher: "/list/profiles/teacher",
-      admin: "/list/profiles/admin",
-    };
-    return { ...item, href: profileHref[role] };
-  }
-
-  // Filter dropdown items by role
-  const filteredDropdown = item.dropdown?.filter((sub) =>
-    sub.visible.includes(role)
-  );
-  if (item.dropdown && (!filteredDropdown || filteredDropdown.length === 0))
-    return null;
-
-  return { ...item, dropdown: filteredDropdown };
-}
-
-export default function Menu({ role }: MenuProps) {
-  if (!role) {
-    return <div className="p-4 text-gray-400 text-sm">Loading menu...</div>;
-  }
-
+export default function Menu({ role }: { role: Role }) {
   const pathname = usePathname();
   const { t } = useTranslation();
   const { isOpen, toggle } = useSidebar();
   const isCollapsed = !isOpen;
 
-  // Logic to auto-close sidebar on mobile after clicking
-  const handleLinkClick = () => {
-    if (window.innerWidth < 768 && isOpen) {
-      toggle();
-    }
+  const handleClick = () => {
+    if (window.innerWidth < 768 && isOpen) toggle();
   };
 
-  // Filter + transform menu items logic (updateMenuItem call remains same)
-  const updatedMenu: MenuItemSection[] = menuItems
-    .map((section) => {
-      const filteredItems = section.items
-        .map((item) => updateMenuItem(item, role))
-        .filter((item): item is MenuItem => !!item)
-        .filter((item) => item.visible.includes(role));
-
-      return filteredItems.length ? { ...section, items: filteredItems } : null;
-    })
-    .filter((section): section is MenuItemSection => section !== null);
-
   return (
-    <div className="mt-4 flex flex-col gap-1 px-2">
-      {updatedMenu.map((section) => (
-        <div key={section.title} className="flex flex-col gap-1">
-          {/* Section Title - Compact styling */}
+    <nav className="mt-4 flex flex-col gap-2 px-2">
+      {menuSections.map((section, idx) => (
+        <div key={idx} className="flex flex-col gap-1">
           {section.title && !isCollapsed && (
-            <span className="mt-4 mb-2 px-4 text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+            <span className="px-4 py-2 text-[11px] font-semibold uppercase text-gray-400">
               {t(section.title)}
             </span>
           )}
 
-          {/* Menu Items */}
-          {section.items.map((item) => {
-            const isActive = pathname === item.href;
+          {section.items
+            .filter((item) => item.visible.includes(role))
+            .map((item) => {
+              const active = pathname === item.href;
+              const Icon = item.icon;
 
-            return item.dropdown ? (
-              <Dropdown
-                key={item.label}
-                icon={item.icon}
-                label={t(item.label)}
-                items={item.dropdown}
-                isCollapsed={isCollapsed}
-              />
-            ) : (
-              <Link
-                key={item.label}
-                href={item.href}
-                onClick={handleLinkClick}
-                className={`
-                  flex items-center transition-all duration-200 rounded-md
-                  ${isCollapsed ? "justify-center px-2" : "gap-3 px-4"}
-                  py-2
-                  ${
-                    isActive
-                      ? "bg-blue-50 text-blue-600 dark:bg-gray-700 dark:text-white"
-                      : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#1e293b]"
-                  }
-                `}
-              >
-                <img
-                  src={item.icon}
-                  alt=""
-                  width={18} // Matching Dropdown icons
-                  height={18}
-                  className={`shrink-0 ${
-                    isActive ? "opacity-100" : "opacity-70"
-                  }`}
-                />
+              if (item.dropdown) {
+                return (
+                  <Dropdown
+                    key={item.label}
+                    icon={<Icon size={18} />}
+                    label={item.label}
+                    items={item.dropdown}
+                    isCollapsed={isCollapsed}
+                  />
+                );
+              }
 
-                {!isCollapsed && (
-                  <span className="text-[13px] font-medium whitespace-nowrap">
-                    {t(item.label)}
+              return (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  onClick={handleClick}
+                  className={`
+    group relative flex items-center rounded-md py-2 transition-colors
+    ${isCollapsed ? "justify-center px-2" : "gap-3 px-4"}
+
+    ${
+      active
+        ? "bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white"
+        : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-800 dark:hover:text-white"
+    }
+  `}
+                >
+                  {/* Icon */}
+                  <span className="shrink-0">
+                    <Icon size={18} />
                   </span>
-                )}
-              </Link>
-            );
-          })}
+
+                  {/* Label (expanded only) */}
+                  {!isCollapsed && (
+                    <span className="text-sm font-medium whitespace-nowrap">
+                      {t(item.label)}
+                    </span>
+                  )}
+
+                  {/* Tooltip (collapsed only, NON-dropdown) */}
+                  {isCollapsed && (
+                    <span
+                      className="
+        pointer-events-none absolute left-full top-1/2 ml-3 -translate-y-1/2
+        whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs
+        text-white opacity-0 group-hover:opacity-100
+        transition-opacity z-[9999]
+      "
+                    >
+                      {t(item.label)}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
         </div>
       ))}
-    </div>
+    </nav>
   );
 }

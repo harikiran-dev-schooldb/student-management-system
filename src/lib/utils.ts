@@ -1,3 +1,6 @@
+import clsx, { ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
+
 // src/lib/utils.ts
 export const currentWorkWeek = (): Date => {
   const today = new Date();
@@ -38,4 +41,8 @@ export function adjustScheduleToCurrentWeek(
 
     return { title: event.title, start, end };
   });
+}
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
 }

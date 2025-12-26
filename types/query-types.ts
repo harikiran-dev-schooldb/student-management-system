@@ -356,3 +356,42 @@ export type ProfileWithUsers = Prisma.ProfileGetPayload<{
   select: typeof ProfileWithUsersSelect;
 }>;
 
+export const PermissionSlipSelect = {
+  id: true,
+  timeIssued: true,
+  date: true,
+  leaveType: true,
+  description: true,
+  withWhom: true,
+  relation: true,
+  studentId: true,
+
+  student: {
+    select: {
+      id: true,
+      name: true,
+      classId: true,
+
+      Class: {
+        select: {
+          id: true,
+          section: true,
+          gradeId: true,
+
+          Grade: {
+            select: {
+              id: true,
+              level: true,
+            },
+          },
+        },
+      },
+    },
+  },
+} satisfies Prisma.PermissionSlipSelect;
+
+
+export type PermissionSlipWithStudent =
+  Prisma.PermissionSlipGetPayload<{
+    select: typeof PermissionSlipSelect;
+  }>;

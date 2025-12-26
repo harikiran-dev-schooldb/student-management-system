@@ -11,6 +11,7 @@ import { Prisma } from "@prisma/client";
 import { PermissionWithRelations, SearchParams } from "../../../../../types";
 import ResetFiltersButton from "@/components/ResetFiltersButton";
 import ExportButton from "@/components/ExportButton";
+import { PermissionSlipSelect } from "../../../../../types/query-types";
 
 // 🔹 Render Table Row
 const renderRow = (item: PermissionWithRelations, role: string | null) => {
@@ -35,10 +36,10 @@ const renderRow = (item: PermissionWithRelations, role: string | null) => {
             }`
           : "N/A"}
       </td>
-      <td className="px-2 py-1">{item.leaveType}</td>
-      <td className="px-2 py-1">{item.description || "-"}</td>
-      <td className="px-2 py-1">{item.withWhom}</td>
-      <td className="px-2 py-1">{item.relation}</td>
+      <td className="px-2 py-1 hidden md:table-cell">{item.leaveType}</td>
+      <td className="px-2 py-1 hidden md:table-cell">{item.description || "-"}</td>
+      <td className="px-2 py-1 hidden md:table-cell">{item.withWhom}</td>
+      <td className="px-2 py-1 hidden md:table-cell">{item.relation}</td>
       {(role === "admin" || role === "teacher") && (
         <td className="px-2 py-1">
           <div className="flex items-center gap-2">
@@ -53,13 +54,13 @@ const renderRow = (item: PermissionWithRelations, role: string | null) => {
 
 // 🔹 Table Columns
 const getColumns = (role: string | null) => [
-  { header: "Issued Time", accessor: "timeIssued" },
+  { header: "Issued Time", accessor: "timeIssued"},
   { header: "Student", accessor: "student" },
   { header: "Class", accessor: "class" },
-  { header: "Leave Type", accessor: "leaveType" },
-  { header: "Description", accessor: "description" },
-  { header: "Person Name", accessor: "withWhom" },
-  { header: "Relation", accessor: "relation" },
+  { header: "Leave Type", accessor: "leaveType", className: "hidden md:table-cell" },
+  { header: "Description", accessor: "description", className: "hidden md:table-cell" },
+  { header: "Person Name", accessor: "withWhom", className: "hidden md:table-cell" },
+  { header: "Relation", accessor: "relation", className: "hidden md:table-cell" },
   ...(role === "admin" || role === "teacher"
     ? [{ header: "Actions", accessor: "action" }]
     : []),
@@ -128,36 +129,7 @@ const PermissionSlipListPage = async ({
     prisma.permissionSlip.findMany({
       where: query,
       orderBy: [{ [sortKey]: sortOrder }, { id: "desc" }],
-      select: {
-        id: true,
-        timeIssued: true,
-        date: true,
-        leaveType: true,
-        description: true,
-        withWhom: true,
-        relation: true,
-        studentId: true,
-        student: {
-          select: {
-            id: true,
-            name: true,
-            classId: true,
-            Class: {
-              select: {
-                id: true,
-                section: true,
-                gradeId: true,
-                Grade: {
-                  select: {
-                    id: true,
-                    level: true,
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
+      select: PermissionSlipSelect,
       take: ITEM_PER_PAGE,
       skip: ITEM_PER_PAGE * (parseInt(p) - 1),
     }),
@@ -187,8 +159,8 @@ const PermissionSlipListPage = async ({
               basePath={Path}
             />
           )}
-          <ResetFiltersButton basePath={Path} />
           <div className="flex items-center gap-4">
+            <ResetFiltersButton basePath={Path} />
             <button className="flex items-center justify-center w-8 h-8 rounded-full bg-LamaYellow dark:bg-LamaYellow">
               <img src="/filter.png" alt="Filter" width={14} height={14} />
             </button>

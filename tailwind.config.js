@@ -15,6 +15,7 @@ const config = {
         "gradient-conic":
           "conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))",
       },
+      
       colors: {
         LamaSky: "#C3EBFA",
         LamaSkyLight: "#EDF9FD",
@@ -26,6 +27,19 @@ const config = {
         LamaPinkLight: "#ffe5ec",
         LamaGreen: "#29bf12",
         LamaRed: "#ff7477",
+         "grey-olive": {
+          50: "#f2f3f2",
+          100: "#e5e6e5",
+          200: "#cbcdcc",
+          300: "#b1b4b2",
+          400: "#979b99",
+          500: "#7d827f",
+          600: "#646866",
+          700: "#4b4e4c",
+          800: "#323433",
+          900: "#191a19",
+          950: "#111212",
+        },
 
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",

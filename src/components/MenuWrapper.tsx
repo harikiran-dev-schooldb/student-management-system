@@ -12,5 +12,5 @@ export default async function MenuWrapper({
     (user?.publicMetadata?.role as "admin" | "teacher" | "student") ??
     "student";
 
-  return <Menu role={role} isCollapsed={isCollapsed} />;
+  return <Menu role={role}  />;
 }
