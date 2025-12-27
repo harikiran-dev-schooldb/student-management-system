@@ -24,7 +24,6 @@ const renderRow = (
   feeMap: Map<string, any>
 ) => {
   const studentFee = feeMap.get(item.id);
-
   const paidAmount = studentFee?.totalPaidAmount ?? 0;
   const abacusAmount = studentFee?.totalAbacusAmount ?? 0;
   const totalFeeAmount = studentFee?.totalFeeAmount ?? 0;

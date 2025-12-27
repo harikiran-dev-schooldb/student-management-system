@@ -36,9 +36,9 @@ export default function SidebarShell({
         } px-4 py-3 h-20`}
       >
         {isOpen && (
-          <Link href="/" className="flex items-center gap-2 p-2">
             <img src="/logo.png" alt="logo" width={40} height={40} />
-          </Link>
+          // <Link href="https://kotaksalesianschool-vizag.com/" className="flex items-center gap-2 p-2">
+          // </Link>
         )}
 
         <button

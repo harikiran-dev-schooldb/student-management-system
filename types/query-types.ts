@@ -261,7 +261,12 @@ export const StudentFeeSelect = {
       },
     },
   },
-
+  feeTransactions: {
+    select: {
+      id: true,
+      receiptNo: true,
+    },
+  },
   totalFees: {
     select: {
       totalDiscountAmount: true,

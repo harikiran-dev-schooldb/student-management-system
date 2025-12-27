@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { useSidebar } from "@/components/context/SidebarContext";
 import Dropdown from "./Dropdown";
+import { useEffect, useState } from "react";
+import type { ElementType } from "react";
 
 import {
   Home,
@@ -31,8 +33,8 @@ type Role = "admin" | "teacher" | "student";
 
 interface MenuItem {
   label: string;
-  href: string;
-  icon: React.ElementType;
+  href?: string | ((role: Role) => string); // ✅ optional
+  icon: ElementType;
   visible: Role[];
   dropdown?: MenuItem[];
 }
@@ -47,13 +49,12 @@ const menuSections: MenuSection[] = [
     items: [
       {
         label: "Home",
-        href: "/",
+        href: (role: Role) => `/${role}`,
         icon: Home,
         visible: ["admin", "teacher", "student"],
       },
       {
         label: "Users",
-        href: "#",
         icon: Users,
         visible: ["admin"],
         dropdown: [
@@ -79,7 +80,6 @@ const menuSections: MenuSection[] = [
       },
       {
         label: "Attendance",
-        href: "#",
         icon: CalendarCheck,
         visible: ["admin", "teacher"],
         dropdown: [
@@ -105,7 +105,12 @@ const menuSections: MenuSection[] = [
       },
       {
         label: "Fees",
-        href: "#",
+        href: "/list/fees/collect",
+        icon: IndianRupee,
+        visible: ["student"],
+      },
+      {
+        label: "Fees",
         icon: IndianRupee,
         visible: ["admin", "teacher"],
         dropdown: [
@@ -125,6 +130,12 @@ const menuSections: MenuSection[] = [
             label: "Day Wise Report",
             href: "/list/reports/daywise-fees",
             icon: BarChart3,
+            visible: ["admin"],
+          },
+          {
+            label: "Fees Management",
+            href: "/list/fees/feemanagement",
+            icon: Edit,
             visible: ["admin"],
           },
         ],
@@ -161,15 +172,14 @@ const menuSections: MenuSection[] = [
       },
       {
         label: "Results",
-        href: "#",
         icon: BarChart3,
-        visible: ["admin", "teacher"],
+        visible: ["admin", "teacher", "student"],
         dropdown: [
           {
             label: "Marks Entry",
             href: "/list/results/marks-entry",
             icon: Edit,
-            visible: ["admin", "teacher", "student"],
+            visible: ["admin", "teacher"],
           },
           {
             label: "View Results",
@@ -181,7 +191,6 @@ const menuSections: MenuSection[] = [
       },
       {
         label: "Import Data",
-        href: "#",
         icon: Upload,
         visible: ["admin"],
         dropdown: [
@@ -242,7 +251,7 @@ const menuSections: MenuSection[] = [
     items: [
       {
         label: "Profile",
-        href: "/list/profiles",
+        href: (role: Role) => `/list/profiles/${role}`,
         icon: User,
         visible: ["admin", "teacher", "student"],
       },
@@ -262,8 +271,21 @@ export default function Menu({ role }: { role: Role }) {
   const { isOpen, toggle } = useSidebar();
   const isCollapsed = !isOpen;
 
+  const [isMobile, setIsMobile] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
+  if (!mounted) return null;
+
   const handleClick = () => {
-    if (window.innerWidth < 768 && isOpen) toggle();
+    if (isMobile && isOpen) toggle();
   };
 
   return (
@@ -279,43 +301,47 @@ export default function Menu({ role }: { role: Role }) {
           {section.items
             .filter((item) => item.visible.includes(role))
             .map((item) => {
-              const active = pathname === item.href;
               const Icon = item.icon;
 
               if (item.dropdown) {
+                const dropdownItems = item.dropdown
+                  .filter((d) => d.visible.includes(role))
+                  .map((d) => ({
+                    ...d,
+                    href: typeof d.href === "function" ? d.href(role) : d.href!,
+                  }));
+
                 return (
                   <Dropdown
                     key={item.label}
                     icon={<Icon size={18} />}
                     label={item.label}
-                    items={item.dropdown}
+                    items={dropdownItems}
                     isCollapsed={isCollapsed}
                   />
                 );
               }
 
+              const resolvedHref =
+                typeof item.href === "function" ? item.href(role) : item.href!;
+
+              const active = pathname === resolvedHref;
+
               return (
                 <Link
                   key={item.label}
-                  href={item.href}
+                  href={resolvedHref}
                   onClick={handleClick}
-                  className={`
-    group relative flex items-center rounded-md py-2 transition-colors
-    ${isCollapsed ? "justify-center px-2" : "gap-3 px-4"}
-
-    ${
-      active
-        ? "bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white"
-        : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-800 dark:hover:text-white"
-    }
-  `}
+                  className={`group relative flex items-center rounded-md py-2 transition-colors
+                    ${isCollapsed ? "justify-center px-2" : "gap-3 px-4"}
+                    ${
+                      active
+                        ? "bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white"
+                        : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-800 dark:hover:text-white"
+                    }`}
                 >
-                  {/* Icon */}
-                  <span className="shrink-0">
-                    <Icon size={18} />
-                  </span>
+                  <Icon size={18} />
 
-                  {/* Label (expanded only) */}
                   {!isCollapsed && (
                     <span className="text-sm font-medium whitespace-nowrap">
                       {t(item.label)}

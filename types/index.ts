@@ -183,7 +183,6 @@ export type AnnouncementList = Announcement & {
   };
 };
 
-
 export type AttendanceResponse = {
   attendance: Attendance[];
   students: (Student & {
@@ -195,8 +194,6 @@ export type AttendanceResponse = {
     } | null;
   })[];
 };
-
-
 
 export type ClassList = {
   id: number;
@@ -265,7 +262,6 @@ export type StudentsList = {
   };
 };
 
-
 export type FeesList = Grade & {
   feestructure: FeeStructure[];
 };
@@ -307,7 +303,6 @@ export type Homeworks = {
   };
 };
 
-
 export type MessageList = Messages & {
   Student: {
     id: string;
@@ -325,34 +320,37 @@ export type MessageList = Messages & {
   } | null;
 };
 
-export type FeeColectList =
-  Prisma.StudentGetPayload<{
-    select: {
-      id: true;
-      name: true;
-      gender: true;
-      fatherName: true;
-      phone: true;
-      img: true;
-      Class: {
-        select: {
-          section: true;
-          Grade: {
-            select: {
-              id: true;
-              level: true;
-            };
+export type FeeColectList = Prisma.StudentGetPayload<{
+  select: {
+    id: true;
+    name: true;
+    gender: true;
+    fatherName: true;
+    phone: true;
+    img: true;
+    Class: {
+      select: {
+        section: true;
+        Grade: {
+          select: {
+            id: true;
+            level: true;
           };
         };
       };
-      totalFees: {
-        select: {
-          totalDiscountAmount: true;
-        };
+    };
+    feeTransactions: {
+      select: {
+        id: true;
+        receiptNo: true;};
+    };
+    totalFees: {
+      select: {
+        totalDiscountAmount: true;
       };
     };
-  }>;
-
+  };
+}>;
 
 export type AttendanceList = {
   id: number;
@@ -374,7 +372,6 @@ export type AttendanceList = {
   Student: {
     id: string;
     name: string;
-    phone:string;
+    phone: string;
   };
 };
-
