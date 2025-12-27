@@ -3,29 +3,24 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 
 /* --------------------------------------------------
-   PostgreSQL Adapter (Prisma 7)
+   PostgreSQL Pool (Neon)
 -------------------------------------------------- */
-
-// const pool = new Pool({
-//   connectionString: process.env.DATABASE_URL,
-//   ssl: {
-//     rejectUnauthorized: false,
-//   },
-// });
+const isProd = process.env.NODE_ENV === "production";
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl:
-    process.env.DB_SSL === "true"
-      ? { rejectUnauthorized: false }
-      : false,
+  max: 5,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 5000,
+  ssl: isProd
+    ? { rejectUnauthorized: false } // Neon (Vercel)
+    : false,                        // Local Postgres
 });
-
 
 const adapter = new PrismaPg(pool);
 
 /* --------------------------------------------------
-   Base Prisma Client
+   Base Prisma Client (ONLY PrismaClient)
 -------------------------------------------------- */
 
 const createBasePrismaClient = () =>
@@ -34,32 +29,20 @@ const createBasePrismaClient = () =>
     log:
       process.env.NODE_ENV === "production"
         ? [
-            { level: "query", emit: "event" }, // required for $on("query")
+            { level: "query", emit: "event" },
             { level: "error", emit: "stdout" },
             { level: "warn", emit: "stdout" },
           ]
-        : [{ level: "error", emit: "stdout" }], // dev: no query spam
+        : [{ level: "error", emit: "stdout" }],
   });
 
-/* --------------------------------------------------
-   Global typings (Next.js safe)
--------------------------------------------------- */
-
-declare global {
-  var prismaBase:
-    | ReturnType<typeof createBasePrismaClient>
-    | undefined;
-
-  var prisma:
-    | ReturnType<typeof createExtendedPrisma>
-    | undefined;
-}
+type BasePrisma = PrismaClient;
 
 /* --------------------------------------------------
    Prisma Extensions
 -------------------------------------------------- */
 
-const createExtendedPrisma = (base: PrismaClient) =>
+const extendPrisma = (base: BasePrisma) =>
   base.$extends({
     query: {
       class: {
@@ -77,8 +60,8 @@ const createExtendedPrisma = (base: PrismaClient) =>
             });
 
             if (grade?.level) {
-              const className = `${grade.level} - ${data.section}`;
-              data.name = className;
+              const name = `${grade.level} - ${data.section}`;
+              data.name = name;
 
               const exists = await base.class.findFirst({
                 where: {
@@ -88,9 +71,7 @@ const createExtendedPrisma = (base: PrismaClient) =>
               });
 
               if (exists) {
-                throw new Error(
-                  `Duplicate class "${className}" already exists.`
-                );
+                throw new Error(`Class "${name}" already exists.`);
               }
             }
           }
@@ -124,7 +105,7 @@ const createExtendedPrisma = (base: PrismaClient) =>
             });
 
             if (grade?.level) {
-              const newName = `${grade.level} - ${section}`;
+              const name = `${grade.level} - ${section}`;
 
               const duplicate = await base.class.findFirst({
                 where: {
@@ -135,12 +116,10 @@ const createExtendedPrisma = (base: PrismaClient) =>
               });
 
               if (duplicate) {
-                throw new Error(
-                  `Cannot rename — class "${newName}" already exists.`
-                );
+                throw new Error(`Class "${name}" already exists.`);
               }
 
-              data.name = newName;
+              data.name = name;
             }
           }
 
@@ -150,40 +129,52 @@ const createExtendedPrisma = (base: PrismaClient) =>
     },
   });
 
+type ExtendedPrisma = ReturnType<typeof extendPrisma>;
+
 /* --------------------------------------------------
-   Singleton base client
+   Global singletons (TYPE SAFE)
 -------------------------------------------------- */
 
-const base =
-  globalThis.prismaBase ?? createBasePrismaClient();
+declare global {
+  // eslint-disable-next-line no-var
+  var prismaBase: BasePrisma | undefined;
+
+  // eslint-disable-next-line no-var
+  var prisma: ExtendedPrisma | undefined;
+}
+
+/* --------------------------------------------------
+   Instantiate
+-------------------------------------------------- */
+
+const base = globalThis.prismaBase ?? createBasePrismaClient();
 
 if (process.env.NODE_ENV !== "production") {
   globalThis.prismaBase = base;
 }
 
-/* --------------------------------------------------
-   Extended Prisma client
--------------------------------------------------- */
-
-const prisma =
-  globalThis.prisma ?? createExtendedPrisma(base);
+const prisma = globalThis.prisma ?? extendPrisma(base);
 
 if (process.env.NODE_ENV !== "production") {
   globalThis.prisma = prisma;
 }
 
 /* --------------------------------------------------
-   Slow Query Logger (production only)
+   Slow query logging (BASE ONLY)
 -------------------------------------------------- */
 
 if (process.env.NODE_ENV === "production") {
-  base.$on("query", (e: Prisma.QueryEvent) => {
+  (
+    base.$on as unknown as (
+      event: "query",
+      cb: (e: Prisma.QueryEvent) => void
+    ) => void
+  )("query", (e) => {
     if (e.duration > 300) {
-      console.warn(
-        `⚠️ Slow Query (${e.duration}ms)\n${e.query}`
-      );
+      console.warn(`⚠️ Slow Query (${e.duration}ms)\n${e.query}`);
     }
   });
 }
+
 
 export default prisma;

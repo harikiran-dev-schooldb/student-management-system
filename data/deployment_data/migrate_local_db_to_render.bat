@@ -15,17 +15,17 @@ REM =============================
 set PATH=C:\Program Files\PostgreSQL\18\bin;%PATH%
 
 echo ==========================================
-echo 📤 Dumping local database (schema + data)
+echo Dumping local database (schema + data)
 echo ==========================================
 pg_dump --no-owner --no-privileges --clean --if-exists "%LOCAL_DB%" > dump.sql
 
 echo ==========================================
-echo 📥 Restoring into Supabase database
+echo Restoring into Supabase database
 echo ==========================================
 psql "%REMOTE_DB%" < dump.sql
 
 echo ==========================================
-echo ✅ Migration completed successfully
+echo Migration completed successfully
 echo ==========================================
 
 endlocal
