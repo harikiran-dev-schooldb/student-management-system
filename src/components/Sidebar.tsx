@@ -13,28 +13,22 @@ export default function SidebarShell({
   return (
     <aside
       className={`
-    h-screen transition-all duration-300 flex-col border-r
-    bg-white dark:bg-[#121727]
-    border-gray-200 dark:border-white/10
-    text-gray-700 dark:text-gray-200
+        hidden md:flex
+        h-screen flex-col border-r
+        bg-white dark:bg-[#121727]
+        border-gray-200 dark:border-white/10
+        text-gray-700 dark:text-gray-200
+        transition-all duration-300
 
-    fixed inset-y-0 left-0 z-[100]
-    md:relative md:z-40
-
-    ${
-      isOpen
-        ? "flex w-[200px] md:w-48 translate-x-0"
-        : "hidden md:flex md:w-20 md:translate-x-0"
-    }
-  `}
+        ${isOpen ? "w-48" : "w-20"}
+      `}
     >
-      {/* TOP SECTION: Logo & Toggle */}
+      {/* TOP SECTION: Toggle */}
       <div
         className={`flex items-center ${
           isOpen ? "justify-between" : "justify-center"
         } px-4 py-3 h-20`}
       >
-
         <button
           onClick={toggle}
           className="p-2 rounded-md hover:bg-LamaSkyLight dark:hover:bg-gray-700 transition-colors"

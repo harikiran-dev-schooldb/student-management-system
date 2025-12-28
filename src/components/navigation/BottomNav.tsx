@@ -3,47 +3,81 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import MoreMenu from "../MoreMenu";
+import { bottomNavItems } from "@/lib/BottomNav.config";
+import MobileSheet from "../MobileSheet";
 
 type Role = "admin" | "teacher" | "student";
 
+
 export default function BottomNav({ role }: { role: Role }) {
   const pathname = usePathname();
-  const [open, setOpen] = useState(false);
+  const [sheet, setSheet] = useState<null | {
+    title: string;
+    items: { label: string; href: string }[];
+  }>(null);
 
   return (
     <>
-      {/* Bottom Bar */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-[#0f172a] border-t border-gray-700 md:hidden">
-        <div className="flex justify-around items-center h-16">
+      <nav className="fixed bottom-0 left-0 right-0 z-[100] md:hidden
+        bg-white dark:bg-[#121727]
+        border-t border-gray-200 dark:border-white/10"
+      >
+        <ul className="flex justify-around items-center h-14">
+          {bottomNavItems
+            .filter((i) => i.visible.includes(role))
+            .map((item) => {
+              const Icon = item.icon;
 
-          <NavItem label="Home" icon="/home.png" href={`/${role}`} active={pathname === `/${role}`} />
-          <NavItem label="Attendance" icon="/attendance.png" href="/list/attendance/view" active={pathname.includes("/attendance")} />
-          <NavItem label="Classes" icon="/class.png" href="/list/classes" active={pathname.includes("/classes")} />
-          <NavItem label="Messages" icon="/message.png" href="/list/messages" active={pathname.includes("/messages")} />
+              if (item.children) {
+                return (
+                  <li key={item.label}>
+                    <button
+                      onClick={() =>
+                        setSheet({
+                          title: item.label,
+                          items: item.children!,
+                        })
+                      }
+                      className="flex flex-col items-center gap-1 text-[11px]
+                        text-gray-500 dark:text-gray-400"
+                    >
+                      <Icon size={20} />
+                      <span>{item.label}</span>
+                    </button>
+                  </li>
+                );
+              }
 
-          {/* Hamburger */}
-          <button
-            onClick={() => setOpen(true)}
-            className="flex flex-col items-center text-xs text-gray-300"
-          >
-            <span className="text-xl">☰</span>
-            More
-          </button>
-        </div>
+              const href = item.href!(role);
+              const active = pathname.startsWith(href);
+
+              return (
+                <li key={item.label}>
+                  <Link
+                    href={href}
+                    className={`flex flex-col items-center gap-1 text-[11px]
+                      ${
+                        active
+                          ? "text-LamaPurple"
+                          : "text-gray-500 dark:text-gray-400"
+                      }`}
+                  >
+                    <Icon size={20} />
+                    <span>{item.label}</span>
+                  </Link>
+                </li>
+              );
+            })}
+        </ul>
       </nav>
 
-      {/* Slide-up Menu */}
-      {open && <MoreMenu role={role} onClose={() => setOpen(false)} />}
+      {sheet && (
+        <MobileSheet
+          title={sheet.title}
+          items={sheet.items}
+          onClose={() => setSheet(null)}
+        />
+      )}
     </>
-  );
-}
-
-function NavItem({ label, icon, href, active }: any) {
-  return (
-    <Link href={href} className={`flex flex-col items-center text-xs ${active ? "text-blue-400" : "text-gray-300"}`}>
-      <img src={icon} width={22} height={22} className={active ? "opacity-100" : "opacity-70"} />
-      {label}
-    </Link>
   );
 }
