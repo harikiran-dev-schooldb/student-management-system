@@ -4,7 +4,7 @@ import { useUser } from "@clerk/nextjs";
 import MenuWrapper from "@/components/MenuWrapper";
 import SidebarShell from "@/components/Sidebar";
 import { SidebarProvider } from "@/components/context/SidebarContext";
-import BottomNav from "./navigation/BottomNav";
+import BottomNav from "./mobile/BottomNav";
 
 type Role = "admin" | "teacher" | "student";
 

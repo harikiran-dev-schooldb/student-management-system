@@ -70,7 +70,7 @@ export default function NavbarClient({
         />
 
         {/* School Name & Affiliation */}
-        <div className="px-4 hidden md:flex flex-col leading-tight">
+        {/* <div className="px-4 hidden md:flex flex-col leading-tight">
           <span className="text-xl font-extrabold tracking-wide text-red-600 dark:text-gray-200">
             KOTAK SALESIAN SCHOOL
           </span>
@@ -80,8 +80,8 @@ export default function NavbarClient({
           <span className="text-[12px] text-gray-500 dark:text-gray-400 font-semibold">
             Affiliation No. AP/050 – Dt. 04-11-1987
           </span>
-        </div>
-      </div>
+        </div> */}
+      </div> 
 
       {/* RIGHT */}
       <div className="flex items-center gap-3 md:gap-6">
