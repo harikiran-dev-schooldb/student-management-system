@@ -1,12 +1,11 @@
 "use client";
 
 import { Menu } from "lucide-react";
-import { useSidebar } from "./context/SidebarContext";
 import SwitchUser from "./SwitchUser";
 import TableSearch from "./TableSearch";
 import ThemeToggle from "./ThemeToggle";
-
 import Image from "next/image";
+import Link from "next/link";
 
 interface NavbarClientProps {
   roles: Array<{
@@ -18,6 +17,7 @@ interface NavbarClientProps {
     img?: string | null;
   }>;
   activeUser: { username?: string } | null;
+  onToggleSidebar?: () => void; // ✅ injected from layout
 }
 
 function Avatar({ img, name }: { img?: string | null; name: string }) {
@@ -47,55 +47,73 @@ function Avatar({ img, name }: { img?: string | null; name: string }) {
   );
 }
 
-export default function NavbarClient({ roles, activeUser }: NavbarClientProps) {
+export default function NavbarClient({
+  roles,
+  activeUser,
+  onToggleSidebar,
+}: NavbarClientProps) {
   const activeRole = roles.find((r) => r.username === activeUser?.username);
-  const { toggle } = useSidebar();
 
   return (
-    <div className="flex items-center justify-between px-3 py-4 bg-white dark:bg-[#121727] shadow-md">
-      <div className="flex items-center gap-3">
-        {/* Sidebar Toggle */}
+    <div className="flex justify-between px-3 py-2 bg-white dark:bg-[#121727] shadow-md">
+      {/* LEFT: Logo + School Identity */}
+      <div className="flex items-center gap-3 md:gap-6">
+        
 
-        <button onClick={toggle} className="md:hidden mr-4">
-          <Menu size={24} />
-        </button>
-        {/* Search (desktop only) */}
-        <div className="hidden md:block">
-          <TableSearch />
+        {/* School Logo */}
+        <img
+          src="/logo.png"
+          alt="Kotak Salesian School"
+          width={40}
+          height={40}
+          className="object-contain"
+        />
+
+        {/* School Name & Affiliation */}
+        <div className="px-4 hidden md:flex flex-col leading-tight">
+          <span className="text-xl font-extrabold tracking-wide text-red-600">
+            KOTAK SALESIAN SCHOOL
+          </span>
+          <span className="text-[14px] text-gray-600">
+            (Affiliated to the Council for the I.S.C. Examination, New Delhi)
+          </span>
+          <span className="text-[12px] text-gray-500">
+            Affiliation No. AP/050 – Dt. 04-11-1987
+          </span>
         </div>
       </div>
 
-      {/* ICONS + USER */}
+      {/* RIGHT */}
       <div className="flex items-center gap-3 md:gap-6">
+        {/* Search */}
+        <div className="hidden md:block">
+          <TableSearch />
+        </div>
         {/* Messages */}
-        <div className="flex items-center justify-center bg-gray-100 dark:bg-LamaPurple rounded-full cursor-pointer w-8 h-8 hover:bg-gray-200 dark:hover:bg-gray-600 transition">
+        <div className="flex items-center justify-center bg-gray-100 dark:bg-LamaPurple rounded-full cursor-pointer w-8 h-8">
           <img src="/message.png" alt="Messages" width={20} height={20} />
         </div>
 
         {/* Announcements */}
-        <div className="relative flex items-center justify-center bg-gray-100 dark:bg-LamaPurple rounded-full cursor-pointer w-8 h-8 hover:bg-gray-200 dark:hover:bg-gray-600 transition">
+        <div className="relative flex items-center justify-center bg-gray-100 dark:bg-LamaPurple rounded-full cursor-pointer w-8 h-8">
           <img
             src="/announcement.png"
             alt="Announcements"
             width={20}
             height={20}
           />
-          <div className="absolute flex items-center justify-center w-5 h-5 text-xs text-white bg-LamaPurple rounded-full -top-2 -right-2 shadow-md">
+          <div className="absolute -top-2 -right-2 w-5 h-5 text-xs flex items-center justify-center text-white bg-LamaPurple rounded-full">
             1
           </div>
         </div>
 
-        {/* Theme Toggle */}
         <ThemeToggle />
 
-        {/* USER AVATAR + ROLE SWITCH */}
         {activeRole && (
           <div className="flex items-center gap-2">
             <Avatar img={activeRole.img} name={activeRole.name} />
             <div className="hidden md:flex flex-col leading-tight">
-              <span className="text-sm font-medium text-gray-800 dark:text-gray-100">
-                {activeRole.name}
-              </span>
+              <span className="text-sm font-medium">{activeRole.name}</span>
               <span className="text-xs text-gray-500 capitalize">
                 {activeRole.role}
               </span>
@@ -103,7 +121,6 @@ export default function NavbarClient({ roles, activeUser }: NavbarClientProps) {
           </div>
         )}
 
-        {/* Role switcher – show only if multiple roles */}
         {roles.length > 1 && (
           <SwitchUser
             roles={roles}

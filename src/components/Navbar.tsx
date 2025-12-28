@@ -3,11 +3,21 @@ import { currentUser } from "@clerk/nextjs/server";
 import prisma from "@/lib/prisma";
 import { ProfileWithUsersSelect } from "../../types/query-types";
 
-export async function NavbarServer() {
+export async function NavbarServer({
+  onToggleSidebar,
+}: {
+  onToggleSidebar?: () => void;
+}) {
   const user = await currentUser();
 
   if (!user) {
-    return <NavbarClient roles={[]} activeUser={null} />;
+    return (
+      <NavbarClient
+        roles={[]}
+        activeUser={null}
+        onToggleSidebar={onToggleSidebar}
+      />
+    );
   }
 
   const profile = await prisma.profile.findFirst({
@@ -16,7 +26,13 @@ export async function NavbarServer() {
   });
 
   if (!profile) {
-    return <NavbarClient roles={[]} activeUser={null} />;
+    return (
+      <NavbarClient
+        roles={[]}
+        activeUser={null}
+        onToggleSidebar={onToggleSidebar}
+      />
+    );
   }
 
   const roles = profile.users.map((u) => ({
@@ -36,6 +52,7 @@ export async function NavbarServer() {
           ? { username: profile.activeUser.username }
           : null
       }
+      onToggleSidebar={onToggleSidebar}
     />
   );
 }

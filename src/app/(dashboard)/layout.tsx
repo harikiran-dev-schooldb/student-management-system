@@ -1,8 +1,5 @@
-"use client";
-
-import MenuWrapper from "@/components/MenuWrapper";
-import SidebarShell from "@/components/Sidebar";
-import { SidebarProvider } from "@/components/context/SidebarContext";
+import DashboardClientLayout from "@/components/DashboardClientLayout";
+import PageNavbar from "@/components/PageNavbar";
 
 export default function DashboardLayout({
   children,
@@ -10,24 +7,14 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <SidebarProvider>
-      <div className="flex h-screen bg-white dark:bg-[#121727]">
-        {/* Sidebar */}
-        <SidebarShell>
-          <MenuWrapper />
-        </SidebarShell>
+    <>
+      {/* ✅ SERVER: Clerk + Prisma allowed */}
+      <PageNavbar />
 
-        {/* Main Content */}
-        <div className="flex flex-col flex-1 min-w-0">
-          
-          
-
-          {/* Page Content */}
-          <main className="flex-1 overflow-y-auto bg-white dark:bg-[#121727]">
-            {children}
-          </main>
-        </div>
-      </div>
-    </SidebarProvider>
+      {/* ✅ CLIENT: sidebar + context */}
+      <DashboardClientLayout>
+        {children}
+      </DashboardClientLayout>
+    </>
   );
 }

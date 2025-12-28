@@ -2,7 +2,6 @@
 
 import { useSidebar } from "@/components/context/SidebarContext";
 import { Menu } from "lucide-react";
-import Link from "next/link";
 
 export default function SidebarShell({
   children,
@@ -35,11 +34,6 @@ export default function SidebarShell({
           isOpen ? "justify-between" : "justify-center"
         } px-4 py-3 h-20`}
       >
-        {isOpen && (
-            <img src="/logo.png" alt="logo" width={40} height={40} />
-          // <Link href="https://kotaksalesianschool-vizag.com/" className="flex items-center gap-2 p-2">
-          // </Link>
-        )}
 
         <button
           onClick={toggle}
