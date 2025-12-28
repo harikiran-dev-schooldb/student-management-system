@@ -13,7 +13,7 @@ import { StudentFee } from "../../../types";
 
 interface FeesTableProps {
   data: StudentFee[];
-  mode: "collect" | "cancel";
+  mode: "collect" | "cancel" | "view";
 }
 
 // ✅ Date formatter
@@ -80,6 +80,7 @@ const FeesTable: React.FC<FeesTableProps> = ({ data, mode }) => {
 
   // ✅ Collect action
   const handleCollect = useCallback((fee: StudentFee) => {
+    if (mode === "view") return;
     const dueAmount = calculateDueAmount(fee);
 
     setCurrentStudentFee(fee);
@@ -100,6 +101,7 @@ const FeesTable: React.FC<FeesTableProps> = ({ data, mode }) => {
   // ✅ Cancel action
   const handleCancel = useCallback(
     async (fee: StudentFee, remarks: string) => {
+      if (mode === "view") return;
       if (!fee.studentId || !fee.term) {
         toast.error("Missing studentId or term");
         return;
@@ -209,8 +211,8 @@ const FeesTable: React.FC<FeesTableProps> = ({ data, mode }) => {
   };
 
   // ✅ Columns
-  const columns = useMemo<ColumnDef<StudentFee>[]>(
-    () => [
+  const columns = useMemo<ColumnDef<StudentFee>[]>(() => {
+    const baseColumns: ColumnDef<StudentFee>[] = [
       { accessorKey: "term", header: "Term" },
       {
         accessorFn: (row) => row.feeStructure?.dueDate,
@@ -263,11 +265,16 @@ const FeesTable: React.FC<FeesTableProps> = ({ data, mode }) => {
         header: "Remarks",
       },
       { accessorKey: "paymentMode", header: "Payment Mode" },
-      {
+    ];
+
+    // ✅ ADD ACTIONS ONLY FOR collect / cancel
+    if (mode !== "view") {
+      baseColumns.push({
         id: "actions",
         header: "Actions",
         cell: ({ row }) => {
           const { isCollectDisabled, isZero } = getFeeStatus(row.original);
+
           if (mode === "collect") {
             return (
               !isCollectDisabled && (
@@ -280,6 +287,7 @@ const FeesTable: React.FC<FeesTableProps> = ({ data, mode }) => {
               )
             );
           }
+
           if (mode === "cancel") {
             return (
               !isZero && (
@@ -292,12 +300,14 @@ const FeesTable: React.FC<FeesTableProps> = ({ data, mode }) => {
               )
             );
           }
+
           return null;
         },
-      },
-    ],
-    [mode, handleCollect, handleCancel, remarks]
-  );
+      });
+    }
+
+    return baseColumns;
+  }, [mode, handleCollect, handleCancel, remarks]);
 
   const TERM_ORDER: Record<string, number> = {
     TERM_1: 1,
@@ -456,7 +466,7 @@ const FeesTable: React.FC<FeesTableProps> = ({ data, mode }) => {
       </div>
 
       {/* ✅ Modal */}
-      {isModalOpen && currentStudentFee && (
+      {isModalOpen && currentStudentFee && mode !== "view" && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50">
           <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl w-96 space-y-4 shadow-lg">
             <h2 className="text-xl font-bold text-center text-gray-900 dark:text-gray-100">

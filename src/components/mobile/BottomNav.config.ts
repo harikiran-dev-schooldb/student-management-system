@@ -87,6 +87,13 @@ export const bottomNavItems: BottomNavItem[] = [
   },
 
   {
+    label: "Fee",
+    icon: IndianRupee,
+    visible: ["student"],
+    href: () => "/list/fees/view",
+  },
+
+  {
     label: "Fees",
     icon: IndianRupee,
     visible: ["admin", "teacher"],

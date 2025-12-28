@@ -6,7 +6,7 @@ import { AcademicYear } from "@prisma/client";
 
 interface FeesTableContainerProps {
   studentId: string;
-  mode: "collect" | "cancel";
+  mode: "collect" | "cancel" | "view";
 }
 
 const FeesTableContainer = async ({
@@ -21,10 +21,18 @@ const FeesTableContainer = async ({
     include: { Class: { include: { Grade: true } } },
   });
 
-  if (!student) return <div>Student not found</div>;
+  if (!student) {
+    return <div className="text-sm text-gray-500">Student not found</div>;
+  }
 
   const gradeId = student.Class?.gradeId;
-  if (!gradeId) return <div>Grade not found for student</div>;
+  if (!gradeId) {
+    return (
+      <div className="text-sm text-gray-500">
+        Grade not found for student
+      </div>
+    );
+  }
 
   /* -------------------------------------------------
      2. Fetch Student Fees (SOURCE OF TRUTH)
@@ -34,12 +42,20 @@ const FeesTableContainer = async ({
     include: { feeTransactions: true },
   });
 
+  /* -------------------------------------------------
+     3. Page Title (MODE SAFE)
+  --------------------------------------------------*/
+  const title =
+    mode === "collect"
+      ? "Collect Fees"
+      : mode === "cancel"
+      ? "Cancel Fees"
+      : "Student Fees";
+
   if (studentFees.length === 0) {
     return (
       <div className="w-full">
-        <h1 className="text-lg font-semibold mb-4">
-          {mode === "collect" ? "Collect Fees" : "Cancel Fees"}
-        </h1>
+        <h1 className="text-lg font-semibold mb-4">{title}</h1>
         <p className="text-sm text-gray-500">
           No fees have been assigned to this student yet.
         </p>
@@ -48,14 +64,14 @@ const FeesTableContainer = async ({
   }
 
   /* -------------------------------------------------
-     3. Determine Assigned Academic Years
+     4. Determine Assigned Academic Years
   --------------------------------------------------*/
   const assignedYears: AcademicYear[] = [
     ...new Set(studentFees.map((sf) => sf.academicYear)),
   ];
 
   /* -------------------------------------------------
-     4. Fetch Fee Structures ONLY for assigned years
+     5. Fetch Fee Structures
   --------------------------------------------------*/
   const feeStructures = await prisma.feeStructure.findMany({
     where: {
@@ -66,7 +82,7 @@ const FeesTableContainer = async ({
   });
 
   /* -------------------------------------------------
-     5. Merge (NORMALIZE null → undefined)
+     6. Merge & Normalize
   --------------------------------------------------*/
   const transformedData: StudentFee[] = feeStructures.map((fee) => {
     const matchingPayment = studentFees.find(
@@ -85,8 +101,7 @@ const FeesTableContainer = async ({
       fineAmount: matchingPayment?.fineAmount ?? 0,
       abacusPaidAmount: matchingPayment?.abacusPaidAmount ?? null,
 
-      // ⬇️ Normalize Prisma nulls
-      receiptDate: matchingPayment?.receiptDate?.toISOString() ?? undefined,
+      receiptDate: matchingPayment?.receiptDate?.toISOString(),
       receiptNo: matchingPayment?.receiptNo ?? undefined,
       remarks: matchingPayment?.remarks ?? undefined,
       paymentMode: matchingPayment?.paymentMode ?? "CASH",
@@ -95,7 +110,7 @@ const FeesTableContainer = async ({
         id: fee.id,
         termFees: fee.termFees ?? 0,
         abacusFees: fee.abacusFees ?? 0,
-        dueDate: fee.dueDate?.toISOString() ?? undefined,
+        dueDate: fee.dueDate?.toISOString(),
       },
 
       feeTransactions:
@@ -107,13 +122,11 @@ const FeesTableContainer = async ({
   });
 
   /* -------------------------------------------------
-     6. Render
+     7. Render
   --------------------------------------------------*/
   return (
     <div className="w-full">
-      <h1 className="text-lg font-semibold mb-4">
-        {mode === "collect" ? "Collect Fees" : "Cancel Fees"}
-      </h1>
+      <h1 className="text-lg font-semibold mb-4">{title}</h1>
 
       <FeesTable data={transformedData} mode={mode} />
     </div>
