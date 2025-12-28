@@ -3,24 +3,23 @@ import { currentUser } from "@clerk/nextjs/server";
 import prisma from "@/lib/prisma";
 import { ProfileWithUsersSelect } from "../../types/query-types";
 
-export default async function NavbarServer() {
+export async function NavbarServer() {
   const user = await currentUser();
-  if (!user) return null;
+
+  if (!user) {
+    return <NavbarClient roles={[]} activeUser={null} />;
+  }
 
   const profile = await prisma.profile.findFirst({
-  where: {
-    clerk_id: user.id,
-  },
-  select: ProfileWithUsersSelect,
-});
-
+    where: { clerk_id: user.id },
+    select: ProfileWithUsersSelect,
+  });
 
   if (!profile) {
-  return <NavbarClient roles={[]} activeUser={null} />;
-}
+    return <NavbarClient roles={[]} activeUser={null} />;
+  }
 
-
-  const roles = profile?.users.map((u) => ({
+  const roles = profile.users.map((u) => ({
     id: u.id,
     username: u.username,
     name: u.admin?.name ?? u.teacher?.name ?? u.student?.name ?? u.username,
@@ -31,9 +30,11 @@ export default async function NavbarServer() {
 
   return (
     <NavbarClient
-      roles={roles ?? []}
+      roles={roles}
       activeUser={
-        profile?.activeUser ? { username: profile.activeUser.username } : null
+        profile.activeUser
+          ? { username: profile.activeUser.username }
+          : null
       }
     />
   );

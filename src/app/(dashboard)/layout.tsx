@@ -1,4 +1,5 @@
-import Navbar from "@/components/Navbar";
+"use client";
+
 import MenuWrapper from "@/components/MenuWrapper";
 import SidebarShell from "@/components/Sidebar";
 import { SidebarProvider } from "@/components/context/SidebarContext";
@@ -16,10 +17,10 @@ export default function DashboardLayout({
           <MenuWrapper />
         </SidebarShell>
 
-        {/* Main Content Area */}
+        {/* Main Content */}
         <div className="flex flex-col flex-1 min-w-0">
-          {/* Top Navbar */}
-          <Navbar />
+          
+          
 
           {/* Page Content */}
           <main className="flex-1 overflow-y-auto bg-white dark:bg-[#121727]">

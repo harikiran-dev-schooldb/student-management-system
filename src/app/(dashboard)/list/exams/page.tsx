@@ -186,47 +186,47 @@ const ExamsList = async ({
   const Path = "/list/exams";
 
   return (
-    <div className="flex-1 p-4 bg-white dark:bg-gray-900 text-black dark:text-white">
-      {/* HEADER */}
-      <div className="flex items-center justify-between mb-3">
-        <h1 className="hidden text-lg font-semibold md:block">Exams</h1>
-        <div className="flex flex-col items-center w-full gap-4 md:flex-row md:w-auto">
-          <TableSearch />
-          <TitleFilterDropdown basePath={Path} />
-          <DateFilter basePath={Path} />
-          {(role === "admin" || role === "teacher") && (
-            <ClassFilterDropdown
-              classes={classes}
-              grades={grades}
-              basePath={Path}
-              showClassFilter={false}
-            />
-          )}
+      <div className="flex-1 p-4 bg-white dark:bg-gray-900 text-black dark:text-white">
+        {/* HEADER */}
+        <div className="flex items-center justify-between mb-3">
+          <h1 className="hidden text-lg font-semibold md:block">Exams</h1>
           <div className="flex flex-col items-center w-full gap-4 md:flex-row md:w-auto">
-            <div className="flex items-center self-end gap-4">
-              <ResetFiltersButton basePath={Path} />
-              <button className="flex items-center justify-center w-8 h-8 rounded-full bg-LamaYellow dark:bg-LamaYellow">
-                <img src="/filter.png" alt="Filter" width={14} height={14} />
-              </button>
-              <SortButton sortKey="id" />
-              {(role === "admin" || role === "teacher") && (
-                <FormContainer table="exam" type="create" />
-              )}
+            <TableSearch />
+            <TitleFilterDropdown basePath={Path} />
+            <DateFilter basePath={Path} />
+            {(role === "admin" || role === "teacher") && (
+              <ClassFilterDropdown
+                classes={classes}
+                grades={grades}
+                basePath={Path}
+                showClassFilter={false}
+              />
+            )}
+            <div className="flex flex-col items-center w-full gap-4 md:flex-row md:w-auto">
+              <div className="flex items-center self-end gap-4">
+                <ResetFiltersButton basePath={Path} />
+                <button className="flex items-center justify-center w-8 h-8 rounded-full bg-LamaYellow dark:bg-LamaYellow">
+                  <img src="/filter.png" alt="Filter" width={14} height={14} />
+                </button>
+                <SortButton sortKey="id" />
+                {(role === "admin" || role === "teacher") && (
+                  <FormContainer table="exam" type="create" />
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* TABLE */}
+        {/* TABLE */}
         <Table
           columns={columns}
           renderRow={(item) => renderRow(item, role)}
           data={data}
         />
 
-      {/* PAGINATION */}
-      <Pagination page={parseInt(p)} count={count} />
-    </div>
+        {/* PAGINATION */}
+        <Pagination page={parseInt(p)} count={count} />
+      </div>
   );
 };
 

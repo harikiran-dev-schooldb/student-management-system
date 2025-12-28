@@ -1,16 +1,14 @@
-import { currentUser } from "@clerk/nextjs/server";
+"use client";
+
+import { useUser } from "@clerk/nextjs";
 import Menu from "./Menu";
 
-export default async function MenuWrapper({
-  isCollapsed,
-}: {
-  isCollapsed?: boolean;
-}) {
-  const user = await currentUser();
+export default function MenuWrapper() {
+  const { user } = useUser();
 
   const role =
     (user?.publicMetadata?.role as "admin" | "teacher" | "student") ??
     "student";
 
-  return <Menu role={role}  />;
+  return <Menu role={role} />;
 }
