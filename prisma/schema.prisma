@@ -231,8 +231,8 @@ model Subject {
 }
 
 model Teacher {
-  id         String    @id
-  username   String    @unique
+  id         String     @id
+  username   String     @unique
   name       String
   parentName String?
   email      String?
@@ -241,24 +241,39 @@ model Teacher {
   img        String?
   bloodType  String?
   gender     Gender
-  createdAt  DateTime  @default(now())
-  deletedAt  DateTime?
-  supervisor Boolean   @default(false)
   dob        DateTime?
+  status     UserStatus @default(ACTIVE) // 👈 replaces deletedAt
 
-  profile   Profile? @relation(fields: [profileId], references: [id])
+  supervisor Boolean @default(false)
+
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
+
+  // Auth / profile
+  clerk_id  String?  @unique
   profileId String?
+  profile   Profile? @relation(fields: [profileId], references: [id])
 
-  classId  Int?    @unique
-  clerk_id String? @unique
+  // Class ownership
+  classId Int?   @unique
+  class   Class? @relation("ClassToTeacher")
 
+  // Relations
   lessons  Lesson[]
   subjects SubjectTeacher[]
-  class    Class?           @relation("ClassToTeacher")
 
+  // Cross-user mapping
   linkedUserId String?     @unique
   linkedUser   LinkedUser? @relation(fields: [linkedUserId], references: [id])
 
+  /**
+   * ─────────────────────────────
+   * INDEX STRATEGY
+   * ─────────────────────────────
+   */
+
+  @@index([name]) // teacher search
+  @@index([phone]) // quick lookup
   @@index([clerk_id])
 }
 
@@ -517,4 +532,11 @@ enum BloodType {
   AB_NEG
   O_POS
   O_NEG
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  ON_LEAVE
+  SUSPENDED
 }

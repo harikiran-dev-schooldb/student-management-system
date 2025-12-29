@@ -125,13 +125,64 @@ export async function PUT(
 
     revalidatePath("/list/users/teachers");
 
-    return NextResponse.json({ success: true, updatedTeacher }, { status: 200 });
+    return NextResponse.json(
+      { success: true, updatedTeacher },
+      { status: 200 }
+    );
   } catch (error: any) {
     console.error("PUT /api/users/teachers/[id] error:", error);
     if (error.errors) console.error("Clerk error details:", error.errors);
     return NextResponse.json(
       { success: false, error: error.message },
       { status: error.name === "ZodError" ? 400 : 500 }
+    );
+  }
+}
+
+// ✅ PATCH - Update teacher status (lightweight)
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+): Promise<NextResponse> {
+  try {
+    const { id } = await params;
+    const { status } = await req.json();
+
+    if (!status) {
+      return NextResponse.json(
+        { success: false, error: "Status is required" },
+        { status: 400 }
+      );
+    }
+
+    const teacher = await prisma.teacher.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+
+    if (!teacher) {
+      return NextResponse.json(
+        { success: false, error: "Teacher not found" },
+        { status: 404 }
+      );
+    }
+
+    await prisma.teacher.update({
+      where: { id },
+      data: { status },
+    });
+
+    revalidatePath("/list/users/teachers");
+
+    return NextResponse.json(
+      { success: true, message: "Status updated successfully" },
+      { status: 200 }
+    );
+  } catch (error: any) {
+    console.error("PATCH /api/users/teachers/[id] error:", error);
+    return NextResponse.json(
+      { success: false, error: error.message },
+      { status: 500 }
     );
   }
 }

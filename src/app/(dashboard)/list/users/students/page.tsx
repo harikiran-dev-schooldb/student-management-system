@@ -16,6 +16,8 @@ import { SearchParams, StudentsList } from "../../../../../../types";
 import ResetFiltersButton from "@/components/ResetFiltersButton";
 import StudentStatusDropdown from "@/components/StudentStatusDropdown";
 import { StudentSelect } from "../../../../../../types/query-types";
+import { Eye, UserRound } from "lucide-react";
+import Avatar from "@/components/Avatar";
 
 // Render a single table row
 const renderRow = (item: StudentsList, role: string | null) => (
@@ -24,13 +26,19 @@ const renderRow = (item: StudentsList, role: string | null) => (
     key={item.id}
   >
     <td className="flex items-center gap-2 p-2">
-      <img
-        src={item.img || (item.gender === "Male" ? "/male.png" : "/female.png")}
-        alt={item.name}
-        width={40}
-        height={40}
-        className="object-cover w-10 h-10 rounded-full md:hidden xl:block"
-      />
+      <div
+        className="w-10 h-10 rounded-full
+             flex items-center justify-center
+             bg-gray-100 dark:bg-gray-800
+             md:hidden xl:flex"
+      >
+        <Avatar
+          src={item.img}
+          name={item.name}
+          gender={item.gender}
+          className="md:hidden xl:flex"
+        />
+      </div>
       <div className="flex flex-col">
         <h3 className="font-semibold">{item.name}</h3>
         <p className="text-xs">{item.id}</p>
@@ -52,7 +60,7 @@ const renderRow = (item: StudentsList, role: string | null) => (
       <div className="flex items-center gap-2">
         <Link href={`/list/users/students/${item.id}`}>
           <button className="flex items-center justify-center w-8 h-8 rounded-full bg-LamaSky hover:opacity-90">
-            <img src="/view.png" alt="View" width={16} height={16} />
+            <Eye className="w-4 h-4 text-black" />
           </button>
         </Link>
 
@@ -80,7 +88,6 @@ const getColumns = (role: string | null) => [
   { header: "Mobile", accessor: "phone", className: "hidden md:table-cell" },
   { header: "Actions", accessor: "action" },
 ];
-
 
 const StudentListPage = async ({
   searchParams,

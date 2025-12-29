@@ -3,12 +3,18 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import InputField from "../InputField";
-import React, { Dispatch, SetStateAction, startTransition, useEffect, useState } from "react";
+import React, {
+  Dispatch,
+  SetStateAction,
+  startTransition,
+  useEffect,
+  useState,
+} from "react";
 import { studentschema, Studentschema } from "@/lib/formValidationSchemas";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
-import { CldUploadWidget } from 'next-cloudinary';
-import Image from 'next/image';
+import { CldUploadWidget } from "next-cloudinary";
+import Image from "next/image";
 
 const StudentForm = ({
   type,
@@ -21,19 +27,31 @@ const StudentForm = ({
   setOpen: Dispatch<SetStateAction<boolean>>;
   relatedData?: any;
 }) => {
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<Studentschema>({
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<Studentschema>({
     resolver: zodResolver(studentschema),
     defaultValues: data || {},
   });
 
   const { grades, classes } = relatedData;
   const [img, setImg] = useState<any>();
-  const [selectedGradeId, setSelectedGradeId] = useState<number | null>(data?.gradeId || null);
+  const [selectedGradeId, setSelectedGradeId] = useState<number | null>(
+    data?.gradeId || null
+  );
   const [filteredClasses, setFilteredClasses] = useState(
-    data?.gradeId ? classes.filter((cls: any) => cls.gradeId === data.gradeId) : []
+    data?.gradeId
+      ? classes.filter((cls: any) => cls.gradeId === data.gradeId)
+      : []
   );
 
-  const [state, setState] = useState<{ success: boolean; error: string | null }>({
+  const [state, setState] = useState<{
+    success: boolean;
+    error: string | null;
+  }>({
     success: false,
     error: null,
   });
@@ -46,7 +64,9 @@ const StudentForm = ({
 
   useEffect(() => {
     if (selectedGradeId !== null) {
-      const related = classes.filter((cls: any) => cls.gradeId === selectedGradeId);
+      const related = classes.filter(
+        (cls: any) => cls.gradeId === selectedGradeId
+      );
       setFilteredClasses(related);
     } else {
       setFilteredClasses([]);
@@ -63,9 +83,10 @@ const StudentForm = ({
   const formAction = async (data: any) => {
     const payload = { ...data, img: img?.secure_url };
 
-    const apiUrl = type === "update"
-      ? `/api/users/students/${data.id}`
-      : `/api/users/students`;
+    const apiUrl =
+      type === "update"
+        ? `/api/users/students/${data.id}`
+        : `/api/users/students`;
 
     try {
       const response = await fetch(apiUrl, {
@@ -78,10 +99,9 @@ const StudentForm = ({
 
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('API Error Response:', errorData);
-        throw new Error(errorData.message || 'Error in API request');
+        console.error("API Error Response:", errorData);
+        throw new Error(errorData.message || "Error in API request");
       }
-
 
       const result = await response.json();
       console.log("Response from server:", result);
@@ -108,68 +128,138 @@ const StudentForm = ({
   }, [state.error]);
 
   return (
-    <form className="flex flex-col gap-8" onSubmit={onSubmit}>
+    <form className="flex flex-col gap-8 pb-24 md:pb-8" onSubmit={onSubmit}>
       <h1 className="text-xl font-semibold">
         {type === "create" ? "Create a new student" : "Update the student"}
       </h1>
-  
+
       {/* Personal Info */}
-      <span className="text-xs font-medium text-gray-400">Personal Information</span>
+      <span className="text-xs font-medium text-gray-400">
+        Personal Information
+      </span>
       <div className="flex flex-wrap justify-between gap-4">
-        <InputField label="Admission No (Optional)" name="id" defaultValue={data?.id} register={register} placeholder="Enter admission number" error={errors.id} />
+        <InputField
+          label="Admission No (Optional)"
+          name="id"
+          defaultValue={data?.id}
+          register={register}
+          placeholder="Enter admission number"
+          error={errors.id}
+        />
       </div>
       <div className="flex flex-wrap justify-between gap-4">
-        <InputField label="Student Name" name="name" defaultValue={data?.name} register={register} error={errors.name} placeholder="As per Record" />
-        <InputField label="Father Name" name="fatherName" defaultValue={data?.fatherName} register={register} error={errors.fatherName}  placeholder="Enter Father Name"/>
-        <InputField label="Mother Name" name="motherName" defaultValue={data?.motherName} register={register} error={errors.motherName}  placeholder="Enter Mother Name"/>
-        <InputField label="Phone" name="phone" defaultValue={data?.phone} register={register} error={errors.phone} placeholder="Enter Mobile Number"/>
-        <InputField label="Address" name="address" defaultValue={data?.address} register={register} error={errors.address}  placeholder="Enter Address"/>
-        <InputField label="Email (Optional)" name="email" defaultValue={data?.email} register={register} error={errors?.email} placeholder="Enter email id"/>
-        <InputField label="Birthday" name="dob" defaultValue={data?.dob ? new Date(data.dob).toISOString().split("T")[0] : ""} register={register} error={errors.dob} type="date" />
+        <InputField
+          label="Student Name"
+          name="name"
+          defaultValue={data?.name}
+          register={register}
+          error={errors.name}
+          placeholder="As per Record"
+        />
+        <InputField
+          label="Father Name"
+          name="fatherName"
+          defaultValue={data?.fatherName}
+          register={register}
+          error={errors.fatherName}
+          placeholder="Enter Father Name"
+        />
+        <InputField
+          label="Mother Name"
+          name="motherName"
+          defaultValue={data?.motherName}
+          register={register}
+          error={errors.motherName}
+          placeholder="Enter Mother Name"
+        />
+        <InputField
+          label="Phone"
+          name="phone"
+          defaultValue={data?.phone}
+          register={register}
+          error={errors.phone}
+          placeholder="Enter Mobile Number"
+        />
+        <InputField
+          label="Address"
+          name="address"
+          defaultValue={data?.address}
+          register={register}
+          error={errors.address}
+          placeholder="Enter Address"
+        />
+        <InputField
+          label="Email (Optional)"
+          name="email"
+          defaultValue={data?.email}
+          register={register}
+          error={errors?.email}
+          placeholder="Enter email id"
+        />
+        <InputField
+          label="Birthday"
+          name="dob"
+          defaultValue={
+            data?.dob ? new Date(data.dob).toISOString().split("T")[0] : ""
+          }
+          register={register}
+          error={errors.dob}
+          type="date"
+        />
 
         {/* Gender */}
         <div className="flex flex-col w-full gap-2 md:w-1/4">
-          <label htmlFor="gender" className="text-xs text-gray-500">Gender</label>
+          <label htmlFor="gender" className="text-xs text-gray-500">
+            Gender
+          </label>
           <select
             id="gender"
             {...register("gender")}
             defaultValue={data?.gender || ""}
             className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
           >
-            <option value="" disabled>Select Gender</option>
+            <option value="" disabled>
+              Select Gender
+            </option>
             <option value="Male">Male</option>
             <option value="Female">Female</option>
           </select>
           {errors.gender?.message && (
-            <p className="text-xs text-red-400">{errors.gender.message.toString()}</p>
+            <p className="text-xs text-red-400">
+              {errors.gender.message.toString()}
+            </p>
           )}
-        </div>       
+        </div>
 
-
-        
         {/* Academic Year */}
         <div className="flex flex-col w-full gap-2 md:w-1/4">
-          <label htmlFor="academicYear" className="text-xs text-gray-500">Academic Year</label>
+          <label htmlFor="academicYear" className="text-xs text-gray-500">
+            Academic Year
+          </label>
           <select
             id="academicYear"
             className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
             {...register("academicYear")}
             defaultValue={data?.academicYear ?? ""}
           >
-            <option value="" disabled>Select academic year</option>
+            <option value="" disabled>
+              Select academic year
+            </option>
             <option value="Y2024_2025">2024-25</option>
             <option value="Y2025_2026">2025-26</option>
           </select>
           {errors.academicYear?.message && (
-            <p className="text-xs text-red-400">{errors.academicYear.message.toString()}</p>
+            <p className="text-xs text-red-400">
+              {errors.academicYear.message.toString()}
+            </p>
           )}
         </div>
-  
-        
-  
+
         {/* Grade Select */}
         <div className="flex flex-col w-full gap-2 md:w-1/4">
-          <label htmlFor="gradeId" className="text-xs text-gray-500">Grade</label>
+          <label htmlFor="gradeId" className="text-xs text-gray-500">
+            Grade
+          </label>
           <select
             id="gradeId"
             className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
@@ -177,19 +267,27 @@ const StudentForm = ({
             defaultValue={data?.gradeId ?? ""}
             onChange={(e) => setSelectedGradeId(parseInt(e.target.value))}
           >
-            <option value="" disabled>Select grade</option>
+            <option value="" disabled>
+              Select grade
+            </option>
             {grades.map((grade: { id: number; level: number }) => (
-              <option value={grade.id} key={grade.id}>{grade.level}</option>
+              <option value={grade.id} key={grade.id}>
+                {grade.level}
+              </option>
             ))}
           </select>
           {errors.gradeId?.message && (
-            <p className="text-xs text-red-500">{errors.gradeId.message.toString()}</p>
+            <p className="text-xs text-red-500">
+              {errors.gradeId.message.toString()}
+            </p>
           )}
         </div>
-  
+
         {/* Class Select */}
         <div className="flex flex-col w-full gap-2 md:w-1/4">
-          <label htmlFor="classId" className="text-xs text-gray-500">Class</label>
+          <label htmlFor="classId" className="text-xs text-gray-500">
+            Class
+          </label>
           <select
             id="classId"
             className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
@@ -197,18 +295,31 @@ const StudentForm = ({
             defaultValue={data?.classId ?? ""}
             disabled={filteredClasses.length === 0}
           >
-            <option value="" disabled>Select class</option>
+            <option value="" disabled>
+              Select class
+            </option>
             {filteredClasses.map((cls: { id: number; section: string }) => (
-              <option value={cls.id} key={cls.id}>{cls.section}</option>
+              <option value={cls.id} key={cls.id}>
+                {cls.section}
+              </option>
             ))}
           </select>
           {errors.classId?.message && (
-            <p className="text-xs text-red-500">{errors.classId.message.toString()}</p>
+            <p className="text-xs text-red-500">
+              {errors.classId.message.toString()}
+            </p>
           )}
         </div>
-  
+
         {/* Image Upload */}
-          <InputField label="Pen Number" name="penNo" defaultValue={data?.penNo} register={register} error={errors.penNo} placeholder="Enter Pen Number"/>
+        <InputField
+          label="Pen Number"
+          name="penNo"
+          defaultValue={data?.penNo}
+          register={register}
+          error={errors.penNo}
+          placeholder="Enter Pen Number"
+        />
         <div className="flex flex-col w-full gap-2 md:w-1/4">
           <label className="text-xs text-gray-500">Photo (Optional)</label>
           <CldUploadWidget
@@ -220,7 +331,10 @@ const StudentForm = ({
             }}
           >
             {({ open }) => (
-              <div className="flex items-center gap-2 text-xs text-gray-500 cursor-pointer" onClick={() => open()}>
+              <div
+                className="flex items-center gap-2 text-xs text-gray-500 cursor-pointer"
+                onClick={() => open()}
+              >
                 <Image src="/upload.png" alt="Upload" width={28} height={28} />
                 <span>Upload a photo</span>
               </div>
@@ -228,19 +342,41 @@ const StudentForm = ({
           </CldUploadWidget>
         </div>
 
-        
-        <InputField label="Father Aadhar" name="fatherAadhar" defaultValue={data?.fatherAadhar} register={register} error={errors.fatherAadhar} placeholder="Enter Father Aadhar"/>
-        <InputField label="Student Aadhar" name="studentAadhar" defaultValue={data?.studentAadhar} register={register} error={errors.studentAadhar} placeholder="Enter Student Aadhar"/>
-        <InputField label="Mother Aadhar" name="motherAadhar" defaultValue={data?.motherAadhar} register={register} error={errors.motherAadhar} placeholder="Enter Mother Aadhar"/>
+        <InputField
+          label="Father Aadhar"
+          name="fatherAadhar"
+          defaultValue={data?.fatherAadhar}
+          register={register}
+          error={errors.fatherAadhar}
+          placeholder="Enter Father Aadhar"
+        />
+        <InputField
+          label="Student Aadhar"
+          name="studentAadhar"
+          defaultValue={data?.studentAadhar}
+          register={register}
+          error={errors.studentAadhar}
+          placeholder="Enter Student Aadhar"
+        />
+        <InputField
+          label="Mother Aadhar"
+          name="motherAadhar"
+          defaultValue={data?.motherAadhar}
+          register={register}
+          error={errors.motherAadhar}
+          placeholder="Enter Mother Aadhar"
+        />
       </div>
-  
-      {state.error && <span className="text-red-500">Something went wrong!</span>}
-  
+
+      {state.error && (
+        <span className="text-red-500">Something went wrong!</span>
+      )}
+
       <button className="p-2 text-white bg-blue-400 rounded-md">
         {type === "create" ? "Create" : "Update"}
       </button>
     </form>
-  );  
+  );
 };
 
 export default StudentForm;

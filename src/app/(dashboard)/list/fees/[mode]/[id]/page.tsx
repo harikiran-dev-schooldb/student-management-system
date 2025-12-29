@@ -7,6 +7,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { SingleStudentFeeSelect } from "../../../../../../../types/query-types";
+import Avatar from "@/components/Avatar";
 
 interface StudentFeePageProps {
   params: Promise<{ mode: string; id: string }>;
@@ -42,15 +43,12 @@ const StudentFeePage = async ({ params }: StudentFeePageProps) => {
           <div className="flex flex-col gap-4 lg:flex-row">
             <div className="flex flex-1 gap-6 px-6 py-6 rounded-lg bg-LamaSky dark:bg-gray-800">
               <div className="w-1/3 flex items-start justify-center">
-                <img
-                  src={
-                    student.img ||
-                    (student.gender === "Male" ? "/male.png" : "/female.png")
-                  }
-                  alt={student.name}
-                  width={144}
-                  height={144}
-                  className="object-cover rounded-full w-24 h-24"
+                <Avatar
+                  src={student.img}
+                  name={student.name}
+                  gender={student.gender}
+                  size={96} // w-24 h-24
+                  className="ring-2 ring-gray-200 dark:ring-white/10"
                 />
               </div>
               <div className="flex flex-col justify-between w-2/3 gap-2">

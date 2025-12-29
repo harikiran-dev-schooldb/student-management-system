@@ -17,6 +17,7 @@ import Link from "next/link";
 import { FeeColectList, SearchParams } from "../../../../../../types";
 import ResetFiltersButton from "@/components/ResetFiltersButton";
 import { StudentFeeSelect } from "../../../../../../types/query-types";
+import { Eye, UserRound, X } from "lucide-react";
 
 const renderRow = (
   item: FeeColectList,
@@ -46,15 +47,25 @@ const renderRow = (
       className="text-sm border-b border-gray-100 dark:border-gray-700 even:bg-slate-50 dark:even:bg-gray-800 hover:bg-LamaPurpleLight dark:hover:bg-gray-700 transition-colors"
     >
       <td className="flex items-center gap-2 p-2 text-gray-800 dark:text-gray-200">
-        <img
-          src={
-            item.img || (item.gender === "Male" ? "/male.png" : "/female.png")
-          }
-          alt={item.name}
-          width={40}
-          height={40}
-          className="object-cover w-10 h-10 rounded-full md:hidden xl:block"
-        />
+        <div
+          className="w-10 h-10 rounded-full
+             flex items-center justify-center
+             bg-gray-100 dark:bg-gray-800
+             md:hidden xl:flex"
+        >
+          {item.img ? (
+            <img
+              src={item.img}
+              alt={item.name}
+              className="object-cover w-10 h-10 rounded-full"
+            />
+          ) : item.gender === "Male" ? (
+            <UserRound className="w-5 h-5 text-blue-600" />
+          ) : (
+            <UserRound className="w-5 h-5 text-pink-600" />
+          )}
+        </div>
+
         <div className="flex flex-col">
           <h3 className="font-semibold">
             {item.name} ({item.Class?.Grade?.level}-{item.Class?.section})
@@ -65,8 +76,10 @@ const renderRow = (
       <td className="hidden md:table-cell text-gray-700 dark:text-gray-200">
         {item.fatherName || "N/A"}
       </td>
-      <td className="text-gray-800 dark:text-gray-200">{item.phone}</td>
-      <td className="text-gray-800 dark:text-gray-200">
+      <td className="hidden md:table-cell text-gray-800 dark:text-gray-200">
+        {item.phone}
+      </td>
+      <td className="text-gray-800 dark:text-gray-200 hidden md:table-cell">
         {item.feeTransactions?.[0]?.receiptNo || "N/A"}
       </td>
       <td className="hidden md:table-cell text-gray-700 dark:text-gray-200">
@@ -74,7 +87,7 @@ const renderRow = (
       </td>
       <td
         className={clsx(
-          "hidden md:table-cell",
+          "",
           status === "Fully Paid" && "text-LamaGreen dark:text-LamaGreen",
           status === "Not Paid" && "text-red-600 dark:text-red-400",
           status.includes("Term") && "text-LamaYellow dark:text-LamaYellow"
@@ -84,19 +97,25 @@ const renderRow = (
       </td>
 
       <td className="p-2">
-        {role === "admin" && (
+        {(role === "admin" || role === "teacher") && (
           <div className="flex items-center gap-2">
             {/* Collect Fees Button */}
             <Link href={`/list/fees/collect/${item.id}`}>
-              <button className="flex items-center justify-center rounded-full w-7 h-7 bg-LamaSky dark:bg-LamaSky">
-                <img src="/view.png" alt="View" width={16} height={16} />
+              <button
+                className="flex items-center justify-center rounded-full w-8 h-8
+             bg-LamaSky dark:bg-LamaSkyLight"
+              >
+                <Eye className="w-4 h-4 text-black" />
               </button>
             </Link>
 
             {/* Cancel Fees Button */}
             <Link href={`/list/fees/cancel/${item.id}`}>
-              <button className="flex items-center justify-center rounded-full w-7 h-7 bg-LamaPurple dark:bg-LamaPurple">
-                <img src="/delete.png" alt="Cancel" width={16} height={16} />
+              <button
+                className="flex items-center justify-center rounded-full w-8 h-8
+             bg-LamaPurple dark:bg-LamaPurple"
+              >
+                <X className="w-4 h-4 text-black" />
               </button>
             </Link>
           </div>
@@ -113,7 +132,7 @@ const getColumns = (role: string | null) => [
     accessor: "parentName",
     className: "hidden md:table-cell",
   },
-  { header: "Mobile", accessor: "phone" },
+  { header: "Mobile", accessor: "phone", className: "hidden md:table-cell" },
   {
     header: "Reciept No",
     accessor: "receiptNo",
@@ -124,7 +143,7 @@ const getColumns = (role: string | null) => [
     accessor: "paidAmount",
     className: "hidden md:table-cell",
   },
-  { header: "Status", accessor: "status", className: "hidden md:table-cell" },
+  { header: "Status", accessor: "status", className: "" },
   ...(role === "admin" ? [{ header: "Actions", accessor: "action" }] : []),
 ];
 

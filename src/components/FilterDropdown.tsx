@@ -19,6 +19,7 @@ type GradeType = {
 type DayFilterProps = { basePath: string };
 type StatusFilterProps = { basePath: string };
 type StudentStatusFilterProps = { basePath: string };
+type TeacherStatusFilterProps = { basePath: string };
 
 interface ClassFilterProps {
   classes: ClassType[];
@@ -176,6 +177,39 @@ const StatusFilter = ({ basePath }: StatusFilterProps) => {
   );
 };
 
+/* ---------------- Teacher Status Filter ---------------- */
+const TeacherStatusFilter = ({ basePath }: TeacherStatusFilterProps) => {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const currentStatus = searchParams.get("userStatus") || "";
+
+  const handleStudentStatusChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const newStatus = event.target.value;
+    const params = new URLSearchParams(searchParams.toString());
+
+    if (newStatus) params.set("userStatus", newStatus);
+    else params.delete("userStatus");
+
+    router.push(`${basePath}?${params.toString()}`, { scroll: false });
+  };
+
+  return (
+    <div className="relative w-full md:w-auto mt-4 md:mt-0">
+      <select
+        className={dropdownUI}
+        onChange={handleStudentStatusChange}
+        value={currentStatus}
+      >
+        <option value="ACTIVE">Active</option>
+        <option value="INACTIVE">Inactive</option>
+        <option value="TRANSFERRED">Transferred</option>
+        <option value="SUSPENDED">Suspended</option>
+      </select>
+    </div>
+  );
+};
+
+/* ---------------- Student Status Filter ---------------- */
 const StudentStatusFilter = ({ basePath }: StudentStatusFilterProps) => {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -297,5 +331,5 @@ const DayFilter = ({ basePath }: DayFilterProps) => {
 };
 
 /* ---------------- Exports ---------------- */
-export { DayFilter, DateFilter, StatusFilter, StudentStatusFilter, GenderFilter };
+export { DayFilter, DateFilter, StatusFilter, StudentStatusFilter, TeacherStatusFilter, GenderFilter };
 export default ClassFilterDropdown;

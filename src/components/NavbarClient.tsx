@@ -1,11 +1,8 @@
 "use client";
 
-import { Menu } from "lucide-react";
 import SwitchUser from "./SwitchUser";
-import TableSearch from "./TableSearch";
 import ThemeToggle from "./ThemeToggle";
 import Image from "next/image";
-import Link from "next/link";
 
 interface NavbarClientProps {
   roles: Array<{
@@ -85,10 +82,6 @@ export default function NavbarClient({
 
       {/* RIGHT */}
       <div className="flex items-center gap-3 md:gap-6">
-        {/* Search */}
-        <div className="hidden md:block">
-          <TableSearch />
-        </div>
         {/* Messages */}
         <div className="flex items-center justify-center bg-gray-100 dark:bg-LamaPurple rounded-full cursor-pointer w-8 h-8">
           <img src="/message.png" alt="Messages" width={20} height={20} />

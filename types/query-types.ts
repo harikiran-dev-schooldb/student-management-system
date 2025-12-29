@@ -314,7 +314,9 @@ export type ExamsList =
     select: typeof ExamListSelect;
   }>;
 
-
+// -------------------------------
+// 🔹 Profile With User
+// -------------------------------
 
 export const ProfileWithUsersSelect = {
   activeUser: {
@@ -361,6 +363,10 @@ export type ProfileWithUsers = Prisma.ProfileGetPayload<{
   select: typeof ProfileWithUsersSelect;
 }>;
 
+// -------------------------------
+// 🔹 Permission Slip List Page
+// -------------------------------
+
 export const PermissionSlipSelect = {
   id: true,
   timeIssued: true,
@@ -399,4 +405,46 @@ export const PermissionSlipSelect = {
 export type PermissionSlipWithStudent =
   Prisma.PermissionSlipGetPayload<{
     select: typeof PermissionSlipSelect;
+  }>;
+
+// -------------------------------
+// 🔹 Teachers List Page
+// -------------------------------
+export const TeachersSelect = {
+  id: true,
+  name: true,
+  gender: true,
+  phone: true,
+  img: true,
+  dob: true,
+  address: true,
+  status: true,
+
+      class: {
+        select: {
+          id: true,
+          name: true,
+          gradeId: true,
+
+          Grade: {
+            select: {
+              id: true,
+              level: true,
+
+              subjects: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+          },
+        },
+      },
+    } satisfies Prisma.TeacherSelect;
+
+
+export type TeachersWithSelect =
+  Prisma.TeacherGetPayload<{
+    select: typeof TeachersSelect;
   }>;

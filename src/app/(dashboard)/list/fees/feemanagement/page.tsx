@@ -103,23 +103,23 @@ const FeesListPage = async ({
   }
 
   const [grades, totalCount] = await Promise.all([
-  prisma.grade.findMany({
-    where: whereClause,
-    select: {
-      ...FeeGradeSelect,
-      feestructure: {
-        where: parsedAcademicYear
-          ? { academicYear: parsedAcademicYear }
-          : undefined,
-        select: FeeGradeSelect.feestructure.select,
+    prisma.grade.findMany({
+      where: whereClause,
+      select: {
+        ...FeeGradeSelect,
+        feestructure: {
+          where: parsedAcademicYear
+            ? { academicYear: parsedAcademicYear }
+            : undefined,
+          select: FeeGradeSelect.feestructure.select,
+        },
       },
-    },
-    orderBy: { [sortKey || "id"]: sortOrder || "asc" },
-    take: ITEM_PER_PAGE,
-    skip: ITEM_PER_PAGE * ((page ?? 1) - 1),
-  }),
-  prisma.grade.count({ where: whereClause }),
-]);
+      orderBy: { [sortKey || "id"]: sortOrder || "asc" },
+      take: ITEM_PER_PAGE,
+      skip: ITEM_PER_PAGE * ((page ?? 1) - 1),
+    }),
+    prisma.grade.count({ where: whereClause }),
+  ]);
 
   const allGrades = await prisma.grade.findMany({
     select: { id: true, level: true },
@@ -131,7 +131,9 @@ const FeesListPage = async ({
     <div className="flex-1 p-4 bg-white dark:bg-gray-900 text-black dark:text-white">
       {/* Top Controls */}
       <div className="flex items-center justify-between mb-3">
-        <h1 className="hidden text-lg font-semibold md:block">Fees Management</h1>
+        <h1 className="hidden text-lg font-semibold md:block">
+          Fees Management
+        </h1>
 
         <div className="flex flex-col items-center w-full gap-4 md:flex-row md:w-auto">
           <TableSearch />
@@ -144,8 +146,8 @@ const FeesListPage = async ({
             showClassFilter={false}
           />
           <div className="flex flex-col items-center w-full gap-4 md:flex-row md:w-auto">
-            <ResetFiltersButton basePath={Path} />
             <div className="flex items-center self-end gap-4">
+              <ResetFiltersButton basePath={Path} />
               <button className="flex items-center justify-center w-8 h-8 rounded-full bg-LamaYellow">
                 <img src="/filter.png" alt="Filter" width={14} height={14} />
               </button>

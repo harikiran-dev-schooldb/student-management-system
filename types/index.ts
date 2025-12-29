@@ -242,6 +242,28 @@ export type StudentList = {
   totalFees?: { totalDiscountAmount: number | null } | null;
 };
 
+// -------------------- Types --------------------
+// type TeachersList = Teacher & {
+//   subjects: { Subject: Subject }[];
+//   class?: (Class & { students: Student[] }) | null;
+// };
+
+export type TeachersList = {
+  id: string;
+  name: string;
+  gender: string;
+  phone: string;
+  img?: string | null;
+  dob: Date | string;
+  address: string | null;
+  status: string;
+  Class:{
+    id: number;
+    name: string;
+  }
+  subjects: { Subject: { id: number; name: string } }[];
+};
+
 export type StudentsList = {
   id: string;
   name: string;
@@ -251,11 +273,11 @@ export type StudentsList = {
   dob: Date | string;
   phone: string | null;
   status: string;
-
   Class: {
     id: number;
     section: string | null;
     gradeId: number;
+    name: string;
     Grade: {
       level: string;
     };

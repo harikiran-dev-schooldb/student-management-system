@@ -10,6 +10,7 @@ import { fetchUserInfo } from "@/lib/utils/server-utils";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { SingleStudentSelect } from "../../../../../../../types/query-types";
+import Avatar from "@/components/Avatar";
 
 interface StudentSinglePageProps {
   params: Promise<{ id: string }>;
@@ -34,13 +35,13 @@ const SingleStudentPage = async ({ params }: StudentSinglePageProps) => {
           {/* USER CARD */}
           <div className={`${cardBase} flex flex-1 gap-5 p-6`}>
             <div className="flex items-center justify-center w-24">
-              <img
-                src={
-                  student.img ||
-                  (student.gender === "Male" ? "/male.png" : "/female.png")
-                }
-                alt={student.name}
-                className="w-20 h-20 rounded-full object-cover ring-2 ring-gray-200 dark:ring-white/10"
+              <Avatar
+                src={student.img}
+                name={student.name}
+                gender={student.gender}
+                size={80}
+                href={`list/users/students/${student.id}`}
+                className="ring-2 ring-gray-200 dark:ring-white/10"
               />
             </div>
 

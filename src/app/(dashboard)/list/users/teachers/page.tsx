@@ -5,20 +5,18 @@ import Table from "@/components/Table";
 import TableSearch from "@/components/TableSearch";
 import prisma from "@/lib/prisma";
 import { ITEM_PER_PAGE } from "@/lib/settings";
-import { Class, Prisma, Student, Subject, Teacher } from "@prisma/client";
+import { $Enums, Prisma } from "@prisma/client";
 import Link from "next/link";
 import FormContainer from "@/components/FormContainer";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
-import { SearchParams } from "../../../../../../types";
+import { SearchParams, TeachersList } from "../../../../../../types";
 import SortButton from "@/components/SortButton";
 import ResetFiltersButton from "@/components/ResetFiltersButton";
-import { GenderFilter } from "@/components/FilterDropdown";
-
-// -------------------- Types --------------------
-type TeachersList = Teacher & {
-  subjects: { Subject: Subject }[];
-  class?: (Class & { students: Student[] }) | null;
-};
+import { GenderFilter, TeacherStatusFilter } from "@/components/FilterDropdown";
+import TeacherStatusDropdown from "@/components/TeacherStatusDropdown";
+import { TeachersSelect } from "../../../../../../types/query-types";
+import { Eye } from "lucide-react";
+import Avatar from "@/components/Avatar";
 
 // -------------------- Table Row --------------------
 const renderRow = (item: TeachersList, role: string | null) => (
@@ -28,16 +26,12 @@ const renderRow = (item: TeachersList, role: string | null) => (
   >
     {/* Info */}
     <td className="flex items-center gap-2 p-2">
-      <img
-        src={
-          item.img ||
-          (item.gender === "Male" ? "/maleteacher.png" : "/femaleteacher.png")
-        }
-        alt={item.name}
-        width={40}
-        height={40}
-        className="object-cover w-10 h-10 rounded-full md:hidden xl:block"
-      />
+      <Avatar
+                src={item.img}
+                name={item.name}
+                gender={item.gender}
+                className="md:hidden xl:flex"
+              />
       <div className="flex flex-col">
         <h3 className="font-semibold text-gray-900 dark:text-gray-100">
           {item.name}
@@ -48,7 +42,7 @@ const renderRow = (item: TeachersList, role: string | null) => (
 
     {/* Class */}
     <td className="hidden w-32 md:table-cell text-gray-700 dark:text-gray-200">
-      {item.class ? item.class.name : "No Class"}
+      {item.Class ? item.Class.name : "No Class"}
     </td>
 
     {/* Phone */}
@@ -78,11 +72,14 @@ const renderRow = (item: TeachersList, role: string | null) => (
       <div className="flex items-center gap-2">
         <Link href={`/list/users/teachers/${item.id}`}>
           <button className="flex items-center justify-center rounded-full w-7 h-7 bg-LamaSky dark:bg-LamaSky">
-            <img src="/view.png" alt="View" width={16} height={16} />
+            <Eye className="w-4 h-4 text-black" />
           </button>
         </Link>
         {role === "admin" && (
-          <FormContainer table="teacher" type="delete" id={item.id} />
+          <>
+            {/* <FormContainer table="student" type="delete" id={item.id} /> */}
+            <TeacherStatusDropdown id={item.id} currentStatus={item.status} />
+          </>
         )}
       </div>
     </td>
@@ -109,10 +106,14 @@ const TeacherListPage = async ({
   const { role } = await fetchUserInfo();
   const columns = getColumns(role);
   const params = await searchParams;
-  const { page, ...queryParams } = params;
+  const { page, userStatus, ...queryParams } = params;
   const p = page ? (Array.isArray(page) ? page[0] : page) : "1";
 
-  const query: Prisma.TeacherWhereInput = {};
+  const query: Prisma.TeacherWhereInput = {
+    status: {
+          equals: (userStatus as $Enums.UserStatus) || "ACTIVE",
+        },
+  };
 
   const normalize = (
     value: string | string[] | undefined
@@ -147,10 +148,7 @@ const TeacherListPage = async ({
     prisma.teacher.findMany({
       where: query,
       orderBy: [{ id: "asc" }],
-      include: {
-        subjects: { include: { subject: true } },
-        class: { include: { students: true } },
-      },
+      select: TeachersSelect,
       take: ITEM_PER_PAGE,
       skip: ITEM_PER_PAGE * (parseInt(p) - 1),
     }),
@@ -170,6 +168,11 @@ const TeacherListPage = async ({
         <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
           <TableSearch />
           <GenderFilter basePath={Path} />
+          {role === "admin" && (
+            <>
+              <TeacherStatusFilter basePath={Path} />
+            </>
+          )}
 
           <div className="flex items-center gap-4">
             <ResetFiltersButton basePath={Path} />
