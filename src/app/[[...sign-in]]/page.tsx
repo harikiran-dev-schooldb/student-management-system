@@ -193,10 +193,27 @@ export default function Page() {
 
     {/* Form */}
     {loginMethod === "password" ? (
-      <PasswordLogin {...props} />
-    ) : (
-      <OTPLogin {...props} />
-    )}
+  <PasswordLogin
+    phoneNumber={phoneNumber}
+    password={password}
+    setPhoneNumber={setPhoneNumber}
+    setPassword={setPassword}
+    rememberMe={rememberMe}
+    setRememberMe={setRememberMe}
+  />
+) : (
+  <OTPLogin
+    phoneNumber={phoneNumber}
+    otpCode={otpCode}
+    setPhoneNumber={setPhoneNumber}
+    setOtpCode={setOtpCode}
+    pendingVerification={pendingVerification}
+    otpInputRef={otpInputRef}
+    isSending={isSending}
+    resendTimer={resendTimer}
+    handleSendOTP={handleSendOTP}
+  />
+)}
 
     {/* Action Button */}
     <button
