@@ -109,6 +109,13 @@ const menuSections: MenuSection[] = [
         icon: IndianRupee,
         visible: ["student"],
       },
+
+      {
+        label: "Attendance",
+        href:"/list/attendance/",
+        icon: CalendarCheck,
+        visible: ["student"],
+      },
       {
         label: "Fees",
         icon: IndianRupee,

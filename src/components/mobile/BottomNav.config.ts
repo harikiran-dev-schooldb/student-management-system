@@ -15,6 +15,7 @@ import {
   LogOut,
   BookOpenCheck,
   FileText,
+  BarChart,
 } from "lucide-react";
 
 import type { BottomNavItem } from "./BottomNav.types";
@@ -74,17 +75,17 @@ export const bottomNavItems: BottomNavItem[] = [
   },
 
   {
-    label: "Messages",
-    icon: MessageSquareText,
-    visible: ["admin", "teacher", "student"],
-    href: () => "/list/messages",
-  },
-
-  {
     label: "Fee",
     icon: IndianRupee,
     visible: ["student"],
     href: () => "/list/fees/view",
+  },
+
+  {
+    label: "Attendance",
+    icon: CalendarCheck,
+    visible: ["student"],
+    href: () => "/list/attendance/",
   },
 
   {
@@ -104,6 +105,18 @@ export const bottomNavItems: BottomNavItem[] = [
         icon: Banknote,
         visible: ["admin"],
       },
+      {
+        label: "Day Wise Report",
+        href: "/list/reports/daywise-fees",
+        icon: BarChart,
+        visible: ["admin"],
+      },
+      {
+        label: "Fee Management",
+        href: "/list/fees/feemanagement",
+        icon: Edit,
+        visible: ["admin"],
+      },
     ],
   },
 
@@ -112,6 +125,12 @@ export const bottomNavItems: BottomNavItem[] = [
     icon: Menu,
     visible: ["admin", "teacher", "student"],
     children: [
+      {
+        label: "Messages",
+        icon: MessageSquareText,
+        visible: ["admin", "teacher", "student"],
+        href: () => "/list/messages",
+      },
       {
         label: "Homeworks",
         icon: BookOpenCheck,
