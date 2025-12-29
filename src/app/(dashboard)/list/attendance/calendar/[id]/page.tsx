@@ -3,14 +3,14 @@ import prisma from "@/lib/prisma";
 import { SingleStudentSelect } from "../../../../../../../types/query-types";
 import { notFound } from "next/navigation";
 
-interface StudentSinglePageProps {
-  params: { id: string };
+interface StudentAttendancePageProps {
+  params: Promise<{ id: string }>;
 }
 
 export default async function AttendancePage({
   params,
-}: StudentSinglePageProps) {
-  const { id } = params;
+}: StudentAttendancePageProps) {
+  const { id } = await params;
 
   const student = await prisma.student.findUnique({
     where: { id },
