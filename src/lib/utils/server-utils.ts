@@ -10,6 +10,7 @@ interface UserInfo {
   students?: { studentId: string; classId: number; name: string }[];
   teacherId?: string;
   classId?: number;
+  studentId?: string;
 }
 
 async function getStudentInfo(linkedUserId: string) {
@@ -57,7 +58,8 @@ export const fetchUserInfo = cache(async (): Promise<UserInfo> => {
 
     if (active.role === "student") {
       const students = await getStudentInfo(active.id);
-      return { userId: active.id, role: "student", students };
+      const primaryStudent = students[0];
+      return { userId: active.id, role: "student", studentId: primaryStudent.studentId, classId: primaryStudent.classId, students };
     }
 
     if (active.role === "teacher") {

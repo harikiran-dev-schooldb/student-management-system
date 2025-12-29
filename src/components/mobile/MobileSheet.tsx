@@ -1,57 +1,147 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { ElementType } from "react";
+import { X } from "lucide-react";
+
+type Item = {
+  label: string;
+  href: string;
+  icon?: ElementType;
+};
+
+const ITEM_HEIGHT = 36;
+const HEADER_HEIGHT = 32;
+const SAFE_MARGIN = 12;
+const BOTTOM_NAV_HEIGHT = 56;
 
 export default function MobileSheet({
   title,
   items,
+  anchor,
   onClose,
 }: {
   title: string;
-  items: {
-    label: string;
-    href: string;
-    icon?: ElementType;
-  }[];
+  items: Item[];
+  anchor: { x: number; y: number };
   onClose: () => void;
 }) {
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    requestAnimationFrame(() => setOpen(true));
+  }, []);
+
+  const close = () => {
+    setOpen(false);
+    setTimeout(onClose, 220);
+  };
+
+  /* ---------- Vertical positioning ---------- */
+  const { top, openDirection } = useMemo(() => {
+    const sheetHeight = items.length * ITEM_HEIGHT + HEADER_HEIGHT;
+    const viewportHeight = window.innerHeight;
+
+    const openUp = anchor.y > sheetHeight + SAFE_MARGIN;
+
+    let calculatedTop = openUp
+      ? anchor.y - sheetHeight - SAFE_MARGIN
+      : anchor.y + SAFE_MARGIN;
+
+    const maxTop =
+      viewportHeight -
+      sheetHeight -
+      BOTTOM_NAV_HEIGHT -
+      SAFE_MARGIN;
+
+    calculatedTop = Math.min(calculatedTop, maxTop);
+
+    return {
+      top: Math.max(SAFE_MARGIN, calculatedTop),
+      openDirection: openUp ? "up" : "down",
+    };
+  }, [anchor, items.length]);
+
+  /* ---------- Width (adaptive) ---------- */
+  const SHEET_WIDTH = items.length <= 3 ? 200 : 220;
+
+  /* ---------- Horizontal positioning ---------- */
+  const calculatedLeft = anchor.x - SHEET_WIDTH + 24;
+
+  const clampedLeft = Math.min(
+    Math.max(SAFE_MARGIN, calculatedLeft),
+    window.innerWidth - SHEET_WIDTH - SAFE_MARGIN
+  );
+
   return (
-    <div className="fixed inset-0 z-[200] md:hidden">
+    <>
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/40"
-        onClick={onClose}
+        onClick={close}
+        className={`
+          fixed inset-0 z-[200]
+          bg-black/40
+          transition-opacity duration-200
+          ${open ? "opacity-100" : "opacity-0"}
+        `}
       />
 
       {/* Sheet */}
-      <div className="absolute bottom-0 left-0 right-0 rounded-t-xl
-        bg-white dark:bg-[#121727] p-4"
+      <div
+        className={`
+          fixed z-[201]
+          rounded-xl
+          bg-white dark:bg-[#121727]
+          shadow-xl
+          transition-all duration-300
+          ease-[cubic-bezier(0.22,1,0.36,1)]
+          ${
+            open
+              ? "opacity-100 scale-100 translate-y-0"
+              : openDirection === "up"
+              ? "opacity-0 scale-95 translate-y-2"
+              : "opacity-0 scale-95 -translate-y-2"
+          }
+        `}
+        style={{
+          width: SHEET_WIDTH,
+          left: clampedLeft,
+          top,
+        }}
       >
-        <div className="mb-3 text-sm font-semibold text-gray-500">
-          {title}
+        {/* Header */}
+        <div className="flex items-center justify-between px-3 py-2 border-b border-gray-200 dark:border-white/10">
+          <span className="text-sm font-medium">{title}</span>
+          <button onClick={close}>
+            <X size={14} />
+          </button>
         </div>
 
-        <div className="flex flex-col gap-2">
+        {/* Items */}
+        <ul className="py-1">
           {items.map((item) => {
             const Icon = item.icon;
-
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={onClose}
-                className="flex items-center gap-3 rounded-md px-4 py-3 text-sm
-                  bg-gray-100 dark:bg-gray-800
-                  hover:bg-gray-200 dark:hover:bg-gray-700"
-              >
-                {Icon && <Icon size={18} />}
-                <span>{item.label}</span>
-              </Link>
+              <li key={item.label}>
+                <Link
+                  href={item.href}
+                  onClick={close}
+                  className="
+                    flex items-center gap-2
+                    px-3 py-2
+                    text-[13px]
+                    hover:bg-gray-100 dark:hover:bg-white/10
+                  "
+                >
+                  {Icon && <Icon size={16} />}
+                  <span>{item.label}</span>
+                </Link>
+              </li>
             );
           })}
-        </div>
+        </ul>
       </div>
-    </div>
+    </>
   );
 }

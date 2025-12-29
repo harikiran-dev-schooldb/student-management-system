@@ -105,7 +105,7 @@ const menuSections: MenuSection[] = [
       },
       {
         label: "Fees",
-        href: "/list/fees/collect",
+        href: "/list/fees/view",
         icon: IndianRupee,
         visible: ["student"],
       },

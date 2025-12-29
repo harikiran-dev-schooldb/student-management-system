@@ -18,7 +18,9 @@ type SheetItem = {
 type SheetState = {
   title: string;
   items: SheetItem[];
+  anchor: { x: number; y: number };
 };
+
 
 /**
  * Resolves role-based hrefs into concrete URLs.
@@ -72,16 +74,24 @@ export default function BottomNav({ role }: { role: Role }) {
                   <li key={item.label}>
                     <button
                       type="button"
-                      onClick={() =>
+                      onClick={(e) => {
+                        const rect = (
+                          e.currentTarget as HTMLElement
+                        ).getBoundingClientRect();
+
                         setSheet({
                           title: item.label,
                           items: visibleChildren,
-                        })
-                      }
+                          anchor: {
+                            x: rect.left + rect.width / 2,
+                            y: rect.top,
+                          },
+                        });
+                      }}
                       className="
-                        flex flex-col items-center gap-1 text-[11px]
-                        text-gray-500 dark:text-gray-400
-                      "
+    flex flex-col items-center gap-1 text-[11px]
+    text-gray-500 dark:text-gray-400
+  "
                     >
                       <Icon size={20} />
                       <span>{item.label}</span>
@@ -121,6 +131,7 @@ export default function BottomNav({ role }: { role: Role }) {
         <MobileSheet
           title={sheet.title}
           items={sheet.items}
+          anchor={sheet.anchor}
           onClose={() => setSheet(null)}
         />
       )}

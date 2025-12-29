@@ -14,6 +14,7 @@ import {
   Banknote,
   LogOut,
   BookOpenCheck,
+  FileText,
 } from "lucide-react";
 
 import type { BottomNavItem } from "./BottomNav.types";
@@ -50,13 +51,6 @@ export const bottomNavItems: BottomNavItem[] = [
         visible: ["admin"],
       },
     ],
-  },
-
-  {
-    label: "Homeworks",
-    icon: BookOpenCheck,
-    visible: ["admin", "teacher", "student"],
-    href: () => "/list/homeworks",
   },
 
   {
@@ -118,6 +112,18 @@ export const bottomNavItems: BottomNavItem[] = [
     icon: Menu,
     visible: ["admin", "teacher", "student"],
     children: [
+      {
+        label: "Homeworks",
+        icon: BookOpenCheck,
+        visible: ["admin", "teacher", "student"],
+        href: () => "/list/homeworks",
+      },
+      {
+        label: "Exams",
+        href: "/list/exams",
+        icon: FileText,
+        visible: ["admin", "teacher", "student"],
+      },
       {
         label: "Enter Results",
         href: "/list/results/marks-entry",

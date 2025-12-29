@@ -14,9 +14,14 @@ interface StudentFeePageProps {
 
 const StudentFeePage = async ({ params }: StudentFeePageProps) => {
   const { mode, id } = await params;
-  const { role } = await fetchUserInfo();
+  const { role, studentId } = await fetchUserInfo();
 
-  if (mode !== "collect" && mode !== "cancel") {
+  if (mode !== "collect" && mode !== "cancel" && mode !== "view") {
+    notFound();
+  }
+
+  // 🔒 Student can ONLY access their own fee page
+  if (role === "student" && id !== studentId) {
     notFound();
   }
 

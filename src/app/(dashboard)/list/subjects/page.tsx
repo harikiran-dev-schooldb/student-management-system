@@ -52,7 +52,7 @@ const getColumns = (role: string | null) => [
 ];
 
 const SubjectList = async ({ searchParams }: { searchParams: Promise<SearchParams> }) => {
-  const { role } = await fetchUserInfo();
+  const { role, classId:user } = await fetchUserInfo();
   const params = await searchParams;
   const { page, gradeId, classId, ...queryParams } = params;
   const p = page ? (Array.isArray(page) ? page[0] : page) : "1";

@@ -14,7 +14,7 @@ const pool = new Pool({
   connectionTimeoutMillis: 5000,
   ssl: isProd
     ? { rejectUnauthorized: false } // Neon (Vercel)
-    : false,                        // Local Postgres
+    : false, // Local Postgres
 });
 
 const adapter = new PrismaPg(pool);
@@ -140,7 +140,7 @@ declare global {
   var prismaBase: BasePrisma | undefined;
 
   // eslint-disable-next-line no-var
-  var prisma: ExtendedPrisma | undefined;
+  var prisma: ExtendedPrisma;
 }
 
 /* --------------------------------------------------
@@ -153,7 +153,7 @@ if (process.env.NODE_ENV !== "production") {
   globalThis.prismaBase = base;
 }
 
-const prisma = globalThis.prisma ?? extendPrisma(base);
+const prisma: ExtendedPrisma = globalThis.prisma ?? extendPrisma(base);
 
 if (process.env.NODE_ENV !== "production") {
   globalThis.prisma = prisma;
@@ -175,6 +175,5 @@ if (process.env.NODE_ENV === "production") {
     }
   });
 }
-
 
 export default prisma;
