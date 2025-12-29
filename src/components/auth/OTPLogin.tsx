@@ -1,18 +1,17 @@
 // components/auth/OTPLogin.tsx
-import React, { Dispatch, SetStateAction, RefObject } from 'react'
-import { useOtpTimer } from './useOtpTimer'
+import React, { Dispatch, SetStateAction, RefObject } from "react";
 
 type Props = {
-  phoneNumber: string
-  otpCode: string
-  setPhoneNumber: Dispatch<SetStateAction<string>>
-  setOtpCode: Dispatch<SetStateAction<string>>
-  pendingVerification: boolean
-  otpInputRef: RefObject<HTMLInputElement>
-  isSending: boolean
-  resendTimer: number    
-  handleSendOTP: () => Promise<void>
-}
+  phoneNumber: string;
+  otpCode: string;
+  setPhoneNumber: Dispatch<SetStateAction<string>>;
+  setOtpCode: Dispatch<SetStateAction<string>>;
+  pendingVerification: boolean;
+  otpInputRef: RefObject<HTMLInputElement>;
+  isSending: boolean;
+  resendTimer: number;
+  handleSendOTP: () => Promise<void>;
+};
 
 const OTPLogin = ({
   phoneNumber,
@@ -22,69 +21,105 @@ const OTPLogin = ({
   pendingVerification,
   otpInputRef,
   isSending,
+  resendTimer,
   handleSendOTP,
 }: Props) => {
-  const { timer: resendTimer, startTimer } = useOtpTimer(30)
-
-  const handleResend = async () => {
-    await handleSendOTP()
-    startTimer()
-  }
-
   return (
-    <fieldset className="flex flex-col gap-4">
+    <fieldset className="flex flex-col gap-5">
+      {/* ---------------- Mobile Number ---------------- */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <label htmlFor="phone" className="text-md font-medium text-zinc-950 dark:text-white">Mobile Number</label>
+          <label
+            htmlFor="phone"
+            className="text-sm font-medium text-zinc-800 dark:text-zinc-200"
+          >
+            Mobile Number
+          </label>
+
           {pendingVerification && (
             <button
               type="button"
-              onClick={handleResend}
+              onClick={handleSendOTP}
               disabled={isSending || resendTimer > 0}
-              className="text-xs font-medium text-zinc-250 disabled:opacity-60"
+              className="
+                text-xs font-medium
+                text-indigo-600 dark:text-indigo-400
+                hover:underline
+                disabled:opacity-50 disabled:cursor-not-allowed
+              "
             >
               {isSending
-                ? 'Sending...'
+                ? "Sending..."
                 : resendTimer > 0
-                  ? `Resend in ${resendTimer}s`
-                  : 'Send OTP'}
+                ? `Resend in ${resendTimer}s`
+                : "Resend OTP"}
             </button>
           )}
         </div>
+
         <input
-          type="tel"
           id="phone"
+          type="tel"
           inputMode="numeric"
           pattern="\d{10}"
           value={phoneNumber}
-          onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
-          placeholder="Enter mobile number"
-          className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-LamaPurple"
+          onChange={(e) =>
+            setPhoneNumber(e.target.value.replace(/\D/g, "").slice(0, 10))
+          }
+          placeholder="Enter 10-digit mobile number"
+          disabled={isSending || pendingVerification}
+          className="
+            w-full rounded-xl px-4 py-3 text-sm
+            bg-white dark:bg-[#020617]
+            border border-zinc-300 dark:border-white/10
+            text-zinc-900 dark:text-white
+            placeholder-zinc-400 dark:placeholder-zinc-500
+            focus:outline-none focus:ring-2 focus:ring-indigo-500
+            transition
+            disabled:opacity-60
+          "
           required
-          disabled={isSending}
         />
       </div>
 
+      {/* ---------------- OTP Input ---------------- */}
       {pendingVerification && (
         <div className="flex flex-col gap-2">
-          <label htmlFor="otp" className="text-sm font-medium text-zinc-950">Enter OTP</label>
+          <label
+            htmlFor="otp"
+            className="text-sm font-medium text-zinc-800 dark:text-zinc-200"
+          >
+            Enter OTP
+          </label>
+
           <input
             ref={otpInputRef}
-            type="text"
             id="otp"
+            type="text"
             inputMode="numeric"
             pattern="\d{6}"
             maxLength={6}
             value={otpCode}
-            onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-            placeholder="Enter 6 Digits OTP"
-            className="w-full px-3 py-2 text-sm bg-white border rounded-md outline-none ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-LamaSky"
+            onChange={(e) =>
+              setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+            }
+            placeholder="••••••"
+            className="
+              w-full rounded-xl px-4 py-3
+              text-lg font-semibold tracking-widest text-center
+              bg-white dark:bg-[#020617]
+              border border-zinc-300 dark:border-white/10
+              text-zinc-900 dark:text-white
+              placeholder-zinc-400 dark:placeholder-zinc-600
+              focus:outline-none focus:ring-2 focus:ring-purple-500
+              transition
+            "
             required
           />
         </div>
       )}
     </fieldset>
-  )
-}
+  );
+};
 
-export default OTPLogin
+export default OTPLogin;
