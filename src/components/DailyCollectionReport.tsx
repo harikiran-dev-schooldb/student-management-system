@@ -3,6 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
+/* ================= CONSTANTS ================= */
+
+const TERM_ORDER = ["TERM_1", "TERM_2", "TERM_3", "TERM_4"] as const;
+type TermKey = (typeof TERM_ORDER)[number];
+
+/* ================= TYPES ================= */
+
 type Transaction = {
   id: number;
   receiptNo?: string;
@@ -10,13 +17,15 @@ type Transaction = {
   discountAmount?: number;
   receiptDate: string;
   remarks?: string;
-  term?: string;
+  term?: TermKey;
   student: {
     id: string;
     name: string;
     Class: { name: string } | null;
   } | null;
 };
+
+/* ================= COMPONENT ================= */
 
 export default function DailyCollectionReport() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -28,18 +37,16 @@ export default function DailyCollectionReport() {
   const [from, setFrom] = useState(searchParams.get("from") || "");
   const [to, setTo] = useState(searchParams.get("to") || "");
 
-  /* -------------------------------------------------
-     Fetch Transactions
-  --------------------------------------------------*/
+  /* ---------------- FETCH ---------------- */
+
   useEffect(() => {
     async function fetchTransactions() {
       setLoading(true);
       try {
-        const params: Record<string, string> = {};
-        if (from) params.from = from;
-        if (to) params.to = to;
+        const qs = new URLSearchParams(
+          Object.fromEntries(Object.entries({ from, to }).filter(([, v]) => v))
+        ).toString();
 
-        const qs = new URLSearchParams(params).toString();
         const res = await fetch(`/api/fees/fee-transactions?${qs}`);
         const data = await res.json();
         setTransactions(data ?? []);
@@ -53,144 +60,165 @@ export default function DailyCollectionReport() {
     fetchTransactions();
   }, [from, to]);
 
-  /* -------------------------------------------------
-     Calculations (Memoized)
-  --------------------------------------------------*/
+  /* ---------------- SUMMARY ---------------- */
+
   const summary = useMemo(() => {
     const totalCollected = transactions.reduce(
       (sum, t) => sum + (t.amount ?? 0),
       0
     );
-
     const totalDiscount = transactions.reduce(
       (sum, t) => sum + (t.discountAmount ?? 0),
       0
     );
 
     return {
+      count: transactions.length,
       totalCollected,
       totalDiscount,
       netCollection: totalCollected - totalDiscount,
     };
   }, [transactions]);
 
-  /* -------------------------------------------------
-     Apply Date Filter
-  --------------------------------------------------*/
+  /* ---------------- TERM SUMMARY (SORTED) ---------------- */
+
+  const termSummary = useMemo(() => {
+    const map = transactions.reduce<Record<TermKey, number>>(
+      (acc, t) => {
+        if (t.term) acc[t.term] += t.amount ?? 0;
+        return acc;
+      },
+      {
+        TERM_1: 0,
+        TERM_2: 0,
+        TERM_3: 0,
+        TERM_4: 0,
+      }
+    );
+
+    return TERM_ORDER.filter((t) => map[t] > 0).map((t) => ({
+      term: t,
+      amount: map[t],
+    }));
+  }, [transactions]);
+
+  /* ---------------- SORTED TRANSACTIONS ---------------- */
+
+  const sortedTransactions = useMemo(() => {
+    return [...transactions].sort((a, b) => {
+      const termDiff =
+        TERM_ORDER.indexOf(a.term ?? "TERM_4") -
+        TERM_ORDER.indexOf(b.term ?? "TERM_4");
+
+      if (termDiff !== 0) return termDiff;
+
+      return (
+        new Date(a.receiptDate).getTime() -
+        new Date(b.receiptDate).getTime()
+      );
+    });
+  }, [transactions]);
+
+  /* ---------------- FILTER ---------------- */
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const query = new URLSearchParams();
     if (from) query.set("from", from);
     if (to) query.set("to", to);
-
     router.push(`/list/reports/daywise-fees?${query.toString()}`);
   };
 
+  /* ---------------- LOADING ---------------- */
+
   if (loading) {
     return (
-      <div className="text-gray-600 dark:text-gray-300">
+      <div className="flex items-center justify-center h-64 text-sm text-gray-500">
         Loading fee transactions…
       </div>
     );
   }
 
+  /* ================= UI ================= */
+
   return (
     <div className="flex flex-col gap-6">
-      {/* -------------------------------------------------
-          Date Filter
-      --------------------------------------------------*/}
+      {/* HEADER */}
+      <div>
+        <h1 className="text-xl font-semibold">Day-wise Fee Collection</h1>
+        <p className="text-sm text-gray-500">
+          View and audit fee transactions by date and term
+        </p>
+      </div>
+
+      {/* FILTER */}
       <form
         onSubmit={handleSubmit}
-        className="flex flex-wrap items-end gap-4 p-4 rounded-lg bg-gray-50 dark:bg-gray-800"
+        className="flex flex-wrap items-end gap-4 p-4 border rounded-lg"
       >
-        <div>
-          <label className="block text-xs text-gray-500">From</label>
-          <input
-            type="date"
-            value={from}
-            onChange={(e) => setFrom(e.target.value)}
-            className="px-3 py-2 border rounded dark:bg-gray-700"
-          />
-        </div>
-
-        <div>
-          <label className="block text-xs text-gray-500">To</label>
-          <input
-            type="date"
-            value={to}
-            onChange={(e) => setTo(e.target.value)}
-            className="px-3 py-2 border rounded dark:bg-gray-700"
-          />
-        </div>
+        <DateInput label="From" value={from} onChange={setFrom} />
+        <DateInput label="To" value={to} onChange={setTo} />
 
         <button
           type="submit"
-          className="px-6 py-2 rounded text-white bg-LamaSkyYellow hover:opacity-90"
+          className="h-10 px-6 rounded-md text-sm font-semibold
+                     bg-LamaSkyYellow text-black border border-black/20
+                     hover:bg-LamaSkyYellow/90"
         >
-          Apply
+          Apply Filter
         </button>
       </form>
 
-      {/* -------------------------------------------------
-          Summary Cards
-      --------------------------------------------------*/}
-      <div className="px-2 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <SummaryCard
-          title="Total Collected"
-          value={`₹ ${summary.totalCollected.toFixed(2)}`}
-        />
-        <SummaryCard
-          title="Total Discount"
-          value={`₹ ${summary.totalDiscount.toFixed(2)}`}
-        />
-        <SummaryCard
-          title="Net Collection"
-          value={`₹ ${summary.netCollection.toFixed(2)}`}
-        />
+      {/* SUMMARY */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <SummaryCard title="Transactions" value={summary.count} />
+        <SummaryCard title="Collected" value={`₹ ${summary.totalCollected}`} />
+        <SummaryCard title="Discount" value={`₹ ${summary.totalDiscount}`} />
+        <SummaryCard title="Net" value={`₹ ${summary.netCollection}`} highlight />
       </div>
 
-      {/* -------------------------------------------------
-          Transactions Table
-      --------------------------------------------------*/}
-      <div className="overflow-x-auto rounded-lg border dark:border-gray-700">
-        <table className="min-w-full bg-white dark:bg-gray-900">
-          <thead className="sticky top-0 bg-gray-100 dark:bg-gray-800">
-            <tr className="text-sm text-gray-700 dark:text-gray-300">
+      {/* TERM SUMMARY */}
+      {termSummary.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {termSummary.map(({ term, amount }) => (
+            <div key={term} className="p-4 border rounded-lg">
+              <p className="text-xs uppercase text-gray-500">
+                {term.replace("_", " ")}
+              </p>
+              <p className="text-lg font-semibold">₹ {amount}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* TABLE */}
+      <div className="border rounded-lg overflow-hidden">
+        <table className="min-w-full text-sm">
+          <thead className="bg-gray-100">
+            <tr>
               <Th>ID</Th>
               <Th>Date</Th>
               <Th>Student</Th>
-              <Th>Student ID</Th>
               <Th>Class</Th>
+              <Th>Term</Th>
               <Th align="right">Amount</Th>
-              <Th>Receipt No</Th>
-              <Th>Remarks</Th>
+              <Th>Receipt</Th>
             </tr>
           </thead>
-
           <tbody>
-            {transactions.map((t) => (
-              <tr
-                key={t.id}
-                className="text-sm border-t dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
-              >
+            {sortedTransactions.map((t) => (
+              <tr key={t.id} className="border-t hover:bg-gray-50">
                 <Td>{t.id}</Td>
                 <Td>{new Date(t.receiptDate).toLocaleDateString()}</Td>
                 <Td>{t.student?.name ?? "-"}</Td>
-                <Td>{t.student?.id ?? "-"}</Td>
                 <Td>{t.student?.Class?.name ?? "-"}</Td>
-                <Td align="right">₹ {t.amount.toFixed(2)}</Td>
+                <Td>{t.term?.replace("_", " ") ?? "-"}</Td>
+                <Td align="right" className="font-semibold">
+                  ₹ {t.amount}
+                </Td>
                 <Td>{t.receiptNo ?? "-"}</Td>
-                <Td>{t.remarks ?? "-"}</Td>
               </tr>
             ))}
-
-            {transactions.length === 0 && (
-              <tr>
-                <td colSpan={8} className="text-center py-6 text-gray-500">
-                  No transactions found
-                </td>
-              </tr>
-            )}
           </tbody>
         </table>
       </div>
@@ -198,9 +226,30 @@ export default function DailyCollectionReport() {
   );
 }
 
-/* -------------------------------------------------
-   Small UI Helpers
---------------------------------------------------*/
+/* ================= UI HELPERS ================= */
+
+function DateInput({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-xs text-gray-500">{label}</label>
+      <input
+        type="date"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="h-10 px-3 border rounded-md"
+      />
+    </div>
+  );
+}
+
 function SummaryCard({
   title,
   value,
@@ -212,13 +261,11 @@ function SummaryCard({
 }) {
   return (
     <div
-      className={`p-4 rounded-lg border dark:border-gray-700 ${
-        highlight
-          ? "bg-LamaSky text-white"
-          : "bg-white dark:bg-gray-800"
+      className={`p-4 rounded-lg border ${
+        highlight ? "bg-LamaSkyYellow text-black" : ""
       }`}
     >
-      <p className="text-xs uppercase opacity-80">{title}</p>
+      <p className="text-xs uppercase text-gray-500">{title}</p>
       <p className="text-xl font-semibold">{value}</p>
     </div>
   );
@@ -233,7 +280,7 @@ function Th({
 }) {
   return (
     <th
-      className={`px-4 py-3 font-semibold ${
+      className={`px-4 py-3 text-xs font-semibold uppercase ${
         align === "right" ? "text-right" : "text-left"
       }`}
     >
@@ -245,15 +292,17 @@ function Th({
 function Td({
   children,
   align = "left",
+  className = "",
 }: {
   children: React.ReactNode;
   align?: "left" | "right";
+  className?: string;
 }) {
   return (
     <td
       className={`px-4 py-2 ${
         align === "right" ? "text-right" : "text-left"
-      }`}
+      } ${className}`}
     >
       {children}
     </td>

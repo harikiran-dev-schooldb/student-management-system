@@ -266,6 +266,25 @@ export const examSchema = z.object({
 
 export type ExamSchema = z.infer<typeof examSchema>;
 
+/**
+ * Raw CSV row schema
+ * (before DB lookups)
+ */
+export const bulkExamCSVSchema = z.object({
+  exam_title: z.string().min(1, "Exam title is required"),
+  grade_level: z.string().min(1, "Grade level is required"),
+  subject_name: z.string().min(1, "Subject name is required"),
+  exam_date: z.coerce.date({
+    message: "Invalid exam date",
+  }),
+  start_time: z.string().min(1, "Start time is required"),
+  max_marks: z.coerce
+    .number()
+    .min(1, "Max marks must be greater than 0"),
+});
+
+export type BulkExamCSVRow = z.infer<typeof bulkExamCSVSchema>;
+
 export const lessonsSchema = z.object({
   id: z.coerce.number().optional(),
   day: z.enum(

@@ -242,6 +242,12 @@ const menuSections: MenuSection[] = [
             icon: Clock,
             visible: ["admin", "teacher"],
           },
+          {
+            label: "Exams",
+            href: "/list/reports/bulk-import/exams",
+            icon: FileText,
+            visible: ["admin", "teacher"],
+          },
         ],
       },
     ],

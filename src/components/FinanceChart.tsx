@@ -27,7 +27,7 @@ const formatDateTick = (dateStr: string) => {
 
 export default function FinanceChart({ data }: FinanceChartProps) {
   return (
-    <div className="w-full h-[400px] p-4 bg-white dark:bg-gray-900 rounded-xl shadow">
+    <div className="w-full h-[400px] p-4  rounded-xl ">
       <div className="flex items-center justify-between mb-2">
         <h1 className="text-lg font-semibold text-black dark:text-gray-300">
           Payments Collected (Last 30 Days)

@@ -1,12 +1,12 @@
-import BulkLessonsUpload from "@/components/BulkUpload/lessons";
+import BulkExamUpload from "@/components/BulkUpload/exams";
 import SampleCSVPreview from "@/components/SampleCSVPreview";
 
 export default function ReportsPage() {
   return (
     <div className="">
-      <BulkLessonsUpload />
+      <BulkExamUpload />
       <div className="mt-10">
-        <SampleCSVPreview type="lessons" />
+        <SampleCSVPreview type="exams" />
       </div>
     </div>
   );
