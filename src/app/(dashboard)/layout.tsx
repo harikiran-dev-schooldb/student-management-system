@@ -1,3 +1,4 @@
+// src/app/%28dashboard%29/layout.tsx (SERVER COMPONENT — no "use client")
 import DashboardClientLayout from "@/components/DashboardClientLayout";
 import PageNavbar from "@/components/PageNavbar";
 

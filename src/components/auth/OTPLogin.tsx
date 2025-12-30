@@ -94,15 +94,15 @@ const OTPLogin = ({
             onChange={(e) =>
               setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))
             }
-            placeholder="••••••"
+            placeholder="xxxxxx"
             className="
               w-full rounded-xl px-4 py-3
               text-lg font-semibold tracking-widest text-center
               bg-white dark:bg-[#020617]
-              border border-zinc-300 dark:border-white/10
+              border border-zinc-300 dark:border-[#020617]
               text-zinc-900 dark:text-white
               placeholder-zinc-400 dark:placeholder-zinc-600
-              focus:outline-none focus:ring-2 focus:ring-purple-500
+              focus:outline-none focus:ring-2 focus:ring-LamaSky
               transition
             "
             required

@@ -41,14 +41,14 @@ export default function PasswordLogin({
           htmlFor="phoneNumber"
           className="text-sm font-medium text-zinc-950  dark:text-white"
         >
-          Phone Number
+          Mobile Number
         </label>
         <input
           type="tel"
           id="phoneNumber"
           autoComplete="tel"
           value={phoneNumber}
-          placeholder="Enter phone number"
+          placeholder="Enter 10-digit mobile number"
           onChange={(e) => setPhoneNumber(e.target.value)}
           className=" dark:bg-[#121727] w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
           required

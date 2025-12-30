@@ -20,7 +20,6 @@ const nextConfig = {
   eslint: { ignoreDuringBuilds: true },
 
   // ✅ Standalone output (good for Docker / deployment)
-  output: "standalone",
 
   // ✅ Turbopack (replaces experimental.turbo)
   turbopack: {

@@ -95,7 +95,7 @@ export default function MobileSheet({
           bg-white dark:bg-[#121727]
           shadow-xl
           transition-all duration-300
-          ease-[cubic-bezier(0.22,1,0.36,1)]
+          ease-smooth  /* ✅ UPDATED HERE */
           ${
             open
               ? "opacity-100 scale-100 translate-y-0"

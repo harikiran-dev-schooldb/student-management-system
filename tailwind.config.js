@@ -15,6 +15,9 @@ const config = {
         "gradient-conic":
           "conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))",
       },
+      transitionTimingFunction: {
+        'smooth': 'cubic-bezier(0.22,1,0.36,1)', 
+      },
       
       colors: {
         LamaSky: "#C3EBFA",
