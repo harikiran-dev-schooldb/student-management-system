@@ -193,7 +193,7 @@ function ResponsiveModal({
       {/* Modal / Sheet */}
       <div
         className="
-          relative z-10 bg-white dark:bg-gray-900
+          relative z-10 bg-white dark:bg-[#121727]
           w-full md:w-[70%] lg:w-[60%] xl:w-[50%] 2xl:w-[40%]
 
           /* Mobile = bottom sheet */
@@ -264,7 +264,7 @@ const FormModal = ({
             All data will be lost. Are you sure you want to delete this {table}?
           </span>
 
-          <div className="sticky bottom-0 bg-white dark:bg-gray-900 pt-4 pb-6 md:static">
+          <div className="sticky bottom-0 bg-white dark:bg-[#121727] pt-4 pb-6 md:static">
             <button
               onClick={handleDelete}
               className="w-full md:w-max self-center px-4 py-2 text-white bg-red-700 rounded-md hover:bg-red-800 transition"

@@ -216,8 +216,12 @@ const StudentForm = ({
             id="gender"
             {...register("gender")}
             defaultValue={data?.gender || ""}
-            className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
-          >
+            className="
+  p-2 rounded-md text-sm w-full
+  bg-gray-100 text-gray-900 border border-gray-300
+  dark:bg-[#1a2035] dark:text-gray-100 dark:border-white/10
+  focus:ring-2 focus:ring-LamaSky focus:border-transparent
+"          >
             <option value="" disabled>
               Select Gender
             </option>
@@ -238,8 +242,12 @@ const StudentForm = ({
           </label>
           <select
             id="academicYear"
-            className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
-            {...register("academicYear")}
+            className="
+  p-2 rounded-md text-sm w-full
+  bg-gray-100 text-gray-900 border border-gray-300
+  dark:bg-[#1a2035] dark:text-gray-100 dark:border-white/10
+  focus:ring-2 focus:ring-LamaSky focus:border-transparent
+"            {...register("academicYear")}
             defaultValue={data?.academicYear ?? ""}
           >
             <option value="" disabled>
@@ -262,8 +270,12 @@ const StudentForm = ({
           </label>
           <select
             id="gradeId"
-            className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
-            {...register("gradeId")}
+            className="
+  p-2 rounded-md text-sm w-full
+  bg-gray-100 text-gray-900 border border-gray-300
+  dark:bg-[#1a2035] dark:text-gray-100 dark:border-white/10
+  focus:ring-2 focus:ring-LamaSky focus:border-transparent
+"            {...register("gradeId")}
             defaultValue={data?.gradeId ?? ""}
             onChange={(e) => setSelectedGradeId(parseInt(e.target.value))}
           >
@@ -290,8 +302,12 @@ const StudentForm = ({
           </label>
           <select
             id="classId"
-            className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
-            {...register("classId")}
+            className="
+  p-2 rounded-md text-sm w-full
+  bg-gray-100 text-gray-900 border border-gray-300
+  dark:bg-[#1a2035] dark:text-gray-100 dark:border-white/10
+  focus:ring-2 focus:ring-LamaSky focus:border-transparent
+"            {...register("classId")}
             defaultValue={data?.classId ?? ""}
             disabled={filteredClasses.length === 0}
           >
@@ -321,7 +337,9 @@ const StudentForm = ({
           placeholder="Enter Pen Number"
         />
         <div className="flex flex-col w-full gap-2 md:w-1/4">
-          <label className="text-xs text-gray-500">Photo (Optional)</label>
+          <label className="text-xs font-medium text-gray-600 dark:text-gray-300">
+            Photo (Optional)
+          </label>
           <CldUploadWidget
             uploadPreset="school"
             onSuccess={(result, { widget }) => {
