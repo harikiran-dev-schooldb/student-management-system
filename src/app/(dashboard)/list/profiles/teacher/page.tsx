@@ -13,7 +13,7 @@ const ProfilePage = async () => {
     });
 
     if (teacher?.id) {
-      redirect(`/list/users/teachers/${teacher.id}`);
+      redirect(`/list/profiles/teachers/${teacher.id}`);
     }
   }
 

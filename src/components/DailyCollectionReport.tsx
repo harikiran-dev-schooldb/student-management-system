@@ -2,6 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { ChevronLeft, ChevronRight, Download, Wallet, CreditCard, Banknote } from "lucide-react";
+import ExcelJS from "exceljs";
+import { saveAs } from "file-saver";
 
 /* ================= CONSTANTS ================= */
 
@@ -18,6 +21,7 @@ type Transaction = {
   receiptDate: string;
   remarks?: string;
   term?: TermKey;
+  paymentMode?: "CASH" | "UPI" | "CARD" | "CHEQUE" | "NET_BANKING"; // Added Payment Mode
   student: {
     id: string;
     name: string;
@@ -32,6 +36,10 @@ export default function DailyCollectionReport() {
   const [loading, setLoading] = useState(true);
   const [activeTerm, setActiveTerm] = useState<TermKey | null>(null);
   const [flipped, setFlipped] = useState<TermKey | null>(null);
+
+  // -- PAGINATION STATE --
+  const [page, setPage] = useState(1);
+  const [rowsPerPage] = useState(25);
 
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -52,6 +60,7 @@ export default function DailyCollectionReport() {
         const res = await fetch(`/api/fees/fee-transactions?${qs}`);
         const data = await res.json();
         setTransactions(data ?? []);
+        setPage(1);
       } catch (err) {
         console.error(err);
       } finally {
@@ -61,7 +70,7 @@ export default function DailyCollectionReport() {
     fetchTransactions();
   }, [from, to]);
 
-  /* ---------------- SUMMARY ---------------- */
+  /* ---------------- SUMMARIES ---------------- */
 
   const summary = useMemo(() => {
     const totalCollected = transactions.reduce((s, t) => s + t.amount, 0);
@@ -76,7 +85,27 @@ export default function DailyCollectionReport() {
     };
   }, [transactions]);
 
-  /* ---------------- TERM SUMMARY ---------------- */
+  // NEW: Payment Mode Breakdown
+  const paymentModeSummary = useMemo(() => {
+    const modes = {
+      CASH: 0,
+      UPI: 0,
+      BANK: 0, // Card + Cheque + Net Banking
+    };
+
+    transactions.forEach((t) => {
+      const mode = t.paymentMode || "CASH"; // Default to CASH if undefined
+      if (mode === "CASH") {
+        modes.CASH += t.amount;
+      } else if (mode === "UPI") {
+        modes.UPI += t.amount;
+      } else {
+        modes.BANK += t.amount;
+      }
+    });
+
+    return modes;
+  }, [transactions]);
 
   const termSummary = useMemo(() => {
     const map: Record<TermKey, number> = {
@@ -93,7 +122,7 @@ export default function DailyCollectionReport() {
     }));
   }, [transactions, summary.totalCollected]);
 
-  /* ---------------- SORT ---------------- */
+  /* ---------------- SORT & FILTER ---------------- */
 
   const filteredTransactions = useMemo(() => {
     const base = activeTerm
@@ -106,7 +135,19 @@ export default function DailyCollectionReport() {
     );
   }, [transactions, activeTerm]);
 
-  /* ---------------- FILTER ---------------- */
+  useEffect(() => {
+    setPage(1);
+  }, [activeTerm]);
+
+  /* ---------------- PAGINATION ---------------- */
+
+  const totalPages = Math.ceil(filteredTransactions.length / rowsPerPage);
+  const paginatedTransactions = useMemo(() => {
+    const start = (page - 1) * rowsPerPage;
+    return filteredTransactions.slice(start, start + rowsPerPage);
+  }, [filteredTransactions, page, rowsPerPage]);
+
+  /* ---------------- ACTIONS ---------------- */
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,6 +155,51 @@ export default function DailyCollectionReport() {
     if (from) q.set("from", from);
     if (to) q.set("to", to);
     router.push(`?${q.toString()}`);
+  };
+
+  /* ---------------- EXCEL EXPORT (ExcelJS) ---------------- */
+  const downloadExcel = async () => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Daily Collection");
+
+    // 1. Define Columns
+    worksheet.columns = [
+      { header: "Date", key: "date", width: 15 },
+      { header: "Adm No", key: "admNo", width: 12 },
+      { header: "Student Name", key: "student", width: 25 },
+      { header: "Class", key: "class", width: 10 },
+      { header: "Term", key: "term", width: 15 },
+      { header: "Payment Mode", key: "mode", width: 15 },
+      { header: "Amount", key: "amount", width: 15 },
+      { header: "Discount", key: "discount", width: 15 },
+    ];
+
+    // 2. Add Data Rows
+    filteredTransactions.forEach((t) => {
+      worksheet.addRow({
+        date: new Date(t.receiptDate).toLocaleDateString(),
+        admNo: t.student?.id || "-",
+        student: t.student?.name || "Unknown",
+        class: t.student?.Class?.name || "-",
+        term: t.term || "-",
+        mode: t.paymentMode || "CASH",
+        amount: t.amount,
+        discount: t.discountAmount || 0,
+      });
+    });
+
+    // 3. Make Header Bold (Optional Polish)
+    worksheet.getRow(1).font = { bold: true };
+
+    // 4. Generate & Save
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    
+    const fileName = from && to 
+      ? `Fee_Report_${from}_to_${to}.xlsx` 
+      : `Fee_Report_${new Date().toISOString().split('T')[0]}.xlsx`;
+      
+    saveAs(blob, fileName);
   };
 
   if (loading) {
@@ -129,65 +215,68 @@ export default function DailyCollectionReport() {
   return (
     <div className="flex flex-col gap-6 px-3 py-3">
       {/* HEADER */}
-      <div>
-        <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-          Day-wise Fee Collection
-        </h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          Audit transactions by date and term
-        </p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+            Day-wise Fee Collection
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Audit transactions by date and term
+          </p>
+        </div>
+
+        {/* NEW: Export Button */}
+        <button
+          onClick={downloadExcel}
+          disabled={transactions.length === 0}
+          className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+        >
+          <Download size={16} />
+          Export Excel
+        </button>
       </div>
 
       {/* ================= FILTER ================= */}
       <form
         onSubmit={handleSubmit}
         className="
-    flex items-end gap-4
-    p-4 rounded-xl border
-    bg-white dark:bg-[#121727]
-    border-gray-200 dark:border-white/10
-  "
+          flex items-end gap-4
+          p-4 rounded-xl border
+          bg-white dark:bg-[#121727]
+          border-gray-200 dark:border-white/10
+        "
       >
-        {/* LEFT: Date Inputs */}
-        <div className="flex flex-col gap-4 md:flex-row">
+        <div className="flex flex-col gap-4 md:flex-row w-full md:w-auto">
           <DateInput label="From" value={from} onChange={setFrom} />
           <DateInput label="To" value={to} onChange={setTo} />
         </div>
-
-        {/* RIGHT: Apply Button (hidden on mobile) */}
-        <button
-          type="submit"
-          className="
-    w-full md:w-auto
-    h-11 px-6 md:px-8
-    rounded-md
-    bg-LamaSkyYellow text-black dark:text-white
-    font-semibold
-
-    ring-2 ring-gray-300
-    ring-offset-2
-    ring-offset-white dark:ring-offset-[#121727]
-
-    shadow-sm
-    hover:bg-LamaSkyYellow/90
-    hover:ring-gray-400
-    active:scale-[0.98]
-    transition
-  "
-        >
-          Apply
-        </button>
       </form>
 
-      {/* ================= 3D SUMMARY CARDS ================= */}
+      {/* ================= 3D SUMMARY CARDS (Main) ================= */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <Summary3D title="Transactions" value={summary.count} />
         <Summary3D title="Discount" value={`₹ ${summary.totalDiscount}`} />
         <Summary3D
-          title="Collected"
+          title="Total Collected"
           value={`₹ ${summary.totalCollected}`}
           highlight
         />
+        
+        {/* NEW: Compact Payment Mode Summary in 4th slot */}
+        <div className="rounded-xl border p-4 bg-gray-50 dark:bg-[#121727] border-gray-200 dark:border-white/10 flex flex-col justify-center gap-2">
+            <div className="flex justify-between items-center text-sm">
+                <span className="flex items-center gap-2 text-gray-600 dark:text-gray-300"><Banknote size={14}/> Cash</span>
+                <span className="font-semibold dark:text-white">₹{paymentModeSummary.CASH}</span>
+            </div>
+            <div className="flex justify-between items-center text-sm">
+                <span className="flex items-center gap-2 text-gray-600 dark:text-gray-300"><Wallet size={14}/> UPI</span>
+                <span className="font-semibold dark:text-white">₹{paymentModeSummary.UPI}</span>
+            </div>
+            <div className="flex justify-between items-center text-sm">
+                <span className="flex items-center gap-2 text-gray-600 dark:text-gray-300"><CreditCard size={14}/> Bank</span>
+                <span className="font-semibold dark:text-white">₹{paymentModeSummary.BANK}</span>
+            </div>
+        </div>
       </div>
 
       {/* ================= 3D TERM CARDS ================= */}
@@ -209,7 +298,6 @@ export default function DailyCollectionReport() {
                 ${term === flipped ? "[transform:rotateY(180deg)]" : ""}
               `}
             >
-              {/* FRONT */}
               <div className="[backface-visibility:hidden]">
                 <p className="text-xs uppercase text-gray-500">
                   {term.replace("_", " ")}
@@ -217,11 +305,10 @@ export default function DailyCollectionReport() {
                 <p className="text-2xl font-semibold mt-2">₹ {amount}</p>
               </div>
 
-              {/* BACK */}
               <div
                 className="absolute inset-0 p-5 rounded-xl bg-LamaSkyYellow text-black
-                              [transform:rotateY(180deg)]
-                              [backface-visibility:hidden]"
+                            [transform:rotateY(180deg)]
+                            [backface-visibility:hidden]"
               >
                 <p className="text-sm font-semibold dark:text-white">
                   Contribution
@@ -237,40 +324,32 @@ export default function DailyCollectionReport() {
 
       {/* ================= MOBILE CARDS ================= */}
       <div className="md:hidden flex flex-col gap-3">
-        {filteredTransactions.map((t) => (
+        {paginatedTransactions.map((t) => (
           <div
             key={t.id}
             className="rounded-lg border p-4
                  bg-white dark:bg-[#121727]
                  border-gray-200 dark:border-white/10"
           >
-            {/* Top row */}
             <div className="flex items-center justify-between">
               <span className="text-xs text-gray-500 dark:text-gray-400">
-                Adm No: {t.student?.id ?? "-"}
+                {t.paymentMode || "CASH"}
               </span>
               <span className="font-semibold text-green-600 dark:text-green-400">
                 ₹ {t.amount}
               </span>
             </div>
-
-            {/* Name */}
             <p className="mt-1 font-medium text-gray-900 dark:text-gray-100">
               {t.student?.name ?? "-"}{" "}
               <span className="text-xs text-gray-500 dark:text-gray-400">
                 ({t.student?.Class?.name ?? "-"})
               </span>
             </p>
-
-            {/* Term */}
-            <div className="mt-1">
-              <span
-                className="inline-block px-2 py-0.5 rounded-full
-                         bg-gray-100 dark:bg-white/10
-                         text-xs text-gray-600 dark:text-gray-300"
-              >
-                {t.term?.replace("_", " ") ?? "-"}
-              </span>
+            <div className="flex items-center justify-between mt-2">
+                <span className="text-xs text-gray-400">{new Date(t.receiptDate).toLocaleDateString()}</span>
+                <span className="inline-block px-2 py-0.5 rounded-full bg-gray-100 dark:bg-white/10 text-xs text-gray-600 dark:text-gray-300">
+                    {t.term?.replace("_", " ") ?? "-"}
+                </span>
             </div>
           </div>
         ))}
@@ -286,30 +365,80 @@ export default function DailyCollectionReport() {
           <thead className="bg-gray-100 dark:bg-white/5">
             <tr>
               <Th>Date</Th>
-              <Th>Adm No</Th>
               <Th>Student</Th>
               <Th>Class</Th>
               <Th>Term</Th>
+              <Th>Mode</Th>
               <Th>Amount</Th>
             </tr>
           </thead>
           <tbody>
-            {filteredTransactions.map((t) => (
-              <tr
-                key={t.id}
-                className="border-t hover:bg-gray-50 dark:hover:bg-white/5"
-              >
-                <Td>{new Date(t.receiptDate).toLocaleDateString()}</Td>
-                <Td>{t.student?.id}</Td>
-                <Td>{t.student?.name}</Td>
-                <Td>{t.student?.Class?.name}</Td>
-                <Td>{t.term}</Td>
-                <Td className="font-semibold">₹ {t.amount}</Td>
+            {paginatedTransactions.length > 0 ? (
+              paginatedTransactions.map((t) => (
+                <tr
+                  key={t.id}
+                  className="border-t hover:bg-gray-50 dark:hover:bg-white/5"
+                >
+                  <Td>{new Date(t.receiptDate).toLocaleDateString()}</Td>
+                  <Td>
+                    <div className="flex flex-col">
+                        <span>{t.student?.name}</span>
+                        <span className="text-xs text-gray-400">{t.student?.id}</span>
+                    </div>
+                  </Td>
+                  <Td>{t.student?.Class?.name}</Td>
+                  <Td>{t.term}</Td>
+                  <Td>
+                    <span className={`text-xs font-medium px-2 py-1 rounded ${
+                        t.paymentMode === 'UPI' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' :
+                        t.paymentMode === 'CASH' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' :
+                        'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                    }`}>
+                        {t.paymentMode || 'CASH'}
+                    </span>
+                  </Td>
+                  <Td className="font-semibold">₹ {t.amount}</Td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={6} className="text-center py-10 text-gray-500">
+                  No records found for this period.
+                </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>
+
+      {/* ================= PAGINATION CONTROLS ================= */}
+      {filteredTransactions.length > 0 && (
+        <div className="flex items-center justify-between px-2 pt-2 border-t dark:border-white/10">
+          <div className="text-xs text-gray-500">
+            Showing {(page - 1) * rowsPerPage + 1} to {Math.min(page * rowsPerPage, filteredTransactions.length)} of {filteredTransactions.length}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-white/5 disabled:opacity-50"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <span className="text-sm font-medium px-2">
+              Page {page} of {totalPages}
+            </span>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-white/5 disabled:opacity-50"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -325,14 +454,14 @@ const DateInput = ({
   value: string;
   onChange: (v: string) => void;
 }) => (
-  <div className="flex flex-col gap-1">
+  <div className="flex flex-col gap-1 w-full md:w-auto">
     <label className="text-xs text-gray-500">{label}</label>
     <input
       type="date"
       value={value}
       onChange={(e) => onChange(e.target.value)}
       className="
-    h-10 w-full px-3 rounded-md border
+    h-10 w-full md:w-40 px-3 rounded-md border
     bg-transparent
     text-gray-900 dark:text-gray-100
     border-gray-300 dark:border-white/10
@@ -354,7 +483,7 @@ const Summary3D = ({
 }) => (
   <div className="[perspective:1200px]">
     <div
-      className={`rounded-xl border p-5 transform-gpu transition-all
+      className={`rounded-xl border p-5 transform-gpu transition-all h-full flex flex-col justify-center
         bg-white dark:bg-[#121727]
         border-gray-200 dark:border-white/10
         hover:-translate-y-1 hover:shadow-xl
@@ -366,36 +495,14 @@ const Summary3D = ({
   </div>
 );
 
-const Th = ({
-  children,
-  align = "left",
-}: {
-  children: React.ReactNode;
-  align?: "left" | "right";
-}) => (
-  <th
-    className={`px-4 py-3 text-xs uppercase ${
-      align === "right" ? "text-right" : ""
-    }`}
-  >
+const Th = ({ children }: { children: React.ReactNode }) => (
+  <th className="px-4 py-3 text-xs uppercase text-gray-500 bg-gray-50 dark:bg-white/5 font-medium text-left">
     {children}
   </th>
 );
 
-const Td = ({
-  children,
-  align = "left",
-  className = "",
-}: {
-  children: React.ReactNode;
-  align?: "left" | "right";
-  className?: string;
-}) => (
-  <td
-    className={`px-4 py-2 ${
-      align === "right" ? "text-right" : ""
-    } ${className}`}
-  >
+const Td = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
+  <td className={`px-4 py-3 text-gray-700 dark:text-gray-300 ${className}`}>
     {children}
   </td>
 );

@@ -89,8 +89,8 @@ const renderRow = (
         className={clsx(
           "",
           status === "Fully Paid" && "text-LamaGreen dark:text-LamaGreen",
-          status === "Not Paid" && "text-red-600 dark:text-red-400",
-          status.includes("Term") && "text-LamaYellow dark:text-LamaYellow"
+          status === "Not Paid" && "text-red-500 dark:text-red-400",
+          status.includes("Term") && "text-orange-500 dark:text-LamaYellow"
         )}
       >
         {status}

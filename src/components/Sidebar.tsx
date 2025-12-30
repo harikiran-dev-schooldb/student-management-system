@@ -1,7 +1,7 @@
 "use client";
 
 import { useSidebar } from "@/components/context/SidebarContext";
-import { Menu } from "lucide-react";
+import { Menu, ChevronsLeft  } from "lucide-react";
 
 export default function SidebarShell({
   children,
@@ -13,32 +13,42 @@ export default function SidebarShell({
   return (
     <aside
       className={`
-        hidden md:flex
-        h-screen flex-col border-r
+        hidden md:flex flex-col
+        sticky top-0 left-0 h-screen
         bg-white dark:bg-[#121727]
-        border-gray-200 dark:border-white/10
-        text-gray-700 dark:text-gray-200
-        transition-all duration-300
-
+        border-r border-gray-200 dark:border-gray-800
+        text-gray-600 dark:text-gray-300
+        transition-all duration-300 ease-in-out
+        z-40 shadow-sm
         ${isOpen ? "w-48" : "w-20"}
       `}
     >
-      {/* TOP SECTION: Toggle */}
-      <div
-        className={`flex items-center ${
-          isOpen ? "justify-between" : "justify-center"
-        } px-4 py-3 h-20`}
-      >
+      {/* --- HEADER: Logo & Toggle --- */}
+      <div className="h-16 flex items-center justify-between px-4 border-b border-gray-100 dark:border-gray-800/50 shrink-0">
+        {/* Logo Area - Hides when collapsed */}
+        <div
+          className={`flex items-center gap-2 overflow-hidden transition-all duration-300 ${
+            isOpen ? "w-full opacity-100" : "w-0 opacity-0"
+          }`}
+        ></div>
+
+        {/* Toggle Button - Centered when collapsed */}
         <button
           onClick={toggle}
-          className="p-2 rounded-md hover:bg-LamaSkyLight dark:hover:bg-gray-700 transition-colors"
+          className={`
+            p-1.5 rounded-lg
+            text-gray-500 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-400
+            hover:bg-indigo-50 dark:hover:bg-indigo-900/20
+            transition-all duration-200
+            ${!isOpen && "mx-auto"} 
+          `}
           aria-label="Toggle sidebar"
         >
-          <Menu size={20} />
+          {isOpen ? <ChevronsLeft size={20} /> : <Menu size={20} />}
         </button>
       </div>
 
-      {/* MENU SECTION: The scrollable area */}
+      {/* --- SCROLLABLE CONTENT --- */}
       <div
         className={`
           flex-1 px-2 
@@ -48,7 +58,12 @@ export default function SidebarShell({
           ${isOpen ? "overflow-y-visible" : "overflow-y-visible"}
         `}
       >
-        {children}
+        <div className="flex flex-col gap-1">{children}</div>
+      </div>
+
+      {/* --- FOOTER (Optional: User Profile or Settings) --- */}
+      <div className="p-3 border-t border-gray-100 dark:border-gray-800/50 shrink-0">
+        {/* You can put a mini user profile here later */}
       </div>
     </aside>
   );

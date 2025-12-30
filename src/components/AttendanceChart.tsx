@@ -14,7 +14,7 @@ import {
 interface AttendanceChartData {
   name: string;
   present: number;
-  absent?: number;
+  absent: number;
 }
 
 const AttendanceChart = ({

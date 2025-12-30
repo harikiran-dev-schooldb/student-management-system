@@ -27,6 +27,7 @@ const config = {
         LamaPinkLight: "#ffe5ec",
         LamaGreen: "#29bf12",
         LamaRed: "#ff7477",
+        darkMode: "#121727",
          "grey-olive": {
           50: "#f2f3f2",
           100: "#e5e6e5",

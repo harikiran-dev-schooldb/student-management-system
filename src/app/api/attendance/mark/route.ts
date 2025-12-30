@@ -129,3 +129,31 @@ export async function POST(req: Request) {
     );
   }
 }
+
+
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const date = searchParams.get("date");
+  const classId = searchParams.get("classId");
+
+  if (!date || !classId) {
+    return NextResponse.json({ error: "Missing params" }, { status: 400 });
+  }
+
+  try {
+    const attendance = await prisma.attendance.findMany({
+      where: {
+        date: new Date(date),
+        classId: parseInt(classId),
+      },
+      select: {
+        studentId: true,
+        present: true,
+      },
+    });
+
+    return NextResponse.json(attendance);
+  } catch (err) {
+    return NextResponse.json({ error: "Error fetching data" }, { status: 500 });
+  }
+}

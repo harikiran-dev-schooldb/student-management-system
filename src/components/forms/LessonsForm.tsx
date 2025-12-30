@@ -115,9 +115,6 @@ const LessonForm = ({
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6">
-      <h1 className="text-xl font-semibold">
-        {type === "create" ? "Create a new lesson" : "Update lesson"}
-      </h1>
 
       <div className="flex flex-wrap gap-4">
         {/* Day */}

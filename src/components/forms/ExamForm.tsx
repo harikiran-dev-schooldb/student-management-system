@@ -209,9 +209,6 @@ const ExamForm = ({
 
     return (
         <form className="flex flex-col gap-8" onSubmit={handleSubmit(onSubmit)}>
-            <h1 className="text-xl font-semibold">
-                {type === "create" ? "Create a new exam" : "Update the exam"}
-            </h1>
 
             <div className="flex flex-col w-full gap-2 md:w-1/4">
                 <label className="text-xs text-gray-500">Exam Title</label>

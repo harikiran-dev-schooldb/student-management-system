@@ -26,28 +26,17 @@ export const getAdminDashboardData = (targetDate: Date) =>
         _count: {
           studentId: true,
         },
+        orderBy: {
+          date: 'asc'
+        }
       });
 
-      const attendanceMap = new Map<string, number>(
-        attendanceRaw.map((row) => [
-          row.date.toISOString().split("T")[0],
-          row._count.studentId,
-        ])
-      );
-
-      const attendance: { date: string; present: number }[] = [];
-      const attendanceCursor = new Date(start);
-
-      while (attendanceCursor <= end) {
-        const dateStr = attendanceCursor.toISOString().split("T")[0];
-
-        attendance.push({
-          date: dateStr,
-          present: attendanceMap.get(dateStr) ?? 0,
-        });
-
-        attendanceCursor.setDate(attendanceCursor.getDate() + 1);
-      }
+      // FIX: Do not fill missing dates with 0 here. 
+      // Send raw data so the UI knows which days actually had attendance.
+      const attendance = attendanceRaw.map((row) => ({
+         date: row.date.toISOString().split("T")[0],
+         present: row._count.studentId,
+      }));
 
       /* ---------------------------------
          Parallel Dashboard Queries

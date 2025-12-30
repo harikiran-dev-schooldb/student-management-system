@@ -66,9 +66,6 @@ const ClassForm = ({
 
   return (
     <form className="flex flex-col gap-8" onSubmit={handleSubmit(onSubmit)}>
-      <h1 className="text-xl font-semibold">
-        {type === "create" ? "Create a new class" : "Update the class"}
-      </h1>
 
       <div className="flex flex-wrap justify-between gap-4">
         {/* Grade */}

@@ -20,6 +20,11 @@ const AttendanceChartContainer = ({
   records,
   totalStudents,
 }: AttendanceChartContainerProps) => {
+  if (!records || !Array.isArray(records)) {
+    console.error("Invalid records data");
+    return <div>No attendance records available.</div>; // Fallback UI
+  }
+  
   // Dates that actually exist in DB (attendance marked)
   const markedDateSet = new Set(records.map(r => r.date));
 

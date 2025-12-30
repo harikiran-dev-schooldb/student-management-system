@@ -125,9 +125,6 @@ const AdminForm = ({
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-8">
-      <h1 className="text-xl font-semibold">
-        {type === "create" ? "Create a new Admin" : "Update the Admin"}
-      </h1>
 
       <span className="text-xs font-medium text-gray-400">Authentication Information</span>
 

@@ -83,9 +83,6 @@ const TeacherForm = ({
 
   return (
     <form className="flex flex-col gap-8 pb-24 md:pb-8" onSubmit={onSubmit}>
-      <h1 className="text-xl font-semibold">
-        {type === "create" ? "Create a new teacher" : "Update the teacher"}
-      </h1>
 
       <span className="text-xs font-medium text-gray-400">
         Authentication Information

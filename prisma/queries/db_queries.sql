@@ -175,10 +175,9 @@ WHERE "date" >= '2025-12-21 00:00:00'
 
 SELECT *
 FROM "Attendance"
-WHERE "date" >= '2025-12-29 00:00:00';
+WHERE "date" >= '2025-12-27 00:00:00' AND "date" <  '2025-12-27 23:59:59';
 
-DELETE FROM "Attendance" WHERE "date" >= '2025-12-21 00:00:00'
-  AND "date" <  '2025-12-22 00:00:00';
+DELETE FROM "Attendance" WHERE "date" >= '2025-12-28 00:00:00' AND "date" <  '2025-12-28 23:59:59';
 
 DELETE FROM "class";
 

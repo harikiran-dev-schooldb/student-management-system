@@ -53,6 +53,7 @@ export const SingleStudentSelect = {
       id: true,
       section: true,
       gradeId: true,
+      name: true,
       Grade: { select: { id: true, level: true } },
       Teacher: { select: { id: true, name: true } },
       _count: { select: { lessons: true } },

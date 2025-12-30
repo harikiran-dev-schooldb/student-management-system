@@ -9,5 +9,4 @@ export default async function FeesViewIndex() {
   }
 
   // Admin can land here (optional dashboard)
-  redirect("/list/fees/collect");
 }
