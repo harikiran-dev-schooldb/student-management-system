@@ -11,41 +11,40 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
+interface AttendanceChartData {
+  name: string;
+  present: number;
+  absent?: number;
+}
+
 const AttendanceChart = ({
   data,
   darkMode = false,
 }: {
-  data: { name: string; present: number; absent: number }[];
+  data: AttendanceChartData[];
   darkMode?: boolean;
 }) => {
   return (
     <ResponsiveContainer width="100%" height="90%">
-      <BarChart width={500} height={300} data={data} barSize={20}>
+      <BarChart data={data} barSize={24}>
         <CartesianGrid
           strokeDasharray="3 3"
           vertical={false}
           stroke={darkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)"}
-          horizontal={true}
         />
 
         <XAxis
           dataKey="name"
           axisLine={false}
-          tick={{
-            fill: darkMode ? "hsl(var(--foreground))" : "hsl(var(--foreground))",
-          }}
+          tick={{ fill: "hsl(var(--foreground))" }}
           tickLine={false}
         />
 
         <YAxis
           axisLine={false}
-          tick={{
-            fill: darkMode ? "hsl(var(--foreground))" : "hsl(var(--foreground))",
-          }}
+          tick={{ fill: "hsl(var(--foreground))" }}
           tickLine={false}
         />
-
-
 
         <Tooltip
           contentStyle={{
@@ -62,7 +61,7 @@ const AttendanceChart = ({
           wrapperStyle={{
             paddingTop: "20px",
             paddingBottom: "40px",
-            color: darkMode ? "#f9fafb" : "#374151", // gray-700 in light mode
+            color: darkMode ? "#f9fafb" : "#374151",
           }}
         />
 

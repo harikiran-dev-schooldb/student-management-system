@@ -1,54 +1,59 @@
 import AttendanceChart from "./AttendanceChart";
 
 interface AttendanceRecord {
-  date: Date;
-  present: boolean;
+  date: string;    // YYYY-MM-DD
+  present: number; // aggregated
+}
+
+interface AttendanceChartData {
+  name: string;
+  present: number;
+  absent: number;
 }
 
 interface AttendanceChartContainerProps {
   records: AttendanceRecord[];
+  totalStudents: number;
 }
 
-const AttendanceChartContainer = ({ records }: AttendanceChartContainerProps) => {
-  const daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const AttendanceChartContainer = ({
+  records,
+  totalStudents,
+}: AttendanceChartContainerProps) => {
+  // Dates that actually exist in DB (attendance marked)
+  const markedDateSet = new Set(records.map(r => r.date));
 
-  const attendanceMap: Record<
-    string,
-    { present: number; absent: number }
-  > = {
-    Mon: { present: 0, absent: 0 },
-    Tue: { present: 0, absent: 0 },
-    Wed: { present: 0, absent: 0 },
-    Thu: { present: 0, absent: 0 },
-    Fri: { present: 0, absent: 0 },
-    Sat: { present: 0, absent: 0 },
-  };
+  // Map for present lookup
+  const presentMap = new Map(records.map(r => [r.date, r.present]));
 
-  records.forEach((item) => {
-    const d = new Date(item.date);
-    const index = d.getDay() === 0 ? 6 : d.getDay() - 1;
-    const day = daysOfWeek[index];
+  const data: AttendanceChartData[] = [];
 
-    if (!attendanceMap[day]) return;
+  // Generate last 7 days INCLUDING today
+  for (let i = 6; i >= 0; i--) {
+    const dateObj = new Date();
+    dateObj.setDate(dateObj.getDate() - i);
 
-    if (item.present) {
-      attendanceMap[day].present += 1;
-    } else {
-      attendanceMap[day].absent += 1;
-    }
-  });
+    // Skip Sunday
+    if (dateObj.getDay() === 0) continue;
 
-  const data = daysOfWeek.map((day) => ({
-    name: day,
-    present: attendanceMap[day].present,
-    absent: attendanceMap[day].absent,
-  }));
+    const dateStr = dateObj.toISOString().split("T")[0];
+    const attendanceMarked = markedDateSet.has(dateStr);
+    const present = presentMap.get(dateStr) ?? 0;
+
+    data.push({
+      name: dateObj.toLocaleDateString("en-US", { weekday: "short" }),
+      present: attendanceMarked ? present : 0,
+      absent: attendanceMarked
+        ? Math.max(totalStudents - present, 0)
+        : 0,
+    });
+  }
 
   return (
     <div className="h-full p-4 bg-white dark:bg-gray-900 rounded-lg">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-2">
         <h1 className="text-lg font-semibold text-gray-500 dark:text-gray-300">
-          Attendance
+          Attendance (Last 7 Days)
         </h1>
         <img src="/moreDark.png" alt="More" width={20} height={20} />
       </div>

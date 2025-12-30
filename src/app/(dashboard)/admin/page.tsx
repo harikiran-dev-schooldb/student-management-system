@@ -78,12 +78,19 @@ export default async function AdminPage({ searchParams }: PageProps) {
         {/* CHART ROW */}
         <Suspense fallback={<ChartSkeleton />}>
           <div className="flex flex-col gap-4 lg:flex-row">
-            <div className={`${cardBase} ${cardHover} w-full lg:w-1/3 h-[450px] p-4`}>
+            <div
+              className={`${cardBase} ${cardHover} w-full lg:w-1/3 h-[450px] p-4`}
+            >
               <CountChartContainer stats={dashboard.genderStats} />
             </div>
 
-            <div className={`${cardBase} ${cardHover} w-full lg:w-2/3 h-[450px] p-4`}>
-              <AttendanceChartContainer records={dashboard.attendance} />
+            <div
+              className={`${cardBase} ${cardHover} w-full lg:w-2/3 h-[450px] p-4`}
+            >
+              <AttendanceChartContainer
+                records={dashboard.attendance}
+                totalStudents={dashboard.studentCount}
+              />
             </div>
           </div>
         </Suspense>

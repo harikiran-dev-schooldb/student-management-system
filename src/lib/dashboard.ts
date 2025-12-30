@@ -4,6 +4,9 @@ import { unstable_cache } from "next/cache";
 export const getAdminDashboardData = (targetDate: Date) =>
   unstable_cache(
     async () => {
+      /* ---------------------------------
+         Date Range (Last 30 Days)
+      ----------------------------------*/
       const end = new Date(targetDate);
       end.setHours(23, 59, 59, 999);
 
@@ -11,12 +14,49 @@ export const getAdminDashboardData = (targetDate: Date) =>
       start.setDate(start.getDate() - 29);
       start.setHours(0, 0, 0, 0);
 
+      /* ---------------------------------
+         Attendance (Per-Day Aggregation)
+      ----------------------------------*/
+      const attendanceRaw = await prisma.attendance.groupBy({
+        by: ["date"],
+        where: {
+          date: { gte: start, lte: end },
+          present: true,
+        },
+        _count: {
+          studentId: true,
+        },
+      });
+
+      const attendanceMap = new Map<string, number>(
+        attendanceRaw.map((row) => [
+          row.date.toISOString().split("T")[0],
+          row._count.studentId,
+        ])
+      );
+
+      const attendance: { date: string; present: number }[] = [];
+      const attendanceCursor = new Date(start);
+
+      while (attendanceCursor <= end) {
+        const dateStr = attendanceCursor.toISOString().split("T")[0];
+
+        attendance.push({
+          date: dateStr,
+          present: attendanceMap.get(dateStr) ?? 0,
+        });
+
+        attendanceCursor.setDate(attendanceCursor.getDate() + 1);
+      }
+
+      /* ---------------------------------
+         Parallel Dashboard Queries
+      ----------------------------------*/
       const [
         adminCount,
         teacherCount,
         studentCount,
         genderStats,
-        attendance,
         events,
         financeRaw,
       ] = await Promise.all([
@@ -28,11 +68,6 @@ export const getAdminDashboardData = (targetDate: Date) =>
           by: ["gender"],
           where: { status: "ACTIVE" },
           _count: true,
-        }),
-
-        prisma.attendance.findMany({
-          where: { date: { gte: start, lte: end } },
-          select: { date: true, present: true },
         }),
 
         prisma.event.findMany({
@@ -55,33 +90,33 @@ export const getAdminDashboardData = (targetDate: Date) =>
         }),
       ]);
 
-      // --- FINANCE DATA FILLING LOGIC ---
-      
-      // 1. Convert raw DB results into a Map for quick lookup
-      const financeMap = new Map(
+      /* ---------------------------------
+         Finance (Fill Missing Dates)
+      ----------------------------------*/
+      const financeMap = new Map<string, number>(
         financeRaw.map((row) => [
           row.receiptDate.toISOString().split("T")[0],
           row._sum.amount ?? 0,
         ])
       );
 
-      // 2. Generate every single date in the 30-day range
-      const finance = [];
-      const iterateDate = new Date(start);
-      
-      while (iterateDate <= end) {
-        const dateStr = iterateDate.toISOString().split("T")[0];
-        
+      const finance: { date: string; collected: number }[] = [];
+      const financeCursor = new Date(start);
+
+      while (financeCursor <= end) {
+        const dateStr = financeCursor.toISOString().split("T")[0];
+
         finance.push({
           date: dateStr,
-          // If the date exists in DB, use it; otherwise, default to 0
-          collected: financeMap.get(dateStr) || 0,
+          collected: financeMap.get(dateStr) ?? 0,
         });
 
-        // Move to the next day
-        iterateDate.setDate(iterateDate.getDate() + 1);
+        financeCursor.setDate(financeCursor.getDate() + 1);
       }
 
+      /* ---------------------------------
+         Final Payload
+      ----------------------------------*/
       return {
         adminCount,
         teacherCount,
