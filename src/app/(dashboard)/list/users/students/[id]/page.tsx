@@ -4,7 +4,7 @@ import ClassTimetableContainer from "@/components/ClassTimetableContainer";
 import FormContainer from "@/components/FormContainer";
 import StudentAttendanceCard from "@/components/StudentAttendanceCard";
 import InfoItem from "@/components/student/InfoItem";
-import { cardBase, metricCard } from "@/components/student/studentCardStyles";
+import { cardBase, cardBase1, metricCard } from "@/components/student/studentCardStyles";
 import prisma from "@/lib/prisma";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
 import { notFound } from "next/navigation";
@@ -33,7 +33,7 @@ const SingleStudentPage = async ({ params }: StudentSinglePageProps) => {
       <div className="w-full xl:w-3/4 space-y-4">
         <div className="flex flex-col gap-4 lg:flex-row">
           {/* USER CARD */}
-          <div className={`${cardBase} flex flex-1 gap-5 p-6`}>
+          <div className={`${cardBase1} flex flex-1 gap-5 p-6`}>
             <div className="flex items-center justify-center w-24">
               <Avatar
                 src={student.img}

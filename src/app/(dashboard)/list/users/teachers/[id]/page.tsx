@@ -2,7 +2,7 @@ import Messages from "@/components/Announcements";
 import FormContainer from "@/components/FormContainer";
 import TeacherTimetableContainer from "@/components/TeacherTimetableContainer";
 import InfoItem from "@/components/student/InfoItem";
-import { cardBase, metricCard } from "@/components/student/studentCardStyles";
+import { cardBase, cardBase1, metricCard } from "@/components/student/studentCardStyles";
 import prisma from "@/lib/prisma";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
 import Link from "next/link";
@@ -40,7 +40,7 @@ const SingleTeacherPage = async ({ params }: TeacherSinglePageProps) => {
         {/* ---------- TOP SECTION ---------- */}
         <div className="flex flex-col gap-4 lg:flex-row">
           {/* TEACHER CARD */}
-          <div className={`${cardBase} flex flex-1 gap-5 p-6`}>
+          <div className={`${cardBase1} flex flex-1 gap-5 p-6`}>
             <div className="flex items-center justify-center w-24">
               <img
                 src={
