@@ -149,7 +149,6 @@ export default function DailyCollectionReport() {
   "
       >
         {/* LEFT: Date Inputs */}
-        {/* LEFT: Date Inputs */}
         <div className="flex flex-col gap-4 md:flex-row">
           <DateInput label="From" value={from} onChange={setFrom} />
           <DateInput label="To" value={to} onChange={setTo} />
@@ -159,8 +158,9 @@ export default function DailyCollectionReport() {
         <button
           type="submit"
           className="
-    hidden md:inline-flex
-    h-10 px-8 rounded-md
+    w-full md:w-auto
+    h-11 px-6 md:px-8
+    rounded-md
     bg-LamaSkyYellow text-black dark:text-white
     font-semibold
 
@@ -170,7 +170,7 @@ export default function DailyCollectionReport() {
 
     shadow-sm
     hover:bg-LamaSkyYellow/90
-    hover:ring-gray-300
+    hover:ring-gray-400
     active:scale-[0.98]
     transition
   "

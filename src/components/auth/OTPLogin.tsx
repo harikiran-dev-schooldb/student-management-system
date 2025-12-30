@@ -68,16 +68,7 @@ const OTPLogin = ({
           }
           placeholder="Enter 10-digit mobile number"
           disabled={isSending || pendingVerification}
-          className="
-            w-full rounded-xl px-4 py-3 text-sm
-            bg-white dark:bg-[#020617]
-            border border-zinc-300 dark:border-white/10
-            text-zinc-900 dark:text-white
-            placeholder-zinc-400 dark:placeholder-zinc-500
-            focus:outline-none focus:ring-2 focus:ring-indigo-500
-            transition
-            disabled:opacity-60
-          "
+          className="dark:bg-[#121727] w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10"
           required
         />
       </div>
