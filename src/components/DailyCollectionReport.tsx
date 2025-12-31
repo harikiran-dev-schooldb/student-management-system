@@ -21,7 +21,7 @@ type Transaction = {
   receiptDate: string;
   remarks?: string;
   term?: TermKey;
-  paymentMode?: "CASH" | "UPI" | "CARD" | "CHEQUE" | "NET_BANKING"; // Added Payment Mode
+  paymentMode?: "CASH" | "UPI" | "CARD" | "CHEQUE" | "NET_BANKING";
   student: {
     id: string;
     name: string;
@@ -74,10 +74,7 @@ export default function DailyCollectionReport() {
 
   const summary = useMemo(() => {
     const totalCollected = transactions.reduce((s, t) => s + t.amount, 0);
-    const totalDiscount = transactions.reduce(
-      (s, t) => s + (t.discountAmount ?? 0),
-      0
-    );
+    const totalDiscount = transactions.reduce((s, t) => s + (t.discountAmount ?? 0), 0);
     return {
       count: transactions.length,
       totalCollected,
@@ -85,7 +82,7 @@ export default function DailyCollectionReport() {
     };
   }, [transactions]);
 
-  // NEW: Payment Mode Breakdown
+  // Payment Mode Breakdown
   const paymentModeSummary = useMemo(() => {
     const modes = {
       CASH: 0,
@@ -94,7 +91,7 @@ export default function DailyCollectionReport() {
     };
 
     transactions.forEach((t) => {
-      const mode = t.paymentMode || "CASH"; // Default to CASH if undefined
+      const mode = t.paymentMode || "CASH";
       if (mode === "CASH") {
         modes.CASH += t.amount;
       } else if (mode === "UPI") {
@@ -115,10 +112,14 @@ export default function DailyCollectionReport() {
       TERM_4: 0,
     };
     transactions.forEach((t) => t.term && (map[t.term] += t.amount));
+    
+    // Avoid division by zero
+    const total = summary.totalCollected || 1; 
+    
     return TERM_ORDER.filter((t) => map[t] > 0).map((t) => ({
       term: t,
       amount: map[t],
-      percent: Math.round((map[t] / summary.totalCollected) * 100),
+      percent: Math.round((map[t] / total) * 100),
     }));
   }, [transactions, summary.totalCollected]);
 
@@ -130,8 +131,7 @@ export default function DailyCollectionReport() {
       : transactions;
 
     return [...base].sort(
-      (a, b) =>
-        new Date(a.receiptDate).getTime() - new Date(b.receiptDate).getTime()
+      (a, b) => new Date(b.receiptDate).getTime() - new Date(a.receiptDate).getTime() // Descending by default is usually better for logs
     );
   }, [transactions, activeTerm]);
 
@@ -157,12 +157,11 @@ export default function DailyCollectionReport() {
     router.push(`?${q.toString()}`);
   };
 
-  /* ---------------- EXCEL EXPORT (ExcelJS) ---------------- */
+  /* ---------------- EXCEL EXPORT ---------------- */
   const downloadExcel = async () => {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Daily Collection");
 
-    // 1. Define Columns
     worksheet.columns = [
       { header: "Date", key: "date", width: 15 },
       { header: "Adm No", key: "admNo", width: 12 },
@@ -174,7 +173,6 @@ export default function DailyCollectionReport() {
       { header: "Discount", key: "discount", width: 15 },
     ];
 
-    // 2. Add Data Rows
     filteredTransactions.forEach((t) => {
       worksheet.addRow({
         date: new Date(t.receiptDate).toLocaleDateString(),
@@ -188,13 +186,10 @@ export default function DailyCollectionReport() {
       });
     });
 
-    // 3. Make Header Bold (Optional Polish)
     worksheet.getRow(1).font = { bold: true };
 
-    // 4. Generate & Save
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-    
     const fileName = from && to 
       ? `Fee_Report_${from}_to_${to}.xlsx` 
       : `Fee_Report_${new Date().toISOString().split('T')[0]}.xlsx`;
@@ -204,28 +199,21 @@ export default function DailyCollectionReport() {
 
   if (loading) {
     return (
-      <div className="h-64 flex items-center justify-center text-sm text-gray-500">
-        Loading…
+      <div className="h-64 flex items-center justify-center text-sm text-gray-500 animate-pulse">
+        Loading data...
       </div>
     );
   }
-
-  /* ================= UI ================= */
 
   return (
     <div className="flex flex-col gap-6 px-3 py-3">
       {/* HEADER */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-            Day-wise Fee Collection
-          </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Audit transactions by date and term
-          </p>
+          <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Daily Collection Report</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400">View and audit fee transactions</p>
         </div>
 
-        {/* NEW: Export Button */}
         <button
           onClick={downloadExcel}
           disabled={transactions.length === 0}
@@ -236,33 +224,21 @@ export default function DailyCollectionReport() {
         </button>
       </div>
 
-      {/* ================= FILTER ================= */}
-      <form
-        onSubmit={handleSubmit}
-        className="
-          flex items-end gap-4
-          p-4 rounded-xl border
-          bg-white dark:bg-[#121727]
-          border-gray-200 dark:border-white/10
-        "
-      >
+      {/* FILTER */}
+      <form onSubmit={handleSubmit} className="flex items-end gap-4 p-4 rounded-xl border bg-white dark:bg-[#121727] border-gray-200 dark:border-white/10">
         <div className="flex flex-col gap-4 md:flex-row w-full md:w-auto">
-          <DateInput label="From" value={from} onChange={setFrom} />
-          <DateInput label="To" value={to} onChange={setTo} />
+          <DateInput label="From Date" value={from} onChange={setFrom} />
+          <DateInput label="To Date" value={to} onChange={setTo} />
         </div>
       </form>
 
-      {/* ================= 3D SUMMARY CARDS (Main) ================= */}
+      {/* SUMMARY CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <Summary3D title="Transactions" value={summary.count} />
-        <Summary3D title="Discount" value={`₹ ${summary.totalDiscount}`} />
-        <Summary3D
-          title="Total Collected"
-          value={`₹ ${summary.totalCollected}`}
-          highlight
-        />
+        <Summary3D title="Total Transactions" value={summary.count} />
+        <Summary3D title="Total Discount" value={`₹ ${summary.totalDiscount}`} />
+        <Summary3D title="Total Collected" value={`₹ ${summary.totalCollected}`} highlight />
         
-        {/* NEW: Compact Payment Mode Summary in 4th slot */}
+        {/* Payment Modes */}
         <div className="rounded-xl border p-4 bg-gray-50 dark:bg-[#121727] border-gray-200 dark:border-white/10 flex flex-col justify-center gap-2">
             <div className="flex justify-between items-center text-sm">
                 <span className="flex items-center gap-2 text-gray-600 dark:text-gray-300"><Banknote size={14}/> Cash</span>
@@ -279,7 +255,7 @@ export default function DailyCollectionReport() {
         </div>
       </div>
 
-      {/* ================= 3D TERM CARDS ================= */}
+      {/* TERM BREAKDOWN */}
       <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {termSummary.map(({ term, amount, percent }) => (
           <div key={term} className="[perspective:1200px]">
@@ -288,79 +264,42 @@ export default function DailyCollectionReport() {
                 setActiveTerm(term === activeTerm ? null : term);
                 setFlipped(term === flipped ? null : term);
               }}
-              className={`
-                relative rounded-xl border p-5 cursor-pointer
-                bg-white dark:bg-[#121727]
-                border-gray-200 dark:border-white/10
-                transition-all duration-500 transform-gpu
-                ${term === activeTerm ? "ring-2 ring-LamaSkyYellow" : ""}
-                [transform-style:preserve-3d]
-                ${term === flipped ? "[transform:rotateY(180deg)]" : ""}
-              `}
+              className={`relative rounded-xl border p-5 cursor-pointer bg-white dark:bg-[#121727] border-gray-200 dark:border-white/10 transition-all duration-500 transform-gpu [transform-style:preserve-3d] ${term === activeTerm ? "ring-2 ring-yellow-400" : ""} ${term === flipped ? "[transform:rotateY(180deg)]" : ""}`}
             >
               <div className="[backface-visibility:hidden]">
-                <p className="text-xs uppercase text-gray-500">
-                  {term.replace("_", " ")}
-                </p>
+                <p className="text-xs uppercase text-gray-500">{term.replace("_", " ")}</p>
                 <p className="text-2xl font-semibold mt-2">₹ {amount}</p>
               </div>
-
-              <div
-                className="absolute inset-0 p-5 rounded-xl bg-LamaSkyYellow text-black
-                            [transform:rotateY(180deg)]
-                            [backface-visibility:hidden]"
-              >
-                <p className="text-sm font-semibold dark:text-white">
-                  Contribution
-                </p>
-                <p className="text-2xl font-bold mt-2 dark:text-white">
-                  {percent}% of total collection
-                </p>
+              <div className="absolute inset-0 p-5 rounded-xl bg-yellow-100 dark:bg-yellow-900/50 text-black dark:text-white [transform:rotateY(180deg)] [backface-visibility:hidden]">
+                <p className="text-sm font-semibold">Contribution</p>
+                <p className="text-2xl font-bold mt-2">{percent}%</p>
               </div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* ================= MOBILE CARDS ================= */}
+      {/* MOBILE LIST */}
       <div className="md:hidden flex flex-col gap-3">
         {paginatedTransactions.map((t) => (
-          <div
-            key={t.id}
-            className="rounded-lg border p-4
-                 bg-white dark:bg-[#121727]
-                 border-gray-200 dark:border-white/10"
-          >
+          <div key={t.id} className="rounded-lg border p-4 bg-white dark:bg-[#121727] border-gray-200 dark:border-white/10">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-gray-500 dark:text-gray-400">
-                {t.paymentMode || "CASH"}
-              </span>
-              <span className="font-semibold text-green-600 dark:text-green-400">
-                ₹ {t.amount}
-              </span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">{t.paymentMode || "CASH"}</span>
+              <span className="font-semibold text-green-600 dark:text-green-400">₹ {t.amount}</span>
             </div>
             <p className="mt-1 font-medium text-gray-900 dark:text-gray-100">
-              {t.student?.name ?? "-"}{" "}
-              <span className="text-xs text-gray-500 dark:text-gray-400">
-                ({t.student?.Class?.name ?? "-"})
-              </span>
+              {t.student?.name ?? "-"} <span className="text-xs text-gray-500">({t.student?.Class?.name ?? "-"})</span>
             </p>
             <div className="flex items-center justify-between mt-2">
                 <span className="text-xs text-gray-400">{new Date(t.receiptDate).toLocaleDateString()}</span>
-                <span className="inline-block px-2 py-0.5 rounded-full bg-gray-100 dark:bg-white/10 text-xs text-gray-600 dark:text-gray-300">
-                    {t.term?.replace("_", " ") ?? "-"}
-                </span>
+                <span className="inline-block px-2 py-0.5 rounded-full bg-gray-100 dark:bg-white/10 text-xs text-gray-600 dark:text-gray-300">{t.term?.replace("_", " ") ?? "-"}</span>
             </div>
           </div>
         ))}
       </div>
 
-      {/* ================= TABLE ================= */}
-      <div
-        className="hidden md:block rounded-lg border overflow-hidden
-                      bg-white dark:bg-[#121727]
-                      border-gray-200 dark:border-white/10"
-      >
+      {/* DESKTOP TABLE */}
+      <div className="hidden md:block rounded-lg border overflow-hidden bg-white dark:bg-[#121727] border-gray-200 dark:border-white/10">
         <table className="min-w-full text-sm">
           <thead className="bg-gray-100 dark:bg-white/5">
             <tr>
@@ -375,67 +314,39 @@ export default function DailyCollectionReport() {
           <tbody>
             {paginatedTransactions.length > 0 ? (
               paginatedTransactions.map((t) => (
-                <tr
-                  key={t.id}
-                  className="border-t hover:bg-gray-50 dark:hover:bg-white/5"
-                >
+                <tr key={t.id} className="border-t hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
                   <Td>{new Date(t.receiptDate).toLocaleDateString()}</Td>
                   <Td>
                     <div className="flex flex-col">
-                        <span>{t.student?.name}</span>
+                        <span className="font-medium">{t.student?.name}</span>
                         <span className="text-xs text-gray-400">{t.student?.id}</span>
                     </div>
                   </Td>
                   <Td>{t.student?.Class?.name}</Td>
-                  <Td>{t.term}</Td>
+                  <Td><span className="px-2 py-1 bg-gray-100 dark:bg-white/10 rounded text-xs">{t.term}</span></Td>
                   <Td>
-                    <span className={`text-xs font-medium px-2 py-1 rounded ${
-                        t.paymentMode === 'UPI' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' :
-                        t.paymentMode === 'CASH' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' :
-                        'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
-                    }`}>
+                    <span className={`text-xs font-medium px-2 py-1 rounded ${t.paymentMode === 'UPI' ? 'bg-blue-100 text-blue-700' : t.paymentMode === 'CASH' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
                         {t.paymentMode || 'CASH'}
                     </span>
                   </Td>
-                  <Td className="font-semibold">₹ {t.amount}</Td>
+                  <Td className="font-semibold text-right">₹ {t.amount}</Td>
                 </tr>
               ))
             ) : (
-              <tr>
-                <td colSpan={6} className="text-center py-10 text-gray-500">
-                  No records found for this period.
-                </td>
-              </tr>
+              <tr><td colSpan={6} className="text-center py-10 text-gray-500">No records found.</td></tr>
             )}
           </tbody>
         </table>
       </div>
 
-      {/* ================= PAGINATION CONTROLS ================= */}
+      {/* PAGINATION */}
       {filteredTransactions.length > 0 && (
         <div className="flex items-center justify-between px-2 pt-2 border-t dark:border-white/10">
-          <div className="text-xs text-gray-500">
-            Showing {(page - 1) * rowsPerPage + 1} to {Math.min(page * rowsPerPage, filteredTransactions.length)} of {filteredTransactions.length}
-          </div>
-
+          <div className="text-xs text-gray-500">Showing {(page - 1) * rowsPerPage + 1} - {Math.min(page * rowsPerPage, filteredTransactions.length)} of {filteredTransactions.length}</div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-white/5 disabled:opacity-50"
-            >
-              <ChevronLeft size={16} />
-            </button>
-            <span className="text-sm font-medium px-2">
-              Page {page} of {totalPages}
-            </span>
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-white/5 disabled:opacity-50"
-            >
-              <ChevronRight size={16} />
-            </button>
+            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-white/5 disabled:opacity-50"><ChevronLeft size={16} /></button>
+            <span className="text-sm font-medium px-2">{page} / {totalPages}</span>
+            <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages} className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-white/5 disabled:opacity-50"><ChevronRight size={16} /></button>
           </div>
         </div>
       )}
@@ -445,64 +356,26 @@ export default function DailyCollectionReport() {
 
 /* ================= UI HELPERS ================= */
 
-const DateInput = ({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-}) => (
+const DateInput = ({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) => (
   <div className="flex flex-col gap-1 w-full md:w-auto">
-    <label className="text-xs text-gray-500">{label}</label>
-    <input
-      type="date"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="
-    h-10 w-full md:w-40 px-3 rounded-md border
-    bg-transparent
-    text-gray-900 dark:text-gray-100
-    border-gray-300 dark:border-white/10
-    focus:outline-none
-    focus:ring-2 focus:ring-LamaSkyYellow
-  "
-    />
+    <label className="text-xs text-gray-500 font-semibold uppercase">{label}</label>
+    <input type="date" value={value} onChange={(e) => onChange(e.target.value)} className="h-10 w-full md:w-40 px-3 rounded-md border bg-transparent text-gray-900 dark:text-gray-100 border-gray-300 dark:border-white/20 focus:outline-none focus:ring-2 focus:ring-blue-500" />
   </div>
 );
 
-const Summary3D = ({
-  title,
-  value,
-  highlight,
-}: {
-  title: string;
-  value: string | number;
-  highlight?: boolean;
-}) => (
+const Summary3D = ({ title, value, highlight }: { title: string; value: string | number; highlight?: boolean }) => (
   <div className="[perspective:1200px]">
-    <div
-      className={`rounded-xl border p-5 transform-gpu transition-all h-full flex flex-col justify-center
-        bg-white dark:bg-[#121727]
-        border-gray-200 dark:border-white/10
-        hover:-translate-y-1 hover:shadow-xl
-        ${highlight ? "ring-2 ring-LamaSkyYellow" : ""}`}
-    >
-      <p className="text-xs uppercase text-gray-500">{title}</p>
-      <p className="text-2xl font-semibold mt-1">{value}</p>
+    <div className={`rounded-xl border p-5 transform-gpu transition-all h-full flex flex-col justify-center bg-white dark:bg-[#121727] border-gray-200 dark:border-white/10 hover:-translate-y-1 hover:shadow-xl ${highlight ? "ring-2 ring-blue-500" : ""}`}>
+      <p className="text-xs uppercase text-gray-500 font-bold">{title}</p>
+      <p className="text-2xl font-bold mt-1 text-gray-900 dark:text-white">{value}</p>
     </div>
   </div>
 );
 
 const Th = ({ children }: { children: React.ReactNode }) => (
-  <th className="px-4 py-3 text-xs uppercase text-gray-500 bg-gray-50 dark:bg-white/5 font-medium text-left">
-    {children}
-  </th>
+  <th className="px-4 py-3 text-xs uppercase text-gray-500 bg-gray-50 dark:bg-white/5 font-bold text-left tracking-wider">{children}</th>
 );
 
 const Td = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
-  <td className={`px-4 py-3 text-gray-700 dark:text-gray-300 ${className}`}>
-    {children}
-  </td>
+  <td className={`px-4 py-3 text-gray-700 dark:text-gray-300 ${className}`}>{children}</td>
 );

@@ -37,7 +37,7 @@ export default async function AttendancePage({
   const attendancePercent = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0;
 
   return (
-    <div className="flex flex-col gap-8 p-6 max-w-6xl mx-auto min-h-screen bg-gray-50/50 dark:bg-[#0d1117]">
+    <div className="flex flex-col gap-8 p-6 max-w-6xl mx-auto min-h-screen bg-white dark:bg-darkMode">
       
       {/* ================= HEADER ================= */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">

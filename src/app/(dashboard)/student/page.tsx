@@ -13,7 +13,7 @@ const ProfilePage = async () => {
     });
 
     if (student?.id) {
-      redirect(`/list/profiles/students/${student.id}`);
+      redirect(`/list/profiles/student/${student.id}`);
     }
   }
 

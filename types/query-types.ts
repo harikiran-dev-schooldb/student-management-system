@@ -102,6 +102,8 @@ export const SingleStudentFeeSelect = {
   bloodType: true,
   email: true,
   phone: true,
+  fatherName: true,
+  classId: true,
   Class: {
     select: {
       id: true,

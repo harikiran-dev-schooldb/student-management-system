@@ -27,6 +27,7 @@ import {
   LogOut,
   BarChart2,
   Edit,
+  Settings,
 } from "lucide-react";
 
 type Role = "admin" | "teacher" | "student";
@@ -266,6 +267,12 @@ const menuSections: MenuSection[] = [
         label: "Profile",
         href: (role: Role) => `/list/profiles/${role}`,
         icon: User,
+        visible: ["admin", "teacher", "student"],
+      },
+      {
+        label: "Settings",
+        href: "/settings/school",
+        icon: Settings,
         visible: ["admin", "teacher", "student"],
       },
       {

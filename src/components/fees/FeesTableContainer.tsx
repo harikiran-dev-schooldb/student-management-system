@@ -45,17 +45,10 @@ const FeesTableContainer = async ({
   /* -------------------------------------------------
      3. Page Title (MODE SAFE)
   --------------------------------------------------*/
-  const title =
-    mode === "collect"
-      ? "Collect Fees"
-      : mode === "cancel"
-      ? "Cancel Fees"
-      : "Student Fees";
-
+  
   if (studentFees.length === 0) {
     return (
       <div className="w-full">
-        <h1 className="text-lg font-semibold mb-4">{title}</h1>
         <p className="text-sm text-gray-500">
           No fees have been assigned to this student yet.
         </p>
@@ -126,7 +119,6 @@ const FeesTableContainer = async ({
   --------------------------------------------------*/
   return (
     <div className="w-full">
-      <h1 className="text-lg font-semibold mb-4">{title}</h1>
 
       <FeesTable data={transformedData} mode={mode} />
     </div>
