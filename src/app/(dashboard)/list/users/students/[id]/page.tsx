@@ -27,10 +27,10 @@ interface StudentSinglePageProps {
 
 /* --- Styles & Tokens --- */
 const cardClass =
-  "bg-white dark:bg-[#121727] rounded-xl border border-gray-200/50 dark:border-gray-800 shadow-sm overflow-hidden transition-all hover:shadow-md";
+  "bg-white dark:bg-darkMode rounded-xl border border-gray-200/50 dark:border-gray-800 shadow-sm overflow-hidden transition-all hover:shadow-md";
 
 const metricCardClass =
-  "bg-white dark:bg-[#121727] p-4 rounded-xl border border-gray-200/50 dark:border-gray-800 shadow-sm flex items-center gap-4 min-w-[140px] flex-1 transition-transform hover:-translate-y-1";
+  "bg-white dark:bg-darkMode p-4 rounded-xl border border-gray-200/50 dark:border-gray-800 shadow-sm flex items-center gap-4 min-w-[140px] flex-1 transition-transform hover:-translate-y-1";
 
 /* --- Helper Components --- */
 const InfoRow = ({
@@ -43,11 +43,11 @@ const InfoRow = ({
   value: string;
 }) => (
   <div className="flex items-center gap-3 text-sm">
-    <div className="p-2 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
+    <div className="p-2 rounded-lg bg-gray-50 dark:bg-darkMode text-gray-500 dark:text-gray-400">
       <Icon size={16} />
     </div>
     <div className="flex flex-col">
-      <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
+      <span className="text-[10px] font-semibold text-gray-400  tracking-wide">
         {label}
       </span>
       <span
@@ -72,7 +72,7 @@ const SingleStudentPage = async ({ params }: StudentSinglePageProps) => {
   if (!student) return notFound();
 
   return (
-    <div className="flex flex-col flex-1 gap-6 p-6 xl:flex-row bg-gray-50/50 dark:bg-[#0d1117] min-h-screen">
+    <div className="flex flex-col flex-1 gap-6 p-6 xl:flex-row bg-gray-50/50 dark:bg-darkMode min-h-screen">
       {/* ================= LEFT COLUMN (Profile, Metrics, Schedule) ================= */}
       <div className="w-full xl:w-3/4 space-y-6">
         {/* 1. TOP SECTION: Profile + Quick Stats */}
@@ -170,7 +170,7 @@ const SingleStudentPage = async ({ params }: StudentSinglePageProps) => {
               <div className="flex-1">
                 <Suspense
                   fallback={
-                    <div className="h-6 w-16 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
+                    <div className="h-6 w-16 bg-gray-100 dark:bg-gray-800 text-gray-500 rounded animate-pulse" />
                   }
                 >
                   <StudentAttendanceCard id={student.id} />
@@ -187,7 +187,7 @@ const SingleStudentPage = async ({ params }: StudentSinglePageProps) => {
                 <h2 className="text-lg font-bold text-gray-900 dark:text-white">
                   {student.Class.Grade.level}
                 </h2>
-                <span className="text-xs font-medium text-gray-500 uppercase">
+                <span className="text-xs font-medium text-gray-500 ">
                   Grade
                 </span>
               </div>
@@ -202,7 +202,7 @@ const SingleStudentPage = async ({ params }: StudentSinglePageProps) => {
                 <h2 className="text-lg font-bold text-gray-900 dark:text-white">
                   {student.Class._count.lessons}
                 </h2>
-                <span className="text-xs font-medium text-gray-500 uppercase">
+                <span className="text-xs font-medium text-gray-500 ">
                   Lessons
                 </span>
               </div>
@@ -217,8 +217,8 @@ const SingleStudentPage = async ({ params }: StudentSinglePageProps) => {
                 <h2 className="text-lg font-bold text-gray-900 dark:text-white">
                   {student.Class.section}
                 </h2>
-                <span className="text-xs font-medium text-gray-500 uppercase">
-                  Class
+                <span className="text-xs font-medium text-gray-500 ">
+                  Section
                 </span>
               </div>
             </div>
@@ -232,9 +232,6 @@ const SingleStudentPage = async ({ params }: StudentSinglePageProps) => {
               <Calendar className="text-indigo-600" size={20} />
               Weekly Schedule
             </h3>
-            <span className="text-xs font-medium text-gray-500 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-md border border-gray-200 dark:border-gray-700">
-              {student.Class.Grade.level} - {student.Class.section}
-            </span>
           </div>
           <ClassTimetableContainer classId={student.Class.id} />
         </div>
@@ -244,7 +241,7 @@ const SingleStudentPage = async ({ params }: StudentSinglePageProps) => {
       <div className="w-full xl:w-1/4 space-y-6">
         {/* Attendance Calendar Widget */}
         <div className={`${cardClass} p-5`}>
-          <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider mb-4 border-b border-gray-100 dark:border-gray-800 pb-2">
+          <h3 className="text-sm uppercase font-bold text-gray-900 dark:text-gray-300  tracking-wider mb-4 border-b border-gray-100 dark:border-gray-800 pb-2">
             Attendance History
           </h3>
           <AttendanceCalendar

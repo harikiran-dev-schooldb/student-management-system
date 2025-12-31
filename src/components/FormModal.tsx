@@ -125,7 +125,7 @@ const FormModal = ({
   const buttonConfig = {
     create: {
       icon: <Plus size={20} />,
-      className: "w-8 h-8 rounded-full bg-amber-400 hover:bg-amber-500 text-black shadow-sm transition-colors bgcolor-LamaYellow",
+      className: "w-8 h-8 rounded-full bg-LamaBlue hover:bg-amber-500 text-white dark:text-white transition-colors",
       label: "Create",
     },
     update: {

@@ -16,13 +16,13 @@ import { SearchParams, StudentsList } from "../../../../../../types";
 import ResetFiltersButton from "@/components/ResetFiltersButton";
 import StudentStatusDropdown from "@/components/StudentStatusDropdown";
 import { StudentSelect } from "../../../../../../types/query-types";
-import { Eye, UserRound } from "lucide-react";
+import { Eye, Filter, UserRound } from "lucide-react";
 import Avatar from "@/components/Avatar";
 
 // Render a single table row
 const renderRow = (item: StudentsList, role: string | null) => (
   <tr
-    className="text-sm border-b border-gray-200 even:bg-gray-50 hover:bg-gray-100 dark:border-gray-700 dark:even:bg-gray-800 dark:hover:bg-gray-700"
+    className="text-sm border-b border-gray-200 even:bg-LamaHover hover:bg-LamaHover dark:border-[#6366F10D] dark:even:bg-gray-800 dark:hover:bg-[#6366F10D]"
     key={item.id}
   >
     <td className="flex items-center gap-2 p-2">
@@ -59,8 +59,8 @@ const renderRow = (item: StudentsList, role: string | null) => (
     <td className="p-2">
       <div className="flex items-center gap-2">
         <Link href={`/list/users/students/${item.id}`}>
-          <button className="flex items-center justify-center w-8 h-8 rounded-full bg-LamaSky hover:opacity-90">
-            <Eye className="w-4 h-4 text-black" />
+          <button className="flex items-center justify-center w-8 h-8 rounded-full bg-LamaBlueLight hover:opacity-90">
+            <Eye className="w-4 h-4 text-white" />
           </button>
         </Link>
 
@@ -203,8 +203,8 @@ const StudentListPage = async ({
           <div className="flex flex-col items-center w-full gap-4 md:flex-row md:w-auto">
             <div className="flex items-center gap-4">
               <ResetFiltersButton basePath={Path} />
-              <button className="flex items-center justify-center w-8 h-8 rounded-full bg-LamaYellow dark:bg-LamaYellow">
-                <img src="/filter.png" alt="" width={14} height={14} />
+              <button className="flex items-center justify-center w-8 h-8 rounded-full bg-LamaBlue dark:bg-LamaBlue">
+                <Filter className="w-4 h-4 text-white" />
               </button>
               <SortButton sortKey="id" />
               {role === "admin" && (

@@ -1,5 +1,6 @@
 "use client"; // Client Component
 
+import { SortAsc, SortDesc } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
 
@@ -34,10 +35,10 @@ const SortButton: React.FC<SortButtonProps> = ({ sortKey }) => {
   return (
     <button
       onClick={handleSort}
-      className="flex items-center justify-center w-8 h-8 rounded-full bg-LamaYellow"
+      className="flex items-center justify-center w-8 h-8 rounded-full bg-LamaBlue"
       title={`Sort by ${sortKey} (${sortOrder})`}
     >
-      <img src="/sort.png" alt="Sort" width={14} height={14} />
+      <SortDesc className="w-4 h-4 text-white" />
     </button>
   );
 };

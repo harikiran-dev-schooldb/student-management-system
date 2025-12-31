@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { FileDown, Table } from "lucide-react";
 
 interface SampleCSVPreviewProps {
   type:
@@ -18,6 +19,7 @@ interface SampleCSVPreviewProps {
 const SampleCSVPreview = ({ type }: SampleCSVPreviewProps) => {
   let sampleRows: Record<string, string>[] = [];
 
+  // ... (Your existing switch case logic remains mostly the same, just keeping it clean)
   switch (type) {
     case "exams":
       sampleRows = [
@@ -76,48 +78,23 @@ const SampleCSVPreview = ({ type }: SampleCSVPreviewProps) => {
 
     case "grades":
       sampleRows = [
-        {
-          id: "1",
-          level: "LKG",
-        },
-        {
-          id: "2",
-          level: "UKG",
-        },
-        {
-          id: "3",
-          level: "1",
-        },
+        { id: "1", level: "LKG" },
+        { id: "2", level: "UKG" },
+        { id: "3", level: "1" },
       ];
       break;
 
     case "classes":
       sampleRows = [
-        {
-          id: "1",
-          section: "A",
-          gradeId: "1",
-          supervisorId: "t001",
-        },
-        {
-          id: "2",
-          section: "B",
-          gradeId: "1",
-          supervisorId: "t002",
-        },
+        { id: "1", section: "A", gradeId: "1", supervisorId: "t001" },
+        { id: "2", section: "B", gradeId: "1", supervisorId: "t002" },
       ];
       break;
 
     case "subjects":
       sampleRows = [
-        {
-          id: "1",
-          name: "Mathematics",
-        },
-        {
-          id: "2",
-          name: "Science",
-        },
+        { id: "1", name: "Mathematics" },
+        { id: "2", name: "Science" },
       ];
       break;
 
@@ -145,17 +122,6 @@ const SampleCSVPreview = ({ type }: SampleCSVPreviewProps) => {
           remarks: "Full paid",
           paymentMode: "CASH",
         },
-        {
-          studentId: "125",
-          term: "TERM_2",
-          amount: "3000",
-          discountAmount: "200",
-          fineAmount: "0",
-          receiptDate: "2025-07-18",
-          receiptNo: "R-003",
-          remarks: "With discount",
-          paymentMode: "ONLINE",
-        },
       ];
       break;
 
@@ -177,26 +143,6 @@ const SampleCSVPreview = ({ type }: SampleCSVPreviewProps) => {
           abacusFees: "0",
           termFees: "6050",
           term: "TERM_2",
-          startDate: "2024-12-01",
-          dueDate: "2024-12-10",
-          academicYear: "2024-2025",
-        },
-        {
-          id: "3",
-          gradeId: "1",
-          abacusFees: "0",
-          termFees: "6050",
-          term: "TERM_3",
-          startDate: "2024-12-01",
-          dueDate: "2024-12-10",
-          academicYear: "2024-2025",
-        },
-        {
-          id: "4",
-          gradeId: "1",
-          abacusFees: "0",
-          termFees: "6050",
-          term: "TERM_4",
           startDate: "2024-12-01",
           dueDate: "2024-12-10",
           academicYear: "2024-2025",
@@ -224,26 +170,6 @@ const SampleCSVPreview = ({ type }: SampleCSVPreviewProps) => {
           day: "MONDAY",
           startTime: "09:46",
           endTime: "10:30",
-          academicYear: "Y2024_2025",
-        },
-        {
-          id: "l003",
-          classId: "1",
-          subjectId: "103",
-          teacherId: "203",
-          day: "TUESDAY",
-          startTime: "10:31",
-          endTime: "11:15",
-          academicYear: "Y2024_2025",
-        },
-        {
-          id: "l004",
-          classId: "2",
-          subjectId: "104",
-          teacherId: "204",
-          day: "WEDNESDAY",
-          startTime: "11:16",
-          endTime: "12:00",
           academicYear: "Y2024_2025",
         },
       ];
@@ -296,7 +222,7 @@ const SampleCSVPreview = ({ type }: SampleCSVPreviewProps) => {
     subjects: "/sample/subjects-bulk-template.csv",
     feecollection: "/sample/fees-bulk-template.csv",
     lessons: "/sample/lessons-bulk-template.csv",
-    exams: "/sample/exams-bulk-template.csv", 
+    exams: "/sample/exams-bulk-template.csv",
   };
 
   const titleMap = {
@@ -308,55 +234,66 @@ const SampleCSVPreview = ({ type }: SampleCSVPreviewProps) => {
     subjects: "Subject",
     feecollection: "Fee Collection",
     lessons: "Lessons",
-     exams: "Exams",
+    exams: "Exams",
   };
 
   return (
-    <div className="space-y-3">
-      <h2 className="text-base font-semibold text-gray-700 dark:text-gray-200 flex items-center gap-1">
-        📄 {titleMap[type]} CSV Preview
-      </h2>
-
-      <div className="overflow-auto border border-gray-200 dark:border-gray-700 rounded">
-        <table className="min-w-full text-xs text-left border-collapse">
-          <thead className="bg-gray-100 dark:bg-gray-800">
-            <tr>
-              {Object.keys(sampleRows[0]).map((key) => (
-                <th
-                  key={key}
-                  className="px-3 py-2 border-b text-gray-700 dark:text-gray-300 dark:border-gray-600 whitespace-nowrap"
-                >
-                  {key}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {sampleRows.map((row, i) => (
-              <tr key={i} className="even:bg-gray-50 dark:even:bg-gray-700">
-                {Object.values(row).map((val, j) => (
-                  <td
-                    key={j}
-                    className="px-3 py-1 border-b dark:border-gray-600 whitespace-nowrap"
-                  >
-                    {val || "-"}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="flex justify-center mt-3">
+    <div className="space-y-4 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-5 shadow-sm">
+      <div className="flex justify-between items-center">
+        <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+          <div className="p-1.5 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg text-indigo-600 dark:text-indigo-400">
+            <Table className="w-4 h-4" />
+          </div>
+          {titleMap[type]} Template Preview
+        </h2>
+        
+        {/* Download Button moved to top for better UX */}
         <Link
           href={downloadLink[type]}
           download
-          className="text-sm bg-LamaPurple dark:bg-purple-700 text-black dark:text-white px-4 py-2 rounded hover:bg-LamaPurpleLight dark:hover:bg-purple-600 transition"
+          className="group flex items-center gap-2 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/20 px-3 py-1.5 rounded-lg border border-indigo-200 dark:border-indigo-800 transition-colors"
         >
-          Download Sample CSV
+          <FileDown className="w-3.5 h-3.5" />
+          Download CSV
         </Link>
       </div>
+
+      <div className="overflow-hidden border border-zinc-200 dark:border-zinc-800 rounded-lg">
+        <div className="overflow-x-auto custom-scrollbar">
+          <table className="min-w-full text-xs text-left border-collapse">
+            <thead className="bg-zinc-50 dark:bg-zinc-800/50 text-zinc-500 dark:text-zinc-400 font-medium uppercase tracking-wider">
+              <tr>
+                {Object.keys(sampleRows[0]).map((key) => (
+                  <th
+                    key={key}
+                    className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 whitespace-nowrap"
+                  >
+                    {key}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+              {sampleRows.map((row, i) => (
+                <tr key={i} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
+                  {Object.values(row).map((val, j) => (
+                    <td
+                      key={j}
+                      className="px-4 py-2.5 text-zinc-700 dark:text-zinc-300 whitespace-nowrap"
+                    >
+                      {val || <span className="text-zinc-300 dark:text-zinc-600">-</span>}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      
+      <p className="text-[10px] text-zinc-400 dark:text-zinc-500 text-center">
+        * This is a preview of the columns required. Please download the file to see the full format.
+      </p>
     </div>
   );
 };

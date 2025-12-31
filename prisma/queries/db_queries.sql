@@ -187,6 +187,12 @@ SELECT migration_name, finished_at
 FROM _prisma_migrations
 ORDER BY finished_at;
 
+SELECT * FROM "Student" WHERE "classId" = 43;
+SELECT * FROM "SchoolInfo";
+SELECT * FROM "Exam";
+SELECT * FROM "Result";
+SELECT * FROM "Subject";
+
 
 
 

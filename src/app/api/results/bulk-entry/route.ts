@@ -1,4 +1,3 @@
-// app/api/results/bulk-entry/route.ts
 import prisma from '@/lib/prisma';
 import { NextResponse } from 'next/server';
 
@@ -6,44 +5,80 @@ export async function POST(request: Request) {
   try {
     const { gradeId, examId, entries } = await request.json();
 
-    // Fetch subjects for the given grade
+    // 1. Basic Validation
+    if (!gradeId || !examId || !entries || !Array.isArray(entries)) {
+      return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
+    }
+
+    // 2. Fetch Subjects to map Names -> IDs
+    // We do this to ensure we only save valid subjects for this grade
     const subjects = await prisma.subject.findMany({
       where: {
-        grades: {
-          some: {
-            id: gradeId, // Fetch subjects associated with the grade
-          },
-        },
+        grades: { some: { id: gradeId } },
       },
     });
 
-    // Map subjects to their IDs for easier lookups
-    const subjectMap = Object.fromEntries(subjects.map(s => [s.name, s.id]));
+    const subjectMap = subjects.reduce((acc, subj) => {
+      acc[subj.name] = subj.id;
+      return acc;
+    }, {} as Record<string, number>);
 
-    const results = [];
+    // 3. Prepare Database Operations
+    const transactionOperations = [];
 
-    // Iterate through each entry to save marks for each student
     for (const entry of entries) {
-      for (const [subjectName, marks] of Object.entries(entry.marks)) {
-        const subjectId = subjectMap[subjectName];
-        if (!subjectId) continue;
+      const { studentId, marks } = entry;
 
-        // Create a result for each student, subject, and exam
-        const result = await prisma.result.create({
-          data: {
-            studentId: entry.studentId,
-            subjectId,
+      for (const [subjectName, markValue] of Object.entries(marks)) {
+        const subjectId = subjectMap[subjectName];
+        
+        // Skip empty strings or invalid subjects
+        if (!subjectId || markValue === '' || markValue === null || markValue === undefined) {
+          continue;
+        }
+
+        const numericMark = Number(markValue);
+
+        // Prepare the Upsert (Update if exists, Insert if new)
+        const op = prisma.result.upsert({
+          where: {
+            // This requires @@unique([studentId, examId, subjectId]) in your schema
+            studentId_examId_subjectId: {
+              studentId,
+              examId,
+              subjectId,
+            },
+          },
+          update: {
+            marks: numericMark,
+          },
+          create: {
+            studentId,
             examId,
-            marks: Number(marks), // Ensure marks are a number
+            subjectId,
+            marks: numericMark,
           },
         });
-        results.push(result);
+
+        transactionOperations.push(op);
       }
     }
 
-    return NextResponse.json({ message: 'Results saved successfully', results });
+    // 4. Execute all operations in a single transaction
+    if (transactionOperations.length > 0) {
+      await prisma.$transaction(transactionOperations);
+    }
+
+    return NextResponse.json({ 
+      message: 'Results saved successfully', 
+      count: transactionOperations.length 
+    });
+
   } catch (error) {
-    console.error(error);
-    return NextResponse.json({ error: 'Failed to save results' }, { status: 500 });
+    console.error('Bulk Entry Error:', error);
+    return NextResponse.json(
+      { error: 'Failed to save results. Check server console.' }, 
+      { status: 500 }
+    );
   }
 }

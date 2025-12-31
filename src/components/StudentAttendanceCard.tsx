@@ -19,7 +19,7 @@ const StudentAttendanceCard = async ({ id }: { id: string }) => {
       <h1 className="text-xl font-semibold">
         {totalDays > 0 ? `${percentage.toFixed(1)}%` : "-"}
       </h1>
-      <span className="text-sm text-gray-400 dark:text-gray-100">Attendance</span>
+      <span className="text-sm text-gray-500 dark:text-gray-500">Attendance</span>
     </div>
   );
 };

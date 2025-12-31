@@ -26,6 +26,9 @@ const renderRow = (item: SubjectListType, role: string | null) => {
                  dark:border-gray-700 dark:even:bg-gray-800 dark:hover:bg-gray-700"
     >
       <td className="flex items-center gap-4 p-4 text-black dark:text-white">
+        {item.id}
+      </td>
+      <td className=" items-center gap-4 p-4 text-black dark:text-white">
         {item.name}
       </td>
       <td className="hidden md:table-cell text-black dark:text-white">
@@ -46,6 +49,7 @@ const renderRow = (item: SubjectListType, role: string | null) => {
 };
 
 const getColumns = (role: string | null) => [
+  { header: "Id", accessor: "id" },
   { header: "Subject", accessor: "name" },
   { header: "Grades", accessor: "grades", className: "hidden md:table-cell" },
   ...(role === "admin" ? [{ header: "Actions", accessor: "action" }] : []),

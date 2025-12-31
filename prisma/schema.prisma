@@ -9,6 +9,7 @@ datasource db {
 
 model SchoolInfo {
   id          String   @id @default(cuid())
+  schoolId    String?   @unique
   name        String
   address     String
   phone       String?
@@ -20,6 +21,9 @@ model SchoolInfo {
   taxId         String?  // GST/PAN/Registration No
   receiptHeader String?  // e.g., "Affiliated to CBSE..."
   receiptFooter String?  // e.g., "Fees once paid are non-refundable"
+
+  admin   Admin[]
+
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -44,9 +48,16 @@ model Admin {
   // Relations
   profile   Profile? @relation(fields: [profileId], references: [id])
   profileId String?
+  
+  school   SchoolInfo? @relation(fields: [schoolId], references: [id])
+  schoolId String?
+
+
 
   linkedUser   LinkedUser? @relation(fields: [linkedUserId], references: [id])
   linkedUserId String?     @unique
+
+
 
   @@index([username, email, phone])
 }
@@ -164,6 +175,20 @@ model ExamGradeSubject {
   @@index([gradeId])
 }
 
+model Result {
+  id        Int      @id @default(autoincrement())
+  marks     Float
+  studentId String
+  examId    Int
+  subjectId Int
+  createdAt DateTime @default(now())
+  Exam      Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  Student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  Subject   Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, examId, subjectId])
+}
+
 model Homework {
   id          Int      @id @default(autoincrement())
   groupId     String? // shared group identifier
@@ -178,20 +203,6 @@ model Homework {
   @@index([gradeId])
   @@index([groupId])
   @@index([date])
-}
-
-model Result {
-  id        Int      @id @default(autoincrement())
-  marks     Int
-  studentId String
-  examId    Int
-  subjectId Int
-  createdAt DateTime @default(now())
-  Exam      Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
-  Student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  Subject   Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-
-  @@unique([studentId, examId, subjectId])
 }
 
 model Student {
