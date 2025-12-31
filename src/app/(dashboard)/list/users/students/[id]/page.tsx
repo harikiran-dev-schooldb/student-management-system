@@ -168,9 +168,6 @@ const SingleStudentPage = async ({ params }: StudentSinglePageProps) => {
                 <Activity size={24} />
               </div>
               <div className="flex-1">
-                <h2 className="text-xs font-medium text-gray-500 uppercase mb-1">
-                  Attendance
-                </h2>
                 <Suspense
                   fallback={
                     <div className="h-6 w-16 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
@@ -260,7 +257,6 @@ const SingleStudentPage = async ({ params }: StudentSinglePageProps) => {
 
         {/* Announcements/Messages Widget */}
         <div className={`${cardClass} p-5`}>
-          
           <Messages />
         </div>
       </div>

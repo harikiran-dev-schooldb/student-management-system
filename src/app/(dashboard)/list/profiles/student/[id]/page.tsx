@@ -2,7 +2,6 @@ import Messages from "@/components/Announcements";
 import AttendanceCalendar from "@/components/AttendanceCalendar";
 import ClassTimetableContainer from "@/components/ClassTimetableContainer";
 import StudentAttendanceCard from "@/components/StudentAttendanceCard";
-import InfoItem from "@/components/student/InfoItem"; // Ideally refactor this to use Lucide too
 import prisma from "@/lib/prisma";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
 import { notFound } from "next/navigation";

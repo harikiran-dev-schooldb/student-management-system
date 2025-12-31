@@ -82,12 +82,12 @@ export default function NavbarClient({
         {/* LEFT: Branding & Toggle */}
         <div className="flex items-center gap-4">
           {/* Mobile Toggle */}
-          <button 
+          {/* <button 
             onClick={onToggleSidebar}
-            className="md:hidden p-2 -ml-2 text-slate-500 hover:bg-slate-100 rounded-lg dark:text-slate-400 dark:hover:bg-slate-800"
+            className="hidden md:flex p-2 -ml-2 text-slate-500 hover:bg-slate-100 rounded-lg dark:text-slate-400 dark:hover:bg-slate-800"
           >
             <Menu size={24} />
-          </button>
+          </button> */}
 
           <div className="flex items-center gap-3">
              <div className="relative w-8 h-8 sm:w-10 sm:h-10">

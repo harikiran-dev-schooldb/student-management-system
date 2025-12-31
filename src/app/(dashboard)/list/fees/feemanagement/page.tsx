@@ -30,12 +30,12 @@ const renderRow = (grade: FeesList, role: string | null) => {
         <td className="p-2">{grade.level}</td>
         <td>{fee.term}</td>
         <td>{total}</td>
-        <td>
+        <td className="hidden md:table-cell">
           {fee.startDate
             ? new Intl.DateTimeFormat("en-GB").format(new Date(fee.startDate))
             : "-"}
         </td>
-        <td>
+        <td className="hidden md:table-cell">
           {fee.dueDate
             ? new Intl.DateTimeFormat("en-GB").format(new Date(fee.dueDate))
             : "-"}
@@ -58,8 +58,8 @@ const getColumns = (role: string | null) => [
   { header: "Grade", accessor: "level" },
   { header: "Term", accessor: "feestructure.term" },
   { header: "Term Fees", accessor: "feestructure.termFees" },
-  { header: "Start Date", accessor: "feestructure.startDate" },
-  { header: "Due Date", accessor: "feestructure.dueDate" },
+  { header: "Start Date", accessor: "feestructure.startDate", className: "hidden md:table-cell" },
+  { header: "Due Date", accessor: "feestructure.dueDate", className: "hidden md:table-cell" },
   ...(role === "admin" ? [{ header: "Actions", accessor: "action" }] : []),
 ];
 

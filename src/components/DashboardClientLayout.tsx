@@ -1,3 +1,4 @@
+// components\DashboardClientLayout.tsx
 "use client";
 
 import { useUser } from "@clerk/nextjs";

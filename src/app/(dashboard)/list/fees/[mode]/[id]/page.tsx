@@ -21,7 +21,6 @@ import {
   ScrollText,
   CreditCard,
   ChevronRight,
-  User,
 } from "lucide-react";
 
 interface StudentFeePageProps {
@@ -235,9 +234,6 @@ const StudentFeePage = async ({ params }: StudentFeePageProps) => {
                   <Activity size={24} />
                 </div>
                 <div className="flex-1">
-                  <h2 className="text-xs font-medium text-gray-500 uppercase mb-1">
-                    Attendance
-                  </h2>
                   <Suspense
                     fallback={
                       <div className="h-6 w-12 bg-gray-100 rounded animate-pulse" />
