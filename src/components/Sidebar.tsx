@@ -15,7 +15,7 @@ export default function SidebarShell({
       className={`
         hidden md:flex flex-col
         sticky top-0 left-0 h-screen
-        bg-white dark:bg-[#121727]
+        bg-white dark:bg-darkMode
         border-r border-gray-200 dark:border-gray-800
         text-gray-600 dark:text-gray-300
         transition-all duration-300 ease-in-out

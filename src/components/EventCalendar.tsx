@@ -20,7 +20,7 @@ const EventCalendar = () => {
   }, [value, router]);
 
   return (
-    <div className="rounded-md p-2 bg-white dark:bg-gray-900">
+    <div className="rounded-md p-2 bg-white dark:bg-darkMode">
       <Calendar
         onChange={onChange}
         value={value}
@@ -28,7 +28,7 @@ const EventCalendar = () => {
         className={clsx(
           "text-black", // keep text black
           "border-none", // remove default border
-          "dark:bg-gray-900 dark:text-white" // dark background but text black
+          "dark:bg-darkMode dark:text-white" // dark background but text black
         )}
       />
     </div>

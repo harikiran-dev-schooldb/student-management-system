@@ -55,7 +55,7 @@ const AttendanceChartContainer = ({
   }
 
   return (
-    <div className="h-full p-4 bg-white dark:bg-gray-900 rounded-lg">
+    <div className="h-full p-4 bg-white dark:bg-darkMode rounded-lg">
       <div className="flex items-center justify-between mb-2">
         <h1 className="text-lg font-semibold text-gray-500 dark:text-gray-300">
           Attendance (Last 7 Days)

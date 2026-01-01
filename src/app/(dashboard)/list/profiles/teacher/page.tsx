@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
 
-const ProfilePage = async () => {
+const TeacherProfile = async () => {
   const { role, userId } = await fetchUserInfo();
 
   if (role === "teacher" && userId) {
@@ -13,7 +13,7 @@ const ProfilePage = async () => {
     });
 
     if (teacher?.id) {
-      redirect(`/list/profiles/teachers/${teacher.id}`);
+      redirect(`/list/profiles/teacher/${teacher.id}`);
     }
   }
 
@@ -21,4 +21,4 @@ const ProfilePage = async () => {
   return <p>Select a student profile</p>;
 };
 
-export default ProfilePage;
+export default TeacherProfile;

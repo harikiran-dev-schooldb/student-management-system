@@ -68,7 +68,7 @@ const OTPLogin = ({
           }
           placeholder="Enter 10-digit mobile number"
           disabled={isSending || pendingVerification}
-          className="dark:bg-[#121727] w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10"
+          className="dark:bg-darkMode w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10"
           required
         />
       </div>

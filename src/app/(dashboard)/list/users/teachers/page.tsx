@@ -15,8 +15,10 @@ import ResetFiltersButton from "@/components/ResetFiltersButton";
 import { GenderFilter, TeacherStatusFilter } from "@/components/FilterDropdown";
 import TeacherStatusDropdown from "@/components/TeacherStatusDropdown";
 import { TeachersSelect } from "../../../../../../types/query-types";
-import { Eye } from "lucide-react";
+import { Eye, Filter, FilterX } from "lucide-react";
 import Avatar from "@/components/Avatar";
+import IconButton, { IconButton2 } from "@/components/IconButton";
+import { notFound } from "next/navigation";
 
 // -------------------- Table Row --------------------
 const renderRow = (item: TeachersList, role: string | null) => (
@@ -27,11 +29,11 @@ const renderRow = (item: TeachersList, role: string | null) => (
     {/* Info */}
     <td className="flex items-center gap-2 p-2">
       <Avatar
-                src={item.img}
-                name={item.name}
-                gender={item.gender}
-                className="md:hidden xl:flex"
-              />
+        src={item.img}
+        name={item.name}
+        gender={item.gender}
+        className="md:hidden xl:flex"
+      />
       <div className="flex flex-col">
         <h3 className="font-semibold text-gray-900 dark:text-gray-100">
           {item.name}
@@ -42,7 +44,7 @@ const renderRow = (item: TeachersList, role: string | null) => (
 
     {/* Class */}
     <td className="hidden w-32 md:table-cell text-gray-700 dark:text-gray-200">
-      {item.Class ? item.Class.name : "No Class"}
+      {item.class ? item.class.name : "No Class"}
     </td>
 
     {/* Phone */}
@@ -70,11 +72,13 @@ const renderRow = (item: TeachersList, role: string | null) => (
     {/* Actions */}
     <td className="p-2">
       <div className="flex items-center gap-2">
-        <Link href={`/list/users/teachers/${item.id}`}>
-          <button className="flex items-center justify-center rounded-full w-7 h-7 bg-LamaSky dark:bg-LamaSky">
-            <Eye className="w-4 h-4 text-black" />
-          </button>
-        </Link>
+        {(role === "admin" || role === "teacher") && (
+          <>
+            <Link href={`/list/users/teachers/${item.id}`}>
+              <IconButton2 icon={Eye} />
+            </Link>
+          </>
+        )}
         {role === "admin" && (
           <>
             {/* <FormContainer table="student" type="delete" id={item.id} /> */}
@@ -111,13 +115,17 @@ const TeacherListPage = async ({
 
   const query: Prisma.TeacherWhereInput = {
     status: {
-          equals: (userStatus as $Enums.UserStatus) || "ACTIVE",
-        },
+      equals: (userStatus as $Enums.UserStatus) || "ACTIVE",
+    },
   };
 
   const normalize = (
     value: string | string[] | undefined
   ): string | undefined => (Array.isArray(value) ? value[0] : value);
+
+  if (role === "student") {
+    return notFound();
+  }
 
   // -------------------- Filter Parsing --------------------
   for (const [key, value] of Object.entries(queryParams)) {
@@ -176,9 +184,7 @@ const TeacherListPage = async ({
 
           <div className="flex items-center gap-4">
             <ResetFiltersButton basePath={Path} />
-            <button className="flex items-center justify-center w-8 h-8 rounded-full bg-LamaYellow dark:bg-LamaYellow">
-              <img src="/filter.png" alt="Filter" width={14} height={14} />
-            </button>
+            <IconButton icon={Filter} />
             <SortButton sortKey="id" />
             {role === "admin" && (
               <FormContainer table="teacher" type="create" />

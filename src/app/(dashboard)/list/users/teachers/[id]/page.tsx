@@ -15,7 +15,8 @@ import {
   Users, 
   GraduationCap, 
   CalendarDays,
-  ExternalLink
+  ExternalLink,
+  Book
 } from "lucide-react";
 
 interface TeacherSinglePageProps {
@@ -24,10 +25,10 @@ interface TeacherSinglePageProps {
 
 /* --- UI Tokens --- */
 const cardClass = 
-  "bg-white dark:bg-[#121727] rounded-xl border border-gray-200/50 dark:border-gray-800 shadow-sm overflow-hidden transition-all hover:shadow-md";
+  "bg-white dark:bg-darkMode rounded-xl border border-gray-200/50 dark:border-gray-800 shadow-sm overflow-hidden transition-all hover:shadow-md";
 
 const metricCardClass = 
-  "bg-white dark:bg-[#121727] p-4 rounded-xl border border-gray-200/50 dark:border-gray-800 shadow-sm flex items-center gap-4 min-w-[140px] flex-1 transition-transform hover:-translate-y-1";
+  "bg-white dark:bg-darkMode p-4 rounded-xl border border-gray-200/50 dark:border-gray-800 shadow-sm flex items-center gap-4 min-w-[140px] flex-1 transition-transform hover:-translate-y-1";
 
 /* --- Helper Components --- */
 const InfoRow = ({ icon: Icon, label, value }: { icon: any, label: string, value: string }) => (
@@ -104,7 +105,7 @@ const SingleTeacherPage = async ({ params }: TeacherSinglePageProps) => {
                </div>
                
                {/* Role Badge */}
-               <div className="absolute -bottom-2 -right-2 bg-indigo-600 text-white text-[10px] font-bold px-2.5 py-1 rounded-full border-2 border-white dark:border-[#121727] shadow-sm z-10">
+               <div className="absolute -bottom-2 -right-2 bg-indigo-600 text-white text-[10px] font-bold px-2.5 py-1 rounded-full border-2 border-white dark:border-darkMode shadow-sm z-10">
                   TEACHER
                </div>
             </div>
@@ -219,9 +220,9 @@ const SingleTeacherPage = async ({ params }: TeacherSinglePageProps) => {
 
           <div className="flex flex-col gap-2">
             <Shortcut
-              href={`/list/classes?supervisorId=${teacher.id}`}
-              label="My Classes"
-              icon={GraduationCap}
+              href={`/list/users/teachers/${teacher.id}/assignments`}
+              label="Subject"
+              icon={Book}
             />
             <Shortcut
               href={`/list/users/students?teacherId=${teacher.id}`}

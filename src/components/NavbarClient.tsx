@@ -76,7 +76,7 @@ export default function NavbarClient({
   const activeRole = roles.find((r) => r.username === activeUser?.username);
 
   return (
-    <nav className="sticky top-0 z-30 w-full bg-white/80 dark:bg-[#121727]/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors duration-300">
+    <nav className="sticky top-0 z-30 w-full bg-white/80 dark:bg-darkMode backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors duration-300">
       <div className="px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
         
         {/* LEFT: Branding & Toggle */}

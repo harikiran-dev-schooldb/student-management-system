@@ -1,7 +1,5 @@
-// app/api/classes/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const gradeId = searchParams.get("gradeId");
@@ -9,25 +7,35 @@ export async function GET(req: NextRequest) {
 
   try {
     const where: any = {};
+
+    // 1. Grade ID is an Integer
     if (gradeId) {
       where.gradeId = Number(gradeId);
     }
 
-    if(teacherId) {
-      where.supervisorId = Number(teacherId);
+    // 2. CRITICAL FIX: Teacher ID is a String (UUID), NOT a Number.
+    // Ensure your Class model has a 'supervisorId' field.
+    if (teacherId) {
+      where.supervisorId = teacherId;
     }
 
     const classes = await prisma.class.findMany({
       where,
-      orderBy: { id: "asc" },
+      // Sorting by name is usually better for UI than ID
+      orderBy: { name: "asc" },
       include: {
-    Teacher: {
-      select: {
-        id: true,
-        name: true,
+        // 3. FIX: Relation names are typically camelCase (e.g., 'supervisor' or 'teacher')
+        // Check your schema: `supervisor Teacher @relation(...)`
+        Teacher: {
+          select: {
+            id: true,
+            name: true,
+            // surname: true, // Uncomment if you have this field
+          },
+        },
+        // Optional: Include grade to show "Grade 5 - Class A"
+        Grade: true,
       },
-    },
-  },
     });
 
     return NextResponse.json(classes);

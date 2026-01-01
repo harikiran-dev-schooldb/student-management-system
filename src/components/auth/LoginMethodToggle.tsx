@@ -32,7 +32,7 @@ export default function LoginMethodToggle({
           className={`flex-1 py-2 text-sm rounded-lg transition
         ${
           loginMethod === method
-            ? "bg-white dark:bg-[#121727] shadow text-zinc-900 dark:text-white"
+            ? "bg-white dark:bg-darkMode shadow text-zinc-900 dark:text-white"
             : "text-zinc-500 dark:text-zinc-400"
         }
       `}

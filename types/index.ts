@@ -257,9 +257,10 @@ export type TeachersList = {
   dob: Date | string;
   address: string | null;
   status: string;
-  Class:{
+  class:{
     id: number;
     name: string;
+    supervisorId: string | null;
   }
   subjects: { Subject: { id: number; name: string } }[];
 };

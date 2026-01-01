@@ -92,7 +92,7 @@ export default function MobileSheet({
         className={`
           fixed z-[201]
           rounded-xl
-          bg-white dark:bg-[#121727]
+          bg-white dark:bg-darkMode
           shadow-xl
           transition-all duration-300
           ease-smooth  /* ✅ UPDATED HERE */

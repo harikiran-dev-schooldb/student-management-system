@@ -9,20 +9,48 @@ import { fetchUserInfo } from "@/lib/utils/server-utils";
 import { Prisma } from "@prisma/client";
 import { AnnouncementList } from "../../../../../types";
 import { AnnouncementSelect } from "../../../../../types/query-types";
+import { Filter, SlidersHorizontal, Plus } from "lucide-react"; // Import Icons
+import IconButton from "@/components/IconButton";
 
+// --- Utility: Modern Date Formatter ---
+const formatDate = (date: Date) => {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(date);
+};
+
+// --- Render Row (Modernized) ---
 const renderRow = (item: AnnouncementList, role: string | null) => (
   <tr
     key={item.id}
-    className="text-sm border-b border-gray-200 even:bg-slate-50 hover:bg-LamaPurpleLight"
+    className="group border-b border-gray-100 dark:border-gray-800 text-sm transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50"
   >
-    <td className="hidden md:table-cell">
-      {new Date(item.date).toLocaleDateString("en-US")}
+    {/* Date */}
+    <td className="hidden md:table-cell py-4 px-4 text-gray-500 dark:text-gray-400">
+      {formatDate(item.date)}
     </td>
 
-    <td className="hidden md:table-cell">{item.Class.name}</td>
-    <td className="flex md:table-cell">{item.title}</td>
-    <td className="flex items-left gap-4 p-4">{item.description}</td>
-    <td>
+    {/* Class Badge */}
+    <td className="hidden md:table-cell py-4 px-4">
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+        {item.Class?.name || "All"}
+      </span>
+    </td>
+
+    {/* Title */}
+    <td className="table-cell py-4 px-4 font-medium text-gray-900 dark:text-gray-100">
+      {item.title}
+    </td>
+
+    {/* Description (Truncated for cleaner table view) */}
+    <td className="hidden md:table-cell py-4 px-4 text-gray-500 dark:text-gray-400 max-w-xs truncate">
+      {item.description}
+    </td>
+
+    {/* Actions */}
+    <td className="table-cell py-4 px-4">
       <div className="flex items-center gap-2">
         {(role === "admin" || role === "teacher") && (
           <>
@@ -36,32 +64,16 @@ const renderRow = (item: AnnouncementList, role: string | null) => (
 );
 
 const getColumns = (role: string | null) => [
-  {
-    header: "Date",
-    accessor: "date",
-    className: "hidden md:table-cell",
-  },
-  {
-    header: "Class",
-    accessor: "classname",
-  },
-  {
-    header: "Title",
-    accessor: "title",
-    className: "hidden md:table-cell",
-  },
+  { header: "Date", accessor: "date", className: "hidden md:table-cell" },
+  { header: "Class", accessor: "classname", className: "hidden md:table-cell" },
+  { header: "Title", accessor: "title" },
   {
     header: "Description",
     accessor: "description",
     className: "hidden md:table-cell",
   },
-  ...(role === "admin"
-    ? [
-        {
-          header: "Actions",
-          accessor: "action",
-        },
-      ]
+  ...(role === "admin" || role === "teacher"
+    ? [{ header: "Actions", accessor: "action" }]
     : []),
 ];
 
@@ -70,76 +82,105 @@ const AnnouncementsList = async ({
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) => {
-  const params = await searchParams; // Await the promise
-
+  const params = await searchParams;
   const { role } = await fetchUserInfo();
   const columns = getColumns(role);
 
-  // Handle `page` param safely
+  // Pagination Logic
   const page = params.page;
   const pageValue = Array.isArray(page) ? page[0] : page;
   const p = pageValue ? parseInt(pageValue) : 1;
 
-  // Build query from searchParams
+  // Query Builder
   const query: Prisma.AnnouncementWhereInput = {};
   for (const [key, value] of Object.entries(params)) {
     const val = Array.isArray(value) ? value[0] : value;
-
     if (val !== undefined) {
-      switch (key) {
-        case "search":
-          query.title = { contains: val };
-          break;
-        default:
-          break;
+      if (key === "search") {
+        query.title = { contains: val, mode: "insensitive" }; // Added case-insensitive
       }
     }
   }
 
+  // Data Fetching
   const [data, count] = await prisma.$transaction([
     prisma.announcement.findMany({
       where: query,
       select: AnnouncementSelect,
       take: ITEM_PER_PAGE,
       skip: ITEM_PER_PAGE * (p - 1),
+      orderBy: { date: "desc" }, // Good UX: Show newest first by default
     }),
     prisma.announcement.count({ where: query }),
   ]);
 
   return (
-    <div className="flex-1 p-4 bg-white rounded-md">
-      {/* TOP: Description */}
-      <div className="flex items-center justify-between">
-        <h1 className="hidden text-lg font-semibold md:block">
-          All Announcements
-        </h1>
-        <div className="flex flex-col items-center w-full gap-4 md:flex-row md:w-auto">
+    <div className="flex flex-col gap-6 p-6 ">
+      {/* --- HEADER SECTION --- */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between ">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white ">
+            Announcements
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Manage and view school-wide updates.
+          </p>
+        </div>
+
+        {/* Toolbar */}
+        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
           <TableSearch />
-          {/* 🔄 Reset Filters Button */}
-          <ResetFiltersButton basePath="/list/announcements" />
-          <div className="flex items-center self-end gap-4">
-            <button className="flex items-center justify-center w-8 h-8 rounded-full bg-LamaYellow">
-              <img src="/filter.png" alt="" width={14} height={14} />
-            </button>
-            <button className="flex items-center justify-center w-8 h-8 rounded-full bg-LamaYellow">
-              <img src="/sort.png" alt="" width={14} height={14} />
-            </button>
+
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            {/* Modernized Filter Buttons */}
+            <ResetFiltersButton basePath="/list/announcements" />
+
+            {/* Reusable Buttons */}
+            <IconButton icon={Filter} />
+            <IconButton icon={SlidersHorizontal} />
+
             {role === "admin" && (
-              <FormContainer table="announcement" type="create" />
+              <div className="ml-2">
+                <FormContainer table="announcement" type="create" />
+              </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* LIST: Description */}
-      <Table
-        columns={columns}
-        renderRow={(item) => renderRow(item, role)}
-        data={data}
-      />
-
-      {/* PAGINATION: Description */}
-      <Pagination page={p} count={count} />
+      {/* --- CONTENT SECTION --- */}
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:bg-zinc-950 dark:border-gray-800 overflow-hidden ">
+        {data.length > 0 ? (
+          <>
+            <Table
+              columns={columns}
+              renderRow={(item) => renderRow(item, role)}
+              data={data}
+            />
+            {/* Pagination Container */}
+            <div className="border-t border-gray-200 dark:border-gray-800 p-4">
+              <Pagination page={p} count={count} />
+            </div>
+          </>
+        ) : (
+          /* Empty State */
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-full mb-3">
+              <Filter className="w-8 h-8 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+              No announcements found
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mt-1">
+              We couldn't find any announcements matching your current filters.
+              Try adjusting your search.
+            </p>
+            <div className="mt-6">
+              <ResetFiltersButton basePath="/list/announcements" />
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

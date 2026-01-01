@@ -95,7 +95,7 @@ const SingleStudentPage = async ({ params }: StudentSinglePageProps) => {
               </div>
 
               {/* Role Badge */}
-              <div className="absolute -bottom-2 -right-2 bg-indigo-600 text-white text-[10px] font-bold px-2.5 py-1 rounded-full border-2 border-white dark:border-[#121727] shadow-sm z-10">
+              <div className="absolute -bottom-2 -right-2 bg-indigo-600 text-white text-[10px] font-bold px-2.5 py-1 rounded-full border-2 border-white dark:border-darkMode shadow-sm z-10">
                 STUDENT
               </div>
             </div>

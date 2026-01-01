@@ -13,6 +13,9 @@ import { SearchParams } from "../../../../../../types";
 import SortButton from "@/components/SortButton";
 import ResetFiltersButton from "@/components/ResetFiltersButton";
 import { GenderFilter } from "@/components/FilterDropdown";
+import { Filter, Icon } from "lucide-react";
+import IconButton from "@/components/IconButton";
+import { notFound } from "next/navigation";
 
 // -------------------- Types --------------------
 type AdminList = Admin;
@@ -104,10 +107,15 @@ const AdminListPage = async ({
 
   const query: Prisma.AdminWhereInput = {};
 
+  if(role !== "admin") {
+    return notFound();
+  };
+
   const normalize = (
     value: string | string[] | undefined
   ): string | undefined => (Array.isArray(value) ? value[0] : value);
 
+  
   // -------------------- Filters --------------------
   for (const [key, value] of Object.entries(queryParams)) {
     const normalizedValue = normalize(value);
@@ -156,9 +164,7 @@ const AdminListPage = async ({
 
           <div className="flex items-center gap-4">
             <ResetFiltersButton basePath={Path} />
-            <button className="flex items-center justify-center w-8 h-8 rounded-full bg-LamaYellow">
-              <img src="/filter.png" alt="Filter" width={14} height={14} />
-            </button>
+            <IconButton icon={Filter} />
             <SortButton sortKey="id" />
             {role === "admin" && <FormContainer table="admin" type="create" />}
           </div>

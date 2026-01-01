@@ -13,6 +13,8 @@ import ResetFiltersButton from "@/components/ResetFiltersButton";
 import TitleFilterDropdown from "@/components/TitleFilterDropdown";
 import { ExamListSelect } from "../../../../../types/query-types";
 import SortButton from "@/components/SortButton";
+import IconButton from "@/components/IconButton";
+import { Filter } from "lucide-react";
 
 // Extended Exam type
 
@@ -31,7 +33,7 @@ const renderRow = (item: Exams, role: string | null) =>
   item.examGradeSubjects.map((egs, idx) => (
     <tr
       key={`${item.id}-${egs.Grade.id}-${egs.Subject.id}-${idx}`}
-      className="text-sm border-b border-gray-200 dark:border-gray-700 even:bg-slate-50 dark:even:bg-gray-800 hover:bg-LamaPurpleLight dark:hover:bg-gray-700"
+      className="text-sm border-b border-gray-200 dark:border-gray-700 even:bg-slate-50 dark:even:bg-gray-800 hover:bg-LamaPurpleLight dark:hover:bg-grey-olive-950"
     >
       <td className="hidden md:table-cell">
         {formatDateTime(new Date(egs.date), egs.startTime)}
@@ -186,7 +188,7 @@ const ExamsList = async ({
   const Path = "/list/exams";
 
   return (
-      <div className="flex-1 p-4 bg-white dark:bg-gray-900 text-black dark:text-white">
+      <div className="flex-1 p-4 bg-white dark:bg-black text-black dark:text-white">
         {/* HEADER */}
         <div className="flex items-center justify-between mb-3">
           <h1 className="hidden text-lg font-semibold md:block">Exams</h1>
@@ -205,9 +207,7 @@ const ExamsList = async ({
             <div className="flex flex-col items-center w-full gap-4 md:flex-row md:w-auto">
               <div className="flex items-center self-end gap-4">
                 <ResetFiltersButton basePath={Path} />
-                <button className="flex items-center justify-center w-8 h-8 rounded-full bg-LamaYellow dark:bg-LamaYellow">
-                  <img src="/filter.png" alt="Filter" width={14} height={14} />
-                </button>
+                <IconButton icon={Filter} />
                 <SortButton sortKey="id" />
                 {(role === "admin" || role === "teacher") && (
                   <FormContainer table="exam" type="create" />

@@ -16,7 +16,7 @@ interface StudentAttendancePageProps {
 
 /* --- Styles & Tokens --- */
 const cardClass = 
-  "bg-white dark:bg-[#121727] rounded-xl border border-gray-200/50 dark:border-gray-800 shadow-sm overflow-hidden p-6 transition-all hover:shadow-md";
+  "bg-white dark:bg-darkMode rounded-xl border border-gray-200/50 dark:border-gray-800 shadow-sm overflow-hidden p-6 transition-all hover:shadow-md";
 
 export default async function AttendancePage({
   params,
@@ -51,7 +51,7 @@ export default async function AttendancePage({
           </p>
         </div>
 
-        <div className="flex items-center gap-3 text-sm bg-white dark:bg-[#121727] px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-800 shadow-sm">
+        <div className="flex items-center gap-3 text-sm bg-white dark:bg-darkMode px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-800 shadow-sm">
            <div className="flex flex-col">
               <span className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Class</span>
               <span className="font-semibold text-gray-700 dark:text-gray-200">{student.Class.Grade.level} - {student.Class.section}</span>

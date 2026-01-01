@@ -18,6 +18,7 @@ import StudentStatusDropdown from "@/components/StudentStatusDropdown";
 import { StudentSelect } from "../../../../../../types/query-types";
 import { Eye, Filter, UserRound } from "lucide-react";
 import Avatar from "@/components/Avatar";
+import { notFound } from "next/navigation";
 
 // Render a single table row
 const renderRow = (item: StudentsList, role: string | null) => (
@@ -130,6 +131,10 @@ const StudentListPage = async ({
     ...(teacher && { supervisorId: teacher }),
     ...(grade && { gradeId: Number(grade) }),
   };
+
+  if (role === "student") {
+    return notFound();
+  }
 
   const query: Prisma.StudentWhereInput = {
     status: {

@@ -1,5 +1,5 @@
 export const cardBase =
-  "rounded-xl bg-white dark:bg-[#121727] \
+  "rounded-xl bg-white dark:bg-darkMode \
    border border-gray-200/70 dark:border-white/10 \
    shadow-sm dark:shadow-black/40";
 

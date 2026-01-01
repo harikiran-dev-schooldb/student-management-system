@@ -45,7 +45,7 @@ export default function BottomNav({ role }: { role: Role }) {
         className="
           fixed bottom-0 left-0 right-0 z-[100]
           md:hidden
-          bg-white dark:bg-[#121727]
+          bg-white dark:bg-darkMode
           border-t border-gray-200 dark:border-white/10
         "
       >

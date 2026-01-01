@@ -29,10 +29,10 @@ interface StudentFeePageProps {
 
 /* --- Styles & Tokens --- */
 const cardClass =
-  "bg-white dark:bg-[#121727] rounded-xl border border-gray-200/50 dark:border-gray-800 shadow-sm overflow-hidden transition-all hover:shadow-md";
+  "bg-white dark:bg-darkMode rounded-xl border border-gray-200/50 dark:border-gray-800 shadow-sm overflow-hidden transition-all hover:shadow-md";
 
 const metricCardClass =
-  "bg-white dark:bg-[#121727] p-4 rounded-xl border border-gray-200/50 dark:border-gray-800 shadow-sm flex items-center gap-4 min-w-[140px] flex-1 transition-transform hover:-translate-y-1";
+  "bg-white dark:bg-darkMode p-4 rounded-xl border border-gray-200/50 dark:border-gray-800 shadow-sm flex items-center gap-4 min-w-[140px] flex-1 transition-transform hover:-translate-y-1";
 
 /* --- Helper Components --- */
 const InfoRow = ({

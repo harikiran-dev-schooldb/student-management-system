@@ -96,7 +96,7 @@ function ResponsiveModal({
         className="
           relative z-10 
           w-full md:w-[70%] lg:w-[60%] xl:w-[50%] 2xl:w-[40%]
-          bg-white dark:bg-[#121727] dark:border dark:border-gray-800
+          bg-white dark:bg-darkMode dark:border dark:border-gray-800
           rounded-t-2xl md:rounded-xl
           shadow-2xl
           max-h-[90vh] overflow-y-auto

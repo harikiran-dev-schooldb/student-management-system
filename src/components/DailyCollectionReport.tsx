@@ -225,7 +225,7 @@ export default function DailyCollectionReport() {
       </div>
 
       {/* FILTER */}
-      <form onSubmit={handleSubmit} className="flex items-end gap-4 p-4 rounded-xl border bg-white dark:bg-[#121727] border-gray-200 dark:border-white/10">
+      <form onSubmit={handleSubmit} className="flex items-end gap-4 p-4 rounded-xl border bg-white dark:bg-darkMode border-gray-200 dark:border-white/10">
         <div className="flex flex-col gap-4 md:flex-row w-full md:w-auto">
           <DateInput label="From Date" value={from} onChange={setFrom} />
           <DateInput label="To Date" value={to} onChange={setTo} />
@@ -239,7 +239,7 @@ export default function DailyCollectionReport() {
         <Summary3D title="Total Collected" value={`₹ ${summary.totalCollected}`} highlight />
         
         {/* Payment Modes */}
-        <div className="rounded-xl border p-4 bg-gray-50 dark:bg-[#121727] border-gray-200 dark:border-white/10 flex flex-col justify-center gap-2">
+        <div className="rounded-xl border p-4 bg-gray-50 dark:bg-darkMode border-gray-200 dark:border-white/10 flex flex-col justify-center gap-2">
             <div className="flex justify-between items-center text-sm">
                 <span className="flex items-center gap-2 text-gray-600 dark:text-gray-300"><Banknote size={14}/> Cash</span>
                 <span className="font-semibold dark:text-white">₹{paymentModeSummary.CASH}</span>
@@ -264,7 +264,7 @@ export default function DailyCollectionReport() {
                 setActiveTerm(term === activeTerm ? null : term);
                 setFlipped(term === flipped ? null : term);
               }}
-              className={`relative rounded-xl border p-5 cursor-pointer bg-white dark:bg-[#121727] border-gray-200 dark:border-white/10 transition-all duration-500 transform-gpu [transform-style:preserve-3d] ${term === activeTerm ? "ring-2 ring-yellow-400" : ""} ${term === flipped ? "[transform:rotateY(180deg)]" : ""}`}
+              className={`relative rounded-xl border p-5 cursor-pointer bg-white dark:bg-darkMode border-gray-200 dark:border-white/10 transition-all duration-500 transform-gpu [transform-style:preserve-3d] ${term === activeTerm ? "ring-2 ring-yellow-400" : ""} ${term === flipped ? "[transform:rotateY(180deg)]" : ""}`}
             >
               <div className="[backface-visibility:hidden]">
                 <p className="text-xs uppercase text-gray-500">{term.replace("_", " ")}</p>
@@ -282,7 +282,7 @@ export default function DailyCollectionReport() {
       {/* MOBILE LIST */}
       <div className="md:hidden flex flex-col gap-3">
         {paginatedTransactions.map((t) => (
-          <div key={t.id} className="rounded-lg border p-4 bg-white dark:bg-[#121727] border-gray-200 dark:border-white/10">
+          <div key={t.id} className="rounded-lg border p-4 bg-white dark:bg-darkMode border-gray-200 dark:border-white/10">
             <div className="flex items-center justify-between">
               <span className="text-xs text-gray-500 dark:text-gray-400">{t.paymentMode || "CASH"}</span>
               <span className="font-semibold text-green-600 dark:text-green-400">₹ {t.amount}</span>
@@ -299,7 +299,7 @@ export default function DailyCollectionReport() {
       </div>
 
       {/* DESKTOP TABLE */}
-      <div className="hidden md:block rounded-lg border overflow-hidden bg-white dark:bg-[#121727] border-gray-200 dark:border-white/10">
+      <div className="hidden md:block rounded-lg border overflow-hidden bg-white dark:bg-darkMode border-gray-200 dark:border-white/10">
         <table className="min-w-full text-sm">
           <thead className="bg-gray-100 dark:bg-white/5">
             <tr>
@@ -365,7 +365,7 @@ const DateInput = ({ label, value, onChange }: { label: string; value: string; o
 
 const Summary3D = ({ title, value, highlight }: { title: string; value: string | number; highlight?: boolean }) => (
   <div className="[perspective:1200px]">
-    <div className={`rounded-xl border p-5 transform-gpu transition-all h-full flex flex-col justify-center bg-white dark:bg-[#121727] border-gray-200 dark:border-white/10 hover:-translate-y-1 hover:shadow-xl ${highlight ? "ring-2 ring-blue-500" : ""}`}>
+    <div className={`rounded-xl border p-5 transform-gpu transition-all h-full flex flex-col justify-center bg-white dark:bg-darkMode border-gray-200 dark:border-white/10 hover:-translate-y-1 hover:shadow-xl ${highlight ? "ring-2 ring-blue-500" : ""}`}>
       <p className="text-xs uppercase text-gray-500 font-bold">{title}</p>
       <p className="text-2xl font-bold mt-1 text-gray-900 dark:text-white">{value}</p>
     </div>

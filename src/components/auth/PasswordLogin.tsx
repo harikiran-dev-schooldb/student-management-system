@@ -50,7 +50,7 @@ export default function PasswordLogin({
           value={phoneNumber}
           placeholder="Enter 10-digit mobile number"
           onChange={(e) => setPhoneNumber(e.target.value)}
-          className=" dark:bg-[#121727] w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className=" dark:bg-darkMode w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
           required
         />
       </div>
@@ -69,7 +69,7 @@ export default function PasswordLogin({
           value={password}
           placeholder="Enter password"
           onChange={(e) => setPassword(e.target.value)}
-          className="dark:bg-[#121727] w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10"
+          className="dark:bg-darkMode w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10"
           required
         />
         <button
@@ -86,7 +86,7 @@ export default function PasswordLogin({
           type="checkbox"
           checked={rememberMe}
           onChange={(e) => setRememberMe(e.target.checked)}
-          className="mr-2 dark:bg-[#121727]"
+          className="mr-2 dark:bg-darkMode"
         />
         <label className="text-sm text-zinc-600 dark:text-zinc-300">
           Remember Me

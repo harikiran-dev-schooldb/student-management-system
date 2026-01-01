@@ -31,7 +31,7 @@ const Loading = () => {
 
   return (
     <div className="flex flex-col items-center justify-center h-screen space-y-4 transition-opacity animate-fadeIn">
-      <div className="w-12 h-12 border-4 border-gray-300 rounded-full border-t-blue-500 animate-spin"></div>
+      <div className="w-12 h-12 border-4 border-gray-300 rounded-full border-t-LamaBlue animate-spin"></div>
       <div className="text-lg font-semibold text-gray-700">{message}</div>
     </div>
   );

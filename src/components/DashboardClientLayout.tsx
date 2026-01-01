@@ -21,14 +21,14 @@ export default function DashboardClientLayout({
 
   return (
     <SidebarProvider>
-      <div className="flex h-screen bg-white dark:bg-[#121727]">
+      <div className="flex h-screen bg-white dark:bg-darkMode">
         {/* Desktop Sidebar */}
         <SidebarShell>
           <MenuWrapper />
         </SidebarShell>
 
         {/* Main Content */}
-        <main className="flex-1 overflow-y-auto bg-white dark:bg-[#121727] pb-16 md:pb-0">
+        <main className="flex-1 overflow-y-auto bg-white dark:bg-darkMode pb-16 md:pb-0">
           {children}
         </main>
 

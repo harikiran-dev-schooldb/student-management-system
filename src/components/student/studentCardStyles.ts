@@ -1,11 +1,11 @@
 export const cardBase =
-  "rounded-xl bg-white dark:bg-[#121727] \
+  "rounded-xl bg-white dark:bg-darkMode \
    border border-gray-200/70 dark:border-white/10 \
    shadow-sm dark:shadow-black/40 hover:shadow-md \
    transition-all duration-300 ease-out hover:-translate-y-0.5";
 
    export const cardBase1 =
-  "rounded-xl bg-white dark:bg-[#121727] \
+  "rounded-xl bg-white dark:bg-darkMode \
    border border-gray-200/70 dark:border-white/10 \
    shadow-sm dark:shadow-black/40 hover:shadow-md \
    transition-all duration-300 ease-out";

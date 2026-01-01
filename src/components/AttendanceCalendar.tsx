@@ -18,7 +18,9 @@ type Value = ValuePiece | [ValuePiece, ValuePiece];
 
 const AttendanceCalendar = ({ attendanceData }: Props) => {
   const [value, setValue] = useState<Value>(new Date());
-  const [tileClassNameMap, setTileClassNameMap] = useState<{ [key: string]: string }>({});
+  const [tileClassNameMap, setTileClassNameMap] = useState<{
+    [key: string]: string;
+  }>({});
 
   const formatDate = (date: Date | string) => {
     const d = new Date(date);
@@ -79,21 +81,23 @@ const AttendanceCalendar = ({ attendanceData }: Props) => {
       />
 
       {/* Legend */}
-      <div className="flex justify-center gap-6 mt-2 text-sm">
+      <div className="flex justify-center gap-6 mt-2 text-sm text-gray-600 dark:text-gray-300">
         <div className="flex items-center gap-2">
-          <span className="w-4 h-4 rounded-full bg-green-500 border border-gray-300"></span>
+          <span className="w-4 h-4 rounded-full bg-emerald-500/80 ring-1 ring-emerald-600/30"></span>
           <span>Present</span>
         </div>
+
         <div className="flex items-center gap-2">
-          <span className="w-4 h-4 rounded-full bg-red-500 border border-gray-300"></span>
+          <span className="w-4 h-4 rounded-full bg-rose-500/80 ring-1 ring-rose-600/30"></span>
           <span>Absent</span>
         </div>
+
         <div className="flex items-center gap-2">
-          <span className="w-4 h-4 rounded-full bg-yellow-200 border border-gray-300"></span>
+          <span className="w-4 h-4 rounded-full bg-slate-400/70 ring-1 ring-slate-500/30"></span>
           <span>Holiday</span>
         </div>
-      </div >
-    </div >
+      </div>
+    </div>
   );
 };
 

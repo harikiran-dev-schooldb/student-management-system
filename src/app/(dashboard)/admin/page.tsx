@@ -9,10 +9,10 @@ import { getAdminDashboardData } from "@/lib/dashboard";
 import { SearchParams } from "../../../../types";
 
 /* -----------------------------
-   UI Tokens (same system-wide)
+   UI Tokens
 ------------------------------*/
 const cardBase =
-  "rounded-xl bg-white dark:bg-[#121727] \
+  "rounded-xl bg-white dark:bg-darkMode \
    border border-gray-200/70 dark:border-white/10 \
    shadow-sm dark:shadow-black/40 \
    transition-all duration-300 ease-out";
@@ -48,6 +48,8 @@ interface PageProps {
 }
 
 export default async function AdminPage({ searchParams }: PageProps) {
+
+ 
   const params = await searchParams;
 
   const dateParam =
@@ -59,14 +61,13 @@ export default async function AdminPage({ searchParams }: PageProps) {
 
   const date = dateParam ? new Date(dateParam) : new Date();
 
-  /* SINGLE BACKEND CALL */
+  // ✅ Single backend call
   const dashboard = await getAdminDashboardData(date);
 
   return (
     <div className="flex flex-col gap-6 p-4 xl:flex-row">
       {/* ================= LEFT ================= */}
       <section className="flex flex-col w-full gap-8 xl:w-3/4">
-        {/* USER CARDS */}
         <Suspense fallback={<CardsSkeleton />}>
           <div className="flex flex-wrap gap-4">
             <UserCard type="admin" count={dashboard.adminCount} />
@@ -75,7 +76,6 @@ export default async function AdminPage({ searchParams }: PageProps) {
           </div>
         </Suspense>
 
-        {/* CHART ROW */}
         <Suspense fallback={<ChartSkeleton />}>
           <div className="flex flex-col gap-4 lg:flex-row">
             <div
@@ -95,7 +95,6 @@ export default async function AdminPage({ searchParams }: PageProps) {
           </div>
         </Suspense>
 
-        {/* FINANCE */}
         <Suspense fallback={<ChartSkeleton height={400} />}>
           <div className={`${cardBase} ${cardHover} w-full h-[400px] p-4`}>
             <FinanceChartContainer data={dashboard.finance} />

@@ -17,7 +17,7 @@ const CountChartContainer = ({ stats }: CountChartContainerProps) => {
   const total = male + female || 1;
 
   return (
-    <div className="w-full h-full p-4 bg-white dark:bg-gray-900 rounded-xl">
+    <div className="w-full h-full p-4 bg-white dark:bg-darkMode rounded-xl">
       {/* TITLE */}
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold">Students</h1>

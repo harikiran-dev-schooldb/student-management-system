@@ -20,7 +20,9 @@ async function getStudentInfo(linkedUserId: string) {
   });
 
   if (!student) return [];
-  return [{ studentId: student.id, classId: student.classId, name: student.name }];
+  return [
+    { studentId: student.id, classId: student.classId, name: student.name },
+  ];
 }
 
 async function getTeacherInfo(linkedUserId: string) {
@@ -58,8 +60,18 @@ export const fetchUserInfo = cache(async (): Promise<UserInfo> => {
 
     if (active.role === "student") {
       const students = await getStudentInfo(active.id);
+      if (!students || students.length === 0) {
+        return { userId: active.id, role: "student" };
+      }
+
       const primaryStudent = students[0];
-      return { userId: active.id, role: "student", studentId: primaryStudent.studentId, classId: primaryStudent.classId, students };
+      return {
+        userId: active.id,
+        role: "student",
+        studentId: primaryStudent.studentId,
+        classId: primaryStudent.classId,
+        students,
+      };
     }
 
     if (active.role === "teacher") {
@@ -69,7 +81,8 @@ export const fetchUserInfo = cache(async (): Promise<UserInfo> => {
 
     // ✅ Admin or others
     return { userId: active.id, role: active.role };
-  } catch {
+  } catch (error) {
+    console.error("fetchUserInfo error:", error);
     return { userId: null, role: null };
   }
 });
