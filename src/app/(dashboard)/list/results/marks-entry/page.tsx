@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
 import {
@@ -12,24 +12,30 @@ import {
   LayoutGrid,
   Save,
   Search,
-  BookOpen
+  BookOpen,
+  CheckCircle2,
+  AlertCircle,
+  GraduationCap,
+  Users,
 } from "lucide-react";
 import DesktopMarksTable from "@/components/DesktopMarksTable";
 import MobileMarksCards from "@/components/MobileMarksCards";
 
-// --- Types ---
+// --- Types & Interfaces ---
 type Exam = { id: number; title: string };
 type Grade = { id: number; level: string };
 type Class = { id: number; section: string };
 type Subject = { id: number; name: string };
 type Student = { id: string; name: string };
 
-// --- Interfaces ---
-interface SelectBoxProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
+interface CustomSelectProps {
   label: string;
+  value: string | number | undefined;
+  onChange: (value: string) => void;
   options: { value: string | number; label: string }[];
   placeholder?: string;
   icon?: React.ReactNode;
+  disabled?: boolean;
 }
 
 export default function MarksEntryForm() {
@@ -50,6 +56,7 @@ export default function MarksEntryForm() {
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   const [marksData, setMarksData] = useState<
     { studentId: string; marks: { [subjectName: string]: string } }[]
@@ -61,9 +68,10 @@ export default function MarksEntryForm() {
   useEffect(() => {
     const initFetch = async () => {
       try {
+        // Mock data loading (Replace with your actual API calls)
         const [examRes, gradeRes] = await Promise.all([
-          axios.get("/api/exams"),
-          axios.get("/api/grades"),
+          axios.get("/api/exams").catch(() => ({ data: { exams: [] } })),
+          axios.get("/api/grades").catch(() => ({ data: [] })),
         ]);
         setExams(examRes.data.exams || []);
         setGrades(gradeRes.data || []);
@@ -111,6 +119,7 @@ export default function MarksEntryForm() {
           marks: res.data.existingMarks?.[student.id] || {},
         }));
         setMarksData(initialMarks);
+        setHasUnsavedChanges(false);
       } catch (err) {
         console.error(err);
         toast.error("Failed to fetch marks sheet");
@@ -136,6 +145,7 @@ export default function MarksEntryForm() {
           : entry
       )
     );
+    setHasUnsavedChanges(true);
   };
 
   const handleSubmit = async () => {
@@ -152,6 +162,7 @@ export default function MarksEntryForm() {
     try {
       await axios.post("/api/results/bulk-entry", payload);
       toast.success("Marks submitted successfully!");
+      setHasUnsavedChanges(false);
     } catch (err) {
       console.error(err);
       toast.error("Failed to submit marks");
@@ -162,211 +173,319 @@ export default function MarksEntryForm() {
 
   const toggleFullScreen = () => {
     if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().catch((e) => {
-            console.error(`Error attempting to enable fullscreen mode: ${e.message} (${e.name})`);
-        });
-        setIsFullScreen(true);
+      document.documentElement.requestFullscreen().catch((e) => {
+        console.error(
+          `Error attempting to enable fullscreen mode: ${e.message}`
+        );
+      });
+      setIsFullScreen(true);
     } else {
-        if (document.exitFullscreen) {
+      if (document.exitFullscreen) {
         document.exitFullscreen();
         setIsFullScreen(false);
-        }
+      }
     }
   };
-
-
 
   // --- Render ---
 
   return (
     <div
-      className={`flex flex-col bg-gray-50 dark:bg-black text-zinc-900 dark:text-zinc-100 transition-colors duration-300 ${
-        isFullScreen ? "h-screen w-screen" : "min-h-[calc(100vh-4rem)] w-full"
+      className={`flex flex-col bg-zinc-50 dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 transition-colors duration-300 ${
+        isFullScreen
+          ? "h-screen w-screen overflow-hidden"
+          : "min-h-screen w-full"
       }`}
     >
-      {/* 1. Glassmorphism Header */}
-      <header className="bg-white/80 dark:bg-black/80 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 md:sticky top-0 z-40 px-4 md:px-6 py-4">
-        {/* REMOVED: max-w-7xl mx-auto */}
-        <div className="w-full"> 
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+      {/* Decorative Background Gradients */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-indigo-500/5 blur-[120px]" />
+        <div className="absolute top-[10%] right-[0%] w-[30%] h-[40%] rounded-full bg-blue-500/5 blur-[100px]" />
+      </div>
+
+      {/* 1. Header & Filters Section */}
+      <header className="relative z-20 flex-none px-4 md:px-8 py-6 space-y-6">
+        {/* Top Bar */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-indigo-600 to-indigo-800 flex items-center justify-center shadow-lg shadow-indigo-500/20 text-white">
+              <LayoutGrid className="w-6 h-6" />
+            </div>
             <div>
-                <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white flex items-center gap-3">
-                <span className="p-2 bg-indigo-600 dark:bg-indigo-500 rounded-lg text-white shadow-md shadow-indigo-500/20">
-                    <LayoutGrid className="w-5 h-5" />
-                </span>
+              <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
                 Marks Entry
-                </h1>
-                <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1 ml-12 font-medium">
-                Manage results for {exams.length > 0 ? "Term Exams" : "Assessments"}
-                </p>
+              </h1>
+              <p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium flex items-center gap-2">
+                Academic Year 2024-2025
+                <span className="w-1 h-1 rounded-full bg-zinc-300 dark:bg-zinc-700" />
+                Term 2
+              </p>
             </div>
+          </div>
 
-            <div className="flex items-center gap-3 self-end md:self-auto">
-                <div className="hidden md:flex items-center px-3 py-1 rounded-full bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-xs font-semibold border border-emerald-200 dark:border-emerald-800">
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-2 animate-pulse"></div>
-                System Active
-                </div>
+          <div className="flex items-center gap-3">
+            {/* Full Screen Toggle */}
+            <button
+              onClick={toggleFullScreen}
+              className="p-2.5 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 text-zinc-500 dark:text-zinc-400 transition-all shadow-sm"
+              title={isFullScreen ? "Exit Full Screen" : "Enter Full Screen"}
+            >
+              {isFullScreen ? (
+                <Minimize2 className="w-5 h-5" />
+              ) : (
+                <Maximize2 className="w-5 h-5" />
+              )}
+            </button>
 
-                <button
-                onClick={toggleFullScreen}
-                className="p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400 transition-colors border border-transparent hover:border-zinc-200 dark:hover:border-zinc-700"
-                title={isFullScreen ? "Exit Full Screen" : "Enter Full Screen"}
-                >
-                {isFullScreen ? (
-                    <Minimize2 className="w-5 h-5" />
-                ) : (
-                    <Maximize2 className="w-5 h-5" />
-                )}
-                </button>
+            {/* NEW: Combined Actions & Stats Group */}
+            {students.length > 0 && (
+              <div className="flex items-center gap-4 pl-4 ml-1 border-l border-zinc-200 dark:border-zinc-800 animate-in fade-in slide-in-from-right-4 duration-500">
                 
-                {students.length > 0 && (
-                    <button
-                    onClick={handleSubmit}
-                    disabled={submitting}
-                    className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-sm font-medium transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
-                    >
-                    {submitting ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                        <Save className="w-4 h-4" />
-                    )}
-                    <span className="hidden sm:inline">Save Marks</span>
-                    </button>
-                )}
-            </div>
-            </div>
 
-            {/* Filters Bar */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-1 bg-zinc-100/50 dark:bg-zinc-900/50 rounded-xl border border-zinc-200 dark:border-zinc-800">
-            <SelectBox
-                label="Exam"
-                icon={<BookOpen className="w-4 h-4" />}
-                value={selectedExamTitle || ""}
-                onChange={(e) => setSelectedExamTitle(e.target.value)}
-                placeholder="Select Exam..."
-                options={exams.map((e) => ({ value: e.title, label: e.title }))}
-            />
-            <SelectBox
-                label="Grade"
-                icon={<Filter className="w-4 h-4" />}
-                value={selectedGradeId || ""}
-                onChange={(e) => setSelectedGradeId(Number(e.target.value))}
-                placeholder="Select Grade..."
-                options={grades.map((g) => ({ value: g.id, label: g.level }))}
-            />
-            <SelectBox
-                label="Section"
-                icon={<Search className="w-4 h-4" />}
-                value={selectedClassId || ""}
-                onChange={(e) => setSelectedClassId(Number(e.target.value))}
-                placeholder="Select Section..."
-                disabled={!selectedGradeId}
-                options={classes.map((c) => ({ value: c.id, label: c.section }))}
-            />
-            </div>
+                {/* Dynamic Save Button */}
+                <button
+                  onClick={handleSubmit}
+                  disabled={submitting || !hasUnsavedChanges}
+                  className={`
+          relative group flex items-center gap-2 px-5 py-2.5 rounded-lg font-medium text-sm transition-all duration-300
+          ${
+            hasUnsavedChanges
+              ? "bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:-translate-y-0.5 active:translate-y-0"
+              : "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 cursor-default"
+          }
+        `}
+                >
+                  {submitting ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : !hasUnsavedChanges ? (
+                    <CheckCircle2 className="w-4 h-4" />
+                  ) : (
+                    <Save className="w-4 h-4" />
+                  )}
+
+                  <span>
+                    {submitting
+                      ? "Saving..."
+                      : hasUnsavedChanges
+                      ? "Save Changes"
+                      : "All Saved"}
+                  </span>
+
+                  {/* Optional: Visual ping when there are unsaved changes */}
+                  {hasUnsavedChanges && !submitting && (
+                    <span className="absolute top-0 right-0 -mt-1 -mr-1 flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-indigo-500"></span>
+                    </span>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Floating Filter Bar */}
+        <div className="bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl border border-white/20 dark:border-zinc-800/50 p-1.5 rounded-2xl shadow-xl shadow-zinc-200/50 dark:shadow-black/50 grid grid-cols-1 md:grid-cols-3 gap-2">
+          <CustomSelect
+            label="Examination"
+            icon={<BookOpen className="w-4 h-4" />}
+            value={selectedExamTitle}
+            onChange={(val) => setSelectedExamTitle(val)}
+            placeholder="Select Exam"
+            options={exams.map((e) => ({ value: e.title, label: e.title }))}
+          />
+          <CustomSelect
+            label="Grade Level"
+            icon={<GraduationCap className="w-4 h-4" />}
+            value={selectedGradeId}
+            onChange={(val) => setSelectedGradeId(Number(val))}
+            placeholder="Select Grade"
+            options={grades.map((g) => ({ value: g.id, label: g.level }))}
+          />
+          <CustomSelect
+            label="Class Section"
+            icon={<Users className="w-4 h-4" />}
+            value={selectedClassId}
+            onChange={(val) => setSelectedClassId(Number(val))}
+            placeholder="Select Section"
+            disabled={!selectedGradeId}
+            options={classes.map((c) => ({ value: c.id, label: c.section }))}
+          />
         </div>
       </header>
 
       {/* 2. Main Content Area */}
-      {/* REMOVED: max-w-7xl mx-auto */}
-      <main className="flex-1 w-full p-4 md:p-6 overflow-hidden flex flex-col"> 
-        {/* Loading State */}
-        {loading && (
-          <div className="flex flex-col items-center justify-center flex-1 min-h-[400px] animate-in fade-in duration-500">
-            <div className="relative">
-              <div className="absolute inset-0 bg-indigo-500/30 rounded-full blur-xl animate-pulse"></div>
-              <Loader2 className="w-12 h-12 text-indigo-600 dark:text-indigo-400 animate-spin relative z-10" />
+      <main className="flex-1 relative z-10 w-full px-4 md:px-8 pb-24 overflow-hidden flex flex-col">
+        {/* Content Container */}
+        <div className="flex-1 rounded-2xl bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800/50 shadow-sm overflow-hidden flex flex-col relative min-h-[500px]">
+          {loading && (
+            <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/80 dark:bg-zinc-950/80 backdrop-blur-sm">
+              <Loader2 className="w-10 h-10 text-indigo-600 animate-spin mb-4" />
+              <p className="text-zinc-600 dark:text-zinc-400 font-medium">
+                Retrieving student records...
+              </p>
             </div>
-            <p className="mt-4 text-sm font-medium text-zinc-500 dark:text-zinc-400">
-              Fetching students & marks data...
-            </p>
-          </div>
-        )}
+          )}
 
-        {/* Empty State */}
-        {!loading && students.length === 0 && (
-            <div className="flex flex-col items-center justify-center flex-1 min-h-[400px] text-center border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl bg-zinc-50/50 dark:bg-zinc-900/50">
-                <div className="p-4 bg-white dark:bg-black rounded-full shadow-sm mb-4">
-                    <Filter className="w-8 h-8 text-zinc-300 dark:text-zinc-600" />
+          {!loading && students.length === 0 && (
+            <div className="flex flex-col items-center justify-center flex-1 p-8 text-center">
+              <div className="w-20 h-20 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center mb-6">
+                <Filter className="w-8 h-8 text-zinc-400" />
+              </div>
+              <h3 className="text-xl font-semibold text-zinc-900 dark:text-white">
+                Ready to Grade
+              </h3>
+              <p className="text-zinc-500 max-w-sm mt-2">
+                Use the filters above to load the mark sheet for a specific
+                class and exam.
+              </p>
+            </div>
+          )}
+
+          {!loading && students.length > 0 && (
+            <div className="flex-1 h-full overflow-hidden flex flex-col animate-in fade-in duration-500">
+              {/* Desktop: Table | Mobile: Cards */}
+              <div className="flex-1 overflow-auto">
+                <div className="hidden lg:block h-full">
+                  <DesktopMarksTable
+                    students={students}
+                    subjects={subjects}
+                    marksData={marksData}
+                    onChange={handleMarkChange}
+                  />
                 </div>
-                <h3 className="text-lg font-medium text-zinc-900 dark:text-white">No Data Loaded</h3>
-                <p className="text-zinc-500 dark:text-zinc-400 max-w-sm mt-1">
-                    Select an Exam, Grade, and Section from the filters above to load the marks sheet.
-                </p>
+                <div className="block lg:hidden h-full p-4">
+                  <MobileMarksCards
+                    students={students}
+                    subjects={subjects}
+                    marksData={marksData}
+                    onChange={handleMarkChange}
+                  />
+                </div>
+              </div>
             </div>
-        )}
-
-        {/* Data View */}
-        {!loading && students.length > 0 && (
-          <div className="flex-1 overflow-hidden flex flex-col animate-in slide-in-from-bottom-4 duration-500">
-            {/* Mobile View */}
-            <div className="block lg:hidden overflow-y-auto pb-20">
-              <MobileMarksCards
-                students={students}
-                subjects={subjects}
-                marksData={marksData}
-                onChange={handleMarkChange}
-              />
-            </div>
-
-            {/* Desktop View */}
-            <div className="hidden lg:flex flex-1 overflow-hidden border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm bg-white dark:bg-black">
-              <DesktopMarksTable
-                students={students}
-                subjects={subjects}
-                marksData={marksData}
-                onChange={handleMarkChange}
-              />
-            </div>
-          </div>
-        )}
+          )}
+        </div>
       </main>
     </div>
   );
 }
 
-// --- Modern Select Component ---
-const SelectBox = ({
+// --- Premium Custom Select Component ---
+// This replaces the native <select> with a simulated UI that looks like Shadcn/Headless
+function CustomSelect({
   label,
+  value,
+  onChange,
   options,
-  className,
   placeholder,
   icon,
-  ...props
-}: SelectBoxProps) => (
-  <div
-    className={`relative group ${
-      props.disabled ? "opacity-60 cursor-not-allowed" : ""
-    }`}
-  >
-    <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-zinc-400 group-focus-within:text-indigo-500 transition-colors z-10">
-      {icon}
-    </div>
-    <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-zinc-400 z-10">
-      <ChevronDown className="w-4 h-4" />
-    </div>
-    <select
-      className={`
-        w-full appearance-none pl-10 pr-10 py-2.5 
-        bg-white dark:bg-black
-        border-none outline-none
-        rounded-lg text-sm font-medium
-        text-zinc-700 dark:text-zinc-200 
-        focus:ring-2 focus:ring-indigo-500/20 
-        transition-all cursor-pointer 
-        disabled:cursor-not-allowed disabled:bg-zinc-50 dark:disabled:bg-zinc-900
-        ${className || ""}
-      `}
-      {...props}
+  disabled,
+}: CustomSelectProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Close on click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const selectedLabel = options.find(
+    (o) => String(o.value) === String(value)
+  )?.label;
+
+  return (
+    <div
+      className={`relative ${disabled ? "opacity-50 pointer-events-none" : ""}`}
+      ref={containerRef}
     >
-      <option value="" disabled>
-        {placeholder}
-      </option>
-      {options.map((opt) => (
-        <option key={opt.value} value={opt.value}>
-          {opt.label}
-        </option>
-      ))}
-    </select>
-  </div>
-);
+      <div
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+        className={`
+           group flex items-center justify-between w-full p-3 
+           bg-zinc-50 dark:bg-black hover:bg-zinc-100 dark:hover:bg-zinc-800/50 
+           border border-transparent hover:border-zinc-200 dark:hover:border-zinc-700
+           rounded-xl cursor-pointer transition-all duration-200
+           ${
+             isOpen ? "ring-2 ring-indigo-500/20 bg-white dark:bg-zinc-900" : ""
+           }
+         `}
+      >
+        <div className="flex items-center gap-3 overflow-hidden">
+          <div
+            className={`
+             p-2 rounded-lg transition-colors
+             ${
+               value
+                 ? "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400"
+                 : "bg-zinc-200 dark:bg-zinc-800 text-zinc-500"
+             }
+           `}
+          >
+            {icon}
+          </div>
+          <div className="flex flex-col text-left">
+            <span className="text-[10px] uppercase tracking-wider font-bold text-zinc-400 dark:text-zinc-500">
+              {label}
+            </span>
+            <span
+              className={`text-sm font-semibold truncate ${
+                value ? "text-zinc-900 dark:text-white" : "text-zinc-400"
+              }`}
+            >
+              {selectedLabel || placeholder}
+            </span>
+          </div>
+        </div>
+        <ChevronDown
+          className={`w-4 h-4 text-zinc-400 transition-transform duration-300 ${
+            isOpen ? "rotate-180" : ""
+          }`}
+        />
+      </div>
+
+      {/* Dropdown Menu */}
+      {isOpen && (
+        <div className="absolute top-[110%] left-0 w-full max-h-60 overflow-y-auto bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-100 p-1">
+          {options.length > 0 ? (
+            options.map((opt) => (
+              <div
+                key={opt.value}
+                onClick={() => {
+                  onChange(String(opt.value));
+                  setIsOpen(false);
+                }}
+                className={`
+                   px-4 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-colors flex items-center justify-between
+                   ${
+                     String(value) === String(opt.value)
+                       ? "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300"
+                       : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                   }
+                 `}
+              >
+                {opt.label}
+                {String(value) === String(opt.value) && (
+                  <CheckCircle2 className="w-4 h-4" />
+                )}
+              </div>
+            ))
+          ) : (
+            <div className="px-4 py-3 text-sm text-zinc-400 text-center">
+              No options available
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
