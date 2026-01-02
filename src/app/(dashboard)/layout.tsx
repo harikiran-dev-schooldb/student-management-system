@@ -1,4 +1,6 @@
-// src/app/%28dashboard%29/layout.tsx (SERVER COMPONENT — no "use client")
+// src/app/(dashboard)/layout.tsx
+export const dynamic = "force-dynamic";
+
 import DashboardClientLayout from "@/components/DashboardClientLayout";
 import PageNavbar from "@/components/PageNavbar";
 
@@ -9,10 +11,10 @@ export default function DashboardLayout({
 }) {
   return (
     <>
-      {/* ✅ SERVER: Clerk + Prisma allowed */}
+      {/* SERVER: Clerk + Prisma allowed */}
       <PageNavbar />
 
-      {/* ✅ CLIENT: sidebar + context */}
+      {/* CLIENT: sidebar + context */}
       <DashboardClientLayout>
         {children}
       </DashboardClientLayout>
