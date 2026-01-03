@@ -1,5 +1,7 @@
+import { ArrowRight } from "lucide-react";
 import EventCalendar from "./EventCalendar";
 import EventList from "./EventList";
+import Link from "next/link";
 
 export type SearchParams = {
   [key: string]: string | string[] | undefined;
@@ -33,14 +35,19 @@ const EventCalendarContainer = ({
       : undefined;
 
   return (
-    <div className="p-4 bg-white dark:bg-gray-900 rounded-md">
+    <div className="p-4 bg-white  rounded-md dark:bg-darkMode">
       <EventCalendar />
 
       <div className="flex items-center justify-between">
         <h1 className="my-4 text-xl font-semibold text-black dark:text-gray-300">
           Events
         </h1>
-        <img src="/moreDark.png" alt="More" width={20} height={20} />
+        <Link
+          href="/list/messages"
+          className="text-xs font-medium text-gray-500 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-400 flex items-center gap-1 transition-colors"
+        >
+          View All <ArrowRight className="w-3 h-3" />
+        </Link>
       </div>
 
       <div className="flex flex-col gap-4">

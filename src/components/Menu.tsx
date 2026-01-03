@@ -113,7 +113,7 @@ const menuSections: MenuSection[] = [
 
       {
         label: "Attendance",
-        href:"/list/attendance/",
+        href: "/list/attendance/",
         icon: CalendarCheck,
         visible: ["student"],
       },
@@ -356,7 +356,7 @@ export default function Menu({ role }: { role: Role }) {
                     ${isCollapsed ? "justify-center px-2" : "gap-3 px-4"}
                     ${
                       active
-                        ? "bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white"
+                        ? "bg-gray-100 text-gray-900 dark:bg-darkMode dark:text-white"
                         : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-800 dark:hover:text-white"
                     }`}
                 >
@@ -373,7 +373,7 @@ export default function Menu({ role }: { role: Role }) {
                     <span
                       className="
         pointer-events-none absolute left-full top-1/2 ml-3 -translate-y-1/2
-        whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs
+        whitespace-nowrap rounded-md bg-darkMode px-2 py-1 text-xs
         text-white opacity-0 group-hover:opacity-100
         transition-opacity z-[9999]
       "

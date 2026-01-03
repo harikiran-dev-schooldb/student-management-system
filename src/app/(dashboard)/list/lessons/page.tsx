@@ -55,7 +55,7 @@ const LessonsListPage = async ({
   const Path = "/list/lessons";
 
   return (
-    <div className="flex-1 p-4 bg-white dark:bg-gray-900 text-black dark:text-white">
+    <div className="flex-1 p-4 bg-white dark:bg-darkMode text-black dark:text-white">
       <div className="flex items-center justify-between mb-6">
         <h1 className="hidden text-lg font-semibold md:block">Schedule</h1>
 

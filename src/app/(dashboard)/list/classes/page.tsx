@@ -10,6 +10,8 @@ import { Prisma } from "@prisma/client";
 import { ClassList, SearchParams } from "../../../../../types";
 import ResetFiltersButton from "@/components/ResetFiltersButton";
 import { ClassSelect } from "../../../../../types/query-types";
+import { Filter } from "lucide-react";
+import IconButton from "@/components/IconButton";
 
 const renderRow = (item: ClassList, role: string | null) => (
   <tr
@@ -104,9 +106,7 @@ const ClassesList = async ({
           <TableSearch />
           <div className="flex items-center self-end gap-4">
             <ResetFiltersButton basePath={Path} />
-            <button className="flex items-center justify-center w-8 h-8 rounded-full bg-LamaYellow dark:brightness-90">
-              <img src="/filter.png" alt="" width={14} height={14} />
-            </button>
+            <IconButton icon={Filter} />
             <SortButton sortKey="id" />
             {role === "admin" && <FormContainer table="class" type="create" />}
           </div>

@@ -12,6 +12,8 @@ import { Homeworks, SearchParams } from "../../../../../types";
 import ResetFiltersButton from "@/components/ResetFiltersButton";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
 import { HomeworkSelect } from "../../../../../types/query-types";
+import { Filter } from "lucide-react";
+import IconButton from "@/components/IconButton";
 
 // Render a single table row
 const renderRow = (item: Homeworks, role: string | null) => (
@@ -165,9 +167,7 @@ const HomeworkListPage = async ({
 
           <div className="flex items-center gap-4">
             <ResetFiltersButton basePath={Path} />
-            <button className="flex items-center justify-center w-8 h-8 rounded-full bg-LamaYellow dark:bg-LamaYellow">
-              <img src="/filter.png" alt="" width={14} height={14} />
-            </button>
+            <IconButton icon={Filter}/>
             <SortButton sortKey={sortKey} />
             {(role === "admin" || role === "teacher") && (
               <FormContainer table="homework" type="create" />

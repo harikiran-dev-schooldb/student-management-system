@@ -17,7 +17,8 @@ import Link from "next/link";
 import { FeeColectList, SearchParams } from "../../../../../../types";
 import ResetFiltersButton from "@/components/ResetFiltersButton";
 import { StudentFeeSelect } from "../../../../../../types/query-types";
-import { Eye, UserRound, X } from "lucide-react";
+import { Eye, Filter, UserRound, X } from "lucide-react";
+import IconButton from "@/components/IconButton";
 
 const renderRow = (
   item: FeeColectList,
@@ -276,9 +277,7 @@ const StudentFeeListPage = async ({
             <div className="flex flex-col md:flex-row items-center gap-4 w-full">
               <div className="flex items-center gap-4">
                 <ResetFiltersButton basePath={Path} />
-                <button className="flex items-center justify-center w-8 h-8 rounded-full bg-LamaYellow dark:bg-LamaYellow">
-                  <img src="/filter.png" alt="" width={14} height={14} />
-                </button>
+                <IconButton icon={Filter}/>
                 <SortButton sortKey="id" />
               </div>
             </div>

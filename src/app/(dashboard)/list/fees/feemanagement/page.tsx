@@ -13,6 +13,8 @@ import ResetFiltersButton from "@/components/ResetFiltersButton";
 import AcademicYearDropdown from "@/components/dropdowns/AcademicYearDropdown";
 import { AcademicYear } from "@prisma/client";
 import { FeeGradeSelect } from "../../../../../../types/query-types";
+import { Filter } from "lucide-react";
+import IconButton from "@/components/IconButton";
 
 // Row Renderer
 const renderRow = (grade: FeesList, role: string | null) => {
@@ -148,9 +150,7 @@ const FeesListPage = async ({
           <div className="flex flex-col items-center w-full gap-4 md:flex-row md:w-auto">
             <div className="flex items-center self-end gap-4">
               <ResetFiltersButton basePath={Path} />
-              <button className="flex items-center justify-center w-8 h-8 rounded-full bg-LamaYellow">
-                <img src="/filter.png" alt="Filter" width={14} height={14} />
-              </button>
+              <IconButton icon={Filter}/>
               <SortButton sortKey="level" />
               {role === "admin" && <FormContainer table="fees" type="create" />}
             </div>

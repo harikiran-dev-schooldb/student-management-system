@@ -7,7 +7,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
 } from "recharts";
 
@@ -24,58 +23,79 @@ const AttendanceChart = ({
   data: AttendanceChartData[];
   darkMode?: boolean;
 }) => {
+  // --- COLOR PALETTE: "Modern Mint" ---
+  // A rich Teal for success, and a soft warm Peach for absent.
+  // This combination feels very designed and expensive.
+  const colors = {
+    present: darkMode ? "#818cf8" : "#4f46e5", // Indigo 400 / Indigo 600
+    absent: darkMode ? "#312e81" : "#e0e7ff", // Indigo 900 / Indigo 100
+    text: darkMode ? "#9ca3af" : "#6b7280", // Gray 400 / Gray 500
+    grid: darkMode ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)",
+    hover: darkMode ? "#115e59" : "#ccfbf1", // For cursor hover effects
+  };
+
   return (
     <ResponsiveContainer width="100%" height="90%">
-      <BarChart data={data} barSize={24}>
+      <BarChart
+        data={data}
+        barSize={24}
+        margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+      >
         <CartesianGrid
           strokeDasharray="3 3"
           vertical={false}
-          stroke={darkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)"}
+          stroke={colors.grid}
         />
 
         <XAxis
           dataKey="name"
           axisLine={false}
-          tick={{ fill: "hsl(var(--foreground))" }}
+          tick={{ fill: colors.text, fontSize: 12, fontWeight: 500 }}
           tickLine={false}
+          tickMargin={12}
         />
 
         <YAxis
           axisLine={false}
-          tick={{ fill: "hsl(var(--foreground))" }}
+          tick={{ fill: colors.text, fontSize: 12 }}
           tickLine={false}
+          tickMargin={12}
         />
 
         <Tooltip
+          cursor={{ fill: colors.grid }}
           contentStyle={{
-            borderRadius: "10px",
-            borderColor: darkMode ? "rgba(255,255,255,0.2)" : "lightgray",
-            backgroundColor: darkMode ? "#1f2937" : "#fff",
-            color: darkMode ? "#f9fafb" : "#000",
+            borderRadius: "12px",
+            border: "none",
+            backgroundColor: darkMode ? "#18181b" : "#fff", // Zinc 900 / White
+            boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
+            padding: "12px",
+            color: darkMode ? "#f3f4f6" : "#1f2937",
           }}
-        />
-
-        <Legend
-          align="left"
-          verticalAlign="top"
-          wrapperStyle={{
-            paddingTop: "20px",
-            paddingBottom: "40px",
-            color: darkMode ? "#f9fafb" : "#374151",
+          itemStyle={{
+            fontSize: "13px",
+            fontWeight: 600,
+            paddingBottom: "2px",
+            textTransform: "capitalize",
+          }}
+          labelStyle={{
+            color: colors.text,
+            marginBottom: "8px",
+            fontSize: "12px",
           }}
         />
 
         <Bar
           dataKey="present"
-          fill="#FAE27C"
-          legendType="circle"
-          radius={[10, 10, 0, 0]}
+          fill={colors.present}
+          radius={[6, 6, 0, 0]} // Smooth rounded top
+          animationDuration={1200}
         />
         <Bar
           dataKey="absent"
-          fill="#C3EBFA"
-          legendType="circle"
-          radius={[10, 10, 0, 0]}
+          fill={colors.absent}
+          radius={[6, 6, 0, 0]} // Smooth rounded top
+          animationDuration={1200}
         />
       </BarChart>
     </ResponsiveContainer>

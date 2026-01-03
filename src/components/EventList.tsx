@@ -41,7 +41,7 @@ const EventList = ({ events, dateParam }: EventListProps) => {
       {filteredEvents.map((event) => (
         <div
           key={event.id}
-          className="p-5 rounded-md border-t-4 border-gray-200 dark:border-gray-700 odd:border-t-LamaSky even:border-t-LamaPurple bg-white dark:bg-gray-900"
+          className="p-5 rounded-md border-t-4 border-gray-200 dark:border-gray-700 odd:border-t-LamaSky even:border-t-LamaPurple bg-white dark:bg-darkMode"
         >
           <div className="flex items-center justify-between">
             <h1 className="font-semibold text-black dark:text-black">
@@ -52,7 +52,7 @@ const EventList = ({ events, dateParam }: EventListProps) => {
             </span>
           </div>
 
-          <p className="mt-2 text-sm text-black dark:text-black">
+          <p className="mt-2 text-sm text-black dark:text-black dark:bg-darkMode">
             {event.description}
           </p>
         </div>
