@@ -91,7 +91,7 @@ export default function Dropdown({
 
           ${
             isChildActive || isOpen
-              ? "bg-gray-100 text-gray-900 dark:bg-darkMode dark:text-white"
+              ? "bg-gray-100 text-gray-900 dark:bg-darkfg dark:text-white"
               : "text-gray-600 dark:text-gray-400"
           }
 
@@ -128,7 +128,7 @@ export default function Dropdown({
         className={`
           absolute left-full top-1 ml-4 z-50 w-52
           rounded-lg border
-          bg-white dark:bg-darkMode
+          bg-white dark:bg-darkfg
           border-gray-200 dark:border-white/10
           shadow-xl
           transition-all duration-200
