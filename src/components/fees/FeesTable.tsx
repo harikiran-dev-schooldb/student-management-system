@@ -6,8 +6,7 @@ import {
   getCoreRowModel,
   getExpandedRowModel,
   flexRender,
-  ColumnDef,
-  Row,
+  ColumnDef
 } from "@tanstack/react-table";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
@@ -20,9 +19,9 @@ import {
   Receipt,
   ChevronRight,
   ChevronDown,
-  Download,
   Printer,
   FileSpreadsheet,
+  ChevronUp,
 } from "lucide-react";
 import { StudentFee } from "../../../types";
 
@@ -512,8 +511,8 @@ const FeesTable: React.FC<FeesTableProps> = ({ data, mode }) => {
         </div>
       </div>
 
-      {/* --- Table View --- */}
-      <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900">
+      {/* --- DESKTOP VIEW (Table) --- */}
+      <div className="hidden md:block overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900">
         <table className="w-full text-sm text-left">
           <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
             {table.getHeaderGroups().map((headerGroup) => (
@@ -545,35 +544,7 @@ const FeesTable: React.FC<FeesTableProps> = ({ data, mode }) => {
                   {row.getIsExpanded() && (
                     <tr>
                       <td colSpan={columns.length} className="bg-gray-50 dark:bg-black/20 p-4 shadow-inner">
-                        <div className="ml-10">
-                          <h4 className="text-xs font-bold uppercase text-gray-500 mb-2 flex items-center gap-2">
-                             <Receipt size={14} /> Transaction History
-                          </h4>
-                          {row.original.feeTransactions && row.original.feeTransactions.length > 0 ? (
-                            <table className="w-full max-w-2xl text-xs border border-gray-200 dark:border-gray-700 rounded overflow-hidden">
-                                <thead className="bg-gray-100 dark:bg-gray-800">
-                                   <tr>
-                                     <th className="px-3 py-2 text-left">Date</th>
-                                     <th className="px-3 py-2 text-left">Receipt #</th>
-                                     <th className="px-3 py-2 text-left">Mode</th>
-                                     <th className="px-3 py-2 text-right">Amount</th>
-                                   </tr>
-                                </thead>
-                                <tbody>
-                                  {row.original.feeTransactions.map((tx: any, i: number) => (
-                                     <tr key={i} className="border-t border-gray-200 dark:border-gray-700">
-                                        <td className="px-3 py-2">{formatDate(tx.receiptDate || new Date())}</td>
-                                        <td className="px-3 py-2 font-mono">{tx.receiptNo || "-"}</td>
-                                        <td className="px-3 py-2">{tx.paymentMode || "CASH"}</td>
-                                        <td className="px-3 py-2 text-right font-medium text-emerald-600">{formatCurrency(tx.amount)}</td>
-                                     </tr>
-                                  ))}
-                                </tbody>
-                            </table>
-                          ) : (
-                            <p className="text-xs text-gray-400 italic">No transactions recorded yet.</p>
-                          )}
-                        </div>
+                        <TransactionHistory fee={row.original} />
                       </td>
                     </tr>
                   )}
@@ -582,6 +553,108 @@ const FeesTable: React.FC<FeesTableProps> = ({ data, mode }) => {
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* --- MOBILE VIEW (Cards) --- */}
+      <div className="md:hidden space-y-4">
+        {table.getRowModel().rows.length === 0 ? (
+          <div className="text-center py-8 text-slate-500 bg-white dark:bg-slate-900 rounded-xl border border-dashed">No records found.</div>
+        ) : (
+          table.getRowModel().rows.map((row) => {
+            const { status, dueAmount, paidAmount, totalFees, isCollectDisabled, isZero } = getFeeStatus(row.original);
+            const isSelected = row.getIsSelected();
+            const isExpanded = row.getIsExpanded();
+
+            return (
+              <div key={row.id} className={`bg-white dark:bg-slate-900 rounded-xl border transition-all duration-200 ${isSelected ? 'border-indigo-400 ring-1 ring-indigo-400' : 'border-slate-200 dark:border-slate-800'} shadow-sm overflow-hidden`}>
+                
+                {/* Card Header: Checkbox + Term + Status */}
+                <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-gray-50/50 dark:bg-slate-800/30">
+                  <div className="flex items-center gap-3">
+                    {mode !== "view" && status !== "Paid" && (
+                       <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={row.getToggleSelectedHandler()}
+                        className="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                    )}
+                    <div>
+                      <h3 className="font-bold text-slate-800 dark:text-slate-200">{row.original.term}</h3>
+                      <p className="text-[10px] text-slate-500 font-mono">
+                        {row.original.academicYear.replace("Y", "").replace("_", "-")}
+                      </p>
+                    </div>
+                  </div>
+                  <StatusBadge status={status} />
+                </div>
+
+                {/* Card Body: The Grid */}
+                <div className="p-4 space-y-3 text-sm">
+                   
+                   {/* Row 1: Amount */}
+                   <div className="flex justify-between items-center">
+                      <span className="text-slate-500 dark:text-slate-400">Total Amount</span>
+                      <span className="font-medium text-slate-900 dark:text-white">{formatCurrency(totalFees)}</span>
+                   </div>
+
+                   {/* Row 2: Paid (With Progress) */}
+                   <div className="space-y-1">
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-500 dark:text-slate-400">Paid Amount</span>
+                        <span className="font-medium text-emerald-600">{formatCurrency(paidAmount)}</span>
+                      </div>
+                      <ProgressBar paid={paidAmount} total={totalFees} />
+                   </div>
+
+                   {/* Row 3: Due */}
+                   <div className="flex justify-between items-center pt-2 border-t border-gray-100 dark:border-gray-800">
+                      <span className="text-slate-500 dark:text-slate-400 font-semibold">Due Amount</span>
+                      <span className={`font-bold ${dueAmount > 0 ? "text-rose-500" : "text-slate-400"}`}>
+                        {formatCurrency(dueAmount)}
+                      </span>
+                   </div>
+
+                   {/* Actions Footer */}
+                   <div className="flex items-center gap-2 pt-2 mt-2">
+                      {mode === "collect" && !isCollectDisabled && (
+                        <button
+                          onClick={() => openCollectModal([row.original])}
+                          className="flex-1 py-2 text-xs font-bold uppercase text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 shadow-sm"
+                        >
+                          Pay Now
+                        </button>
+                      )}
+                      
+                      {!isZero && (
+                         <button 
+                           onClick={() => window.print()} 
+                           className="p-2 text-slate-500 bg-slate-100 dark:bg-slate-800 rounded-lg hover:text-indigo-600"
+                         >
+                           <Printer size={16} />
+                         </button>
+                      )}
+                      
+                      {/* Expand Toggle */}
+                      <button 
+                        onClick={row.getToggleExpandedHandler()}
+                        className={`p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors ${isExpanded ? 'text-indigo-600 bg-indigo-50' : 'text-slate-500'}`}
+                      >
+                         {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                      </button>
+                   </div>
+                </div>
+
+                {/* Expanded Content (Mobile) */}
+                {isExpanded && (
+                   <div className="bg-slate-50 dark:bg-black/20 p-4 border-t border-slate-100 dark:border-slate-800 shadow-inner">
+                      <TransactionHistory fee={row.original} isMobile />
+                   </div>
+                )}
+              </div>
+            )
+          })
+        )}
       </div>
 
       {/* --- Collection Modal --- */}
@@ -643,6 +716,41 @@ const FeesTable: React.FC<FeesTableProps> = ({ data, mode }) => {
       )}
     </div>
   );
+};
+
+// --- Sub-component for Transaction History (Reused in Table & Mobile) ---
+const TransactionHistory = ({ fee, isMobile = false }: { fee: StudentFee, isMobile?: boolean }) => {
+    return (
+        <div className={isMobile ? "" : "ml-10"}>
+            <h4 className="text-xs font-bold uppercase text-gray-500 mb-2 flex items-center gap-2">
+                <Receipt size={14} /> Transaction History
+            </h4>
+            {fee.feeTransactions && fee.feeTransactions.length > 0 ? (
+                <table className="w-full max-w-2xl text-xs border border-gray-200 dark:border-gray-700 rounded overflow-hidden bg-white dark:bg-slate-800">
+                    <thead className="bg-gray-100 dark:bg-slate-700">
+                        <tr>
+                            <th className="px-3 py-2 text-left">Date</th>
+                            <th className="px-3 py-2 text-left">Receipt #</th>
+                            <th className="px-3 py-2 text-left">Mode</th>
+                            <th className="px-3 py-2 text-right">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {fee.feeTransactions.map((tx: any, i: number) => (
+                            <tr key={i} className="border-t border-gray-200 dark:border-gray-700">
+                                <td className="px-3 py-2">{formatDate(tx.receiptDate || new Date())}</td>
+                                <td className="px-3 py-2 font-mono">{tx.receiptNo || "-"}</td>
+                                <td className="px-3 py-2">{tx.paymentMode || "CASH"}</td>
+                                <td className="px-3 py-2 text-right font-medium text-emerald-600">{formatCurrency(tx.amount)}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            ) : (
+                <p className="text-xs text-gray-400 italic">No transactions recorded yet.</p>
+            )}
+        </div>
+    );
 };
 
 // --- Strictly Typed Sub-components ---

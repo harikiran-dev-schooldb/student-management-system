@@ -103,7 +103,7 @@ const renderRow = (
             />
           </div>
           <div className="flex flex-col">
-            <h3 className="font-semibold text-sm md:text-base text-gray-900 dark:text-gray-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+            <h3 className="font-semibold text-sm md:text-base text-darkfg dark:text-gray-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
               {item.name}
             </h3>
             <span className="text-xs text-gray-500 font-mono">{item.id}</span>
@@ -122,7 +122,7 @@ const renderRow = (
       <td className="hidden lg:table-cell p-4 text-gray-600 dark:text-gray-400">
         {item.fatherName || "N/A"}
       </td>
-      <td className="hidden xl:table-cell p-4 text-right font-medium text-gray-900 dark:text-gray-100">
+      <td className="hidden xl:table-cell p-4 text-right font-medium text-darkfg dark:text-gray-100">
         ₹{totalFees}
       </td>
       <td className="hidden xl:table-cell p-4 text-right">
@@ -238,11 +238,11 @@ const StudentListPage = async ({
   const Path = "/list/reports/student-fees";
 
   return (
-    <div className="flex-1 p-4 md:p-6 space-y-6 bg-gray-50/50 dark:bg-gray-950 min-h-screen">
+    <div className="flex-1 p-4 md:p-6 space-y-6 bg-gray-50/50 dark:bg-darkMode min-h-screen">
       {/* Header Section */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
+          <h1 className="text-2xl font-bold text-darkfg dark:text-white tracking-tight">
             Fee Reports
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
@@ -252,7 +252,7 @@ const StudentListPage = async ({
       </div>
 
       {/* Controls & Filters Card */}
-      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-4">
+      <div className="bg-white dark:bg-darkfg rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-4">
         <div className="flex flex-col md:flex-row gap-4 justify-between">
           {/* Search Area - Full width on mobile */}
           <div className="w-full md:w-72">
@@ -276,7 +276,7 @@ const StudentListPage = async ({
       </div>
 
       {/* Data Table Card */}
-      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-darkfg rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <Table
             columns={columns}
@@ -286,7 +286,7 @@ const StudentListPage = async ({
         </div>
 
         {/* Pagination Footer */}
-        <div className="border-t border-gray-100 dark:border-gray-800 p-4 bg-gray-50/50 dark:bg-gray-900/50">
+        <div className="border-t border-gray-100 dark:border-gray-800 p-4 bg-gray-50/50 dark:bg-darkfg/50">
           <Pagination page={parseInt(p)} count={count} />
         </div>
       </div>

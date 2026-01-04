@@ -47,7 +47,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
           })}
         </p>
         <p className="flex items-center gap-1 text-lg font-bold text-gray-800 dark:text-white">
-          <span className="text-indigo-500">$</span>
+          <span className="text-indigo-500">₹</span>
           {payload[0].value.toLocaleString()}
         </p>
       </div>

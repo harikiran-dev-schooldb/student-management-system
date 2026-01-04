@@ -25,7 +25,7 @@ import IconButton from "@/components/IconButton";
 const renderRow = (item: StudentsList, role: string | null) => (
   <tr
     key={item.id}
-    className="group border-b border-gray-100 last:border-none transition-all hover:bg-gray-50/80 dark:border-gray-800 dark:hover:bg-gray-900/50 dark:bg-darkMode"
+    className="group border-b border-gray-100 last:border-none transition-all hover:bg-indigo-50 dark:border-darkfg dark:hover:bg-darkfg dark:bg-darkMode"
   >
     {/* Student Profile */}
     <td className="py-4 pl-8 pr-4 align-middle">
@@ -43,7 +43,7 @@ const renderRow = (item: StudentsList, role: string | null) => (
           <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
             {item.name}
           </h3>
-          <p className="text-[11px] font-medium text-gray-400 dark:text-gray-500 font-mono">
+          <p className="text-[11px] font-medium text-darkfg dark:text-gray-500 font-mono">
             #{item.id}
           </p>
         </div>
@@ -61,14 +61,14 @@ const renderRow = (item: StudentsList, role: string | null) => (
     )}
 
     {/* Parent Name */}
-    <td className="hidden py-4 px-6 align-middle text-sm text-gray-600 dark:text-gray-300 md:table-cell">
+    <td className="hidden py-4 px-6 align-middle text-sm text-darkfg dark:text-gray-300 md:table-cell">
       {item.fatherName || (
         <span className="text-gray-300 dark:text-gray-600 italic">No Data</span>
       )}
     </td>
 
     {/* DOB (Tabular Nums for alignment) */}
-    <td className="hidden py-4 px-6 align-middle text-sm text-gray-600 dark:text-gray-300 lg:table-cell font-mono tabular-nums">
+    <td className="hidden py-4 px-6 align-middle text-sm text-darkfg dark:text-gray-300 lg:table-cell font-mono tabular-nums">
       {new Intl.DateTimeFormat("en-GB", {
         day: "2-digit",
         month: "short",
@@ -77,7 +77,7 @@ const renderRow = (item: StudentsList, role: string | null) => (
     </td>
 
     {/* Mobile (Tabular Nums) */}
-    <td className="hidden py-4 px-6 align-middle text-sm font-medium text-gray-600 dark:text-gray-300 lg:table-cell font-mono tabular-nums">
+    <td className="hidden py-4 px-6 align-middle text-sm font-medium text-darkfg dark:text-gray-300 lg:table-cell font-mono tabular-nums">
       {item.phone || (
         <span className="text-gray-300 dark:text-gray-600">-</span>
       )}
@@ -87,7 +87,7 @@ const renderRow = (item: StudentsList, role: string | null) => (
     <td className="py-4 pl-4 pr-8 align-middle">
       <div className="flex items-center justify-end gap-2 opacity-100 transition-opacity sm:opacity-200 sm:group-hover:opacity-100">
         <Link href={`/list/users/students/${item.id}`}>
-          <div className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-gray-400 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-900/20 dark:hover:text-indigo-400 transition-colors">
+          <div className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-darkfg dark:text-gray-300 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-900/20 dark:hover:text-indigo-400 transition-colors">
             <Eye className="h-4 w-4" />
           </div>
         </Link>
@@ -204,73 +204,48 @@ const StudentListPage = async ({
   const Path = `/list/users/students`;
 
   return (
-    <div className="flex min-h-screen w-full flex-col gap-6 p-4 md:p-8 bg-gray-50/50 dark:bg-darkMode">
+    <div className="flex-1 p-2 bg-white dark:bg-darkMode">
       {/* --- Page Header --- */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
-            Students
-          </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Manage your school's student directory
-          </p>
-        </div>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <h1 className="text-lg font-semibold text-gray-800 dark:text-gray-100 hidden md:block">
+          All Students ({count})
+        </h1>
 
-        {/* Primary Action */}
-        {role === "admin" && (
-          <div className="flex-shrink-0">
-            <FormContainer table="student" type="create" />
-          </div>
-        )}
-      </div>
+        <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
+          <TableSearch />
+          {role === "admin" && (
+            <ClassFilterDropdown
+              classes={classes}
+              grades={grades}
+              basePath={Path}
+            />
+          )}
+          <GenderFilter basePath={Path} />
+          {role === "admin" && <StudentStatusFilter basePath={Path} />}
 
-      {/* --- Main Content Surface --- */}
-      <div className="flex flex-col rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-darkMode">
-        {/* Toolbar */}
-        <div className="border-b border-gray-100 p-4 dark:border-gray-800">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-            {/* Search */}
-            <div className="w-full xl:max-w-md">
-              <TableSearch />
-            </div>
-
-            {/* Filters */}
-            <div className="flex flex-wrap items-center gap-2">
-              {role === "admin" && (
-                <ClassFilterDropdown
-                  classes={classes}
-                  grades={grades}
-                  basePath={Path}
-                />
-              )}
-              <GenderFilter basePath={Path} />
-              {role === "admin" && <StudentStatusFilter basePath={Path} />}
-
-              <div className="hidden h-6 w-px bg-gray-200 dark:bg-gray-800 md:block mx-1" />
-
-              <div className="flex items-center gap-2">
-                <ResetFiltersButton basePath={Path} />
-                <SortButton sortKey="id" />
-                <IconButton icon={Filter} />
-              </div>
-            </div>
+          <div className="flex items-center gap-4">
+            <ResetFiltersButton basePath={Path} />
+            <SortButton sortKey="id" />
+            <IconButton icon={Filter} />
+            {/* Primary Action */}
+            {role === "admin" && (
+              <FormContainer table="student" type="create" />
+            )}
           </div>
         </div>
-
-        {/* Table View */}
-        <div className="overflow-x-auto">
-          <Table
-            columns={columns}
-            renderRow={(item) => renderRow(item, role)}
-            data={data}
-          />
-        </div>
-
-        {/* Footer */}
-        <div className="border-t border-gray-100 px-6 py-4 dark:border-gray-800">
-          <Pagination page={parseInt(p)} count={count} />
-        </div>
       </div>
+
+      {/* Table View */}
+      <div className="overflow-x-auto">
+        <Table
+          columns={columns}
+          renderRow={(item) => renderRow(item, role)}
+          data={data}
+        />
+      </div>
+
+      {/* Footer */}
+      <Pagination page={parseInt(p)} count={count} />
     </div>
   );
 };

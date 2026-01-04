@@ -207,16 +207,16 @@ export default function ViewAttendancePage({ role, teacherClassId }: Props) {
 
   // --- Style Constants ---
   const inputClass = 
-    "w-full h-10 px-3 rounded-lg text-sm border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors";
+    "w-full h-10 px-3 rounded-lg text-sm border bg-white dark:bg-darkfg border-slate-200 dark:border-slate-700 text-darkfg dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors";
   const labelClass = "block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5";
 
   /* ============================================================ */
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-4 md:p-6 lg:p-8 space-y-6">
+    <div className="min-h-screen bg-slate-50 dark:bg-darkMode p-4 md:p-6 lg:p-8 space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-darkfg dark:text-white flex items-center gap-2">
             <Users className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
             Attendance Reports
           </h1>
@@ -227,7 +227,7 @@ export default function ViewAttendancePage({ role, teacherClassId }: Props) {
       </div>
 
       {/* Control Panel Card */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm p-5 space-y-6">
+      <div className="bg-white dark:bg-darkfg border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm p-5 space-y-6">
         
         {/* Top Row: Date Range & Class Selection */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
@@ -351,7 +351,7 @@ export default function ViewAttendancePage({ role, teacherClassId }: Props) {
       </div>
 
       {/* Data Section */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-darkfg border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
         
         {/* Desktop Table */}
         <div className="hidden md:block overflow-x-auto">
@@ -378,7 +378,7 @@ export default function ViewAttendancePage({ role, teacherClassId }: Props) {
                             {s.name.charAt(0)}
                           </div>
                           <div>
-                            <p className="font-medium text-slate-900 dark:text-slate-100">{s.name}</p>
+                            <p className="font-medium text-darkfg dark:text-slate-100">{s.name}</p>
                             <p className="text-xs text-slate-500 dark:text-slate-400">ID: {s.id}</p>
                           </div>
                         </div>
@@ -435,7 +435,7 @@ export default function ViewAttendancePage({ role, teacherClassId }: Props) {
                         {s.name.charAt(0)}
                       </div>
                       <div>
-                        <p className="font-medium text-slate-900 dark:text-slate-100">{s.name}</p>
+                        <p className="font-medium text-darkfg dark:text-slate-100">{s.name}</p>
                         <p className="text-xs text-slate-500 dark:text-slate-400">
                           {s.id} • {getStudentClassName(s)}
                         </p>
@@ -468,7 +468,7 @@ export default function ViewAttendancePage({ role, teacherClassId }: Props) {
 
         {/* Pagination Footer */}
         {totalPages > 1 && (
-          <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between">
+          <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-darkfg/50 flex items-center justify-between">
             <button
               disabled={currentPage === 1}
               onClick={() => setCurrentPage((p) => p - 1)}

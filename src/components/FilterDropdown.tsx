@@ -29,7 +29,12 @@ interface ClassFilterProps {
 }
 
 /* ---------------- Class Filter ---------------- */
-const ClassFilterDropdown = ({ classes, grades, basePath, showClassFilter = true }: ClassFilterProps) => {
+const ClassFilterDropdown = ({
+  classes,
+  grades,
+  basePath,
+  showClassFilter = true,
+}: ClassFilterProps) => {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -129,11 +134,7 @@ const DateFilter = ({ basePath }: { basePath: string }) => {
 
   return (
     <div className="relative w-full md:w-auto">
-      <input
-        type="date"
-        onChange={handleDateChange}
-        className={dropdownUI}
-      />
+      <input type="date" onChange={handleDateChange} className={dropdownUI} />
     </div>
   );
 };
@@ -143,6 +144,7 @@ const StatusFilter = ({ basePath }: StatusFilterProps) => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const currentStatus = searchParams.get("status") || "Status";
+  const feeStatus = searchParams.get("status");
 
   useEffect(() => {
     if (!searchParams.get("status")) {
@@ -183,7 +185,9 @@ const TeacherStatusFilter = ({ basePath }: TeacherStatusFilterProps) => {
   const searchParams = useSearchParams();
   const currentStatus = searchParams.get("userStatus") || "";
 
-  const handleStudentStatusChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleStudentStatusChange = (
+    event: React.ChangeEvent<HTMLSelectElement>
+  ) => {
     const newStatus = event.target.value;
     const params = new URLSearchParams(searchParams.toString());
 
@@ -215,7 +219,9 @@ const StudentStatusFilter = ({ basePath }: StudentStatusFilterProps) => {
   const searchParams = useSearchParams();
   const currentStatus = searchParams.get("studentStatus") || "";
 
-  const handleStudentStatusChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleStudentStatusChange = (
+    event: React.ChangeEvent<HTMLSelectElement>
+  ) => {
     const newStatus = event.target.value;
     const params = new URLSearchParams(searchParams.toString());
 
@@ -278,10 +284,16 @@ const GenderFilter = ({ basePath }: { basePath: string }) => {
   );
 };
 
-
 /* ---------------- Day Filter ---------------- */
 export const getTodayLessonDay = (): LessonDay => {
-  const days: LessonDay[] = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"];
+  const days: LessonDay[] = [
+    "MONDAY",
+    "TUESDAY",
+    "WEDNESDAY",
+    "THURSDAY",
+    "FRIDAY",
+    "SATURDAY",
+  ];
   const today = new Date().getDay(); // 0 = Sunday, 1 = Monday
   return days[today === 0 ? 6 : today - 1];
 };
@@ -289,7 +301,9 @@ export const getTodayLessonDay = (): LessonDay => {
 const DayFilter = ({ basePath }: DayFilterProps) => {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [selectedDay, setSelectedDay] = useState<LessonDay>(getTodayLessonDay());
+  const [selectedDay, setSelectedDay] = useState<LessonDay>(
+    getTodayLessonDay()
+  );
 
   useEffect(() => {
     const dayFromUrl = searchParams.get("day") as LessonDay | null;
@@ -331,5 +345,12 @@ const DayFilter = ({ basePath }: DayFilterProps) => {
 };
 
 /* ---------------- Exports ---------------- */
-export { DayFilter, DateFilter, StatusFilter, StudentStatusFilter, TeacherStatusFilter, GenderFilter };
+export {
+  DayFilter,
+  DateFilter,
+  StatusFilter,
+  StudentStatusFilter,
+  TeacherStatusFilter,
+  GenderFilter,
+};
 export default ClassFilterDropdown;

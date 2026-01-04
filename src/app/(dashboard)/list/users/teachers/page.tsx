@@ -23,7 +23,7 @@ import { notFound } from "next/navigation";
 // -------------------- Table Row --------------------
 const renderRow = (item: TeachersList, role: string | null) => (
   <tr
-    className="text-sm border-b border-gray-200 even:bg-gray-50 hover:bg-gray-100 dark:border-gray-700 dark:even:bg-gray-800 dark:hover:bg-gray-700"
+    className="text-sm  border-gray-200  hover:bg-gray-100 dark:border-gray-700  dark:hover:bg-gray-700"
     key={item.id}
   >
     {/* Info */}
@@ -35,10 +35,10 @@ const renderRow = (item: TeachersList, role: string | null) => (
         className="md:hidden xl:flex"
       />
       <div className="flex flex-col">
-        <h3 className="font-semibold text-gray-900 dark:text-gray-100">
+        <h3 className="font-semibold text-darkMode dark:text-gray-100">
           {item.name}
         </h3>
-        <p className="text-xs text-gray-600 dark:text-gray-400">{item.id}</p>
+        <p className="text-xs text-darkMode dark:text-gray-300">{item.id}</p>
       </div>
     </td>
 
@@ -166,7 +166,7 @@ const TeacherListPage = async ({
   const Path = "/list/users/teachers";
 
   return (
-    <div className="flex-1 p-4 bg-white dark:bg-gray-900">
+    <div className="flex-1 p-4 bg-white dark:bg-darkMode">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <h1 className="text-lg font-semibold text-gray-800 dark:text-gray-100 hidden md:block">

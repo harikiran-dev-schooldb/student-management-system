@@ -194,7 +194,6 @@ const StudentFeePage = async ({ params }: StudentFeePageProps) => {
                     label="Blood Type"
                     value={student.bloodType || "N/A"}
                   />
-
                 </div>
               </div>
             </div>
@@ -309,7 +308,7 @@ const StudentFeePage = async ({ params }: StudentFeePageProps) => {
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
             <CreditCard className="text-indigo-600" size={20} />
-            Fee Management
+            Fee Overview
           </h3>
           <span
             className={`text-xs font-bold px-2 py-1 rounded border uppercase ${

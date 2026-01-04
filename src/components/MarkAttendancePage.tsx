@@ -228,18 +228,18 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
 
   // --- Styles ---
   const inputClass =
-    "w-full h-10 px-3 rounded-lg text-sm border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors";
+    "w-full h-10 px-3 rounded-lg text-sm border bg-white dark:bg-darkfg border-slate-200 dark:border-slate-700 text-darkfg dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors";
   const labelClass =
     "block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5";
 
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      className="min-h-screen bg-slate-50 dark:bg-slate-950 p-4 md:p-6 lg:p-8 space-y-6"
+      className="min-h-screen bg-slate-50 dark:bg-darkMode p-4 md:p-6 lg:p-8 space-y-6"
     >
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+        <h1 className="text-2xl font-bold text-darkfg dark:text-white flex items-center gap-2">
           <UserCheck className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
           Mark Attendance
         </h1>
@@ -249,7 +249,7 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
       </div>
 
       {/* Control Panel */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm p-5">
+      <div className="bg-white dark:bg-darkfg border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm p-5">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
           {/* Date Input */}
           <div>
@@ -338,7 +338,7 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
           
           {/* Action Bar & Search */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-darkfg p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
             
             {/* Middle: Search Box with Ctrl+F */}
             <div className="relative w-full md:w-72 group">
@@ -392,9 +392,11 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
                   key={s.id}
                   onClick={() => toggleStudent(s.id)}
                   className={`group relative flex items-center p-4 rounded-xl border-2 transition-all duration-200 text-left active:scale-[0.98]
+
+                    // Attendance Cards 
                     ${
                       isPresent
-                        ? "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-emerald-400 dark:hover:border-emerald-500/50"
+                        ? "bg-white dark:bg-darkfg border-slate-200 dark:border-slate-800 hover:border-emerald-400 dark:hover:border-emerald-500/50"
                         : "bg-rose-50/50 dark:bg-rose-900/10 border-rose-200 dark:border-rose-800/50"
                     } shadow-sm hover:shadow-md`}
                 >
@@ -403,7 +405,7 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
                     ${
                       isPresent
                         ? "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 group-hover:bg-emerald-100 group-hover:text-emerald-700 dark:group-hover:bg-emerald-500/20 dark:group-hover:text-emerald-400"
-                        : "bg-white dark:bg-slate-950 text-rose-500"
+                        : "bg-white dark:bg-darkMode text-rose-500"
                     }`}
                   >
                     {s.name.charAt(0)}
@@ -413,7 +415,7 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
                     <p
                       className={`font-semibold text-sm truncate ${
                         isPresent
-                          ? "text-slate-900 dark:text-slate-100"
+                          ? "text-darkfg dark:text-slate-100"
                           : "text-rose-700 dark:text-rose-400"
                       }`}
                     >
