@@ -125,7 +125,7 @@ export default function BulkSubjectUpload() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 font-sans transition-colors">
+    <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-darkMode text-zinc-900 dark:text-zinc-100 font-sans transition-colors">
       
       {/* 1. Header Section */}
       <header className="px-6 py-8 md:px-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -143,7 +143,7 @@ export default function BulkSubjectUpload() {
         
         <button 
           onClick={() => window.open('/sample/subjects-bulk-template.csv')} 
-          className="group flex items-center gap-3 px-5 py-3 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-indigo-300 dark:hover:border-indigo-700 shadow-sm hover:shadow-md transition-all active:scale-95"
+          className="group flex items-center gap-3 px-5 py-3 rounded-xl bg-white dark:bg-darkMode border border-zinc-200 dark:border-zinc-800 hover:border-indigo-300 dark:hover:border-indigo-700 shadow-sm hover:shadow-md transition-all active:scale-95"
         >
           <div className="p-1.5 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg text-indigo-600 dark:text-indigo-400 group-hover:text-indigo-700">
              <FileText className="w-4 h-4" />
@@ -156,7 +156,7 @@ export default function BulkSubjectUpload() {
 
       {/* 2. Main Content - Expanded Width */}
       <main className="flex-1 px-4 md:px-10 pb-10">
-        <div className="bg-white dark:bg-[#18181b] rounded-3xl shadow-xl shadow-zinc-200/50 dark:shadow-black/50 border border-zinc-200 dark:border-zinc-800 overflow-hidden flex flex-col min-h-[600px]">
+        <div className="bg-white dark:bg-darkMode rounded-3xl shadow-xl shadow-zinc-200/50 dark:shadow-black/50 border border-zinc-200 dark:border-zinc-800 overflow-hidden flex flex-col min-h-[600px]">
           
           {/* A. Empty State / Drop Zone */}
           {!subjects.length && (
@@ -164,7 +164,7 @@ export default function BulkSubjectUpload() {
               <div
                 className={`relative group cursor-pointer flex flex-col items-center justify-center w-full max-w-3xl h-80 rounded-3xl border-3 border-dashed transition-all duration-300 ease-out
                   ${dragActive 
-                    ? "border-indigo-500 bg-indigo-50/50 dark:bg-indigo-500/10 scale-[1.02] shadow-2xl shadow-indigo-500/10" 
+                    ? "border-indigo-500 bg-indigo-50/50 dark:bg-darkMode scale-[1.02] shadow-2xl shadow-indigo-500/10" 
                     : "border-zinc-200 dark:border-zinc-800 hover:border-indigo-400 dark:hover:border-indigo-500 hover:bg-zinc-50 dark:hover:bg-zinc-900"
                   }`}
                 onDragEnter={handleDrag}
@@ -187,7 +187,7 @@ export default function BulkSubjectUpload() {
                 </div>
 
                 <div className="relative z-10 flex flex-col items-center gap-6 text-center p-6">
-                  <div className={`p-5 rounded-2xl shadow-sm transition-all duration-300 ${dragActive ? 'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600' : 'bg-white dark:bg-zinc-800 text-zinc-400 group-hover:text-indigo-500 group-hover:scale-110'}`}>
+                  <div className={`p-5 rounded-2xl shadow-sm transition-all duration-300 ${dragActive ? 'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600' : 'bg-white dark:bg-darkMode text-zinc-400 group-hover:text-indigo-500 group-hover:scale-110'}`}>
                     <UploadCloud className="w-10 h-10" />
                   </div>
                   <div className="space-y-2">
@@ -207,9 +207,9 @@ export default function BulkSubjectUpload() {
           {subjects.length > 0 && (
             <div className="flex-1 flex flex-col h-full">
               {/* Toolbar */}
-              <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-black/20 flex flex-wrap items-center justify-between gap-4">
+              <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-darkMode flex flex-wrap items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
-                  <div className="p-2.5 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                  <div className="p-2.5 bg-emerald-100 dark:bg-darkMode rounded-xl text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
                     <FileSpreadsheet className="w-6 h-6" />
                   </div>
                   <div>
@@ -251,8 +251,8 @@ export default function BulkSubjectUpload() {
                 )}
 
                 {success && (
-                  <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-800/50 flex items-center gap-4 animate-in slide-in-from-top-2">
-                    <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-full text-emerald-600 dark:text-emerald-400">
+                  <div className="p-4 rounded-xl bg-emerald-50 dark:bg-darkMode border border-emerald-200 dark:border-emerald-800/50 flex items-center gap-4 animate-in slide-in-from-top-2">
+                    <div className="p-2 bg-emerald-100 dark:bg-darkMode rounded-full text-emerald-600 dark:text-emerald-400">
                        <CheckCircle2 className="w-6 h-6" />
                     </div>
                     <div>
@@ -267,14 +267,14 @@ export default function BulkSubjectUpload() {
               <div className="flex-1 overflow-auto p-6">
                 <div className="border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm">
                   <table className="w-full text-sm text-left">
-                    <thead className="text-xs font-bold uppercase tracking-wider bg-zinc-50 dark:bg-zinc-900/50 text-zinc-500 dark:text-zinc-400 sticky top-0 z-10 backdrop-blur-sm border-b border-zinc-200 dark:border-zinc-800">
+                    <thead className="text-xs font-bold uppercase tracking-wider bg-zinc-50 dark:bg-darkMode text-zinc-500 dark:text-zinc-400 sticky top-0 z-10 backdrop-blur-sm border-b border-zinc-200 dark:border-zinc-800">
                       <tr>
                         <th className="px-6 py-4 w-16 text-center">#</th>
                         <th className="px-6 py-4">Name</th>
                         <th className="px-6 py-4">Grade IDs</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800 bg-white dark:bg-[#18181b]">
+                    <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800 bg-white dark:bg-darkMode">
                       {subjects.map((subj, i) => (
                         <tr key={i} className="group hover:bg-indigo-50/30 dark:hover:bg-indigo-500/5 transition-colors">
                           <td className="px-6 py-3 text-center text-zinc-400 font-mono text-xs border-r border-transparent group-hover:border-indigo-100 dark:group-hover:border-zinc-800">{i + 1}</td>
@@ -285,7 +285,7 @@ export default function BulkSubjectUpload() {
                             {subj.gradeIds.length > 0 ? (
                                 <div className="flex gap-2 flex-wrap">
                                     {subj.gradeIds.map(id => (
-                                        <span key={id} className="px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800 rounded text-xs text-zinc-600 dark:text-zinc-400">
+                                        <span key={id} className="px-2 py-0.5 bg-zinc-100 dark:bg-darkMode rounded text-xs text-zinc-600 dark:text-zinc-400">
                                             {id}
                                         </span>
                                     ))}
@@ -302,7 +302,7 @@ export default function BulkSubjectUpload() {
               </div>
               
               {/* Sticky Footer */}
-              <div className="p-6 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#18181b] flex justify-end gap-3 sticky bottom-0 z-20">
+              <div className="p-6 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-darkMode flex justify-end gap-3 sticky bottom-0 z-20">
                 <button
                   onClick={resetForm}
                   disabled={loading}

@@ -188,7 +188,7 @@ const ExamsList = async ({
   const Path = "/list/exams";
 
   return (
-      <div className="flex-1 p-4 bg-white dark:bg-black text-black dark:text-white">
+      <div className="flex-1 p-4 bg-white dark:bg-darkbg">
         {/* HEADER */}
         <div className="flex items-center justify-between mb-3">
           <h1 className="hidden text-lg font-semibold md:block">Exams</h1>

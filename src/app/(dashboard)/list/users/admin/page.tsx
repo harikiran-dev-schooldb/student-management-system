@@ -13,9 +13,10 @@ import { SearchParams } from "../../../../../../types";
 import SortButton from "@/components/SortButton";
 import ResetFiltersButton from "@/components/ResetFiltersButton";
 import { GenderFilter } from "@/components/FilterDropdown";
-import { Filter, Icon } from "lucide-react";
+import { Filter } from "lucide-react";
 import IconButton from "@/components/IconButton";
 import { notFound } from "next/navigation";
+import Avatar from "@/components/Avatar";
 
 // -------------------- Types --------------------
 type AdminList = Admin;
@@ -28,12 +29,11 @@ const renderRow = (item: AdminList, role: string | null) => (
   >
     {/* Info */}
     <td className="flex items-center gap-2 p-2">
-      <img
-        src={item.img || "/profile.png"}
-        alt={item.name}
-        width={40}
-        height={40}
-        className="object-cover w-10 h-10 rounded-full md:hidden xl:block"
+      <Avatar
+        src={item.img}
+        name={item.name}
+        gender={item.gender}
+        className="md:hidden xl:flex"
       />
       <div className="flex flex-col">
         <h3 className="font-semibold text-gray-900 dark:text-gray-100">
@@ -107,7 +107,7 @@ const AdminListPage = async ({
 
   const query: Prisma.AdminWhereInput = {};
 
-  if(role !== "admin") {
+  if (role !== "admin") {
     return notFound();
   };
 
@@ -115,7 +115,7 @@ const AdminListPage = async ({
     value: string | string[] | undefined
   ): string | undefined => (Array.isArray(value) ? value[0] : value);
 
-  
+
   // -------------------- Filters --------------------
   for (const [key, value] of Object.entries(queryParams)) {
     const normalizedValue = normalize(value);
@@ -151,10 +151,10 @@ const AdminListPage = async ({
   const Path = "/list/users/admin";
 
   return (
-    <div className="flex-1 p-4 bg-white dark:bg-gray-900">
+    <div className="flex-1 p-4 bg-white dark:bg-darkbg">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <h1 className="hidden md:block text-lg font-semibold text-gray-800 dark:text-gray-100">
+        <h1 className="text-lg font-semibold text-gray-800 dark:text-gray-100 hidden md:block">
           Admins List ({count})
         </h1>
 

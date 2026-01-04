@@ -25,28 +25,22 @@ import IconButton from "@/components/IconButton";
 const renderRow = (item: StudentsList, role: string | null) => (
   <tr
     key={item.id}
-    className="group border-b border-gray-100 last:border-none transition-all hover:bg-indigo-50 dark:border-darkfg dark:hover:bg-darkfg dark:bg-darkMode"
+    className="text-sm border-b border-gray-200 even:bg-gray-50 hover:bg-LamaPurpleLight dark:border-gray-700 dark:even:bg-gray-800 dark:hover:bg-gray-700"
   >
     {/* Student Profile */}
-    <td className="py-4 pl-8 pr-4 align-middle">
-      <div className="flex items-center gap-4">
-        {/* Avatar Ring Effect */}
-        <div className="hidden h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-50 to-white p-[2px] shadow-sm ring-1 ring-gray-100 dark:from-gray-800 dark:to-gray-900 dark:ring-gray-800 sm:flex">
-          <Avatar
-            src={item.img}
-            name={item.name}
-            gender={item.gender}
-            className="rounded-full object-cover"
-          />
-        </div>
-        <div className="flex flex-col">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-            {item.name}
-          </h3>
-          <p className="text-[11px] font-medium text-darkfg dark:text-gray-500 font-mono">
-            #{item.id}
-          </p>
-        </div>
+    <td className="flex items-center gap-2 p-2">
+      {/* Avatar Ring Effect */}
+      <Avatar
+        src={item.img}
+        name={item.name}
+        gender={item.gender}
+        className="rounded-full object-cover"
+      />
+      <div className="flex flex-col">
+        <h3 className="font-semibold text-darkMode dark:text-gray-100">
+          {item.name}
+        </h3>
+        <p className="text-xs text-darkMode dark:text-gray-300">{item.id}</p>
       </div>
     </td>
 
@@ -63,17 +57,15 @@ const renderRow = (item: StudentsList, role: string | null) => (
     {/* Parent Name */}
     <td className="hidden py-4 px-6 align-middle text-sm text-darkfg dark:text-gray-300 md:table-cell">
       {item.fatherName || (
-        <span className="text-gray-300 dark:text-gray-600 italic">No Data</span>
+        <span className="text-gray-300 dark:text-gray-400 ">No Data</span>
       )}
     </td>
 
-    {/* DOB (Tabular Nums for alignment) */}
-    <td className="hidden py-4 px-6 align-middle text-sm text-darkfg dark:text-gray-300 lg:table-cell font-mono tabular-nums">
-      {new Intl.DateTimeFormat("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      }).format(new Date(item.dob))}
+    {/* DOB */}
+    <td className="hidden md:table-cell text-gray-700 dark:text-gray-200">
+      {item.dob
+        ? new Date(item.dob).toLocaleDateString("en-GB").replace(/\//g, "-")
+        : "N/A"}
     </td>
 
     {/* Mobile (Tabular Nums) */}
@@ -84,8 +76,8 @@ const renderRow = (item: StudentsList, role: string | null) => (
     </td>
 
     {/* Actions */}
-    <td className="py-4 pl-4 pr-8 align-middle">
-      <div className="flex items-center justify-end gap-2 opacity-100 transition-opacity sm:opacity-200 sm:group-hover:opacity-100">
+    <td className="p-2">
+      <div className="flex items-center gap-2">
         <Link href={`/list/users/students/${item.id}`}>
           <div className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-darkfg dark:text-gray-300 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-900/20 dark:hover:text-indigo-400 transition-colors">
             <Eye className="h-4 w-4" />
@@ -101,7 +93,7 @@ const renderRow = (item: StudentsList, role: string | null) => (
 
 // --- 2. Dynamic Columns ---
 const getColumns = (role: string | null) => [
-  { header: "Student", accessor: "name" },
+  { header: "Student Name", accessor: "name" },
   ...(role === "admin" ? [{ header: "Class", accessor: "class" }] : []),
   {
     header: "Parent",
@@ -147,8 +139,8 @@ const StudentListPage = async ({
   const classIdNum = Array.isArray(classId)
     ? Number(classId[0])
     : classId
-    ? Number(classId)
-    : undefined;
+      ? Number(classId)
+      : undefined;
 
   const classFilter: Prisma.ClassWhereInput = {
     ...(teacher && { supervisorId: teacher }),
@@ -204,7 +196,7 @@ const StudentListPage = async ({
   const Path = `/list/users/students`;
 
   return (
-    <div className="flex-1 p-2 bg-white dark:bg-darkMode">
+    <div className="flex-1 p-4 bg-white dark:bg-darkbg">
       {/* --- Page Header --- */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <h1 className="text-lg font-semibold text-gray-800 dark:text-gray-100 hidden md:block">
@@ -236,13 +228,11 @@ const StudentListPage = async ({
       </div>
 
       {/* Table View */}
-      <div className="overflow-x-auto">
-        <Table
-          columns={columns}
-          renderRow={(item) => renderRow(item, role)}
-          data={data}
-        />
-      </div>
+      <Table
+        columns={columns}
+        renderRow={(item) => renderRow(item, role)}
+        data={data}
+      />
 
       {/* Footer */}
       <Pagination page={parseInt(p)} count={count} />

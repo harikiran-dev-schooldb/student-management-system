@@ -17,13 +17,13 @@ import TeacherStatusDropdown from "@/components/TeacherStatusDropdown";
 import { TeachersSelect } from "../../../../../../types/query-types";
 import { Eye, Filter, FilterX } from "lucide-react";
 import Avatar from "@/components/Avatar";
-import IconButton, { IconButton2 } from "@/components/IconButton";
+import IconButton from "@/components/IconButton";
 import { notFound } from "next/navigation";
 
 // -------------------- Table Row --------------------
 const renderRow = (item: TeachersList, role: string | null) => (
   <tr
-    className="text-sm  border-gray-200  hover:bg-gray-100 dark:border-gray-700  dark:hover:bg-gray-700"
+    className="text-sm border-b border-gray-200 even:bg-gray-50 hover:bg-LamaPurpleLight dark:border-gray-700 dark:even:bg-gray-800 dark:hover:bg-gray-700"
     key={item.id}
   >
     {/* Info */}
@@ -42,10 +42,31 @@ const renderRow = (item: TeachersList, role: string | null) => (
       </div>
     </td>
 
-    {/* Class */}
-    <td className="hidden w-32 md:table-cell text-gray-700 dark:text-gray-200">
-      {item.class ? item.class.name : "No Class"}
-    </td>
+    {/* Class (Admin Only) */}
+    {role === "admin" && (
+      <td className="py-4 px-6 align-middle">
+        {(() => {
+          const hasClass = Boolean(item.class?.name);
+
+          return (
+            <div
+              className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium
+            ${hasClass
+                  ? "border-indigo-100 bg-indigo-50/50 text-indigo-700 dark:border-indigo-900/30 dark:bg-indigo-900/10 dark:text-indigo-300"
+                  : "border-red-200 bg-red-50 text-red-700 dark:border-red-900/30 dark:bg-red-900/10 dark:text-red-300"
+                }`}
+            >
+              <span
+                className={`h-1.5 w-1.5 rounded-full ${hasClass ? "bg-indigo-500" : "bg-red-500"
+                  }`}
+              />
+              {hasClass ? item.class!.name : "No Class"}
+            </div>
+          );
+        })()}
+      </td>
+    )}
+
 
     {/* Phone */}
     <td className="px-2 w-36 md:table-cell text-gray-700 dark:text-gray-200">
@@ -64,18 +85,15 @@ const renderRow = (item: TeachersList, role: string | null) => (
         : "N/A"}
     </td>
 
-    {/* Address */}
-    <td className="hidden md:table-cell text-gray-700 dark:text-gray-200">
-      {item.address}
-    </td>
-
     {/* Actions */}
     <td className="p-2">
       <div className="flex items-center gap-2">
         {(role === "admin" || role === "teacher") && (
           <>
             <Link href={`/list/users/teachers/${item.id}`}>
-              <IconButton2 icon={Eye} />
+              <div className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-darkfg dark:text-gray-300 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-900/20 dark:hover:text-indigo-400 transition-colors">
+                <Eye className="h-4 w-4" />
+              </div>
             </Link>
           </>
         )}
@@ -92,14 +110,14 @@ const renderRow = (item: TeachersList, role: string | null) => (
 
 // -------------------- Columns --------------------
 const getColumns = (role: string | null) => [
-  { header: "Name", accessor: "info" },
-  { header: "Classes", accessor: "classes", className: "hidden md:table-cell" },
+  { header: "Teacher Name", accessor: "info" },
+  { header: "Class", accessor: "class", className: "hidden md:table-cell" },
   { header: "Phone", accessor: "phone", className: "hidden md:table-cell" },
   { header: "Gender", accessor: "gender", className: "hidden md:table-cell" },
   { header: "DOB", accessor: "dob", className: "hidden md:table-cell" },
-  { header: "Address", accessor: "address", className: "hidden lg:table-cell" },
   ...(role === "admin" ? [{ header: "Actions", accessor: "action" }] : []),
 ];
+
 
 // -------------------- Page --------------------
 const TeacherListPage = async ({
@@ -166,7 +184,7 @@ const TeacherListPage = async ({
   const Path = "/list/users/teachers";
 
   return (
-    <div className="flex-1 p-4 bg-white dark:bg-darkMode">
+    <div className="flex-1 p-4 bg-white dark:bg-darkbg">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <h1 className="text-lg font-semibold text-gray-800 dark:text-gray-100 hidden md:block">

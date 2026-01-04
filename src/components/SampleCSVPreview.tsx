@@ -238,10 +238,10 @@ const SampleCSVPreview = ({ type }: SampleCSVPreviewProps) => {
   };
 
   return (
-    <div className="space-y-4 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-5 shadow-sm">
+    <div className="space-y-4 rounded-xl bg-white dark:bg-darkMode border border-zinc-200 dark:border-darkfg p-5 shadow-sm">
       <div className="flex justify-between items-center">
         <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-          <div className="p-1.5 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg text-indigo-600 dark:text-indigo-400">
+          <div className="p-1.5 bg-indigo-100 dark:bg-darkMode rounded-lg text-indigo-600 dark:text-indigo-400">
             <Table className="w-4 h-4" />
           </div>
           {titleMap[type]} Template Preview
@@ -251,7 +251,7 @@ const SampleCSVPreview = ({ type }: SampleCSVPreviewProps) => {
         <Link
           href={downloadLink[type]}
           download
-          className="group flex items-center gap-2 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/20 px-3 py-1.5 rounded-lg border border-indigo-200 dark:border-indigo-800 transition-colors"
+          className="group flex items-center gap-2 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 bg-indigo-50 dark:bg-darkMode px-3 py-1.5 rounded-lg border border-indigo-200 dark:border-indigo-800 transition-colors"
         >
           <FileDown className="w-3.5 h-3.5" />
           Download CSV
@@ -261,7 +261,7 @@ const SampleCSVPreview = ({ type }: SampleCSVPreviewProps) => {
       <div className="overflow-hidden border border-zinc-200 dark:border-zinc-800 rounded-lg">
         <div className="overflow-x-auto custom-scrollbar">
           <table className="min-w-full text-xs text-left border-collapse">
-            <thead className="bg-zinc-50 dark:bg-zinc-800/50 text-zinc-500 dark:text-zinc-400 font-medium uppercase tracking-wider">
+            <thead className="bg-zinc-50 dark:bg-darkMode text-zinc-500 dark:text-zinc-400 font-medium uppercase tracking-wider">
               <tr>
                 {Object.keys(sampleRows[0]).map((key) => (
                   <th

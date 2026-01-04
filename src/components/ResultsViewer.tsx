@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import axios from "axios";
 import {
   Loader2,
@@ -14,6 +14,9 @@ import {
   Minimize2,
   User,
   ChevronDown,
+  BookOpen,
+  GraduationCap,
+  Users,
 } from "lucide-react";
 
 // --- Types ---
@@ -29,12 +32,14 @@ type Result = {
   Exam: { id: number; title: string };
 };
 
-// --- Interfaces ---
-interface SelectBoxProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
+interface CustomSelectProps {
   label: string;
+  value: string | number | undefined;
+  onChange: (value: string) => void;
   options: { value: string | number; label: string }[];
   placeholder?: string;
   icon?: React.ReactNode;
+  disabled?: boolean;
 }
 
 export default function ResultsViewer() {
@@ -147,6 +152,33 @@ export default function ResultsViewer() {
     }
   };
 
+  // Auto-fetch results when all required filters are ready
+  useEffect(() => {
+    if (!selectedExamId) return;
+
+    if (role === "admin") {
+      if (!selectedGradeId || !selectedClassId) return;
+    }
+
+    if (role === "teacher") {
+      if (!teacherClassId) return;
+    }
+
+    if (role === "student") {
+      if (!studentId) return;
+    }
+
+    fetchResults();
+  }, [
+    selectedExamId,
+    selectedGradeId,
+    selectedClassId,
+    role,
+    teacherClassId,
+    studentId,
+  ]);
+
+
   // --- Data Processing ---
   const subjects = useMemo(
     () => Array.from(new Set(results.map((r) => r.Subject.name))).sort(),
@@ -182,14 +214,13 @@ export default function ResultsViewer() {
   // --- UI ---
   return (
     <div
-      className={`flex flex-col bg-gray-50 dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 transition-all duration-300 ${
-        isFullScreen
-          ? "fixed inset-0 z-[100] h-screen w-screen"
-          : "relative min-h-[calc(100vh-4rem)] w-full"
-      }`}
+      className={`flex flex-col bg-gray-50 dark:bg-darkMode text-zinc-900 dark:text-zinc-100 transition-all duration-300 ${isFullScreen
+        ? "fixed inset-0 z-[100] h-screen w-screen"
+        : "relative min-h-[calc(100vh-4rem)] w-full"
+        }`}
     >
       {/* 1. Premium Header */}
-      <header className="bg-white/80 dark:bg-[#09090b]/80 backdrop-blur-xl border-b border-zinc-200 dark:border-zinc-800 top-0 z-30 shadow-sm px-4 md:px-6 py-4 transition-all">
+      <header className="bg-white/80 dark:bg-darkMode backdrop-blur-xl border-b border-zinc-200 dark:border-darkfg top-0 z-30 shadow-sm px-4 md:px-6 py-4 transition-all">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white flex items-center gap-3">
@@ -203,10 +234,11 @@ export default function ResultsViewer() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3 self-end md:self-auto">
+          <div className="flex items-center gap-3">
+            {/* Full Screen Toggle */}
             <button
               onClick={toggleFullScreen}
-              className="p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400 transition-all active:scale-95 border border-transparent hover:border-zinc-200 dark:hover:border-zinc-700"
+              className="p-2.5 rounded-lg bg-white dark:bg-darkMode border border-zinc-200 dark:border-darkfg hover:border-zinc-300 dark:hover:border-zinc-700 text-zinc-500 dark:text-zinc-400 transition-all shadow-sm"
               title={isFullScreen ? "Exit Full Screen" : "Enter Full Screen"}
             >
               {isFullScreen ? (
@@ -216,59 +248,47 @@ export default function ResultsViewer() {
               )}
             </button>
           </div>
+
         </div>
 
-        {/* Filters Bar */}
-        <div className="flex flex-col md:flex-row gap-3 w-full bg-zinc-100/50 dark:bg-zinc-900/50 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-2">
-          <SelectBox
-            label="Exam"
-            icon={<CheckCircle2 className="w-4 h-4" />}
-            value={selectedExamId ?? ""}
-            onChange={(e) => setSelectedExamId(Number(e.target.value))}
+        {/* Floating Filter Bar (same as Marks Entry) */}
+        <div className="bg-white/70 dark:bg-darkMode backdrop-blur-xl border border-white/20 dark:border-darkfg p-1.5 rounded-2xl shadow-xl shadow-zinc-200/50 dark:shadow-black/50 grid grid-cols-1 md:grid-cols-3 gap-2">
+          <CustomSelect
+            label="Examination"
+            icon={<BookOpen className="w-4 h-4" />}
+            value={selectedExamId}
+            onChange={(val) => setSelectedExamId(Number(val))}
             placeholder="Select Exam"
             options={exams.map((e) => ({ value: e.id, label: e.title }))}
           />
 
           {role === "admin" && (
             <>
-              <SelectBox
-                label="Grade"
-                icon={<Filter className="w-4 h-4" />}
-                value={selectedGradeId ?? ""}
-                onChange={(e) => {
-                  setSelectedGradeId(Number(e.target.value));
+              <CustomSelect
+                label="Grade Level"
+                icon={<GraduationCap className="w-4 h-4" />}
+                value={selectedGradeId}
+                onChange={(val) => {
+                  setSelectedGradeId(Number(val));
                   setSelectedClassId(undefined);
                 }}
                 placeholder="Select Grade"
                 options={grades.map((g) => ({ value: g.id, label: g.level }))}
               />
-              <SelectBox
-                label="Class"
-                icon={<LayoutGrid className="w-4 h-4" />}
-                value={selectedClassId ?? ""}
-                onChange={(e) => setSelectedClassId(Number(e.target.value))}
-                placeholder="Select Class"
-                options={classes.map((c) => ({
-                  value: c.id,
-                  label: c.section,
-                }))}
+
+              <CustomSelect
+                label="Class Section"
+                icon={<Users className="w-4 h-4" />}
+                value={selectedClassId}
+                onChange={(val) => setSelectedClassId(Number(val))}
+                placeholder="Select Section"
+                disabled={!selectedGradeId}
+                options={classes.map((c) => ({ value: c.id, label: c.section }))}
               />
             </>
           )}
-
-          <button
-            onClick={fetchResults}
-            disabled={loading}
-            className="w-full md:w-auto mt-2 md:mt-0 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-500 text-white rounded-xl font-semibold shadow-lg shadow-indigo-500/30 transition-all active:scale-95 disabled:opacity-70 flex items-center justify-center gap-2"
-          >
-            {loading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Search className="w-4 h-4" />
-            )}
-            <span>Fetch</span>
-          </button>
         </div>
+
 
         {error && (
           <div className="mt-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm flex items-center justify-center gap-2 border border-red-200 dark:border-red-800">
@@ -276,6 +296,8 @@ export default function ResultsViewer() {
             {error}
           </div>
         )}
+
+
       </header>
 
       {/* 2. Main Content */}
@@ -295,7 +317,7 @@ export default function ResultsViewer() {
 
         {/* Empty State */}
         {!loading && results.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-3xl bg-white/50 dark:bg-zinc-900/50 mt-2 min-h-[300px]">
+          <div className="flex flex-col items-center justify-center h-full border-2 border-dashed border-zinc-200 dark:border-darkfg rounded-3xl bg-white/50 dark:bg-zinc-900/50 mt-2 min-h-[300px]">
             <div className="w-16 h-16 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center mb-4">
               <Search className="w-8 h-8 text-zinc-400" />
             </div>
@@ -310,32 +332,59 @@ export default function ResultsViewer() {
 
         {/* Results Table / Cards */}
         {!loading && results.length > 0 && (
-          <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl shadow-zinc-200/50 dark:shadow-black/50 overflow-hidden mt-2 relative animate-in slide-in-from-bottom-4 duration-500">
+          <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-darkMode border border-zinc-200 dark:border-darkfg rounded-2xl shadow-2xl shadow-zinc-200/50 dark:shadow-black/50 overflow-hidden mt-2 relative animate-in slide-in-from-bottom-4 duration-500">
             {/* Desktop Table View */}
             <div className="hidden md:block flex-1 overflow-auto custom-scrollbar">
               <table className="w-full text-sm text-left border-collapse">
-                <thead className="text-xs font-bold uppercase tracking-wider bg-zinc-50/95 dark:bg-[#18181b]/95 text-zinc-500 dark:text-zinc-400 sticky top-0 z-20 backdrop-blur-md shadow-sm">
+                <thead className="text-xs font-bold uppercase tracking-wider bg-zinc-50/95 dark:bg-darkMode text-zinc-500 dark:text-zinc-400 sticky top-0 z-20 backdrop-blur-md shadow-sm">
                   <tr>
-                    <th className="px-4 py-4 border-b border-zinc-200 dark:border-zinc-800 text-center w-16">
+                    <th className="px-4 py-4 border-b border-zinc-200 dark:border-darkfg text-center w-16">
                       #
                     </th>
-                    <th className="px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 text-left">
+                    <th className="px-6 py-4 border-b border-zinc-200 dark:border-darkfg text-left">
                       Student Details
                     </th>
                     {subjects.map((subj) => (
                       <th
                         key={subj}
-                        className="px-4 py-4 border-b border-zinc-200 dark:border-zinc-800 text-center min-w-[100px]"
+                        className="px-4 py-4 border-b border-zinc-200 dark:border-darkfg text-center min-w-[100px]"
                       >
                         {subj}
                       </th>
                     ))}
-                    <th className="px-4 py-4 border-b border-zinc-200 dark:border-zinc-800 text-center font-extrabold text-indigo-600 dark:text-indigo-400">
+                    <th className="px-4 py-4 border-b border-zinc-200 dark:border-darkfg text-center font-extrabold text-indigo-600 dark:text-indigo-400">
                       Total
                     </th>
-                    <th className="px-4 py-4 border-b border-zinc-200 dark:border-zinc-800 text-center font-extrabold text-indigo-600 dark:text-indigo-400">
+                    <th className="px-4 py-4 border-b border-zinc-200 dark:border-darkfg text-center font-extrabold text-indigo-600 dark:text-indigo-400">
                       %
                     </th>
+                  </tr>
+
+                  {/* Max Marks Row */}
+                  <tr className="bg-zinc-50 dark:bg-darkMode border-t-2 border-zinc-200 dark:border-darkfgfont-bold text-xs uppercase tracking-wider">
+                    <td
+                      colSpan={2}
+                      className="px-6 py-3 text-right text-zinc-500 dark:text-zinc-400"
+                    >
+                      Max Marks
+                    </td>
+                    {subjects.map((subj) => (
+                      <td
+                        key={subj}
+                        className="px-4 py-3 text-center text-zinc-600 dark:text-zinc-300"
+                      >
+                        {subjectMaxMap.get(subj) ?? "-"}
+                      </td>
+                    ))}
+                    <td className="px-4 py-3 text-center text-zinc-800 dark:text-zinc-100">
+                      {subjects.reduce(
+                        (sum, subj) => sum + (subjectMaxMap.get(subj) ?? 0),
+                        0
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-center text-zinc-800 dark:text-zinc-100">
+                      100%
+                    </td>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
@@ -356,7 +405,7 @@ export default function ResultsViewer() {
                     return (
                       <tr
                         key={id}
-                        className="group hover:bg-LamaHover dark:hover:bg-indigo-500/5 transition-colors duration-150 border-b border-zinc-100 dark:border-zinc-800/50"
+                        className="group hover:bg-LamaHover dark:hover:bg-indigo-500/5 transition-colors duration-150 border-b border-zinc-100 dark:border-darkfg"
                       >
                         <td className="px-4 py-3 text-center text-zinc-400 font-mono">
                           {idx + 1}
@@ -392,38 +441,12 @@ export default function ResultsViewer() {
                       </tr>
                     );
                   })}
-                  {/* Max Marks Row */}
-                  <tr className="bg-zinc-50 dark:bg-zinc-900 border-t-2 border-zinc-200 dark:border-zinc-800 font-bold text-xs uppercase tracking-wider">
-                    <td
-                      colSpan={2}
-                      className="px-6 py-3 text-right text-zinc-500 dark:text-zinc-400"
-                    >
-                      Max Marks
-                    </td>
-                    {subjects.map((subj) => (
-                      <td
-                        key={subj}
-                        className="px-4 py-3 text-center text-zinc-600 dark:text-zinc-300"
-                      >
-                        {subjectMaxMap.get(subj) ?? "-"}
-                      </td>
-                    ))}
-                    <td className="px-4 py-3 text-center text-zinc-800 dark:text-zinc-100">
-                      {subjects.reduce(
-                        (sum, subj) => sum + (subjectMaxMap.get(subj) ?? 0),
-                        0
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-center text-zinc-800 dark:text-zinc-100">
-                      100%
-                    </td>
-                  </tr>
                 </tbody>
               </table>
             </div>
 
             {/* Mobile Card View */}
-            <div className="md:hidden flex-1 overflow-auto p-4 space-y-4 bg-zinc-50 dark:bg-black/20">
+            <div className="md:hidden flex-1 overflow-auto p-4 space-y-4 bg-zinc-50 dark:bg-darkMode">
               {studentRows.map(([id, student], idx) => {
                 const total = subjects.reduce(
                   (sum, subj) => sum + (student.marks[subj] ?? 0),
@@ -439,11 +462,11 @@ export default function ResultsViewer() {
                 return (
                   <div
                     key={id}
-                    className="bg-white dark:bg-zinc-900 rounded-2xl p-4 shadow-sm border border-zinc-200 dark:border-zinc-800"
+                    className="bg-white dark:bg-darkMode rounded-2xl p-4 shadow-sm border border-zinc-200 dark:border-darkfg"
                   >
-                    <div className="flex justify-between items-start mb-4 pb-3 border-b border-zinc-100 dark:border-zinc-800">
+                    <div className="flex justify-between items-start mb-4 pb-3 border-b border-zinc-100 dark:border-darkfg">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold">
+                        <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-darkMode flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold">
                           {student.name.charAt(0)}
                         </div>
                         <div>
@@ -469,7 +492,7 @@ export default function ResultsViewer() {
                       {subjects.map((subj) => (
                         <div
                           key={subj}
-                          className="flex justify-between p-2 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg"
+                          className="flex justify-between p-2 bg-zinc-50 dark:bg-darkMode rounded-lg"
                         >
                           <span className="text-zinc-500 dark:text-zinc-400 truncate pr-2">
                             {subj}
@@ -491,33 +514,118 @@ export default function ResultsViewer() {
   );
 }
 
-// --- Modern Select Component ---
-const SelectBox = ({
+
+
+// --- Premium Custom Select Component ---
+// This replaces the native <select> with a simulated UI that looks like Shadcn/Headless
+function CustomSelect({
   label,
+  value,
+  onChange,
   options,
   placeholder,
   icon,
-  ...props
-}: SelectBoxProps) => (
-  <div className="relative group flex-1">
-    <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-zinc-400 group-focus-within:text-indigo-500 transition-colors">
-      {icon}
-    </div>
-    <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-zinc-400">
-      <ChevronDown className="w-4 h-4 group-hover:text-zinc-600 dark:group-hover:text-zinc-300 transition-colors" />
-    </div>
-    <select
-      className="w-full appearance-none pl-10 pr-10 py-2.5 bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm font-medium text-zinc-700 dark:text-zinc-200 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all cursor-pointer hover:border-indigo-300 dark:hover:border-indigo-700 disabled:cursor-not-allowed disabled:bg-zinc-100 dark:disabled:bg-zinc-900 shadow-sm"
-      {...props}
+  disabled,
+}: CustomSelectProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Close on click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const selectedLabel = options.find(
+    (o) => String(o.value) === String(value)
+  )?.label;
+
+  return (
+    <div
+      className={`relative ${disabled ? "opacity-50 pointer-events-none" : ""}`}
+      ref={containerRef}
     >
-      <option value="" disabled>
-        {placeholder}
-      </option>
-      {options.map((opt) => (
-        <option key={opt.value} value={opt.value}>
-          {opt.label}
-        </option>
-      ))}
-    </select>
-  </div>
-);
+      <div
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+        className={`
+           group flex items-center justify-between w-full p-3 
+           bg-zinc-50 dark:bg-darkMode hover:bg-zinc-100 dark:hover:bg-zinc-800/50 
+           border border-transparent hover:border-zinc-200 dark:hover:border-zinc-700
+           rounded-xl cursor-pointer transition-all duration-200
+           ${isOpen ? "ring-2 ring-indigo-500/20 bg-white dark:bg-darkMode" : ""
+          }
+         `}
+      >
+        <div className="flex items-center gap-3 overflow-hidden">
+          <div
+            className={`
+             p-2 rounded-lg transition-colors
+             ${value
+                ? "bg-indigo-100 dark:bg-darkMode text-indigo-600 dark:text-indigo-400"
+                : "bg-zinc-200 dark:bg-darkMode text-zinc-500"
+              }
+           `}
+          >
+            {icon}
+          </div>
+          <div className="flex flex-col text-left">
+            <span className="text-[10px] uppercase tracking-wider font-bold text-zinc-400 dark:text-zinc-500">
+              {label}
+            </span>
+            <span
+              className={`text-sm font-semibold truncate ${value ? "text-zinc-900 dark:text-white" : "text-zinc-400"
+                }`}
+            >
+              {selectedLabel || placeholder}
+            </span>
+          </div>
+        </div>
+        <ChevronDown
+          className={`w-4 h-4 text-zinc-400 transition-transform duration-300 ${isOpen ? "rotate-180" : ""
+            }`}
+        />
+      </div>
+
+      {/* Dropdown Menu */}
+      {isOpen && (
+        <div className="absolute top-[110%] left-0 w-full max-h-60 overflow-y-auto bg-white dark:bg-darkMode border border-zinc-200 dark:border-darkfg rounded-xl shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-100 p-1">
+          {options.length > 0 ? (
+            options.map((opt) => (
+              <div
+                key={opt.value}
+                onClick={() => {
+                  onChange(String(opt.value));
+                  setIsOpen(false);
+                }}
+                className={`
+                   px-4 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-colors flex items-center justify-between
+                   ${String(value) === String(opt.value)
+                    ? "bg-indigo-50 dark:bg-darkMode text-indigo-700 dark:text-indigo-300"
+                    : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-darkbg"
+                  }
+                 `}
+              >
+                {opt.label}
+                {String(value) === String(opt.value) && (
+                  <CheckCircle2 className="w-4 h-4" />
+                )}
+              </div>
+            ))
+          ) : (
+            <div className="px-4 py-3 text-sm text-zinc-400 text-center">
+              No options available
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

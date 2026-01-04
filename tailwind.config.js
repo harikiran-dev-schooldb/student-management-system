@@ -34,6 +34,7 @@ const config = {
         LamaRed: "#ff7477",
         darkMode: "#020617",
         darkfg: "#0f172a",
+        darkbg: "#111827",
         darkMode2: "#121212",
         darkMode3: "#09090b",
         LamaHover: "#6366F10D",

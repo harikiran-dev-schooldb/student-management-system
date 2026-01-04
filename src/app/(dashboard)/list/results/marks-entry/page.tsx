@@ -191,11 +191,10 @@ export default function MarksEntryForm() {
 
   return (
     <div
-      className={`flex flex-col bg-zinc-50 dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 transition-colors duration-300 ${
-        isFullScreen
+      className={`flex flex-col bg-zinc-50 dark:bg-darkMode text-zinc-900 dark:text-zinc-100 transition-colors duration-300 ${isFullScreen
           ? "h-screen w-screen overflow-hidden"
           : "min-h-screen w-full"
-      }`}
+        }`}
     >
       {/* Decorative Background Gradients */}
       <div className="fixed inset-0 pointer-events-none z-0">
@@ -227,7 +226,7 @@ export default function MarksEntryForm() {
             {/* Full Screen Toggle */}
             <button
               onClick={toggleFullScreen}
-              className="p-2.5 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 text-zinc-500 dark:text-zinc-400 transition-all shadow-sm"
+              className="p-2.5 rounded-lg bg-white dark:bg-darkMode border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 text-zinc-500 dark:text-zinc-400 transition-all shadow-sm"
               title={isFullScreen ? "Exit Full Screen" : "Enter Full Screen"}
             >
               {isFullScreen ? (
@@ -240,7 +239,7 @@ export default function MarksEntryForm() {
             {/* NEW: Combined Actions & Stats Group */}
             {students.length > 0 && (
               <div className="flex items-center gap-4 pl-4 ml-1 border-l border-zinc-200 dark:border-zinc-800 animate-in fade-in slide-in-from-right-4 duration-500">
-                
+
 
                 {/* Dynamic Save Button */}
                 <button
@@ -248,11 +247,10 @@ export default function MarksEntryForm() {
                   disabled={submitting || !hasUnsavedChanges}
                   className={`
           relative group flex items-center gap-2 px-5 py-2.5 rounded-lg font-medium text-sm transition-all duration-300
-          ${
-            hasUnsavedChanges
-              ? "bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:-translate-y-0.5 active:translate-y-0"
-              : "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 cursor-default"
-          }
+          ${hasUnsavedChanges
+                      ? "bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:-translate-y-0.5 active:translate-y-0"
+                      : "bg-emerald-50 dark:bg-darkMode text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 cursor-default"
+                    }
         `}
                 >
                   {submitting ? (
@@ -267,8 +265,8 @@ export default function MarksEntryForm() {
                     {submitting
                       ? "Saving..."
                       : hasUnsavedChanges
-                      ? "Save Changes"
-                      : "All Saved"}
+                        ? "Save Changes"
+                        : "All Saved"}
                   </span>
 
                   {/* Optional: Visual ping when there are unsaved changes */}
@@ -285,7 +283,7 @@ export default function MarksEntryForm() {
         </div>
 
         {/* Floating Filter Bar */}
-        <div className="bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl border border-white/20 dark:border-zinc-800/50 p-1.5 rounded-2xl shadow-xl shadow-zinc-200/50 dark:shadow-black/50 grid grid-cols-1 md:grid-cols-3 gap-2">
+        <div className="bg-white/70 dark:bg-darkMode backdrop-blur-xl border border-white/20 dark:border-zinc-800/50 p-1.5 rounded-2xl shadow-xl shadow-zinc-200/50 dark:shadow-black/50 grid grid-cols-1 md:grid-cols-3 gap-2">
           <CustomSelect
             label="Examination"
             icon={<BookOpen className="w-4 h-4" />}
@@ -317,9 +315,9 @@ export default function MarksEntryForm() {
       {/* 2. Main Content Area */}
       <main className="flex-1 relative z-10 w-full px-4 md:px-8 pb-24 overflow-hidden flex flex-col">
         {/* Content Container */}
-        <div className="flex-1 rounded-2xl bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800/50 shadow-sm overflow-hidden flex flex-col relative min-h-[500px]">
+        <div className="flex-1 rounded-2xl bg-white dark:bg-darkMode border border-zinc-200 dark:border-zinc-800/50 shadow-sm overflow-hidden flex flex-col relative min-h-[500px]">
           {loading && (
-            <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/80 dark:bg-zinc-950/80 backdrop-blur-sm">
+            <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/80 dark:bg-darkMode backdrop-blur-sm">
               <Loader2 className="w-10 h-10 text-indigo-600 animate-spin mb-4" />
               <p className="text-zinc-600 dark:text-zinc-400 font-medium">
                 Retrieving student records...
@@ -329,10 +327,10 @@ export default function MarksEntryForm() {
 
           {!loading && students.length === 0 && (
             <div className="flex flex-col items-center justify-center flex-1 p-8 text-center">
-              <div className="w-20 h-20 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center mb-6">
+              <div className="w-20 h-20 bg-zinc-100 dark:bg-darkMode rounded-full flex items-center justify-center mb-6">
                 <Filter className="w-8 h-8 text-zinc-400" />
               </div>
-              <h3 className="text-xl font-semibold text-zinc-900 dark:text-white">
+              <h3 className="text-xl font-semibold text-zinc-900 dark:text-gray-500">
                 Ready to Grade
               </h3>
               <p className="text-zinc-500 max-w-sm mt-2">
@@ -412,23 +410,21 @@ function CustomSelect({
         onClick={() => !disabled && setIsOpen(!isOpen)}
         className={`
            group flex items-center justify-between w-full p-3 
-           bg-zinc-50 dark:bg-black hover:bg-zinc-100 dark:hover:bg-zinc-800/50 
+           bg-zinc-50 dark:bg-darkMode hover:bg-zinc-100 dark:hover:bg-zinc-800/50 
            border border-transparent hover:border-zinc-200 dark:hover:border-zinc-700
            rounded-xl cursor-pointer transition-all duration-200
-           ${
-             isOpen ? "ring-2 ring-indigo-500/20 bg-white dark:bg-zinc-900" : ""
-           }
+           ${isOpen ? "ring-2 ring-indigo-500/20 bg-white dark:bg-darkMode" : ""
+          }
          `}
       >
         <div className="flex items-center gap-3 overflow-hidden">
           <div
             className={`
              p-2 rounded-lg transition-colors
-             ${
-               value
-                 ? "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400"
-                 : "bg-zinc-200 dark:bg-zinc-800 text-zinc-500"
-             }
+             ${value
+                ? "bg-indigo-100 dark:bg-darkMode text-indigo-600 dark:text-indigo-400"
+                : "bg-zinc-200 dark:bg-darkMode text-zinc-500"
+              }
            `}
           >
             {icon}
@@ -438,24 +434,22 @@ function CustomSelect({
               {label}
             </span>
             <span
-              className={`text-sm font-semibold truncate ${
-                value ? "text-zinc-900 dark:text-white" : "text-zinc-400"
-              }`}
+              className={`text-sm font-semibold truncate ${value ? "text-zinc-900 dark:text-white" : "text-zinc-400"
+                }`}
             >
               {selectedLabel || placeholder}
             </span>
           </div>
         </div>
         <ChevronDown
-          className={`w-4 h-4 text-zinc-400 transition-transform duration-300 ${
-            isOpen ? "rotate-180" : ""
-          }`}
+          className={`w-4 h-4 text-zinc-400 transition-transform duration-300 ${isOpen ? "rotate-180" : ""
+            }`}
         />
       </div>
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute top-[110%] left-0 w-full max-h-60 overflow-y-auto bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-100 p-1">
+        <div className="absolute top-[110%] left-0 w-full max-h-60 overflow-y-auto bg-white dark:bg-darkMode border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-100 p-1">
           {options.length > 0 ? (
             options.map((opt) => (
               <div
@@ -466,11 +460,10 @@ function CustomSelect({
                 }}
                 className={`
                    px-4 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-colors flex items-center justify-between
-                   ${
-                     String(value) === String(opt.value)
-                       ? "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300"
-                       : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                   }
+                   ${String(value) === String(opt.value)
+                    ? "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300"
+                    : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-darkbg"
+                  }
                  `}
               >
                 {opt.label}

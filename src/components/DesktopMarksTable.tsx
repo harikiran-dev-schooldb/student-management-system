@@ -37,15 +37,15 @@ const DesktopMarksTable = ({
     <div className="overflow-auto custom-scrollbar w-full h-full relative">
       <table className="min-w-full border-collapse text-sm">
         {/* Table Header */}
-        <thead className="sticky top-0 z-30 bg-zinc-50 dark:bg-zinc-900 shadow-sm">
+        <thead className="sticky top-0 z-30 bg-zinc-50 dark:bg-darkMode shadow-sm">
           <tr>
-            <th className="sticky left-0 z-40 w-64 px-6 py-4 bg-zinc-50 dark:bg-zinc-900 text-left font-semibold text-zinc-600 dark:text-zinc-300 border-b border-r border-zinc-200 dark:border-zinc-800">
+            <th className="sticky left-0 z-40 w-64 px-6 py-4 bg-zinc-50 dark:bg-darkMode text-left font-semibold text-zinc-600 dark:text-zinc-300 border-b border-r border-zinc-200 dark:border-darkfg">
               Student Details
             </th>
             {subjects.map((s) => (
               <th
                 key={s.id}
-                className="px-4 py-4 text-center min-w-[120px] font-semibold text-zinc-600 dark:text-zinc-300 border-b border-zinc-200 dark:border-zinc-800"
+                className="px-4 py-4 text-center min-w-[120px] font-semibold text-zinc-600 dark:text-zinc-300 border-b border-zinc-200 dark:border-darkfg"
               >
                 {s.name}
               </th>
@@ -54,14 +54,14 @@ const DesktopMarksTable = ({
         </thead>
 
         {/* Table Body */}
-        <tbody className="bg-white dark:bg-black divide-y divide-zinc-100 dark:divide-zinc-800">
+        <tbody className="bg-white dark:bg-darkMode divide-y divide-zinc-100 dark:divide-zinc-800">
           {students.map((student) => (
             <tr
               key={student.id}
-              className="group hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors"
+              className="group hover:bg-zinc-50 dark:hover:bg-darkMode/50 transition-colors"
             >
               {/* Sticky Student Name Column */}
-              <td className="sticky left-0 z-20 bg-white dark:bg-black group-hover:bg-zinc-50 dark:group-hover:bg-zinc-900/50 px-6 py-3 border-r border-zinc-200 dark:border-zinc-800 transition-colors">
+              <td className="sticky left-0 z-20 bg-white dark:bg-darkMode group-hover:bg-zinc-50 dark:group-hover:bg-darkMode/50 px-6 py-3 border-r border-zinc-200 dark:border-zinc-800 transition-colors">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 rounded-full text-indigo-600 dark:text-indigo-400">
                     <UserCircle2 className="w-5 h-5" />
@@ -94,13 +94,13 @@ const DesktopMarksTable = ({
                       onWheel={(e) => e.currentTarget.blur()}
                       className="
                         w-full h-10 text-center rounded-lg 
-                        border border-transparent bg-zinc-50 dark:bg-zinc-900
+                        border border-transparent bg-zinc-50 dark:bg-darkMode
                         text-zinc-900 dark:text-white font-medium
                         placeholder-zinc-300 dark:placeholder-zinc-600
                         focus:bg-white dark:focus:bg-black
                         focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10
                         transition-all duration-200 outline-none
-                        hover:bg-zinc-100 dark:hover:bg-zinc-800
+                        hover:bg-zinc-100 dark:hover:bg-darkfg
                       "
                     />
                   </td>

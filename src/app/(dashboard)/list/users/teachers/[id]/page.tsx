@@ -33,7 +33,7 @@ const metricCardClass =
 /* --- Helper Components --- */
 const InfoRow = ({ icon: Icon, label, value }: { icon: any, label: string, value: string }) => (
   <div className="flex items-center gap-3 text-sm">
-    <div className="p-2 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
+    <div className="p-2 rounded-lg bg-gray-50 dark:bg-darkMode text-gray-500 dark:text-gray-400">
       <Icon size={16} />
     </div>
     <div className="flex flex-col">
@@ -48,9 +48,9 @@ const InfoRow = ({ icon: Icon, label, value }: { icon: any, label: string, value
 const Shortcut = ({ href, label, icon: Icon }: { href: string; label: string, icon: any }) => (
   <Link
     href={href}
-    className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-900/20 dark:hover:text-indigo-400 transition-all group"
+    className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-gray-50 dark:bg-darkMode text-gray-600 dark:text-gray-300 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-900/20 dark:hover:text-indigo-400 transition-all group"
   >
-    <div className="p-1.5 bg-white dark:bg-gray-700 rounded-md shadow-sm group-hover:shadow-none transition-shadow">
+    <div className="p-1.5 bg-white dark:bg-darkMode rounded-md shadow-sm group-hover:shadow-none transition-shadow">
        <Icon size={14} />
     </div>
     <span className="text-sm font-medium">{label}</span>
@@ -80,7 +80,7 @@ const SingleTeacherPage = async ({ params }: TeacherSinglePageProps) => {
   const totalStudents = teacher.class?._count?.students ?? 0;
 
   return (
-    <div className="flex flex-col flex-1 gap-6 p-6 xl:flex-row bg-gray-50/50 dark:bg-[#0d1117] min-h-screen">
+    <div className="flex flex-col flex-1 gap-6 p-6 xl:flex-row bg-gray-50/50 dark:bg-darkMode min-h-screen">
       
       {/* ================= LEFT COLUMN ================= */}
       <div className="w-full xl:w-3/4 space-y-6">
