@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
+import prisma from "@/lib/prisma"; // <--- MISSING IMPORT
 
 export async function POST(req: Request) {
   try {
@@ -16,19 +17,21 @@ export async function POST(req: Request) {
     }
 
     // 3. Save to Database (Success)
-    await prisma.feePayment.create({
+    // CHECK: Ensure studentId format matches your Schema (Int vs String)
+    const payment = await prisma.feePayment.create({
       data: {
         amount: parseFloat(amount),
-        studentId: (studentId),
+        studentId: studentId, // If your DB uses Int, wrap this: Number(studentId)
         status: "SUCCESS",
         transactionId: razorpayPaymentId,
         orderId: orderCreationId,
       },
     });
 
-    return NextResponse.json({ message: "Payment Verified", success: true }, { status: 200 });
-  } catch (error) {
-    console.error(error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json({ message: "Payment Verified", success: true, payment }, { status: 200 });
+  } catch (error: any) {
+    console.error("Payment Verification Failed:", error);
+    // Return the actual error message to help you debug
+    return NextResponse.json({ error: "Internal Server Error", details: error.message }, { status: 500 });
   }
 }

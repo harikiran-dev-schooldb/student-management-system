@@ -60,19 +60,24 @@ function formatCurrency(amount: number) {
 const StatusBadge = ({ status }: { status: "Paid" | "Partial" | "Unpaid" }) => {
   const styles = {
     Paid: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800",
-    Partial: "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800",
-    Unpaid: "bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-900/30 dark:text-rose-400 dark:border-rose-800",
+    Partial:
+      "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800",
+    Unpaid:
+      "bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-900/30 dark:text-rose-400 dark:border-rose-800",
   };
 
   return (
-    <span className={`px-2 py-0.5 text-xs font-bold uppercase tracking-wider rounded border ${styles[status]}`}>
+    <span
+      className={`px-2 py-0.5 text-xs font-bold uppercase tracking-wider rounded border ${styles[status]}`}
+    >
       {status}
     </span>
   );
 };
 
 const ProgressBar = ({ paid, total }: { paid: number; total: number }) => {
-  const percentage = total > 0 ? Math.min(100, Math.max(0, (paid / total) * 100)) : 100;
+  const percentage =
+    total > 0 ? Math.min(100, Math.max(0, (paid / total) * 100)) : 100;
   return (
     <div className="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full mt-1 overflow-hidden">
       <div
@@ -152,7 +157,13 @@ const InputGroup = ({
 );
 
 // --- Transaction History Component ---
-const TransactionHistory = ({ fee, isMobile = false }: { fee: StudentFee; isMobile?: boolean }) => {
+const TransactionHistory = ({
+  fee,
+  isMobile = false,
+}: {
+  fee: StudentFee;
+  isMobile?: boolean;
+}) => {
   return (
     <div className={isMobile ? "mt-2" : "ml-10"}>
       <h4 className="text-xs font-bold uppercase text-gray-500 mb-2 flex items-center gap-2">
@@ -171,12 +182,19 @@ const TransactionHistory = ({ fee, isMobile = false }: { fee: StudentFee; isMobi
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
               {fee.feeTransactions.map((tx: any, i: number) => (
-                <tr key={i} className="hover:bg-gray-50 dark:hover:bg-slate-700/50">
+                <tr
+                  key={i}
+                  className="hover:bg-gray-50 dark:hover:bg-slate-700/50"
+                >
                   <td className="px-3 py-2 text-slate-600 dark:text-slate-400">
                     {formatDate(tx.receiptDate || new Date())}
                   </td>
-                  <td className="px-3 py-2 font-mono text-slate-500">{tx.receiptNo || "-"}</td>
-                  <td className="px-3 py-2 text-slate-600">{tx.paymentMode || "CASH"}</td>
+                  <td className="px-3 py-2 font-mono text-slate-500">
+                    {tx.receiptNo || "-"}
+                  </td>
+                  <td className="px-3 py-2 text-slate-600">
+                    {tx.paymentMode || "CASH"}
+                  </td>
                   <td className="px-3 py-2 text-right font-medium text-emerald-600">
                     {formatCurrency(tx.amount)}
                   </td>
@@ -201,7 +219,7 @@ const FeesTable: React.FC<FeesTableProps> = ({
   role = "admin",
   studentName = "Student",
   studentEmail = "",
-  studentMobile="",
+  studentMobile = "",
 }) => {
   const router = useRouter();
 
@@ -222,8 +240,11 @@ const FeesTable: React.FC<FeesTableProps> = ({
   const [receiptNo, setReceiptNo] = useState<string>("");
   const [receiptDate, setReceiptDate] = useState<string>("");
   const [remarks, setRemarks] = useState<string>("");
-  const [selectedPaymentMode, setSelectedPaymentMode] = useState<string>("CASH");
-  const [selectedAcademicYear, setSelectedAcademicYear] = useState<string | null>(null);
+  const [selectedPaymentMode, setSelectedPaymentMode] =
+    useState<string>("CASH");
+  const [selectedAcademicYear, setSelectedAcademicYear] = useState<
+    string | null
+  >(null);
 
   // --- Calculations Helpers ---
   const academicYears = useMemo(() => {
@@ -235,7 +256,9 @@ const FeesTable: React.FC<FeesTableProps> = ({
   }, [data]);
 
   function getTotalFees(fee: StudentFee) {
-    return (fee.feeStructure?.termFees ?? 0) + (fee.feeStructure?.abacusFees ?? 0);
+    return (
+      (fee.feeStructure?.termFees ?? 0) + (fee.feeStructure?.abacusFees ?? 0)
+    );
   }
 
   function calculateDueAmount(fee: StudentFee) {
@@ -268,7 +291,10 @@ const FeesTable: React.FC<FeesTableProps> = ({
   }
 
   // --- Razorpay Logic ---
-  const initiateOnlinePayment = async (feesToPay: StudentFee[], totalAmount: number) => {
+  const initiateOnlinePayment = async (
+    feesToPay: StudentFee[],
+    totalAmount: number
+  ) => {
     setIsProcessing(true);
     try {
       // 1. Create Order
@@ -304,14 +330,15 @@ const FeesTable: React.FC<FeesTableProps> = ({
             feesToPay,
             totalAmount,
             response.razorpay_payment_id,
-            response.razorpay_order_id
+            response.razorpay_order_id,
+            response.razorpay_signature
           );
         },
         modal: {
-            ondismiss: function() {
-                setIsProcessing(false);
-            }
-        }
+          ondismiss: function () {
+            setIsProcessing(false);
+          },
+        },
       };
 
       const paymentObject = new (window as any).Razorpay(options);
@@ -327,14 +354,37 @@ const FeesTable: React.FC<FeesTableProps> = ({
     feesToPay: StudentFee[],
     totalAmountPaid: number,
     transactionId: string,
-    orderId: string
+    orderId: string,
+    signature: string
   ) => {
     try {
-      // Loop for bulk payments
+      const studentId = feesToPay[0]?.studentId;
+      if (!studentId) throw new Error("No student ID found in selection");
+
+      // --- STEP 1: Verify and Record Main Transaction ---
+      const paymentRecordResponse = await fetch("/api/razorpay/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderCreationId: orderId, // Backend expects: orderCreationId
+          razorpayPaymentId: transactionId, // Backend expects: razorpayPaymentId
+          razorpaySignature: signature, // Backend expects: razorpaySignature
+          studentId: studentId,
+          amount: totalAmountPaid,
+        }),
+      });
+
+      if (!paymentRecordResponse.ok) {
+        const errorData = await paymentRecordResponse.json();
+        console.error("Payment Record API Error:", errorData);
+        throw new Error(errorData.error || "Failed to create payment record");
+      }
+
+      // --- STEP 2: Update Individual Fee Terms ---
       for (const fee of feesToPay) {
         const feeDue = calculateDueAmount(fee);
-        // Distribute amount: if bulk, assume full payment for each selected term
-        const amountForThisFee = feesToPay.length > 1 ? feeDue : totalAmountPaid;
+        const amountForThisFee =
+          feesToPay.length > 1 ? feeDue : totalAmountPaid;
 
         const payload = {
           studentId: fee.studentId,
@@ -351,23 +401,32 @@ const FeesTable: React.FC<FeesTableProps> = ({
           orderId: orderId,
         };
 
-        await fetch("/api/fees/update", {
+        const updateResponse = await fetch("/api/fees/update", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
+
+        // FIX: Check if the update actually succeeded
+        if (!updateResponse.ok) {
+          const updateError = await updateResponse.json();
+          console.error(`Failed to update term ${fee.term}:`, updateError);
+          throw new Error(`Failed to update fee for term: ${fee.term}`);
+        }
       }
 
-      // Optimistic Update
+      // --- STEP 3: Optimistic UI Update ---
       setRowData((prev) =>
         prev.map((f) => {
           const matched = feesToPay.find((sf) => sf.id === f.id);
           if (matched) {
-            const paidNow = feesToPay.length > 1 ? calculateDueAmount(f) : totalAmountPaid;
+            const paidNow =
+              feesToPay.length > 1 ? calculateDueAmount(f) : totalAmountPaid;
             return {
               ...f,
               paidAmount: (f.paidAmount ?? 0) + paidNow,
               receiptNo: `ONL-${transactionId.slice(-6)}`,
+              // Update status badge logic will handle the rest based on amounts
             };
           }
           return f;
@@ -378,9 +437,13 @@ const FeesTable: React.FC<FeesTableProps> = ({
       if (isModalOpen) setIsModalOpen(false);
       setRowSelection({});
       router.refresh();
-    } catch (error) {
-      console.error(error);
-      toast.error("Payment verified but database update failed. Contact Admin.");
+    } catch (error: any) {
+      console.error("Transaction Failed:", error);
+      // Show the actual error message from the backend if available
+      toast.error(
+        error.message ||
+          "Payment verified but database update failed. Contact Admin."
+      );
     } finally {
       setIsProcessing(false);
     }
@@ -388,40 +451,42 @@ const FeesTable: React.FC<FeesTableProps> = ({
 
   // --- Admin Manual Collection Handlers ---
 
-  const openCollectModal = useCallback(
-    (fees: StudentFee[]) => {
-      // Filter strictly unpaid
-      const payables = fees.filter((f) => calculateDueAmount(f) > 0);
+  const openCollectModal = useCallback((fees: StudentFee[]) => {
+    // Filter strictly unpaid
+    const payables = fees.filter((f) => calculateDueAmount(f) > 0);
 
-      if (payables.length === 0) {
-        toast.info("Selected fees are already fully paid.");
-        return;
-      }
+    if (payables.length === 0) {
+      toast.info("Selected fees are already fully paid.");
+      return;
+    }
 
-      const totalDue = payables.reduce((sum, f) => sum + calculateDueAmount(f), 0);
-      
-      // Defaults
-      const defaultReceipt =
-        payables.length === 1
-          ? payables[0].receiptNo || payables[0].feeTransactions?.[0]?.receiptNo || ""
-          : "";
-      const defaultRemarks =
-        payables.length === 1
-          ? payables[0].remarks || ""
-          : `Bulk payment for ${payables.length} terms`;
+    const totalDue = payables.reduce(
+      (sum, f) => sum + calculateDueAmount(f),
+      0
+    );
 
-      setSelectedFees(payables);
-      setAmount(totalDue);
-      setDiscount(0);
-      setFine(0);
-      setReceiptDate(new Date().toISOString().split("T")[0]);
-      setReceiptNo(defaultReceipt);
-      setRemarks(defaultRemarks);
-      setSelectedPaymentMode("CASH");
-      setIsModalOpen(true);
-    },
-    []
-  );
+    // Defaults
+    const defaultReceipt =
+      payables.length === 1
+        ? payables[0].receiptNo ||
+          payables[0].feeTransactions?.[0]?.receiptNo ||
+          ""
+        : "";
+    const defaultRemarks =
+      payables.length === 1
+        ? payables[0].remarks || ""
+        : `Bulk payment for ${payables.length} terms`;
+
+    setSelectedFees(payables);
+    setAmount(totalDue);
+    setDiscount(0);
+    setFine(0);
+    setReceiptDate(new Date().toISOString().split("T")[0]);
+    setReceiptNo(defaultReceipt);
+    setRemarks(defaultRemarks);
+    setSelectedPaymentMode("CASH");
+    setIsModalOpen(true);
+  }, []);
 
   const handleManualFormSubmit = async () => {
     if (selectedFees.length === 0) return;
@@ -437,7 +502,7 @@ const FeesTable: React.FC<FeesTableProps> = ({
     try {
       for (const fee of selectedFees) {
         const feeDue = calculateDueAmount(fee);
-        
+
         // Strategy: If bulk, pay exact due. If single, allow partial (user input amount).
         const amountToPay = selectedFees.length > 1 ? feeDue : amount;
 
@@ -466,13 +531,17 @@ const FeesTable: React.FC<FeesTableProps> = ({
         prev.map((f) => {
           const matched = selectedFees.find((sf) => sf.id === f.id);
           if (matched) {
-             // Logic for amount addition
-             const addedAmount = selectedFees.length > 1 ? calculateDueAmount(f) : amount;
+            // Logic for amount addition
+            const addedAmount =
+              selectedFees.length > 1 ? calculateDueAmount(f) : amount;
             return {
               ...f,
               paidAmount: (f.paidAmount ?? 0) + addedAmount,
-              discountAmount: (f.discountAmount ?? 0) + (selectedFees.length === 1 ? discount : 0),
-              fineAmount: (f.fineAmount ?? 0) + (selectedFees.length === 1 ? fine : 0),
+              discountAmount:
+                (f.discountAmount ?? 0) +
+                (selectedFees.length === 1 ? discount : 0),
+              fineAmount:
+                (f.fineAmount ?? 0) + (selectedFees.length === 1 ? fine : 0),
               receiptNo,
               remarks,
             };
@@ -500,7 +569,15 @@ const FeesTable: React.FC<FeesTableProps> = ({
 
   // --- Export CSV ---
   const handleExportCSV = () => {
-    const headers = ["Term", "Year", "Total Fees", "Paid Amount", "Due Amount", "Status", "Receipt No"];
+    const headers = [
+      "Term",
+      "Year",
+      "Total Fees",
+      "Paid Amount",
+      "Due Amount",
+      "Status",
+      "Receipt No",
+    ];
     const rows = rowData.map((row) => [
       row.term,
       row.academicYear,
@@ -508,7 +585,7 @@ const FeesTable: React.FC<FeesTableProps> = ({
       row.paidAmount || 0,
       calculateDueAmount(row),
       getFeeStatus(row).status,
-      row.receiptNo || row.feeTransactions?.[0]?.receiptNo || "-"
+      row.receiptNo || row.feeTransactions?.[0]?.receiptNo || "-",
     ]);
 
     const csvContent =
@@ -518,40 +595,57 @@ const FeesTable: React.FC<FeesTableProps> = ({
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `fees_report_${new Date().toISOString().split("T")[0]}.csv`);
+    link.setAttribute(
+      "download",
+      `fees_report_${new Date().toISOString().split("T")[0]}.csv`
+    );
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
   // --- Cancellation ---
-  const handleCancel = useCallback(async (fee: StudentFee) => {
-    if (!window.confirm(`Are you sure you want to cancel fees for ${fee.term}? This cannot be undone.`)) return;
-    try {
-      const res = await fetch("/api/fees/cancel-transactions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          studentId: fee.studentId,
-          term: fee.term,
-          academicYear: fee.academicYear,
-        }),
-      });
-      if (!res.ok) throw new Error("Failed");
-      
-      setRowData((prev) =>
-        prev.map((f) =>
-          f.id === fee.id
-            ? { ...f, paidAmount: 0, discountAmount: 0, fineAmount: 0, remarks: "Cancelled" }
-            : f
+  const handleCancel = useCallback(
+    async (fee: StudentFee) => {
+      if (
+        !window.confirm(
+          `Are you sure you want to cancel fees for ${fee.term}? This cannot be undone.`
         )
-      );
-      toast.success("Transaction cancelled.");
-      router.refresh();
-    } catch (e) {
-      toast.error("Failed to cancel");
-    }
-  }, [router]);
+      )
+        return;
+      try {
+        const res = await fetch("/api/fees/cancel-transactions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            studentId: fee.studentId,
+            term: fee.term,
+            academicYear: fee.academicYear,
+          }),
+        });
+        if (!res.ok) throw new Error("Failed");
+
+        setRowData((prev) =>
+          prev.map((f) =>
+            f.id === fee.id
+              ? {
+                  ...f,
+                  paidAmount: 0,
+                  discountAmount: 0,
+                  fineAmount: 0,
+                  remarks: "Cancelled",
+                }
+              : f
+          )
+        );
+        toast.success("Transaction cancelled.");
+        router.refresh();
+      } catch (e) {
+        toast.error("Failed to cancel");
+      }
+    },
+    [router]
+  );
 
   // --- Table Configuration ---
   const columns = useMemo<ColumnDef<StudentFee>[]>(() => {
@@ -591,7 +685,11 @@ const FeesTable: React.FC<FeesTableProps> = ({
             onClick={row.getToggleExpandedHandler()}
             className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded text-gray-500 transition-colors"
           >
-            {row.getIsExpanded() ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+            {row.getIsExpanded() ? (
+              <ChevronDown size={16} />
+            ) : (
+              <ChevronRight size={16} />
+            )}
           </button>
         ),
       },
@@ -617,9 +715,9 @@ const FeesTable: React.FC<FeesTableProps> = ({
         id: "totalFees",
         header: "Total",
         cell: ({ row }) => (
-            <span className="text-slate-700 dark:text-slate-300">
-                {formatCurrency(getTotalFees(row.original))}
-            </span>
+          <span className="text-slate-700 dark:text-slate-300">
+            {formatCurrency(getTotalFees(row.original))}
+          </span>
         ),
       },
       {
@@ -631,7 +729,9 @@ const FeesTable: React.FC<FeesTableProps> = ({
           return (
             <div className="w-28">
               <div className="flex justify-between text-xs mb-1">
-                <span className="font-medium text-emerald-600">{formatCurrency(paid)}</span>
+                <span className="font-medium text-emerald-600">
+                  {formatCurrency(paid)}
+                </span>
               </div>
               <ProgressBar paid={paid} total={total} />
             </div>
@@ -657,7 +757,9 @@ const FeesTable: React.FC<FeesTableProps> = ({
       {
         id: "status",
         header: "Status",
-        cell: ({ row }) => <StatusBadge status={getFeeStatus(row.original).status} />,
+        cell: ({ row }) => (
+          <StatusBadge status={getFeeStatus(row.original).status} />
+        ),
       }
     );
 
@@ -688,7 +790,13 @@ const FeesTable: React.FC<FeesTableProps> = ({
                   disabled={isProcessing}
                   className="px-3 py-1.5 text-xs font-bold uppercase text-white bg-emerald-600 rounded hover:bg-emerald-700 shadow-sm flex items-center gap-1 disabled:opacity-50 transition"
                 >
-                  {isProcessing ? "..." : <>Pay <CreditCard size={12} /></>}
+                  {isProcessing ? (
+                    "..."
+                  ) : (
+                    <>
+                      Pay <CreditCard size={12} />
+                    </>
+                  )}
                 </button>
               )}
 
@@ -720,16 +828,28 @@ const FeesTable: React.FC<FeesTableProps> = ({
     }
 
     return cols;
-  }, [mode, role, isProcessing, openCollectModal, handleCancel, handleStudentPayClick]);
+  }, [
+    mode,
+    role,
+    isProcessing,
+    openCollectModal,
+    handleCancel,
+    handleStudentPayClick,
+  ]);
 
   // --- Filtering & Sorting Data ---
   const filteredData = useMemo(() => {
     const baseData = selectedAcademicYear
       ? rowData.filter((row) => row.academicYear === selectedAcademicYear)
       : rowData;
-      
+
     // Custom Sort: Year then Term
-    const TERM_ORDER: Record<string, number> = { TERM_1: 1, TERM_2: 2, TERM_3: 3, FINAL: 4 };
+    const TERM_ORDER: Record<string, number> = {
+      TERM_1: 1,
+      TERM_2: 2,
+      TERM_3: 3,
+      FINAL: 4,
+    };
     return [...baseData].sort((a, b) => {
       const yearA = Number(a.academicYear.slice(1, 5));
       const yearB = Number(b.academicYear.slice(1, 5));
@@ -848,7 +968,9 @@ const FeesTable: React.FC<FeesTableProps> = ({
           {selectedCount > 0 && mode === "collect" && role === "admin" && (
             <button
               onClick={() => {
-                const selectedRows = table.getSelectedRowModel().rows.map((r) => r.original);
+                const selectedRows = table
+                  .getSelectedRowModel()
+                  .rows.map((r) => r.original);
                 openCollectModal(selectedRows);
               }}
               className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-xs font-bold uppercase rounded-lg shadow-md hover:bg-indigo-700 animate-in fade-in slide-in-from-right-4"
@@ -879,7 +1001,10 @@ const FeesTable: React.FC<FeesTableProps> = ({
                     key={header.id}
                     className="px-6 py-4 font-semibold uppercase tracking-wider text-xs"
                   >
-                    {flexRender(header.column.columnDef.header, header.getContext())}
+                    {flexRender(
+                      header.column.columnDef.header,
+                      header.getContext()
+                    )}
                   </th>
                 ))}
               </tr>
@@ -888,7 +1013,10 @@ const FeesTable: React.FC<FeesTableProps> = ({
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
             {table.getRowModel().rows.length === 0 ? (
               <tr>
-                <td colSpan={columns.length} className="px-6 py-12 text-center text-slate-500">
+                <td
+                  colSpan={columns.length}
+                  className="px-6 py-12 text-center text-slate-500"
+                >
                   No fee records found.
                 </td>
               </tr>
@@ -897,19 +1025,30 @@ const FeesTable: React.FC<FeesTableProps> = ({
                 <React.Fragment key={row.id}>
                   <tr
                     className={`transition-colors ${
-                      row.getIsExpanded() ? "bg-slate-50 dark:bg-slate-800/50" : "hover:bg-slate-50 dark:hover:bg-slate-800/30"
+                      row.getIsExpanded()
+                        ? "bg-slate-50 dark:bg-slate-800/50"
+                        : "hover:bg-slate-50 dark:hover:bg-slate-800/30"
                     }`}
                   >
                     {row.getVisibleCells().map((cell) => (
-                      <td key={cell.id} className="px-6 py-4 text-slate-700 dark:text-slate-300">
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      <td
+                        key={cell.id}
+                        className="px-6 py-4 text-slate-700 dark:text-slate-300"
+                      >
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
                       </td>
                     ))}
                   </tr>
                   {/* Expanded Row */}
                   {row.getIsExpanded() && (
                     <tr>
-                      <td colSpan={columns.length} className="bg-gray-50 dark:bg-slate-900/50 p-4 border-b border-gray-100">
+                      <td
+                        colSpan={columns.length}
+                        className="bg-gray-50 dark:bg-slate-900/50 p-4 border-b border-gray-100"
+                      >
                         <TransactionHistory fee={row.original} />
                       </td>
                     </tr>
@@ -929,9 +1068,14 @@ const FeesTable: React.FC<FeesTableProps> = ({
           </div>
         ) : (
           table.getRowModel().rows.map((row) => {
-            const { status, dueAmount, paidAmount, totalFees, isCollectDisabled, isZero } = getFeeStatus(
-              row.original
-            );
+            const {
+              status,
+              dueAmount,
+              paidAmount,
+              totalFees,
+              isCollectDisabled,
+              isZero,
+            } = getFeeStatus(row.original);
             const isSelected = row.getIsSelected();
             const isExpanded = row.getIsExpanded();
 
@@ -947,20 +1091,24 @@ const FeesTable: React.FC<FeesTableProps> = ({
                 {/* Header */}
                 <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-gray-50/50 dark:bg-slate-800/30">
                   <div className="flex items-center gap-3">
-                    {mode === "collect" && role === "admin" && status !== "Paid" && (
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={row.getToggleSelectedHandler()}
-                        className="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                      />
-                    )}
+                    {mode === "collect" &&
+                      role === "admin" &&
+                      status !== "Paid" && (
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={row.getToggleSelectedHandler()}
+                          className="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                        />
+                      )}
                     <div>
                       <h3 className="font-bold text-slate-800 dark:text-slate-200">
                         {row.original.term}
                       </h3>
                       <p className="text-[10px] text-slate-500 font-mono">
-                        {row.original.academicYear.replace("Y", "").replace("_", "-")}
+                        {row.original.academicYear
+                          .replace("Y", "")
+                          .replace("_", "-")}
                       </p>
                     </div>
                   </div>
@@ -970,7 +1118,9 @@ const FeesTable: React.FC<FeesTableProps> = ({
                 {/* Body */}
                 <div className="p-4 space-y-3 text-sm">
                   <div className="flex justify-between items-center">
-                    <span className="text-slate-500 dark:text-slate-400">Total Amount</span>
+                    <span className="text-slate-500 dark:text-slate-400">
+                      Total Amount
+                    </span>
                     <span className="font-medium text-slate-900 dark:text-white">
                       {formatCurrency(totalFees)}
                     </span>
@@ -978,7 +1128,9 @@ const FeesTable: React.FC<FeesTableProps> = ({
 
                   <div className="space-y-1">
                     <div className="flex justify-between items-center">
-                      <span className="text-slate-500 dark:text-slate-400">Paid Amount</span>
+                      <span className="text-slate-500 dark:text-slate-400">
+                        Paid Amount
+                      </span>
                       <span className="font-medium text-emerald-600">
                         {formatCurrency(paidAmount)}
                       </span>
@@ -1002,23 +1154,31 @@ const FeesTable: React.FC<FeesTableProps> = ({
                   {/* Mobile Actions */}
                   <div className="flex items-center gap-2 pt-2 mt-2">
                     {/* Admin Pay */}
-                    {mode === "collect" && role === "admin" && !isCollectDisabled && (
-                      <button
-                        onClick={() => openCollectModal([row.original])}
-                        className="flex-1 py-2 text-xs font-bold uppercase text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 shadow-sm"
-                      >
-                        Collect
-                      </button>
-                    )}
+                    {mode === "collect" &&
+                      role === "admin" &&
+                      !isCollectDisabled && (
+                        <button
+                          onClick={() => openCollectModal([row.original])}
+                          className="flex-1 py-2 text-xs font-bold uppercase text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 shadow-sm"
+                        >
+                          Collect
+                        </button>
+                      )}
 
                     {/* Student Pay */}
                     {role === "student" && !isCollectDisabled && (
-                        <button
+                      <button
                         onClick={() => handleStudentPayClick(row.original)}
                         disabled={isProcessing}
                         className="flex-1 py-2 text-xs font-bold uppercase text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 shadow-sm flex justify-center items-center gap-2"
                       >
-                        {isProcessing ? "Processing..." : <>Pay Now <CreditCard size={14} /></>}
+                        {isProcessing ? (
+                          "Processing..."
+                        ) : (
+                          <>
+                            Pay Now <CreditCard size={14} />
+                          </>
+                        )}
                       </button>
                     )}
 
@@ -1034,10 +1194,16 @@ const FeesTable: React.FC<FeesTableProps> = ({
                     <button
                       onClick={row.getToggleExpandedHandler()}
                       className={`p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors ${
-                        isExpanded ? "text-indigo-600 bg-indigo-50" : "text-slate-500"
+                        isExpanded
+                          ? "text-indigo-600 bg-indigo-50"
+                          : "text-slate-500"
                       }`}
                     >
-                      {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                      {isExpanded ? (
+                        <ChevronUp size={16} />
+                      ) : (
+                        <ChevronDown size={16} />
+                      )}
                     </button>
                   </div>
                 </div>
