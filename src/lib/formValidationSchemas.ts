@@ -202,11 +202,15 @@ export type ResultSchema = z.infer<typeof resultschema>;
 
 // * Message Schema
 export const messageSchema = z.object({
+  title: z.string().min(1, "Title is required"), // 🆕 Added Title
   message: z.string().min(1, "Message cannot be empty"),
-  type: z.enum(["ABSENT", "FEE_RELATED", "ANNOUNCEMENT", "GENERAL"]), // Enum for message types
+  type: z.enum([
+    "ABSENT", "FEE_RELATED", "ANNOUNCEMENT", "GENERAL", 
+    "HOMEWORK", "EXAM_RESULT", "EVENT", "FEE_COLLECTION"
+  ]), 
   studentId: z.string().optional(),
   classId: z.number().optional(),
-  gradeId: z.number().optional(),
+  gradeId: z.number().optional(), // Used for UI filtering only
   date: z.string().min(1, "Date is required"),
 });
 

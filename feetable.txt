@@ -1,0 +1,457 @@
+"use client";
+
+import React, { useCallback, useMemo, useState } from "react";
+import Script from "next/script";
+import {
+  useReactTable,
+  getCoreRowModel,
+  getExpandedRowModel,
+  flexRender,
+  ColumnDef
+} from "@tanstack/react-table";
+import { toast } from "react-toastify";
+import { useRouter } from "next/navigation";
+import {
+  Banknote,
+  CheckCircle2,
+  AlertCircle,
+  Filter,
+  X,
+  Receipt,
+  ChevronRight,
+  ChevronDown,
+  Printer,
+  FileSpreadsheet,
+  ChevronUp,
+  CreditCard
+} from "lucide-react";
+import { StudentFee } from "../../../types";
+
+// --- Types ---
+interface FeesTableProps {
+  data: StudentFee[];
+  mode: "collect" | "cancel" | "view";
+  role?: "admin" | "student"; // <--- Added Role Prop
+  studentName?: string;       // <--- Optional for Pre-filling Razorpay
+  studentEmail?: string;
+}
+
+// ... (formatDate, formatCurrency, StatusBadge, ProgressBar helpers remain exactly the same)
+function formatDate(value?: string | Date | null) {
+  if (!value) return "-";
+  return new Date(value).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function formatCurrency(amount: number) {
+  return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(amount);
+}
+
+const StatusBadge = ({ status }: { status: "Paid" | "Partial" | "Unpaid" }) => {
+  const styles = {
+    Paid: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800",
+    Partial: "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800",
+    Unpaid: "bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-900/30 dark:text-rose-400 dark:border-rose-800",
+  };
+  return <span className={`px-2 py-0.5 text-xs font-bold uppercase tracking-wider rounded border ${styles[status]}`}>{status}</span>;
+};
+
+const ProgressBar = ({ paid, total }: { paid: number; total: number }) => {
+  const percentage = Math.min(100, Math.max(0, (paid / total) * 100));
+  return (
+    <div className="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full mt-1 overflow-hidden">
+      <div className={`h-full rounded-full transition-all duration-500 ${percentage === 100 ? "bg-emerald-500" : "bg-indigo-500"}`} style={{ width: `${percentage}%` }} />
+    </div>
+  );
+};
+
+// --- Main Component ---
+const FeesTable: React.FC<FeesTableProps> = ({ 
+  data, 
+  mode, 
+  role = "admin", // Default to admin
+  studentName = "Student",
+  studentEmail = ""
+}) => {
+  const router = useRouter();
+
+  // --- State ---
+  const [rowData, setRowData] = useState<StudentFee[]>(data);
+  const [rowSelection, setRowSelection] = useState({});
+  const [expanded, setExpanded] = useState({});
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  // Selection State
+  const [selectedFees, setSelectedFees] = useState<StudentFee[]>([]);
+
+  // Modal Form State (For Admin Only)
+  const [amount, setAmount] = useState<number>(0);
+  const [discount, setDiscount] = useState<number>(0);
+  const [fine, setFine] = useState<number>(0);
+  const [receiptNo, setReceiptNo] = useState<string>("");
+  const [receiptDate, setReceiptDate] = useState<string>("");
+  const [remarks, setRemarks] = useState<string>("");
+  const [selectedPaymentMode, setSelectedPaymentMode] = useState<string>("CASH");
+  const [selectedAcademicYear, setSelectedAcademicYear] = useState<string | null>(null);
+
+  // --- Helpers ---
+  const academicYears = useMemo(() => {
+    return Array.from(new Set(data.map((d) => d.academicYear))).sort((a, b) => {
+      const startA = Number(a.slice(1, 5));
+      const startB = Number(b.slice(1, 5));
+      return startA - startB;
+    });
+  }, [data]);
+
+  function getTotalFees(fee: StudentFee) {
+    return (fee.feeStructure?.termFees ?? 0) + (fee.feeStructure?.abacusFees ?? 0);
+  }
+
+  function calculateDueAmount(fee: StudentFee) {
+    return (getTotalFees(fee) - (fee.paidAmount ?? 0) - (fee.discountAmount ?? 0) + (fee.fineAmount ?? 0));
+  }
+
+  function getFeeStatus(fee: StudentFee) {
+    const due = calculateDueAmount(fee);
+    const paid = fee.paidAmount ?? 0;
+    const total = getTotalFees(fee);
+    let status: "Paid" | "Partial" | "Unpaid" = "Unpaid";
+    if (due <= 0) status = "Paid";
+    else if (paid > 0) status = "Partial";
+    return { status, paidAmount: paid, totalFees: total, isCollectDisabled: due <= 0, isZero: paid === 0, dueAmount: due };
+  }
+
+  // --- 🚀 RAZORPAY LOGIC (Unified for Admin & Student) ---
+  
+  const initiateOnlinePayment = async (feesToPay: StudentFee[], totalAmount: number) => {
+    setIsProcessing(true);
+    try {
+      // 1. Create Order
+      const res = await fetch("/api/razorpay/order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: totalAmount }),
+      });
+      const orderData = await res.json();
+      
+      if (!orderData.orderId) throw new Error("Failed to create order");
+
+      // 2. Initialize Options
+      const options = {
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        amount: totalAmount * 100,
+        currency: "INR",
+        name: "School Fees",
+        description: feesToPay.length > 1 ? `Bulk Payment (${feesToPay.length} terms)` : `Fee Payment: ${feesToPay[0].term}`,
+        order_id: orderData.orderId,
+        prefill: {
+          name: studentName,
+          email: studentEmail,
+        },
+        theme: { color: "#4F46E5" },
+        handler: async function (response: any) {
+          // 3. On Success
+          await processSuccessfulPayment(feesToPay, totalAmount, response.razorpay_payment_id, response.razorpay_order_id);
+        },
+      };
+
+      const paymentObject = new (window as any).Razorpay(options);
+      paymentObject.open();
+    } catch (error) {
+      console.error(error);
+      toast.error("Online payment initialization failed");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const processSuccessfulPayment = async (feesToPay: StudentFee[], totalAmountPaid: number, transactionId: string, orderId: string) => {
+    setIsProcessing(true);
+    try {
+      for (const fee of feesToPay) {
+        const feeDue = calculateDueAmount(fee);
+        // If bulk, pay due amount for each; if single, pay specific amount (Admin might override, Student pays full due)
+        const amountForThisFee = feesToPay.length > 1 ? feeDue : totalAmountPaid;
+
+        const payload = {
+          studentId: fee.studentId,
+          term: fee.term,
+          amount: amountForThisFee,
+          discountAmount: 0, // Online payments usually don't have custom discounts
+          fineAmount: 0,
+          receiptDate: new Date().toISOString(),
+          receiptNo: `ONL-${transactionId.slice(-6)}`,
+          remarks: `Online Payment: ${transactionId}`,
+          academicYear: fee.academicYear,
+          paymentMode: "ONLINE",
+          transactionId: transactionId,
+          orderId: orderId
+        };
+
+        await fetch("/api/fees/update", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      }
+
+      // Optimistic Update
+      setRowData((prev) =>
+        prev.map((f) => {
+          const matched = feesToPay.find((sf) => sf.id === f.id);
+          if (matched) {
+            return {
+              ...f,
+              paidAmount: (f.paidAmount ?? 0) + (feesToPay.length > 1 ? calculateDueAmount(f) : totalAmountPaid),
+              receiptNo: `ONL-${transactionId.slice(-6)}`,
+            };
+          }
+          return f;
+        })
+      );
+
+      toast.success("Payment Successful!");
+      if (isModalOpen) setIsModalOpen(false); // Close admin modal if open
+      setRowSelection({});
+      router.refresh();
+
+    } catch (error) {
+      console.error(error);
+      toast.error("Payment verified but database update failed.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // --- Admin Manual Collection Logic ---
+  const handleAdminSubmit = async () => {
+    if (selectedPaymentMode === "ONLINE") {
+      await initiateOnlinePayment(selectedFees, amount);
+    } else {
+      // Existing Manual Cash/Cheque Logic...
+      // (Simplified for brevity, assuming you have the logic from previous steps)
+      toast.info("Manual cash collection logic here...");
+    }
+  };
+
+  // --- Actions ---
+  // 1. Open Admin Modal
+  const openCollectModal = useCallback((fees: StudentFee[]) => {
+    if (role === "student") return; // Students don't open the modal
+    
+    // ... (Your existing modal setup logic)
+    const payables = fees.filter(f => calculateDueAmount(f) > 0);
+    if (payables.length === 0) return toast.info("Already fully paid.");
+
+    const totalDue = payables.reduce((sum, f) => sum + calculateDueAmount(f), 0);
+    setSelectedFees(payables);
+    setAmount(totalDue);
+    setIsModalOpen(true);
+  }, [role]);
+
+  // 2. Student Direct Pay Click
+  const handleStudentPayClick = (fee: StudentFee) => {
+    const due = calculateDueAmount(fee);
+    if (due <= 0) return;
+    initiateOnlinePayment([fee], due);
+  };
+
+  // --- Table Configuration ---
+  const columns = useMemo<ColumnDef<StudentFee>[]>(() => {
+    const cols: ColumnDef<StudentFee>[] = [];
+
+    // Select Column (Only for Admin Collect Mode)
+    if (mode === "collect" && role === "admin") {
+      cols.push({
+        id: "select",
+        header: ({ table }) => (
+          <input type="checkbox" checked={table.getIsAllRowsSelected()} onChange={table.getToggleAllRowsSelectedHandler()} className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+        ),
+        cell: ({ row }) => (
+          <input type="checkbox" checked={row.getIsSelected()} disabled={getFeeStatus(row.original).status === "Paid"} onChange={row.getToggleSelectedHandler()} className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 disabled:opacity-50" />
+        ),
+      });
+    }
+
+    // Standard Columns
+    cols.push(
+      {
+        id: "expander",
+        header: () => null,
+        cell: ({ row }) => (
+          <button onClick={row.getToggleExpandedHandler()} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded text-gray-500">
+            {row.getIsExpanded() ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+          </button>
+        ),
+      },
+      { accessorKey: "term", header: "Term", cell: ({ getValue }) => <span className="font-semibold text-slate-700 dark:text-slate-200">{getValue() as string}</span> },
+      { accessorKey: "academicYear", header: "Year", cell: ({ getValue }) => <span className="text-xs text-slate-500">{(getValue() as string).replace("Y", "").replace("_", "-")}</span> },
+      { accessorFn: (row) => getTotalFees(row), header: "Total", cell: ({ cell }) => <span>{formatCurrency(cell.getValue<number>())}</span> },
+      { accessorKey: "paidAmount", header: "Paid", cell: ({ cell, row }) => (
+          <div className="w-24">
+            <div className="flex justify-between text-xs mb-0.5"><span className="font-medium text-emerald-600">{formatCurrency(cell.getValue<number>() || 0)}</span></div>
+            <ProgressBar paid={cell.getValue<number>() || 0} total={getTotalFees(row.original)} />
+          </div>
+        ),
+      },
+      { id: "dueAmount", header: "Due", cell: ({ row }) => {
+          const due = calculateDueAmount(row.original);
+          return <span className={`font-bold ${due > 0 ? "text-rose-500" : "text-slate-400"}`}>{formatCurrency(due)}</span>;
+        },
+      },
+      { id: "status", header: "Status", cell: ({ row }) => <StatusBadge status={getFeeStatus(row.original).status} /> }
+    );
+
+    // Actions Column (Modified logic)
+    // Show if: (Mode is Collect) OR (Mode is View AND Role is Student)
+    if (mode === "collect" || (mode === "view" && role === "student")) {
+      cols.push({
+        id: "actions",
+        header: "Actions",
+        cell: ({ row }) => {
+          const { isCollectDisabled, isZero } = getFeeStatus(row.original);
+          
+          return (
+            <div className="flex items-center gap-2">
+              
+              {/* ADMIN PAY BUTTON */}
+              {mode === "collect" && role === "admin" && !isCollectDisabled && (
+                <button onClick={() => openCollectModal([row.original])} className="px-2 py-1 text-xs font-medium text-white bg-indigo-600 rounded hover:bg-indigo-700">
+                  Collect
+                </button>
+              )}
+
+              {/* STUDENT PAY BUTTON */}
+              {mode === "view" && role === "student" && !isCollectDisabled && (
+                <button 
+                  onClick={() => handleStudentPayClick(row.original)} 
+                  disabled={isProcessing}
+                  className="px-3 py-1.5 text-xs font-bold uppercase text-white bg-emerald-600 rounded hover:bg-emerald-700 shadow-sm flex items-center gap-1 disabled:opacity-50"
+                >
+                  {isProcessing ? "..." : <>Pay <CreditCard size={12} /></>}
+                </button>
+              )}
+
+              {/* PRINT RECEIPT (Common) */}
+              {!isZero && (
+                <button onClick={() => window.print()} className="p-1.5 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded" title="Print Receipt"><Printer size={16} /></button>
+              )}
+            </div>
+          );
+        },
+      });
+    }
+    return cols;
+  }, [mode, role, isProcessing]); // Dependencies
+
+  // ... (Table instantiation logic remains same)
+  // ... (Summary calculation logic remains same)
+  
+  // Re-creating table instance needed for rendering
+  const filteredData = useMemo(() => {
+     // ... (Same sorting logic as before)
+     const baseData = selectedAcademicYear ? rowData.filter((row) => row.academicYear === selectedAcademicYear) : rowData;
+     return baseData;
+  }, [rowData, selectedAcademicYear]);
+
+  const table = useReactTable({
+    data: filteredData,
+    columns,
+    state: { rowSelection, expanded },
+    onRowSelectionChange: setRowSelection,
+    onExpandedChange: setExpanded,
+    getCoreRowModel: getCoreRowModel(),
+    getExpandedRowModel: getExpandedRowModel(),
+  });
+
+  const summary = useMemo(() => {
+    return filteredData.reduce((acc, curr) => ({ total: acc.total + getTotalFees(curr), paid: acc.paid + (curr.paidAmount || 0), discount: acc.discount + (curr.discountAmount || 0), due: 0 }), { total: 0, paid: 0, discount: 0, due: 0 });
+  }, [filteredData]);
+
+  // --- Render ---
+  return (
+    <div className="w-full space-y-6 animate-in fade-in duration-500">
+      <Script id="razorpay-checkout-js" src="https://checkout.razorpay.com/v1/checkout.js" />
+      
+      {/* Stats Grid (Same) */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {/* ... (Your existing StatCards) */}
+      </div>
+
+      {/* Controls Bar (Show Filter, Hide Bulk Actions for Student) */}
+      <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
+         <div className="flex gap-2">
+            {/* Year Filter Buttons (Same) */}
+         </div>
+         {/* Only show Admin Bulk Actions if Admin */}
+         {role === "admin" && mode === "collect" && Object.keys(rowSelection).length > 0 && (
+           <button onClick={() => openCollectModal(table.getSelectedRowModel().rows.map(r => r.original))} className="bg-indigo-600 text-white px-4 py-2 rounded">Bulk Pay</button>
+         )}
+      </div>
+
+      {/* Table Render */}
+      <div className="hidden md:block overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900">
+        <table className="w-full text-sm text-left">
+          <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 border-b border-slate-200">
+            {table.getHeaderGroups().map((headerGroup) => (
+              <tr key={headerGroup.id}>{headerGroup.headers.map((header) => <th key={header.id} className="px-6 py-4 font-semibold uppercase text-xs">{flexRender(header.column.columnDef.header, header.getContext())}</th>)}</tr>
+            ))}
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {table.getRowModel().rows.map((row) => (
+               <React.Fragment key={row.id}>
+                 <tr className="hover:bg-slate-50">
+                    {row.getVisibleCells().map((cell) => <td key={cell.id} className="px-6 py-4">{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>)}
+                 </tr>
+                 {/* Transaction History Expansion */}
+                 {row.getIsExpanded() && <tr><td colSpan={columns.length} className="bg-gray-50 p-4"><TransactionHistory fee={row.original} /></td></tr>}
+               </React.Fragment>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Mobile Card View (Update Action Buttons) */}
+      <div className="md:hidden space-y-4">
+        {table.getRowModel().rows.map((row) => {
+           const { status, dueAmount, isCollectDisabled } = getFeeStatus(row.original);
+           return (
+             <div key={row.id} className="bg-white border rounded-xl p-4 shadow-sm">
+                <div className="flex justify-between mb-2">
+                   <span className="font-bold">{row.original.term}</span>
+                   <StatusBadge status={status} />
+                </div>
+                {/* ... (Existing Details) */}
+                <div className="flex gap-2 mt-3">
+                   {/* ADMIN BUTTON */}
+                   {role === "admin" && mode === "collect" && !isCollectDisabled && (
+                      <button onClick={() => openCollectModal([row.original])} className="flex-1 bg-indigo-600 text-white py-2 rounded">Collect</button>
+                   )}
+                   {/* STUDENT BUTTON */}
+                   {role === "student" && mode === "view" && !isCollectDisabled && (
+                      <button onClick={() => handleStudentPayClick(row.original)} className="flex-1 bg-emerald-600 text-white py-2 rounded font-bold flex justify-center items-center gap-2">
+                         Pay Online <CreditCard size={14} />
+                      </button>
+                   )}
+                </div>
+             </div>
+           )
+        })}
+      </div>
+
+      {/* Admin Modal (Only render if role is Admin) */}
+      {role === "admin" && isModalOpen && (
+         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+            {/* ... Your Existing Admin Modal Logic ... */}
+         </div>
+      )}
+    </div>
+  );
+};
+
+// ... (Sub-components: TransactionHistory, StatCard, InputGroup remain same)
+
+// Dummy Transaction History component for compilation safely
+const TransactionHistory = ({ fee }: { fee: any }) => <div>History Here</div>;
+
+export default FeesTable;

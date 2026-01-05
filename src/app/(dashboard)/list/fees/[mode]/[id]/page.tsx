@@ -184,8 +184,8 @@ const StudentFeePage = async ({ params }: StudentFeePageProps) => {
                     value={
                       student.dob
                         ? new Intl.DateTimeFormat("en-GB").format(
-                            new Date(student.dob)
-                          )
+                          new Date(student.dob)
+                        )
                         : "N/A"
                     }
                   />
@@ -311,13 +311,12 @@ const StudentFeePage = async ({ params }: StudentFeePageProps) => {
             Fee Overview
           </h3>
           <span
-            className={`text-xs font-bold px-2 py-1 rounded border uppercase ${
-              mode === "collect"
+            className={`text-xs font-bold px-2 py-1 rounded border uppercase ${mode === "collect"
                 ? "bg-green-50 text-green-700 border-green-200"
                 : mode === "cancel"
-                ? "bg-red-50 text-red-700 border-red-200"
-                : "bg-gray-50 text-gray-700 border-gray-200"
-            }`}
+                  ? "bg-red-50 text-red-700 border-red-200"
+                  : "bg-gray-50 text-gray-700 border-gray-200"
+              }`}
           >
             {mode} Mode
           </span>
@@ -325,7 +324,9 @@ const StudentFeePage = async ({ params }: StudentFeePageProps) => {
 
         {/* Full Width Table Container */}
         <div className="w-full overflow-x-auto">
-          <FeesTableContainer studentId={student.id} mode={mode as any} />
+          <FeesTableContainer studentId={student.id} mode={mode as any} role={role as "admin" | "student"}
+            studentName={student.name}
+            studentEmail={student.email || ""} studentMobile={student.phone} />
         </div>
       </div>
     </div>

@@ -7,11 +7,20 @@ import { AcademicYear } from "@prisma/client";
 interface FeesTableContainerProps {
   studentId: string;
   mode: "collect" | "cancel" | "view";
+  role?: "admin" | "student"; // <--- Add this
+  studentName?: string;       // <--- Add this
+  studentEmail?: string;      // <--- Add this
+  studentMobile?: string;
 }
 
 const FeesTableContainer = async ({
   studentId,
   mode,
+  role = "admin",
+  studentName,
+  studentEmail,
+  studentMobile
+
 }: FeesTableContainerProps) => {
   /* -------------------------------------------------
      1. Fetch Student
@@ -45,7 +54,7 @@ const FeesTableContainer = async ({
   /* -------------------------------------------------
      3. Page Title (MODE SAFE)
   --------------------------------------------------*/
-  
+
   if (studentFees.length === 0) {
     return (
       <div className="w-full">
@@ -120,7 +129,15 @@ const FeesTableContainer = async ({
   return (
     <div className="w-full">
 
-      <FeesTable data={transformedData} mode={mode} />
+      <FeesTable
+        data={transformedData}
+        mode={mode}
+        // Pass the new props down to the Client Component
+        role={role}
+        studentName={studentName}
+        studentEmail={studentEmail}
+        studentMobile={studentMobile}
+      />
     </div>
   );
 };

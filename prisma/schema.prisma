@@ -130,13 +130,27 @@ model Announcement {
 
 model Messages {
   id        String      @id @default(cuid())
-  message   String
+  title     String?     // 🆕 Optional title (e.g., "Fee Due Warning")
+  message   String      // The body text
   type      MessageType
-  studentId String?
-  date      DateTime
+  
+  isRead    Boolean     @default(false) // 🆕 Tracks if user saw it
+  data      Json?       // 🆕 Stores metadata for App Navigation
+  date      DateTime    @default(now())
+
+  // Relationships
   classId   Int?
+  studentId String?
+  teacherId String?     // 🆕 Added so teachers can get notifications too
+
   Class     Class?      @relation(fields: [classId], references: [id])
   Student   Student?    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  Teacher   Teacher?    @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  // Indexes for fast loading of notification lists
+  @@index([studentId, isRead]) 
+  @@index([teacherId, isRead])
+  @@index([classId])
 }
 
 model Event {
@@ -244,6 +258,8 @@ model Student {
   linkedUserId String?     @unique
   linkedUser   LinkedUser? @relation(fields: [linkedUserId], references: [id])
 
+  payments FeePayment[]
+
   @@index([classId, gender, status])
   @@index([academicYear, classId, gender, status])
 }
@@ -294,6 +310,7 @@ model Teacher {
   // Cross-user mapping
   linkedUserId String?     @unique
   linkedUser   LinkedUser? @relation(fields: [linkedUserId], references: [id])
+  messages    Messages[]
 
   /**
    * ─────────────────────────────
@@ -482,6 +499,18 @@ model LinkedUser {
   admin   Admin?
 }
 
+model FeePayment {
+  id              Int      @id @default(autoincrement())
+  amount          Float
+  paymentDate     DateTime @default(now())
+  status          String   @default("PENDING") // SUCCESS, FAILED
+  transactionId   String?  // Razorpay Payment ID
+  orderId         String?  // Razorpay Order ID
+  
+  studentId       String
+  student         Student  @relation(fields: [studentId], references: [id])
+}
+
 enum LessonDay {
   MONDAY
   TUESDAY
@@ -522,6 +551,9 @@ enum MessageType {
   ANNOUNCEMENT
   GENERAL
   FEE_COLLECTION
+  HOMEWORK      
+  EXAM_RESULT   
+  EVENT         
 }
 
 enum LeaveType {

@@ -52,6 +52,9 @@ export type MessageType =
   | "FEE_RELATED"
   | "ANNOUNCEMENT"
   | "GENERAL"
+  | "HOMEWORK"
+  | "EXAM_RESULT"
+  | "EVENT"
   | "FEE_COLLECTION";
 
 export type CurrentState = { success: boolean; error: boolean };

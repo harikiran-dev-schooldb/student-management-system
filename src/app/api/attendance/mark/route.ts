@@ -103,14 +103,27 @@ export async function POST(req: Request) {
     if (absentStudents.length > 0) {
       await prisma.messages.createMany({
         data: absentStudents.map((student) => ({
+          // 🆕 1. Title: Bold text shown on the phone/notification center
+          title: "Attendance Alert",
+
           message: getMessageContent("ABSENT" as MessageType, {
             name: student.name,
             className: student.Class?.name ?? "Unknown",
           }),
+
           type: "ABSENT",
           date: dateOnly,
           studentId: student.id,
           classId: studentClassMap.get(student.id)!,
+
+          // 🆕 2. isRead: Defaults to false, so it shows as "Unread"
+          isRead: false,
+
+          // 🆕 3. Data: Helps the Android app navigate when clicked
+          data: {
+            screen: "AttendanceHistory",
+            date: dateOnly
+          }
         })),
       });
     }

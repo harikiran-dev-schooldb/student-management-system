@@ -3,21 +3,24 @@
 import prisma from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function PUT(req: NextRequest) {
+// 1. Add { params } as the second argument
+export async function PUT(
+  req: NextRequest, 
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
-    // 1. Extract ID from the route: /api/messages/[id]
-    const paramId = req.nextUrl.pathname.split("/").pop();
+    const { id } = await params;
 
-    if (!paramId) {
+    if (!id) {
       return NextResponse.json(
         { success: false, message: "Message ID is required" },
         { status: 400 }
       );
     }
 
-    // 2. Get request body
+    // 2. Get request body with NEW fields
     const body = await req.json();
-    const { message, type, studentId, date, classId } = body;
+    const { message, title, type, studentId, date, classId, isRead, data } = body;
 
     if (!message || !type) {
       return NextResponse.json(
@@ -26,26 +29,23 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    // 3. Optional: Validate logic if needed
-    if (type === "ANNOUNCEMENT" && !classId) {
-      return NextResponse.json(
-        { success: false, message: "Class ID is required for announcements" },
-        { status: 400 }
-      );
-    }
+    // 3. Format date safely
+    const formattedDate = date ? new Date(date) : new Date();
 
-    // 4. Format date
-    const formattedDate = date ? new Date(date).toISOString() : new Date().toISOString();
-
-    // 5. Update message
+    // 4. Update message
     const updatedMessage = await prisma.messages.update({
-      where: { id: paramId },
+      where: { id: id },
       data: {
+        title,          // 🆕 Update Title
         message,
         type,
         date: formattedDate,
-        classId: classId ?? null,     // disconnect if null
-        studentId: studentId ?? null, // disconnect if null
+        isRead: isRead, // 🆕 Allow marking as read/unread via API
+        data: data,     // 🆕 Update metadata/navigation logic
+        
+        // Connections
+        classId: classId ? Number(classId) : null,
+        studentId: studentId ?? null,
       },
     });
 
