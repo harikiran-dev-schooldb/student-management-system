@@ -1,42 +1,40 @@
-import bundleAnalyzer from '@next/bundle-analyzer';
+import bundleAnalyzer from "@next/bundle-analyzer";
 
 const withBundleAnalyzer = bundleAnalyzer({
-  enabled: process.env.ANALYZE === 'true',
+  enabled: process.env.ANALYZE === "true",
 });
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
 
-  // ✅ Image domains for remote optimization
+  /**
+   * REQUIRED for Capacitor
+   * Generates `out/` directory
+   */
+
+  /**
+   * REQUIRED for static export
+   * Next/Image optimization does NOT work in export mode
+   */
   images: {
-    remotePatterns: [
-      { protocol: "https", hostname: "ik.imagekit.io" },
-      { protocol: "https", hostname: "res.cloudinary.com" },
-    ],
+    unoptimized: true,
   },
 
-  // ✅ Ignore ESLint during builds (for faster CI/dev)
-  eslint: { ignoreDuringBuilds: true },
-
-  // ✅ Standalone output (good for Docker / deployment)
-
-  // ✅ Turbopack (replaces experimental.turbo)
-  turbopack: {
-    // You can enable or tweak settings later if needed
+  /**
+   * Faster builds
+   */
+  eslint: {
+    ignoreDuringBuilds: true,
   },
 
-  // ✅ Optional experimental features
+  /**
+   * Experimental features (safe)
+   */
   experimental: {
     optimizeCss: true,
     scrollRestoration: true,
   },
-
-  // ✅ Avoid rebuilding Prisma client each time
-  serverExternalPackages: ["@prisma/client"],
-
-  // ✅ Add local libs here if your monorepo grows
-  transpilePackages: [],
 };
 
 export default withBundleAnalyzer(nextConfig);

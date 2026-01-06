@@ -1,8 +1,7 @@
 "use client";
 
-import { Student, Class, Grade } from "@prisma/client";
 import ExcelJS from "exceljs";
-import jsPDF from "jspdf";
+import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { saveAs } from "file-saver";
 import { Props } from "../../types";
