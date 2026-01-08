@@ -1,80 +1,111 @@
+
+
 # 🎓 Student Management System
+
+# 🎓 Student Management System
+
+![Status](https://img.shields.io/badge/Status-Active-brightgreen)
+![License](https://img.shields.io/github/license/harikiran-dev-schooldb/student-management-system)
+![Repo Size](https://img.shields.io/github/repo-size/harikiran-dev-schooldb/student-management-system)
+![Last Commit](https://img.shields.io/github/last-commit/harikiran-dev-schooldb/student-management-system)
+![Issues](https://img.shields.io/github/issues/harikiran-dev-schooldb/student-management-system)
+![Forks](https://img.shields.io/github/forks/harikiran-dev-schooldb/student-management-system)
+![Stars](https://img.shields.io/github/stars/harikiran-dev-schooldb/student-management-system)
 
 ## 📌 Overview
 
-The **Student Management System** is a full-stack web application designed to efficiently manage student data for educational institutions. Built using **Next.js, Prisma**, and **PostgreSQL**, it streamlines operations such as student registration, fee management, attendance tracking, marks entry, and comprehensive reporting.
-Ideal for **schools, colleges**, and **training centers**, this platform helps digitize and centralize academic and administrative workflows.
+The **Student Management System** is a full-stack web platform designed for educational institutions to manage student records and academic workflows.
+Built with **Next.js**, **Prisma**, and **PostgreSQL**, it centralizes core operations such as student registration, fee management, attendance, marks entry, and reporting.
 
-***
+Ideal for **schools, colleges, coaching centers**, and **training institutions** looking to modernize their administrative processes.
 
-## 🚀 Features
+---
 
-- 📋 **Student Enrollment** – Add, update, and view student profiles (name, email, grade, contact)
-- 💰 **Fee Collection** – Track fee payments, due dates, generate invoices and ledgers
-- 📊 **Attendance Tracking** – Record daily attendance and generate attendance reports
-- 📚 **Exam \& Marks Entry** – Input exam results, calculate grades, and monitor performance
-- 📈 **Reports Generation** – Create reports for fees, attendance, and academics
-- 🔒 **User Authentication** – Secure login with role-based access for admins, teachers, students
-- 🛠 **Admin Dashboard** – Manage all entities from one place with metrics and quick access
+## 🚀 Key Features
 
-***
+### 👨‍💼 Admin
+
+* Manage students, teachers, classes, and fee structures
+* Assign roles and permissions
+* Access complete reporting dashboards
+
+### 👩‍🏫 Teacher
+
+* Record daily attendance
+* Enter marks and view student performance
+* Track fee status and student profiles
+
+### 👨‍🎓 Student
+
+* View academic profile
+* Access marks, fee details, and attendance records
+* Download reports and invoices
+
+### Core Modules
+
+* 📋 **Student Enrollment & Profiles**
+* 💰 **Fee Tracking & Ledgers**
+* 📊 **Attendance Management**
+* 📝 **Exam & Marks Entry**
+* 📈 **Comprehensive Reports**
+* 🔐 **Secure Authentication (Role Based)**
+* 📊 **Central Admin Dashboard**
+
+---
 
 ## 🛠 Tech Stack
 
-| Layer | Tech Used |
-| :-- | :-- |
-| Frontend | Next.js, React, Juno, TypeScript, Tailwind CSS |
-| Backend | Next.js API Routes, Prisma ORM |
-| Database | PostgreSQL |
-| Auth | Clerk or Auth.js (optional) |
-| Deployment | Render |
+| Layer         | Technology                               |
+| ------------- | ---------------------------------------- |
+| UI / Frontend | Next.js, React, TypeScript, Tailwind CSS |
+| API / Backend | Next.js API Routes + Prisma ORM          |
+| Database      | PostgreSQL                               |
+| Auth          | Clerk, NextAuth, or custom               |
+| Deployment    | Vercel, Railway, or DigitalOcean         |
 
+---
 
-***
-
-## 📀 Installation \& Setup (From Scratch)
+## 📀 Installation & Setup
 
 ### 1️⃣ Prerequisites
 
-- Node.js (v18 or higher) – [Download](https://nodejs.org)
-- PostgreSQL (v14 or higher) – [Download](https://www.postgresql.org/)
-- Git – [Download](https://git-scm.com/)
-- Visual Studio Code or any editor – [Download](https://code.visualstudio.com/)
+* Node.js **18+**
+* PostgreSQL **14+**
+* Git
+* VS Code or preferred editor
 
-***
+---
 
-### 2️⃣ Clone the Repository
+### 2️⃣ Clone Repository
 
 ```bash
 git clone https://github.com/harikiranadangi/student-management-system.git
 cd student-management-system
 ```
 
+---
 
-***
-
-### 3️⃣ Install Dependencies
+### 3️⃣ Install Packages
 
 ```bash
 npm install
 ```
 
+---
 
-***
+### 4️⃣ Configure Environment
 
-### 4️⃣ Set Up Environment Variables
-
-Create a `.env` file at the project root:
+Create `.env` in project root:
 
 ```env
 DATABASE_URL="postgresql://user:password@localhost:5432/student_db"
 NEXT_PUBLIC_API_BASE_URL="http://localhost:3000/api"
 ```
 
-> Replace `user`, `password`, and `student_db` with your PostgreSQL credentials.
-> Create the database manually or via command: `createdb student_db`
+> Update username, password, and database name as needed.
+> Create database manually or run: `createdb student_db`
 
-***
+---
 
 ### 5️⃣ Run Database Migrations
 
@@ -82,166 +113,148 @@ NEXT_PUBLIC_API_BASE_URL="http://localhost:3000/api"
 npx prisma migrate dev --name init
 ```
 
+(Optional) Seed or inspect database using:
 
-***
+```bash
+npx prisma studio
+```
 
-### 6️⃣ Start the Development Server
+---
+
+### 6️⃣ Launch Dev Server
 
 ```bash
 npm run dev
 ```
 
-Visit the app at: [http://localhost:3000](http://localhost:3000)
+Application runs at:
+[http://localhost:3000](http://localhost:3000)
 
-***
+---
 
 ## 📂 Project Structure
 
 ```
 student-management-system/
-├── .env                     # Environment variables
-├── .gitignore               # Git ignore rules
-├── next.config.ts           # Next.js config
-├── package.json             # NPM scripts and packages
+├── .env
+├── package.json
 ├── prisma/
-│   ├── schema.prisma        # Prisma DB schema
-│   └── migrations/          # Migration history
+│   ├── schema.prisma
+│   └── migrations/
 ├── src/
-│   ├── api/                 # API routes
-│   ├── app/                 # Pages and routing
-│   │   ├── fees/
-│   │   │   ├── page.tsx
-│   │   │   ├── fee_ledger/
-│   │   │   │   ├── page.tsx
-│   │   │   ├── [id]/
-│   │   │   │   ├── page.tsx
+│   ├── api/
+│   ├── app/
 │   │   ├── students/
+│   │   ├── fees/
+│   │   │   ├── fee_ledger/
+│   │   │   └── [id]/
 │   │   ├── teachers/
 │   │   ├── reports/
 │   ├── components/
-│   │   ├── FormContainer.tsx
-│   │   ├── FormModal.tsx
 │   ├── config/
 │   ├── lib/
 │   ├── styles/
 ```
 
+---
 
-***
+## 📈 Modules & Screens
 
-## 📈 Fee Management \& Reports
+* **🧾 Fee Ledger** — `/fees/fee_ledger`
+* **💳 Student Fees** — `/fees/[id]`
+* **📝 Reports Dashboard** — `/reports`
+* **🎓 Students** — `/students`
+* **👩‍🏫 Teachers** — `/teachers`
 
-- **🧾 Fee Ledger**: `/fees/fee_ledger` – View all student fee transactions
-- **💳 Individual Fees**: `/fees/[id]` – View fee status for a specific student
-- **📄 Reports**: `/reports` – Generate reports (Academic, Attendance, Fee)
-
-***
+---
 
 ## 📸 Screenshots
 
-<!-- Example markdown image links; replace with your own repo images -->
+Add screenshots under:
 
-### 🖥 Admin Dashboard
-
-### 🧑‍🎓 Student List
-
-### 💰 Fee Ledger
-
-> **Note**: Screenshots are hosted on GitHub. For public visibility, ensure they are shared in a public repository or static image host.
-
-***
-
-## 💡 Troubleshooting
-
-### ❌ `npm: command not found`
-
-- Ensure Node.js is installed
-- Check with `node -v` and `npm -v`
-
-
-### ❌ Database connection failed
-
-- Check if PostgreSQL is running
-- Confirm `.env` credentials are correct
-- Run: `pg_isready` to check PostgreSQL status
-
-***
-
-## 🏆 Contributing
-
-We welcome contributions!
-Follow these steps:
-
-```bash
-# Fork and clone the repository
-git checkout -b feature/your-feature-name
-# Make changes and commit
-git commit -m "Your descriptive message"
-# Push to your fork and submit a PR
+```
+/public/screenshots
 ```
 
-Refer to `CONTRIBUTING.md` for full guidelines.
+Then reference using:
 
-***
+```md
+![Dashboard](./public/screenshots/dashboard.png)
+```
+
+---
+
+## ❗ Troubleshooting
+
+### Missing Node or npm
+
+```bash
+node -v
+npm -v
+```
+
+Reinstall Node if required.
+
+### Database Connection Errors
+
+* PostgreSQL services must be running
+* Check `.env` configuration
+* Use:
+
+```bash
+pg_isready
+```
+
+---
+
+## 🤝 Contributing
+
+```bash
+git checkout -b feature/my-feature
+git commit -m "Add: New feature"
+git push origin feature/my-feature
+```
+
+Submit a pull request anytime.
+
+---
 
 ## 📜 License
 
-This project is licensed under the **MIT License**.
-See the [LICENSE](./LICENSE) file for details.
+Released under the **MIT License**.
+See `LICENSE` for terms.
 
-***
+---
 
 ## 📧 Contact
 
-- GitHub: [@harikiranadangi](https://github.com/harikiranadangi)
-- Email: `harikiranadangi@example.com` (replace with your actual email)
+* GitHub: **@harikiranadangi**
+* Organization: **Kotak Salesian School**
+* Email (optional): *replace-email-here*
 
-***
-
-## 🤝 Acknowledgments
-
-- **Next.js** – Frontend framework
-- **Prisma** – Database ORM
-- **PostgreSQL** – Relational database
-- **Tailwind CSS** – Styling
-
-***
+---
 
 ## 🚀 Deployment Options
 
-Ready for deployment on:
+* **Vercel** (Recommended)
+* **Railway**
+* **DigitalOcean**
+* **Self-hosted VPS**
 
-- **Vercel** – [Vercel Docs](https://vercel.com/docs)
-- **Railway** – [Railway Docs](https://docs.railway.app/)
-- **Digital Ocean** – [Node.js Guide](https://www.digitalocean.com/community/tags/nodejs)
-✅ Make sure to set production `.env` values and use a hosted PostgreSQL instance.
+> Use a hosted PostgreSQL instance + production `.env` secrets.
 
-***
+---
 
-> 🔧 **Developed by Harikiran | Kotak Salesian School**
-<span style="display:none">[^1][^10][^3][^4][^5][^6][^7][^8][^9]</span>
+### 🏁 Built & Maintained By
 
-<div style="text-align: center">⁂</div>
+**Harikiran | Kotak Salesian School**
 
-[^1]: https://datamanagement.hms.harvard.edu/collect-analyze/documentation-metadata/readme-files
+---
 
-[^2]: https://dev.to/zand/a-comprehensive-and-user-friendly-project-readmemd-template-2ei8
+If you want:
 
-[^3]: https://ubc-library-rc.github.io/rdm/content/03_create_readme.html
+* Badges (build passing, license, version)
+* Architecture diagrams
+* Animated demo (GIF)
 
-[^4]: https://www.staff.lu.se/research-and-education/research-support/support-research-process/research-data-management/store-and-organise/document-datasets-readme-file
-
-[^5]: https://www.scribd.com/document/470762513/STUDENT-MANAGEMENT-SYSTEM-PROJECT-REPORT-docx
-
-[^6]: https://www.lib.montana.edu/services/data/toolkit/readme/
-
-[^7]: https://www.library.gatech.edu/repository-metadata
-
-[^8]: https://www.pupilfirst.school/targets/18966
-
-[^9]: https://gne9.gndec.ac.in/2115062/student-stayhub/-/blob/9152c3513bb4671bcb8ab5a5f3354b94f959bbb5/README.md
-
-[^10]: https://www.universiteitleiden.nl/binaries/content/assets/sociale-wetenschappen/psychologie/instituutsbureau/data-steward/readme-example.docx
-
-[^11]: https://github.com/harikiranadangi/student-management-system
-
+Tell me and I’ll generate them.
