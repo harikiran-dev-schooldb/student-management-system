@@ -166,22 +166,6 @@ student-management-system/
 
 ---
 
-## 📸 Screenshots
-
-Add screenshots under:
-
-```
-/public/screenshots
-```
-
-Then reference using:
-
-```md
-![Dashboard](./public/screenshots/dashboard.png)
-```
-
----
-
 ## ❗ Troubleshooting
 
 ### Missing Node or npm
