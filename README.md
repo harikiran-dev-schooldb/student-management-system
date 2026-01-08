@@ -2,8 +2,6 @@
 
 # 🎓 Student Management System
 
-# 🎓 Student Management System
-
 ![Status](https://img.shields.io/badge/Status-Active-brightgreen)
 ![License](https://img.shields.io/github/license/harikiran-dev-schooldb/student-management-system)
 ![Repo Size](https://img.shields.io/github/repo-size/harikiran-dev-schooldb/student-management-system)
@@ -61,7 +59,7 @@ Ideal for **schools, colleges, coaching centers**, and **training institutions**
 | API / Backend | Next.js API Routes + Prisma ORM          |
 | Database      | PostgreSQL                               |
 | Auth          | Clerk, NextAuth, or custom               |
-| Deployment    | Vercel, Railway, or DigitalOcean         |
+| Deployment    | Vercel |
 
 ---
 
@@ -247,14 +245,4 @@ See `LICENSE` for terms.
 
 ### 🏁 Built & Maintained By
 
-**Harikiran | Kotak Salesian School**
-
----
-
-If you want:
-
-* Badges (build passing, license, version)
-* Architecture diagrams
-* Animated demo (GIF)
-
-Tell me and I’ll generate them.
+**Harikiran**
