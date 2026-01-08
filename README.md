@@ -210,9 +210,9 @@ See `LICENSE` for terms.
 
 ## 📧 Contact
 
-* GitHub: **@harikiranadangi**
+* GitHub: **@harikiran-dev-schooldb**
 * Organization: **Kotak Salesian School**
-* Email (optional): *replace-email-here*
+* Email (optional): *harikiran-dev-schooldb@gmail.com*
 
 ---
 
