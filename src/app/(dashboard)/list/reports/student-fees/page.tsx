@@ -3,14 +3,6 @@ export const dynamic = "force-dynamic";
 import React from "react";
 import Image from "next/image";
 import { Prisma } from "@prisma/client";
-import {
-  Search,
-  Filter,
-  Download,
-  ArrowUpDown,
-  User,
-  MoreHorizontal,
-} from "lucide-react";
 
 import DownloadExcelButton from "@/components/DownloadExcelButton";
 import ClassFilterDropdown, {

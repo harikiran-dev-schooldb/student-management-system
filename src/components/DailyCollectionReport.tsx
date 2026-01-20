@@ -217,7 +217,7 @@ export default function DailyCollectionReport() {
         <button
           onClick={downloadExcel}
           disabled={transactions.length === 0}
-          className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+          className="flex items-center gap-2 px-4 py-2 bg-LamaBlue dark:bg-LamaBLue text-white rounded-lg hover:bg-LamaBLue disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
         >
           <Download size={16} />
           Export Excel
