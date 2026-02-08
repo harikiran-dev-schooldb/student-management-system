@@ -8,25 +8,24 @@ datasource db {
 }
 
 model SchoolInfo {
-  id          String   @id @default(cuid())
-  schoolId    String?   @unique
-  name        String
-  address     String
-  phone       String?
-  email       String?
-  website     String?
-  logo        String?  // URL to image
-  
+  id       String  @id @default(cuid())
+  schoolId String? @unique
+  name     String
+  address  String
+  phone    String?
+  email    String?
+  website  String?
+  logo     String? // URL to image
+
   // Printing Configuration
-  taxId         String?  // GST/PAN/Registration No
-  receiptHeader String?  // e.g., "Affiliated to CBSE..."
-  receiptFooter String?  // e.g., "Fees once paid are non-refundable"
+  taxId         String? // GST/PAN/Registration No
+  receiptHeader String? // e.g., "Affiliated to CBSE..."
+  receiptFooter String? // e.g., "Fees once paid are non-refundable"
 
-  admin   Admin[]
+  admin Admin[]
 
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Admin {
@@ -48,16 +47,12 @@ model Admin {
   // Relations
   profile   Profile? @relation(fields: [profileId], references: [id])
   profileId String?
-  
+
   school   SchoolInfo? @relation(fields: [schoolId], references: [id])
   schoolId String?
 
-
-
   linkedUser   LinkedUser? @relation(fields: [linkedUserId], references: [id])
   linkedUserId String?     @unique
-
-
 
   @@index([username, email, phone])
 }
@@ -130,27 +125,14 @@ model Announcement {
 
 model Messages {
   id        String      @id @default(cuid())
-  title     String?     // 🆕 Optional title (e.g., "Fee Due Warning")
-  message   String      // The body text
+  message   String
   type      MessageType
-  
-  isRead    Boolean     @default(false) // 🆕 Tracks if user saw it
-  data      Json?       // 🆕 Stores metadata for App Navigation
-  date      DateTime    @default(now())
-
-  // Relationships
-  classId   Int?
   studentId String?
-  teacherId String?     // 🆕 Added so teachers can get notifications too
 
-  Class     Class?      @relation(fields: [classId], references: [id])
-  Student   Student?    @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  Teacher   Teacher?    @relation(fields: [teacherId], references: [id], onDelete: Cascade)
-
-  // Indexes for fast loading of notification lists
-  @@index([studentId, isRead]) 
-  @@index([teacherId, isRead])
-  @@index([classId])
+  date    DateTime @default(now())
+  classId Int?
+  Class   Class?   @relation(fields: [classId], references: [id])
+  Student Student? @relation(fields: [studentId], references: [id], onDelete: Cascade)
 }
 
 model Event {
@@ -310,7 +292,6 @@ model Teacher {
   // Cross-user mapping
   linkedUserId String?     @unique
   linkedUser   LinkedUser? @relation(fields: [linkedUserId], references: [id])
-  messages    Messages[]
 
   /**
    * ─────────────────────────────
@@ -500,15 +481,15 @@ model LinkedUser {
 }
 
 model FeePayment {
-  id              Int      @id @default(autoincrement())
-  amount          Float
-  paymentDate     DateTime @default(now())
-  status          String   @default("PENDING") // SUCCESS, FAILED
-  transactionId   String?  // Razorpay Payment ID
-  orderId         String?  // Razorpay Order ID
-  
-  studentId       String
-  student         Student  @relation(fields: [studentId], references: [id])
+  id            Int      @id @default(autoincrement())
+  amount        Float
+  paymentDate   DateTime @default(now())
+  status        String   @default("PENDING") // SUCCESS, FAILED
+  transactionId String? // Razorpay Payment ID
+  orderId       String? // Razorpay Order ID
+
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id])
 }
 
 enum LessonDay {
@@ -551,9 +532,9 @@ enum MessageType {
   ANNOUNCEMENT
   GENERAL
   FEE_COLLECTION
-  HOMEWORK      
-  EXAM_RESULT   
-  EVENT         
+  HOMEWORK
+  EXAM_RESULT
+  EVENT
 }
 
 enum LeaveType {

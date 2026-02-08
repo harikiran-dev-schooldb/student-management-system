@@ -202,7 +202,6 @@ export type ResultSchema = z.infer<typeof resultschema>;
 
 // * Message Schema
 export const messageSchema = z.object({
-  title: z.string().min(1, "Title is required"), // 🆕 Added Title
   message: z.string().min(1, "Message cannot be empty"),
   type: z.enum([
     "ABSENT", "FEE_RELATED", "ANNOUNCEMENT", "GENERAL", 
