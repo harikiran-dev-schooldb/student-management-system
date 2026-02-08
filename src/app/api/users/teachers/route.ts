@@ -198,7 +198,7 @@ export async function GET(req: Request) {
     const classId = searchParams.get("classId");
     const gender = searchParams.get("gender");
 
-    let whereClause: any = {};
+    const whereClause: any = {};
 
     // 🎯 Filter by ID
     if (id) {

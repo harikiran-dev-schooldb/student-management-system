@@ -83,8 +83,8 @@ const ExamsList = async ({
     ? params.teacherId[0]
     : params.teacherId;
 
-  let query: Prisma.ExamWhereInput = {};
-  let examGradeSubjectsWhere: Prisma.ExamGradeSubjectWhereInput = {};
+  const query: Prisma.ExamWhereInput = {};
+  const examGradeSubjectsWhere: Prisma.ExamGradeSubjectWhereInput = {};
 
   // Teacher restriction
   if (role === "teacher" && teacherId) {

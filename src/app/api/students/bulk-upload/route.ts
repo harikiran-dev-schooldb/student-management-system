@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
     let created = 0;
     let updated = 0;
     let feesMapped = 0;
-    let clerkCreated = 0;
+    const clerkCreated = 0;
     const errors: string[] = [];
 
     const client = await clerkClient();

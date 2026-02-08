@@ -122,7 +122,7 @@ export default function ResultsViewer() {
         return;
       }
 
-      let params: any = { examId: selectedExamId };
+      const params: any = { examId: selectedExamId };
 
       if (role === "student") params.studentId = studentId;
       else if (role === "teacher") {

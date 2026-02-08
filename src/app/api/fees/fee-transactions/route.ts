@@ -7,7 +7,7 @@ export async function GET(request: Request) {
     const from = url.searchParams.get("from");
     const to = url.searchParams.get("to");
 
-    let whereConditions: any = {};
+    const whereConditions: any = {};
 
     if (receiptDate) {
       // Single date filter

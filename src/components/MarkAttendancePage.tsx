@@ -103,7 +103,7 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
       setCurrentPage(1); // Reset to page 1
 
       // Load History
-      let existingMap: Record<string, boolean> = {};
+      const existingMap: Record<string, boolean> = {};
       let hasHistory = false;
 
       if (queryClassId) {
