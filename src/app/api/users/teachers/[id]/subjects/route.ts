@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import prisma from "@/lib/prisma";
+
 
 // GET: Fetch all subjects/classes assigned to this teacher
 export async function GET(

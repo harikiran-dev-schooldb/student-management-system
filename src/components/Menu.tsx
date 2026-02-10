@@ -158,7 +158,7 @@ const menuSections: MenuSection[] = [
         label: "Subjects",
         href: "/list/subjects",
         icon: Layers,
-        visible: ["admin"],
+        visible: ["admin", "teacher", "student"],
       },
       {
         label: "Classes",

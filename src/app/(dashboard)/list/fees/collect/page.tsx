@@ -98,7 +98,7 @@ const renderRow = (
       </td>
 
       <td className="p-2">
-        {(role === "admin" || role === "teacher") && (
+        {(role === "admin") && (
           <div className="flex items-center gap-2">
             {/* Collect Fees Button */}
             <Link href={`/list/fees/collect/${item.id}`}>

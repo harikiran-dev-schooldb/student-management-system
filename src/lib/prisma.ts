@@ -3,37 +3,32 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 
 /* --------------------------------------------------
-   PostgreSQL Pool (Neon)
+   Environment
 -------------------------------------------------- */
 const isProd = process.env.NODE_ENV === "production";
 
+/* --------------------------------------------------
+   PostgreSQL Pool (Neon / Local)
+-------------------------------------------------- */
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   max: 5,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,
-  ssl: isProd
-    ? { rejectUnauthorized: false } // Neon (Vercel)
-    : false, // Local Postgres
+  ssl: isProd ? { rejectUnauthorized: false } : false,
 });
 
 const adapter = new PrismaPg(pool);
 
 /* --------------------------------------------------
-   Base Prisma Client (ONLY PrismaClient)
+   Base Prisma Client (NO EXTENSIONS)
 -------------------------------------------------- */
-
 const createBasePrismaClient = () =>
   new PrismaClient({
     adapter,
-    log:
-      process.env.NODE_ENV === "production"
-        ? [
-            { level: "query", emit: "event" },
-            { level: "error", emit: "stdout" },
-            { level: "warn", emit: "stdout" },
-          ]
-        : [{ level: "error", emit: "stdout" }],
+    log: isProd
+      ? [{ level: "error", emit: "stdout" }]
+      : [{ level: "query", emit: "event" }],
   });
 
 type BasePrisma = PrismaClient;
@@ -41,7 +36,6 @@ type BasePrisma = PrismaClient;
 /* --------------------------------------------------
    Prisma Extensions
 -------------------------------------------------- */
-
 const extendPrisma = (base: BasePrisma) =>
   base.$extends({
     query: {
@@ -60,19 +54,7 @@ const extendPrisma = (base: BasePrisma) =>
             });
 
             if (grade?.level) {
-              const name = `${grade.level} - ${data.section}`;
-              data.name = name;
-
-              const exists = await base.class.findFirst({
-                where: {
-                  gradeId: data.gradeId,
-                  section: data.section,
-                },
-              });
-
-              if (exists) {
-                throw new Error(`Class "${name}" already exists.`);
-              }
+              data.name = `${grade.level} - ${data.section}`;
             }
           }
 
@@ -86,40 +68,24 @@ const extendPrisma = (base: BasePrisma) =>
             name?: string;
           };
 
-          let { gradeId, section } = data;
-
-          if (!gradeId || !section) {
+          if (data.gradeId || data.section) {
             const current = await base.class.findUnique({
               where: args.where as any,
               select: { gradeId: true, section: true },
             });
 
-            gradeId ??= current?.gradeId;
-            section ??= current?.section;
-          }
+            const gradeId = data.gradeId ?? current?.gradeId;
+            const section = data.section ?? current?.section;
 
-          if (gradeId && section) {
-            const grade = await base.grade.findUnique({
-              where: { id: gradeId },
-              select: { level: true },
-            });
-
-            if (grade?.level) {
-              const name = `${grade.level} - ${section}`;
-
-              const duplicate = await base.class.findFirst({
-                where: {
-                  gradeId,
-                  section,
-                  NOT: args.where,
-                },
+            if (gradeId && section) {
+              const grade = await base.grade.findUnique({
+                where: { id: gradeId },
+                select: { level: true },
               });
 
-              if (duplicate) {
-                throw new Error(`Class "${name}" already exists.`);
+              if (grade?.level) {
+                data.name = `${grade.level} - ${section}`;
               }
-
-              data.name = name;
             }
           }
 
@@ -132,38 +98,35 @@ const extendPrisma = (base: BasePrisma) =>
 type ExtendedPrisma = ReturnType<typeof extendPrisma>;
 
 /* --------------------------------------------------
-   Global singletons (TYPE SAFE)
+   Global Singleton (Type-Safe)
 -------------------------------------------------- */
-
 declare global {
   // eslint-disable-next-line no-var
   var prismaBase: BasePrisma | undefined;
 
   // eslint-disable-next-line no-var
-  var prisma: ExtendedPrisma;
+  var prisma: ExtendedPrisma | undefined;
 }
 
 /* --------------------------------------------------
    Instantiate
 -------------------------------------------------- */
-
 const base = globalThis.prismaBase ?? createBasePrismaClient();
 
-if (process.env.NODE_ENV !== "production") {
+if (!isProd) {
   globalThis.prismaBase = base;
 }
 
-const prisma: ExtendedPrisma = globalThis.prisma ?? extendPrisma(base);
+const prisma = globalThis.prisma ?? extendPrisma(base);
 
-if (process.env.NODE_ENV !== "production") {
+if (!isProd) {
   globalThis.prisma = prisma;
 }
 
 /* --------------------------------------------------
-   Slow query logging (BASE ONLY)
+   Optional Slow Query Logging (ENV-CONTROLLED)
 -------------------------------------------------- */
-
-if (process.env.NODE_ENV === "production") {
+if (process.env.LOG_SLOW_QUERIES === "true") {
   (
     base.$on as unknown as (
       event: "query",

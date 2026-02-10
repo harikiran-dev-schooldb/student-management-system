@@ -34,9 +34,7 @@ const TeacherPage = async () => {
     redirect("/admin");
   }
 
-  if (role === "student") {
-    redirect("/student");
-  }
+  
 
   // 🔒 Only teacher is allowed beyond this point
   if (role !== "teacher" || !teacherId) {

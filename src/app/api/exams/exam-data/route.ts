@@ -1,89 +1,144 @@
-import prisma from '@/lib/prisma';
-import { NextResponse } from 'next/server';
+import prisma from "@/lib/prisma";
+import { NextResponse } from "next/server";
 
-export const dynamic = 'force-dynamic'; // Ensure this doesn't get cached statically
+export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const examTitle = searchParams.get('examTitle');
-    const gradeId = Number(searchParams.get('gradeId'));
-    const classId = Number(searchParams.get('classId'));
 
-    if (!examTitle || !gradeId || !classId) {
-      return NextResponse.json({ error: 'Missing parameters' }, { status: 400 });
+    const examTitle = searchParams.get("examTitle");
+    const classIdParam = searchParams.get("classId");
+
+    if (!examTitle || !classIdParam) {
+      return NextResponse.json(
+        { error: "examTitle and classId are required" },
+        { status: 400 }
+      );
     }
 
-    // 1. Get the Exam ID from the title
-    const exam = await prisma.exam.findFirst({
+    const classId = Number(classIdParam);
+    if (Number.isNaN(classId)) {
+      return NextResponse.json({ error: "Invalid classId" }, { status: 400 });
+    }
+
+    /* ─────────────────────────────
+       1️⃣ Resolve CLASS → GRADE
+    ───────────────────────────── */
+    const cls = await prisma.class.findUnique({
+      where: { id: classId },
+      select: { id: true, gradeId: true },
+    });
+
+    if (!cls?.gradeId) {
+      return NextResponse.json(
+        { error: "Class not found or grade missing" },
+        { status: 404 }
+      );
+    }
+
+    const gradeId = cls.gradeId;
+
+    /* ─────────────────────────────
+       2️⃣ Resolve EXAM by title
+    ───────────────────────────── */
+    const exam = await prisma.exam.findUnique({
       where: { title: examTitle },
     });
 
     if (!exam) {
-      return NextResponse.json({ error: 'Exam not found' }, { status: 404 });
+      return NextResponse.json({ error: "Exam not found" }, { status: 404 });
     }
 
-    // 2. Fetch Subjects for this Grade
-    const subjects = await prisma.subject.findMany({
+    /* ─────────────────────────────
+       3️⃣ ExamGradeSubject (REAL exam data)
+    ───────────────────────────── */
+    const examGradeSubjects = await prisma.examGradeSubject.findMany({
       where: {
-        grades: { some: { id: gradeId } },
+        examId: exam.id,
+        gradeId: gradeId,
       },
-      select: { id: true, name: true },
+      include: {
+        Subject: {
+          select: { id: true, name: true },
+        },
+      },
+      orderBy: {
+        Subject: { name: "asc" },
+      },
     });
 
-    // 3. Fetch Students in this Class AND their results for this specific exam
-    // This is the most efficient way: get students and join their results in one query
+    if (examGradeSubjects.length === 0) {
+      return NextResponse.json(
+        { error: "Exam not configured for this grade" },
+        { status: 404 }
+      );
+    }
+
+    /* ─────────────────────────────
+       4️⃣ Subjects + maxMarks
+    ───────────────────────────── */
+    const subjects = examGradeSubjects.map((egs) => ({
+      id: egs.Subject.id,
+      name: egs.Subject.name,
+      maxMarks: egs.maxMarks,
+    }));
+
+    /* ─────────────────────────────
+       5️⃣ Students + existing results
+    ───────────────────────────── */
     const students = await prisma.student.findMany({
-      where: {
-        classId: classId,
-        // Optional: Ensure student belongs to grade if your schema requires it
-        // gradeId: gradeId 
-      },
+      where: { classId },
       select: {
         id: true,
         name: true,
         results: {
-          where: {
-            examId: exam.id, // Only fetch results for THIS exam
-          },
+          where: { examId: exam.id },
           select: {
             marks: true,
-            Subject: { select: { name: true } },
+            subjectId: true,
           },
         },
       },
-      orderBy: { name: 'asc' }, // Sort alphabetically
+      orderBy: { name: "asc" },
     });
 
-    // 4. Transform Data for the Frontend
-    // We need to convert the nested Prisma result into the "Marks Map" format the UI expects:
-    // { "student_123": { "Math": "95", "English": "88" } }
-    
+    /* ─────────────────────────────
+       6️⃣ Transform existing marks
+    ───────────────────────────── */
     const existingMarks: Record<string, Record<string, string>> = {};
 
-    students.forEach((student) => {
-      const studentMarks: Record<string, string> = {};
-      
-      student.results.forEach((result) => {
-        if (result.Subject?.name) {
-          studentMarks[result.Subject.name] = String(result.marks);
+    for (const student of students) {
+      const marksMap: Record<string, string> = {};
+
+      for (const r of student.results) {
+        const subj = subjects.find((s) => s.id === r.subjectId);
+        if (subj) {
+          marksMap[subj.name] = String(r.marks);
         }
-      });
-
-      if (Object.keys(studentMarks).length > 0) {
-        existingMarks[student.id] = studentMarks;
       }
-    });
 
+      if (Object.keys(marksMap).length > 0) {
+        existingMarks[student.id] = marksMap;
+      }
+    }
+
+    /* ─────────────────────────────
+       7️⃣ Response
+    ───────────────────────────── */
     return NextResponse.json({
       examId: exam.id,
+      gradeId,
+      classId,
       subjects,
-      students: students.map(s => ({ id: s.id, name: s.name })), // Send clean student list
+      students: students.map((s) => ({ id: s.id, name: s.name })),
       existingMarks,
     });
-
   } catch (error) {
-    console.error('Error fetching exam data:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    console.error("❌ exam-data error:", error);
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 }
+    );
   }
 }

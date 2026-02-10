@@ -34,9 +34,11 @@ const renderRow = (item: SubjectListType, role: string | null) => {
       <td className=" items-center gap-4 p-4 text-black dark:text-white">
         {item.name}
       </td>
-      <td className="hidden md:table-cell text-black dark:text-white">
-        {gradeLevels}
-      </td>
+      {role === "admin" && (
+        <td className="hidden md:table-cell text-black dark:text-white">
+          {gradeLevels}
+        </td>
+      )}
       <td>
         <div className="flex items-center gap-2">
           {role === "admin" && (
@@ -54,7 +56,15 @@ const renderRow = (item: SubjectListType, role: string | null) => {
 const getColumns = (role: string | null) => [
   { header: "Id", accessor: "id" },
   { header: "Subject", accessor: "name" },
-  { header: "Grades", accessor: "grades", className: "hidden md:table-cell" },
+  ...(role === "admin"
+    ? [
+        {
+          header: "Grades",
+          accessor: "grades",
+          className: "hidden md:table-cell",
+        },
+      ]
+    : []),
   ...(role === "admin" ? [{ header: "Actions", accessor: "action" }] : []),
 ];
 
@@ -63,9 +73,11 @@ const SubjectList = async ({
 }: {
   searchParams: Promise<SearchParams>;
 }) => {
-  const { role, classId: user } = await fetchUserInfo();
+  const userInfo = await fetchUserInfo();
+  const { role, gradeId } = userInfo;
+
   const params = await searchParams;
-  const { page, gradeId, classId, ...queryParams } = params;
+  const { page, classId, ...queryParams } = params;
   const p = page ? (Array.isArray(page) ? page[0] : page) : "1";
 
   const columns = getColumns(role);
@@ -77,9 +89,31 @@ const SubjectList = async ({
 
   const query: Prisma.SubjectWhereInput = {};
 
-  if (gradeId) query.grades = { some: { id: Number(gradeId) } };
-  if (classId)
-    query.grades = { some: { classes: { some: { id: Number(classId) } } } };
+  // 🔒 Teacher / Student → ONLY their grade
+  if (role === "teacher" || role === "student") {
+    if (!gradeId) {
+      query.id = -1; // safety fallback
+    } else {
+      query.grades = {
+        some: { id: gradeId },
+      };
+    }
+  }
+
+  // 🧑‍💼 Admin → free filtering
+  if (role === "admin") {
+    if (params.gradeId && params.classId) {
+      query.grades = {
+        some: {
+          classes: { some: { id: Number(params.classId) } },
+        },
+      };
+    } else if (params.gradeId) {
+      query.grades = {
+        some: { id: Number(params.gradeId) },
+      };
+    }
+  }
 
   if (queryParams.search) {
     const searchValue = Array.isArray(queryParams.search)
@@ -102,10 +136,14 @@ const SubjectList = async ({
     ];
   }
 
-  const classes = await prisma.class.findMany({
-    where: gradeId ? { gradeId: Number(gradeId) } : {},
-  });
-  const grades = await prisma.grade.findMany();
+  const classes =
+    role === "admin"
+      ? await prisma.class.findMany({
+          where: params.gradeId ? { gradeId: Number(params.gradeId) } : {},
+        })
+      : [];
+
+  const grades = role === "admin" ? await prisma.grade.findMany() : [];
 
   const [data, count] = await prisma.$transaction([
     prisma.subject.findMany({
@@ -129,11 +167,13 @@ const SubjectList = async ({
           All Subjects ({count})
         </h1>
         <div className="flex flex-col items-center w-full gap-4 md:flex-row md:w-auto">
-          <ClassFilterDropdown
-            classes={classes}
-            grades={grades}
-            basePath="/list/subjects"
-          />
+          {role === "admin" && (
+            <ClassFilterDropdown
+              classes={classes}
+              grades={grades}
+              basePath="/list/subjects"
+            />
+          )}
           <div className="flex flex-col items-center w-full gap-4 md:flex-row md:w-auto">
             <TableSearch />
             <div className="flex items-center self-end gap-4">

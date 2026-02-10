@@ -45,6 +45,9 @@ export default function MarksEntryForm() {
   const [classes, setClasses] = useState<Class[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
+  const [role, setRole] = useState<"admin" | "teacher">("admin");
+  const [teacherClassId, setTeacherClassId] = useState<number>();
+  const [teacherGradeId, setTeacherGradeId] = useState<number>();
 
   // Selections
   const [selectedExamTitle, setSelectedExamTitle] = useState<string>("");
@@ -68,17 +71,30 @@ export default function MarksEntryForm() {
   useEffect(() => {
     const initFetch = async () => {
       try {
-        // Mock data loading (Replace with your actual API calls)
+        const userRes = await axios.get("/api/users/me");
+        const { role, classId, gradeId } = userRes.data;
+
+        setRole(role);
+
+        if (role === "teacher") {
+          setTeacherClassId(classId);
+          setTeacherGradeId(gradeId); // if your API provides it
+          setSelectedClassId(classId);
+          setSelectedGradeId(gradeId);
+        }
+
         const [examRes, gradeRes] = await Promise.all([
           axios.get("/api/exams").catch(() => ({ data: { exams: [] } })),
           axios.get("/api/grades").catch(() => ({ data: [] })),
         ]);
+
         setExams(examRes.data.exams || []);
         setGrades(gradeRes.data || []);
-      } catch (error) {
+      } catch {
         toast.error("Failed to load initial data");
       }
     };
+
     initFetch();
   }, []);
 
@@ -97,7 +113,11 @@ export default function MarksEntryForm() {
 
   // 3. Fetch Grid Data
   useEffect(() => {
-    if (!selectedExamTitle || !selectedGradeId || !selectedClassId) return;
+    if (!selectedExamTitle) return;
+
+    if (role === "admin" && (!selectedGradeId || !selectedClassId)) return;
+
+    if (role === "teacher" && !teacherClassId) return;
 
     const fetchExamData = async () => {
       setLoading(true);
@@ -105,9 +125,18 @@ export default function MarksEntryForm() {
         const res = await axios.get("/api/exams/exam-data", {
           params: {
             examTitle: selectedExamTitle,
-            gradeId: selectedGradeId,
-            classId: selectedClassId,
+            gradeId: role === "teacher" ? teacherGradeId : selectedGradeId,
+            classId: role === "teacher" ? teacherClassId : selectedClassId,
           },
+        });
+
+        console.log("EXAM PARAMS", {
+          role,
+          selectedExamTitle,
+          selectedGradeId,
+          selectedClassId,
+          teacherGradeId,
+          teacherClassId,
         });
 
         setSelectedExamId(res.data.examId);
@@ -136,14 +165,14 @@ export default function MarksEntryForm() {
   const handleMarkChange = (
     studentId: string,
     subjectName: string,
-    value: string
+    value: string,
   ) => {
     setMarksData((prev) =>
       prev.map((entry) =>
         entry.studentId === studentId
           ? { ...entry, marks: { ...entry.marks, [subjectName]: value } }
-          : entry
-      )
+          : entry,
+      ),
     );
     setHasUnsavedChanges(true);
   };
@@ -175,7 +204,7 @@ export default function MarksEntryForm() {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen().catch((e) => {
         console.error(
-          `Error attempting to enable fullscreen mode: ${e.message}`
+          `Error attempting to enable fullscreen mode: ${e.message}`,
         );
       });
       setIsFullScreen(true);
@@ -191,10 +220,11 @@ export default function MarksEntryForm() {
 
   return (
     <div
-      className={`flex flex-col bg-zinc-50 dark:bg-darkMode text-zinc-900 dark:text-zinc-100 transition-colors duration-300 ${isFullScreen
+      className={`flex flex-col bg-zinc-50 dark:bg-darkMode text-zinc-900 dark:text-zinc-100 transition-colors duration-300 ${
+        isFullScreen
           ? "h-screen w-screen overflow-hidden"
           : "min-h-screen w-full"
-        }`}
+      }`}
     >
       {/* Decorative Background Gradients */}
       <div className="fixed inset-0 pointer-events-none z-0">
@@ -239,18 +269,17 @@ export default function MarksEntryForm() {
             {/* NEW: Combined Actions & Stats Group */}
             {students.length > 0 && (
               <div className="flex items-center gap-4 pl-4 ml-1 border-l border-zinc-200 dark:border-zinc-800 animate-in fade-in slide-in-from-right-4 duration-500">
-
-
                 {/* Dynamic Save Button */}
                 <button
                   onClick={handleSubmit}
                   disabled={submitting || !hasUnsavedChanges}
                   className={`
           relative group flex items-center gap-2 px-5 py-2.5 rounded-lg font-medium text-sm transition-all duration-300
-          ${hasUnsavedChanges
-                      ? "bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:-translate-y-0.5 active:translate-y-0"
-                      : "bg-emerald-50 dark:bg-darkMode text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 cursor-default"
-                    }
+          ${
+            hasUnsavedChanges
+              ? "bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:-translate-y-0.5 active:translate-y-0"
+              : "bg-emerald-50 dark:bg-darkMode text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 cursor-default"
+          }
         `}
                 >
                   {submitting ? (
@@ -265,8 +294,8 @@ export default function MarksEntryForm() {
                     {submitting
                       ? "Saving..."
                       : hasUnsavedChanges
-                        ? "Save Changes"
-                        : "All Saved"}
+                      ? "Save Changes"
+                      : "All Saved"}
                   </span>
 
                   {/* Optional: Visual ping when there are unsaved changes */}
@@ -292,23 +321,31 @@ export default function MarksEntryForm() {
             placeholder="Select Exam"
             options={exams.map((e) => ({ value: e.title, label: e.title }))}
           />
-          <CustomSelect
-            label="Grade Level"
-            icon={<GraduationCap className="w-4 h-4" />}
-            value={selectedGradeId}
-            onChange={(val) => setSelectedGradeId(Number(val))}
-            placeholder="Select Grade"
-            options={grades.map((g) => ({ value: g.id, label: g.level }))}
-          />
-          <CustomSelect
-            label="Class Section"
-            icon={<Users className="w-4 h-4" />}
-            value={selectedClassId}
-            onChange={(val) => setSelectedClassId(Number(val))}
-            placeholder="Select Section"
-            disabled={!selectedGradeId}
-            options={classes.map((c) => ({ value: c.id, label: c.section }))}
-          />
+          {role === "admin" && (
+            <>
+              <CustomSelect
+                label="Grade Level"
+                icon={<GraduationCap className="w-4 h-4" />}
+                value={selectedGradeId}
+                onChange={(val) => setSelectedGradeId(Number(val))}
+                placeholder="Select Grade"
+                options={grades.map((g) => ({ value: g.id, label: g.level }))}
+              />
+
+              <CustomSelect
+                label="Class Section"
+                icon={<Users className="w-4 h-4" />}
+                value={selectedClassId}
+                onChange={(val) => setSelectedClassId(Number(val))}
+                placeholder="Select Section"
+                disabled={!selectedGradeId}
+                options={classes.map((c) => ({
+                  value: c.id,
+                  label: c.section,
+                }))}
+              />
+            </>
+          )}
         </div>
       </header>
 
@@ -398,7 +435,7 @@ function CustomSelect({
   }, []);
 
   const selectedLabel = options.find(
-    (o) => String(o.value) === String(value)
+    (o) => String(o.value) === String(value),
   )?.label;
 
   return (
@@ -413,18 +450,20 @@ function CustomSelect({
            bg-zinc-50 dark:bg-darkMode hover:bg-zinc-100 dark:hover:bg-zinc-800/50 
            border border-transparent hover:border-zinc-200 dark:hover:border-zinc-700
            rounded-xl cursor-pointer transition-all duration-200
-           ${isOpen ? "ring-2 ring-indigo-500/20 bg-white dark:bg-darkMode" : ""
-          }
+           ${
+             isOpen ? "ring-2 ring-indigo-500/20 bg-white dark:bg-darkMode" : ""
+           }
          `}
       >
         <div className="flex items-center gap-3 overflow-hidden">
           <div
             className={`
              p-2 rounded-lg transition-colors
-             ${value
-                ? "bg-indigo-100 dark:bg-darkMode text-indigo-600 dark:text-indigo-400"
-                : "bg-zinc-200 dark:bg-darkMode text-zinc-500"
-              }
+             ${
+               value
+                 ? "bg-indigo-100 dark:bg-darkMode text-indigo-600 dark:text-indigo-400"
+                 : "bg-zinc-200 dark:bg-darkMode text-zinc-500"
+             }
            `}
           >
             {icon}
@@ -434,16 +473,18 @@ function CustomSelect({
               {label}
             </span>
             <span
-              className={`text-sm font-semibold truncate ${value ? "text-zinc-900 dark:text-white" : "text-zinc-400"
-                }`}
+              className={`text-sm font-semibold truncate ${
+                value ? "text-zinc-900 dark:text-white" : "text-zinc-400"
+              }`}
             >
               {selectedLabel || placeholder}
             </span>
           </div>
         </div>
         <ChevronDown
-          className={`w-4 h-4 text-zinc-400 transition-transform duration-300 ${isOpen ? "rotate-180" : ""
-            }`}
+          className={`w-4 h-4 text-zinc-400 transition-transform duration-300 ${
+            isOpen ? "rotate-180" : ""
+          }`}
         />
       </div>
 
@@ -460,10 +501,11 @@ function CustomSelect({
                 }}
                 className={`
                    px-4 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-colors flex items-center justify-between
-                   ${String(value) === String(opt.value)
-                    ? "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300"
-                    : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-darkbg"
-                  }
+                   ${
+                     String(value) === String(opt.value)
+                       ? "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300"
+                       : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-darkbg"
+                   }
                  `}
               >
                 {opt.label}

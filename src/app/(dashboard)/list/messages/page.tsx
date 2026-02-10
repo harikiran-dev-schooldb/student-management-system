@@ -8,11 +8,11 @@ import TableSearch from "@/components/TableSearch";
 import SortButton from "@/components/SortButton";
 import { MessageList, SearchParams } from "../../../../../types";
 import ResetFiltersButton from "@/components/ResetFiltersButton";
-import { fetchUserInfo, getClassIdForRole } from "@/lib/utils/server-utils";
 import { MessagesSelect } from "../../../../../types/query-types";
 import ClassFilterDropdown from "@/components/FilterDropdown";
 import { Filter } from "lucide-react";
 import IconButton from "@/components/IconButton";
+import { fetchUserInfo } from "@/lib/utils/server-utils";
 
 const renderRow = (item: MessageList, role: string | null) => (
   <tr
@@ -125,7 +125,8 @@ const MessagesList = async ({
   const { page, ...queryParams } = params;
   const p = page ? (Array.isArray(page) ? page[0] : page) : "1";
 
-  const { role, userId, classId: teacherClassId } = await fetchUserInfo();
+  const userInfo = await fetchUserInfo();
+  const { role, userId, classId: teacherClassId, studentId } = userInfo;
 
   const columns = getColumns(role);
 
@@ -147,7 +148,12 @@ const MessagesList = async ({
     : queryParams.search;
 
   // Get user class(es)
-  const userClassId = await getClassIdForRole(role, userId);
+  const userClassIds =
+    role === "student" || role === "teacher"
+      ? teacherClassId
+        ? [teacherClassId]
+        : []
+      : [];
 
   const filterConditions: Prisma.MessagesWhereInput[] = [];
 
@@ -171,13 +177,27 @@ const MessagesList = async ({
   const roleFilter: Prisma.MessagesWhereInput = {};
   if (role === "student") {
     roleFilter.OR = [
-      { classId: { in: userClassId } },
-      { studentId: userId },
-      { classId: null, studentId: null },
+      // 1. Messages sent directly to the student
+      { studentId: userInfo.studentId },
+
+      // 2. Class announcements
+      {
+        classId: { in: userClassIds },
+        studentId: null,
+      },
+
+      // 3. School-wide announcements
+      {
+        classId: null,
+        studentId: null,
+      },
     ];
   } else if (role === "teacher") {
     roleFilter.OR = teacherClassId
-      ? [{ classId: teacherClassId }, { classId: null, studentId: null }]
+      ? [
+          { classId: teacherClassId }, // class messages
+          { classId: null, studentId: null }, // school-wide
+        ]
       : [{ classId: null, studentId: null }];
   }
 
