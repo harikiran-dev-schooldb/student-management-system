@@ -28,6 +28,7 @@ import {
   BarChart2,
   Edit,
   Settings,
+  Activity,
 } from "lucide-react";
 
 type Role = "admin" | "teacher" | "student";
@@ -196,6 +197,12 @@ const menuSections: MenuSection[] = [
             visible: ["admin", "teacher", "student"],
           },
         ],
+      },
+      {
+        label: "Students",
+        href: "/list/users/students/performance",
+        icon: Activity,
+        visible: ["admin"],
       },
       {
         label: "Import Data",
