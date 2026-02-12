@@ -200,7 +200,7 @@ const menuSections: MenuSection[] = [
       },
       {
         label: "Students",
-        href: "/list/users/students/performance",
+        href: "/student/performance",
         icon: Activity,
         visible: ["admin"],
       },
@@ -209,6 +209,12 @@ const menuSections: MenuSection[] = [
         icon: Upload,
         visible: ["admin"],
         dropdown: [
+          {
+            label: "Promote Students",
+            href: "/student/promote",
+            icon: School,
+            visible: ["admin"],
+          },
           {
             label: "Grades",
             href: "/list/reports/bulk-import/grades",

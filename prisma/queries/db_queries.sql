@@ -190,6 +190,7 @@ ORDER BY finished_at;
 SELECT * FROM "Student" WHERE "classId" = 43;
 SELECT * FROM "SchoolInfo";
 SELECT * FROM "Exam";
+SELECT * FROM "ExamGradeSubject";
 SELECT * FROM "Result";
 SELECT * FROM "Subject";
 

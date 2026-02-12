@@ -96,7 +96,6 @@ const ExamForm = ({
                     setExamsForDate(data.exams);
                 } else {
                     setExamsForDate([]);
-                    toast.error("No exams found for this date.");
                 }
             } catch (err) {
                 toast.error("Failed to fetch exams.");

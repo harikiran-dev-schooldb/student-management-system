@@ -70,21 +70,22 @@ model Grade {
 }
 
 model Class {
-  id              Int              @id @default(autoincrement())
-  name            String?
-  section         String // e.g., "A", "B"
-  supervisorId    String?          @unique
-  gradeId         Int
-  Announcement    Announcement[]
-  attendances     Attendance[]
-  events          Event[]
-  homeworks       Homework[]
-  lessons         Lesson[]
-  messages        Messages[]
-  students        Student[]
-  subjectTeachers SubjectTeacher[]
-  Grade           Grade            @relation(fields: [gradeId], references: [id], onDelete: Cascade)
-  Teacher         Teacher?         @relation("ClassToTeacher", fields: [supervisorId], references: [id])
+  id                 Int                 @id @default(autoincrement())
+  name               String?
+  section            String // e.g., "A", "B"
+  supervisorId       String?             @unique
+  gradeId            Int
+  Announcement       Announcement[]
+  attendances        Attendance[]
+  events             Event[]
+  homeworks          Homework[]
+  lessons            Lesson[]
+  messages           Messages[]
+  students           Student[]
+  subjectTeachers    SubjectTeacher[]
+  Grade              Grade               @relation(fields: [gradeId], references: [id], onDelete: Cascade)
+  Teacher            Teacher?            @relation("ClassToTeacher", fields: [supervisorId], references: [id])
+  studentEnrollments StudentEnrollment[]
 
   @@unique([gradeId, section], map: "Class_gradeId_section_key") // enforce uniqueness within grade
   @@index([gradeId], map: "Class_gradeId_idx")
@@ -241,6 +242,8 @@ model Student {
   linkedUser   LinkedUser? @relation(fields: [linkedUserId], references: [id])
 
   payments FeePayment[]
+
+  enrollments StudentEnrollment[]
 
   @@index([classId, gender, status])
   @@index([academicYear, classId, gender, status])
@@ -492,6 +495,21 @@ model FeePayment {
   student   Student @relation(fields: [studentId], references: [id])
 }
 
+model StudentEnrollment {
+  id             Int              @id @default(autoincrement())
+  studentId      String
+  classId        Int
+  academicYear   AcademicYear
+  status         EnrollmentStatus @default(ACTIVE)
+  promotedFromId Int?
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  class   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, academicYear])
+  @@index([academicYear, classId])
+}
+
 enum LessonDay {
   MONDAY
   TUESDAY
@@ -581,4 +599,11 @@ enum UserStatus {
   INACTIVE
   ON_LEAVE
   SUSPENDED
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  PROMOTED
+  REPEATED
+  TRANSFERRED
 }

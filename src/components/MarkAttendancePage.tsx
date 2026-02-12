@@ -18,7 +18,7 @@ import {
   Loader2,
   ChevronLeft,
   ChevronRight,
-  Command // Icon for Command/Ctrl visual
+  Command, // Icon for Command/Ctrl visual
 } from "lucide-react";
 
 interface Props {
@@ -34,15 +34,15 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
   const [grades, setGrades] = useState<Grade[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
-  
+
   // --- UI State ---
-  const [searchQuery, setSearchQuery] = useState(""); 
+  const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 50; 
-  
+  const itemsPerPage = 50;
+
   const [selectedGrade, setSelectedGrade] = useState<number | null>(null);
   const [selectedClass, setSelectedClass] = useState<number | null>(
-    role === "teacher" ? teacherClassId ?? null : null
+    role === "teacher" ? teacherClassId ?? null : null,
   );
 
   const [attendance, setAttendance] = useState<Record<string, boolean>>({});
@@ -57,28 +57,39 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Check for Ctrl+F or Cmd+F (Mac)
-      if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'F')) {
+      if ((e.ctrlKey || e.metaKey) && (e.key === "f" || e.key === "F")) {
         e.preventDefault(); // Stop browser's default "Find"
         searchInputRef.current?.focus(); // Focus our input
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
   /* -------------------- Load Grades/Classes -------------------- */
   useEffect(() => {
     if (role === "admin") {
-      fetch("/api/grades").then((r) => r.json()).then(setGrades);
+      fetch("/api/grades")
+        .then((r) => r.json())
+        .then(setGrades);
     }
   }, [role]);
 
   useEffect(() => {
     if (role === "admin" && selectedGrade) {
-      fetch(`/api/classes?gradeId=${selectedGrade}`).then((r) => r.json()).then(setClasses);
+      fetch(`/api/classes?gradeId=${selectedGrade}`)
+        .then((r) => r.json())
+        .then(setClasses);
     }
   }, [role, selectedGrade]);
+
+  /* -------------------- Auto Load for Teacher -------------------- */
+  useEffect(() => {
+    if (role === "teacher" && teacherClassId) {
+      fetchStudents();
+    }
+  }, [role, teacherClassId]);
 
   /* -------------------- Fetch Students -------------------- */
   const fetchStudents = async () => {
@@ -109,7 +120,7 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
       if (queryClassId) {
         try {
           const historyRes = await fetch(
-            `/api/attendance?date=${selectedDate}&classId=${queryClassId}`
+            `/api/attendance?date=${selectedDate}&classId=${queryClassId}`,
           );
           if (historyRes.ok) {
             const historyData = await historyRes.json();
@@ -127,17 +138,16 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
 
       const initialAttendance: Record<string, boolean> = {};
       studentsData.forEach((s: Student) => {
-        initialAttendance[s.id] = s.id in existingMap ? existingMap[s.id] : true;
+        initialAttendance[s.id] =
+          s.id in existingMap ? existingMap[s.id] : true;
       });
 
       setAttendance(initialAttendance);
 
-      const isEveryoneAbsent = Object.values(initialAttendance).every((val) => val === false);
+      const isEveryoneAbsent = Object.values(initialAttendance).every(
+        (val) => val === false,
+      );
       setAllAbsent(isEveryoneAbsent);
-
-      if (hasHistory) {
-        toast.info(`Loaded existing records for ${selectedDate}`);
-      }
     } catch (error) {
       console.error(error);
       toast.error("Failed to load students");
@@ -147,7 +157,7 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
   };
 
   /* -------------------- Filtering & Pagination -------------------- */
-  
+
   // 1. Filter Logic: Runs on the ENTIRE list first
   const filteredStudents = useMemo(() => {
     if (!searchQuery) return students;
@@ -155,7 +165,7 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
     return students.filter(
       (s) =>
         s.name.toLowerCase().includes(lowerQuery) ||
-        s.id.toString().includes(lowerQuery)
+        s.id.toString().includes(lowerQuery),
     );
   }, [students, searchQuery]);
 
@@ -166,7 +176,7 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
 
   // 3. Pagination Logic: Slices the FILTERED list
   const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
-  
+
   const visibleStudents = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
     return filteredStudents.slice(start, start + itemsPerPage);
@@ -175,7 +185,7 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
   const handlePageChange = (newPage: number) => {
     if (newPage >= 1 && newPage <= totalPages) {
       setCurrentPage(newPage);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
@@ -188,7 +198,7 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
     const updated: Record<string, boolean> = {};
     // Apply to ALL filtered students (so users don't have to mark page by page)
     filteredStudents.forEach((s) => (updated[s.id] = present));
-    
+
     // Merge with existing state to preserve other students' status
     setAttendance((prev) => ({ ...prev, ...updated }));
     setAllAbsent(!present);
@@ -307,55 +317,56 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
           )}
 
           {/* Load Button */}
-          <div className={role === "teacher" ? "lg:col-span-3" : ""}>
-            <label className="block text-xs font-semibold text-transparent mb-1.5 md:hidden sm:block">
-              Action
-            </label>
-            <button
-              type="button"
-              onClick={fetchStudents}
-              disabled={loading}
-              className={`w-full h-10 inline-flex items-center justify-center gap-2 rounded-lg font-medium text-white transition-all
-                ${
-                  loading
-                    ? "bg-slate-400 cursor-not-allowed"
-                    : "bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] shadow-sm"
-                }`}
-            >
-              {loading ? "Loading..." : "Load Students"}
-              {loading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Search className="w-4 h-4" />
-              )}
-            </button>
-          </div>
+          {/* Load Button (Admin Only) */}
+          {role === "admin" && (
+            <div>
+              <label className="block text-xs font-semibold text-transparent mb-1.5 md:hidden sm:block">
+                Action
+              </label>
+              <button
+                type="button"
+                onClick={fetchStudents}
+                disabled={loading}
+                className={`w-full h-10 inline-flex items-center justify-center gap-2 rounded-lg font-medium text-white transition-all
+        ${
+          loading
+            ? "bg-slate-400 cursor-not-allowed"
+            : "bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] shadow-sm"
+        }`}
+              >
+                {loading ? "Loading..." : "Load Students"}
+                {loading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Search className="w-4 h-4" />
+                )}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Main Content Area */}
       {students.length > 0 && (
         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          
           {/* Action Bar & Search */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-darkfg p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-            
             {/* Middle: Search Box with Ctrl+F */}
             <div className="relative w-full md:w-72 group">
-                <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400 group-focus-within:text-indigo-500 pointer-events-none transition-colors" />
-                <input 
-                    ref={searchInputRef}
-                    type="text"
-                    placeholder="Search name or ID..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className={`${inputClass} pl-9 h-9`}
-                />
-                <div className="absolute right-3 top-2.5 hidden sm:flex items-center gap-1 pointer-events-none">
-                    <kbd className="hidden sm:inline-flex h-5 items-center gap-1 rounded border bg-slate-100 dark:bg-slate-800 px-1.5 font-mono text-[10px] font-medium text-slate-500 dark:text-slate-400">
-                        <span className="text-xs">⌘</span>F
-                    </kbd>
-                </div>
+              <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400 group-focus-within:text-indigo-500 pointer-events-none transition-colors" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                placeholder="Search name or ID..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className={`${inputClass} pl-9 h-9`}
+              />
+              <div className="absolute right-3 top-2.5 hidden sm:flex items-center gap-1 pointer-events-none">
+                <kbd className="hidden sm:inline-flex h-5 items-center gap-1 rounded border bg-slate-100 dark:bg-slate-800 px-1.5 font-mono text-[10px] font-medium text-slate-500 dark:text-slate-400">
+                  <span className="text-xs">⌘</span>F
+                </kbd>
+              </div>
             </div>
 
             {/* Right: Actions */}
@@ -426,21 +437,35 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
                     </p>
                   </div>
 
-                  <div className={`absolute top-3 right-3 transition-transform duration-200 ${isPresent ? "scale-0 opacity-0" : "scale-100 opacity-100"}`}>
+                  <div
+                    className={`absolute top-3 right-3 transition-transform duration-200 ${
+                      isPresent ? "scale-0 opacity-0" : "scale-100 opacity-100"
+                    }`}
+                  >
                     <X className="w-5 h-5 text-rose-500" />
                   </div>
-                  <div className={`absolute top-3 right-3 transition-transform duration-200 ${!isPresent ? "scale-0 opacity-0" : "scale-100 opacity-100"}`}>
+                  <div
+                    className={`absolute top-3 right-3 transition-transform duration-200 ${
+                      !isPresent ? "scale-0 opacity-0" : "scale-100 opacity-100"
+                    }`}
+                  >
                     <Check className="w-5 h-5 text-slate-200 dark:text-slate-700 group-hover:text-emerald-500" />
                   </div>
-                  
-                  <div className={`absolute bottom-3 right-3 text-[10px] font-bold uppercase tracking-wider ${isPresent ? "text-slate-300 dark:text-slate-600 group-hover:text-emerald-600" : "text-rose-600 dark:text-rose-400"}`}>
+
+                  <div
+                    className={`absolute bottom-3 right-3 text-[10px] font-bold uppercase tracking-wider ${
+                      isPresent
+                        ? "text-slate-300 dark:text-slate-600 group-hover:text-emerald-600"
+                        : "text-rose-600 dark:text-rose-400"
+                    }`}
+                  >
                     {isPresent ? "Present" : "Absent"}
                   </div>
                 </button>
               );
             })}
           </div>
-          
+
           {/* Pagination Controls */}
           {totalPages > 1 && (
             <div className="flex items-center justify-center gap-4 py-4">
@@ -452,7 +477,7 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
-              
+
               <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
                 Page {currentPage} of {totalPages}
               </span>

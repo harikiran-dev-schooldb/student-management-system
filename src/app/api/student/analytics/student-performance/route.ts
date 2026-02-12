@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { fetchUserInfo } from "@/lib/utils/server-utils";
+import { NextResponse } from "next/server";
 
 /* ---------------- Utility ---------------- */
 
@@ -13,108 +14,157 @@ function calculateGrade(percentage: number) {
 
 /* ---------------- API Handler ---------------- */
 
-export async function GET(req: NextRequest) {
+export async function GET(req: Request) {
   try {
-    const { searchParams } = new URL(req.url);
-    const classId = searchParams.get("classId");
+    const url = new URL(req.url);
+    const classId = url.searchParams.get("classId");
+    const examId = url.searchParams.get("examId");
 
-    if (!classId) {
-      return NextResponse.json(
-        { error: "classId is required" },
-        { status: 400 }
-      );
+    const user = await fetchUserInfo();
+    if (!user.role)
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+
+    /* ---------------- Role-Based Filtering ---------------- */
+
+    let where: any = {};
+
+    if (user.role === "student") {
+      const myStudentId = user.students?.[0]?.studentId;
+
+      if (!myStudentId)
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+      where = {
+        studentId: myStudentId,
+      };
+    } else if (user.role === "teacher") {
+      const myClassId = user.classId;
+
+      if (!myClassId)
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+      where = {
+        Student: { is: { classId: myClassId } },
+      };
+    } else if (user.role === "admin") {
+      if (!classId)
+        return NextResponse.json(
+          { error: "classId required" },
+          { status: 400 },
+        );
+
+      where = {
+        Student: { is: { classId: Number(classId) } },
+      };
     }
 
-    /* ---------------- Fetch Students ---------------- */
+    /* ---------------- Fetch Results ---------------- */
 
-    const students = await prisma.student.findMany({
-      where: {
-        classId: Number(classId),
-        status: "ACTIVE",
-      },
+    const results = await prisma.result.findMany({
+      where,
       include: {
-        results: {
+        Student: {
           include: {
-            Subject: true,
-            Exam: true,
+            Class: { select: { gradeId: true } },
+            attendances: true,
           },
         },
-        attendances: true,
-      },
-      orderBy: {
-        name: "asc",
+        Subject: true,
+        Exam: true,
       },
     });
 
-    /* ---------------- Build Performance ---------------- */
+    if (!results.length) {
+      return NextResponse.json([]);
+    }
 
-    const response = students.map((student) => {
-      /* ---------- Attendance ---------- */
-      const totalDays = student.attendances.length;
-      const presentDays = student.attendances.filter(a => a.present).length;
+    /* ---------------- Fetch Max Marks ---------------- */
 
-      const attendancePercentage =
-        totalDays > 0 ? (presentDays / totalDays) * 100 : 0;
+    const triplets = results.map((r) => ({
+      examId: r.examId,
+      subjectId: r.subjectId,
+      gradeId: r.Student.Class.gradeId,
+    }));
 
-      /* ---------- Subject-wise Marks ---------- */
-      const subjectMap = new Map<
-        string,
-        { obtained: number; max: number }
-      >();
+    const examGradeSubjects = await prisma.examGradeSubject.findMany({
+      where: {
+        OR: triplets.map((t) => ({
+          examId: t.examId,
+          subjectId: t.subjectId,
+          gradeId: t.gradeId,
+        })),
+      },
+    });
 
-      student.results.forEach((r) => {
-        const subject = r.Subject.name;
+    const maxMarksMap = new Map<string, number>();
+    for (const egs of examGradeSubjects) {
+      const key = `${egs.examId}-${egs.subjectId}-${egs.gradeId}`;
+      maxMarksMap.set(key, egs.maxMarks);
+    }
 
-        if (!subjectMap.has(subject)) {
-          subjectMap.set(subject, { obtained: 0, max: 0 });
-        }
+    /* ---------------- Group By Student ---------------- */
 
-        subjectMap.get(subject)!.obtained += r.marks;
-        subjectMap.get(subject)!.max += 100; 
-        // 👆 If you want exact max marks, we can fetch ExamGradeSubject later
+    const studentMap = new Map<string, any>();
+
+    for (const r of results) {
+      const studentId = r.studentId;
+      const gradeId = r.Student.Class.gradeId;
+
+      const maxMarks =
+        maxMarksMap.get(`${r.examId}-${r.subjectId}-${gradeId}`) ?? 100;
+
+      if (!studentMap.has(studentId)) {
+        const totalDays = r.Student.attendances.length;
+        const presentDays = r.Student.attendances.filter(
+          (a) => a.present,
+        ).length;
+
+        studentMap.set(studentId, {
+          student: {
+            id: r.Student.id,
+            name: r.Student.name,
+            classId: r.Student.classId,
+          },
+          subjects: [],
+          totalObtained: 0,
+          totalMax: 0,
+          attendancePercentage:
+            totalDays > 0 ? (presentDays / totalDays) * 100 : 0,
+        });
+      }
+
+      const studentData = studentMap.get(studentId);
+
+      const percentage = (r.marks / maxMarks) * 100;
+
+      studentData.subjects.push({
+        subject: r.Subject.name,
+        obtained: r.marks,
+        max: maxMarks,
+        percentage,
       });
 
-      const subjects = Array.from(subjectMap.entries()).map(
-        ([subject, data]) => {
-          const percentage =
-            data.max > 0 ? (data.obtained / data.max) * 100 : 0;
+      studentData.totalObtained += r.marks;
+      studentData.totalMax += maxMarks;
+    }
 
-          return {
-            subject,
-            obtained: data.obtained,
-            max: data.max,
-            percentage,
-          };
-        }
-      );
+    /* ---------------- Final Response Build ---------------- */
 
-      /* ---------- Overall ---------- */
-      const totalObtained = subjects.reduce(
-        (sum, s) => sum + s.obtained,
-        0
-      );
-      const totalMax = subjects.reduce((sum, s) => sum + s.max, 0);
-
+    const response = Array.from(studentMap.values()).map((s) => {
       const overallPercentage =
-        totalMax > 0 ? (totalObtained / totalMax) * 100 : 0;
+        s.totalMax > 0 ? (s.totalObtained / s.totalMax) * 100 : 0;
 
       const grade = calculateGrade(overallPercentage);
 
-      /* ---------- Risk Logic ---------- */
-      const weakSubjects = subjects.filter(s => s.percentage < 50);
-      const atRisk =
-        overallPercentage < 50 || attendancePercentage < 65;
+      const atRisk = overallPercentage < 50 || s.attendancePercentage < 65;
 
       return {
-        student: {
-          id: student.id,
-          name: student.name,
-          classId: student.classId,
-        },
+        student: s.student,
         overallPercentage,
-        attendancePercentage,
+        attendancePercentage: s.attendancePercentage,
         grade,
-        subjects,
+        subjects: s.subjects,
         atRisk,
       };
     });
@@ -124,7 +174,7 @@ export async function GET(req: NextRequest) {
     console.error("Student Performance API Error:", error);
     return NextResponse.json(
       { error: "Internal Server Error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

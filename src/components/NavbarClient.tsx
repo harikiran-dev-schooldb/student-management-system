@@ -47,12 +47,12 @@ function Avatar({ img, name }: { img?: string | null; name: string }) {
   );
 }
 
-function IconButton({ 
-  icon: Icon, 
-  badge 
-}: { 
-  icon: React.ElementType; 
-  badge?: number 
+function IconButton({
+  icon: Icon,
+  badge,
+}: {
+  icon: React.ElementType;
+  badge?: number;
 }) {
   return (
     <button className="relative p-2 rounded-full text-slate-500 hover:bg-slate-100 hover:text-indigo-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-indigo-400 transition-all">
@@ -74,11 +74,18 @@ export default function NavbarClient({
   onToggleSidebar,
 }: NavbarClientProps) {
   const activeRole = roles.find((r) => r.username === activeUser?.username);
+  const dashboardLabel =
+    activeRole?.role === "admin"
+      ? "Admin Dashboard"
+      : activeRole?.role === "teacher"
+      ? "Teacher Dashboard"
+      : activeRole?.role === "student"
+      ? "Student Dashboard"
+      : "Dashboard";
 
   return (
     <nav className="sticky top-0 z-30 w-full bg-white/80 dark:bg-darkMode backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors duration-300">
       <div className="px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
-        
         {/* LEFT: Branding & Toggle */}
         <div className="flex items-center gap-4">
           {/* Mobile Toggle */}
@@ -90,30 +97,29 @@ export default function NavbarClient({
           </button> */}
 
           <div className="flex items-center gap-3">
-             <div className="relative w-8 h-8 sm:w-10 sm:h-10">
-               <Image
-                 src="/logo.png"
-                 alt="Logo"
-                 fill
-                 className="object-contain"
-               />
-             </div>
-             
-             {/* Text Branding - Visible on larger screens */}
-             <div className="hidden lg:flex flex-col -space-y-0.5">
-               <span className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">
-                 Kotak Salesian School
-               </span>
-               <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                 Admin Dashboard
-               </span>
-             </div>
+            <div className="relative w-8 h-8 sm:w-10 sm:h-10">
+              <Image
+                src="/logo.png"
+                alt="Logo"
+                fill
+                className="object-contain"
+              />
+            </div>
+
+            {/* Text Branding - Visible on larger screens */}
+            <div className="hidden lg:flex flex-col -space-y-0.5">
+              <span className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">
+                Kotak Salesian School
+              </span>
+              <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                {dashboardLabel}
+              </span>
+            </div>
           </div>
         </div>
 
         {/* RIGHT: Actions & User Profile */}
         <div className="flex items-center gap-1 sm:gap-2">
-          
           {/* Action Icons Group */}
           <div className="flex items-center pr-2 sm:pr-4 border-r border-slate-200 dark:border-slate-700/50 space-x-1">
             <IconButton icon={MessageSquare} />

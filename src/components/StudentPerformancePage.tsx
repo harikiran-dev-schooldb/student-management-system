@@ -73,6 +73,7 @@ export default function StudentPerformancePage({
     }
 
     const data = await fetch(url).then(r => r.json());
+    console.log(data);
     setStudents(data);
     setLoading(false);
   };
