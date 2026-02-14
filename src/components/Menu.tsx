@@ -7,6 +7,7 @@ import { useSidebar } from "@/components/context/SidebarContext";
 import Dropdown from "./Dropdown";
 import { useEffect, useState } from "react";
 import type { ElementType } from "react";
+import { useParams } from "next/navigation";
 
 import {
   Home,
@@ -299,6 +300,9 @@ const menuSections: MenuSection[] = [
 ];
 
 export default function Menu({ role }: { role: Role }) {
+  const params = useParams();
+  const schoolId = params.schoolId as string;
+
   const pathname = usePathname();
   const { t } = useTranslation();
   const { isOpen, toggle } = useSidebar();
@@ -339,10 +343,15 @@ export default function Menu({ role }: { role: Role }) {
               if (item.dropdown) {
                 const dropdownItems = item.dropdown
                   .filter((d) => d.visible.includes(role))
-                  .map((d) => ({
-                    ...d,
-                    href: typeof d.href === "function" ? d.href(role) : d.href!,
-                  }));
+                  .map((d) => {
+                    const rawHref =
+                      typeof d.href === "function" ? d.href(role) : d.href!;
+
+                    return {
+                      ...d,
+                      href: `/${schoolId}${rawHref}`,
+                    };
+                  });
 
                 return (
                   <Dropdown
@@ -355,8 +364,10 @@ export default function Menu({ role }: { role: Role }) {
                 );
               }
 
-              const resolvedHref =
+              const rawHref =
                 typeof item.href === "function" ? item.href(role) : item.href!;
+
+              const resolvedHref = `/${schoolId}${rawHref}`;
 
               const active = pathname === resolvedHref;
 

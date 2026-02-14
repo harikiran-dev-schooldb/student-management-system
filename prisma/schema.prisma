@@ -9,64 +9,91 @@ datasource db {
 
 model SchoolInfo {
   id       String  @id @default(cuid())
-  schoolId String? @unique
+  schoolId String  @unique
   name     String
   address  String
   phone    String?
   email    String?
   website  String?
-  logo     String? // URL to image
-
-  // Printing Configuration
-  taxId         String? // GST/PAN/Registration No
-  receiptHeader String? // e.g., "Affiliated to CBSE..."
-  receiptFooter String? // e.g., "Fees once paid are non-refundable"
-
-  admin Admin[]
+  logo     String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  admins             Admin[]
+  students           Student[]
+  teachers           Teacher[]
+  grades             Grade[]
+  classes            Class[]
+  subjects           Subject[]
+  exams              Exam[]
+  lessons            Lesson[]
+  announcements      Announcement[]
+  messages           Messages[]
+  events             Event[]
+  examGradeSubjects  ExamGradeSubject[]
+  results            Result[]
+  homeworks          Homework[]
+  feeStructures      FeeStructure[]
+  feeTransactions    FeeTransaction[]
+  studentFees        StudentFees[]
+  studentTotalFees   StudentTotalFees[]
+  attendances        Attendance[]
+  cancelledReceipts  CancelledReceipt[]
+  permissionSlips    PermissionSlip[]
+  feePayments        FeePayment[]
+  studentEnrollments StudentEnrollment[]
+  subjectTeachers    SubjectTeacher[]
 }
 
 model Admin {
   id         String     @id @default(cuid())
-  username   String     @unique
+  username   String
   password   String // Should always be hashed before storing
   name       String
   parentName String
   gender     Gender     @default(Male) // Use enum for controlled values
-  email      String?    @unique
-  phone      String     @unique
+  email      String?
+  phone      String
   address    String
   dob        DateTime?
   img        String?
   bloodType  BloodType? // Use enum for blood types
   createdAt  DateTime   @default(now())
-  clerk_id   String?    @unique
+  clerk_id   String?
 
   // Relations
   profile   Profile? @relation(fields: [profileId], references: [id])
   profileId String?
 
-  school   SchoolInfo? @relation(fields: [schoolId], references: [id])
-  schoolId String?
-
   linkedUser   LinkedUser? @relation(fields: [linkedUserId], references: [id])
   linkedUserId String?     @unique
 
+  schoolId String
+  school   SchoolInfo @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([clerk_id, schoolId])
+  @@unique([username, schoolId])
+  @@unique([email, schoolId])
+  @@unique([phone, schoolId])
   @@index([username, email, phone])
+  @@index([schoolId])
 }
 
 model Grade {
   id                Int                @id @default(autoincrement())
-  level             String             @unique
+  level             String
   examGradeSubjects ExamGradeSubject[]
   feestructure      FeeStructure[]     @relation("GradeToFeesStructure")
   Homework          Homework[]
   classes           Class[]
   subjects          Subject[]          @relation("SubjectGrades")
+  schoolId          String
+  school            SchoolInfo         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
+  @@unique([level, schoolId])
   @@index([level])
+  @@index([schoolId])
 }
 
 model Class {
@@ -87,9 +114,13 @@ model Class {
   Teacher            Teacher?            @relation("ClassToTeacher", fields: [supervisorId], references: [id])
   studentEnrollments StudentEnrollment[]
 
-  @@unique([gradeId, section], map: "Class_gradeId_section_key") // enforce uniqueness within grade
+  schoolId String
+  school   SchoolInfo @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([gradeId, section, schoolId], map: "Class_gradeId_section_key") // enforce uniqueness within grade
   @@index([gradeId], map: "Class_gradeId_idx")
   @@index([supervisorId], map: "Class_supervisorId_idx")
+  @@index([schoolId])
   @@map("class")
 }
 
@@ -107,6 +138,10 @@ model Lesson {
   Subject   Subject   @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   Teacher   Teacher   @relation(fields: [teacherId], references: [id], onDelete: Cascade)
 
+  schoolId String
+  school   SchoolInfo @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
   @@index([classId])
   @@index([subjectId])
   @@index([teacherId])
@@ -114,14 +149,17 @@ model Lesson {
 }
 
 model Announcement {
-  id          Int      @id @default(autoincrement())
+  id          Int        @id @default(autoincrement())
   title       String
   description String
   date        DateTime
   classId     Int?
-  Class       Class?   @relation(fields: [classId], references: [id])
+  Class       Class?     @relation(fields: [classId], references: [id])
+  schoolId    String
+  school      SchoolInfo @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@index([classId])
+  @@index([schoolId])
 }
 
 model Messages {
@@ -130,81 +168,102 @@ model Messages {
   type      MessageType
   studentId String?
 
-  date    DateTime @default(now())
-  classId Int?
-  Class   Class?   @relation(fields: [classId], references: [id])
-  Student Student? @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  date     DateTime   @default(now())
+  classId  Int?
+  Class    Class?     @relation(fields: [classId], references: [id])
+  Student  Student?   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  schoolId String
+  school   SchoolInfo @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
 }
 
 model Event {
-  id          Int      @id @default(autoincrement())
+  id          Int        @id @default(autoincrement())
   title       String
   description String
   startTime   DateTime
   endTime     DateTime
   classId     Int?
-  Class       Class?   @relation(fields: [classId], references: [id])
+  Class       Class?     @relation(fields: [classId], references: [id])
+  schoolId    String
+  school      SchoolInfo @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@index([classId])
+  @@index([schoolId])
 }
 
 model Exam {
   id                Int                @id @default(autoincrement())
-  title             String             @unique
+  title             String
   examGradeSubjects ExamGradeSubject[]
   results           Result[]
+  schoolId          String
+  school            SchoolInfo         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([title, schoolId])
+  @@index([schoolId])
 }
 
 model ExamGradeSubject {
-  id        Int      @id @default(autoincrement())
+  id        Int        @id @default(autoincrement())
   examId    Int
   gradeId   Int
   subjectId Int
   date      DateTime
   startTime String
   maxMarks  Int
-  Exam      Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
-  Grade     Grade    @relation(fields: [gradeId], references: [id], onDelete: Cascade)
-  Subject   Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  Exam      Exam       @relation(fields: [examId], references: [id], onDelete: Cascade)
+  Grade     Grade      @relation(fields: [gradeId], references: [id], onDelete: Cascade)
+  Subject   Subject    @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  schoolId  String
+  school    SchoolInfo @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
-  @@unique([examId, gradeId, subjectId])
+  @@unique([examId, gradeId, subjectId, schoolId])
+  @@index([schoolId])
   @@index([examId])
   @@index([gradeId])
 }
 
 model Result {
-  id        Int      @id @default(autoincrement())
+  id        Int        @id @default(autoincrement())
   marks     Float
   studentId String
   examId    Int
   subjectId Int
-  createdAt DateTime @default(now())
-  Exam      Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
-  Student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  Subject   Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  createdAt DateTime   @default(now())
+  Exam      Exam       @relation(fields: [examId], references: [id], onDelete: Cascade)
+  Student   Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  Subject   Subject    @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  schoolId  String
+  school    SchoolInfo @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
-  @@unique([studentId, examId, subjectId])
+  @@unique([studentId, examId, subjectId, schoolId])
+  @@index([schoolId])
 }
 
 model Homework {
-  id          Int      @id @default(autoincrement())
+  id          Int        @id @default(autoincrement())
   groupId     String? // shared group identifier
   description String
-  date        DateTime @default(now()) @db.Timestamptz(6)
+  date        DateTime   @default(now()) @db.Timestamptz(6)
   classId     Int
   gradeId     Int
-  Class       Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
-  Grade       Grade    @relation(fields: [gradeId], references: [id])
+  Class       Class      @relation(fields: [classId], references: [id], onDelete: Cascade)
+  Grade       Grade      @relation(fields: [gradeId], references: [id])
+  schoolId    String
+  school      SchoolInfo @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@index([classId])
   @@index([gradeId])
   @@index([groupId])
   @@index([date])
+  @@index([schoolId])
 }
 
 model Student {
   id                String             @id
-  username          String             @unique
+  username          String
   name              String
   motherName        String?
   fatherName        String?
@@ -230,7 +289,7 @@ model Student {
   results           Result[]
   Class             Class              @relation(fields: [classId], references: [id], onDelete: Cascade)
   studentFees       StudentFees[]
-  totalFees         StudentTotalFees?
+  totalFees         StudentTotalFees[]
   cancelledReceipts CancelledReceipt[]
   permissionSlips   PermissionSlip[]
 
@@ -245,24 +304,34 @@ model Student {
 
   enrollments StudentEnrollment[]
 
+  schoolId String
+  school   SchoolInfo @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([username, schoolId])
+  @@index([schoolId])
   @@index([classId, gender, status])
   @@index([academicYear, classId, gender, status])
 }
 
 model Subject {
   id                Int                @id @default(autoincrement())
-  name              String             @unique
+  name              String
   createdAt         DateTime           @default(now())
   examGradeSubjects ExamGradeSubject[]
   lessons           Lesson[]
   results           Result[]
   teachers          SubjectTeacher[]
   grades            Grade[]            @relation("SubjectGrades")
+  schoolId          String
+  school            SchoolInfo         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([name, schoolId])
+  @@index([schoolId])
 }
 
 model Teacher {
   id         String     @id
-  username   String     @unique
+  username   String
   name       String
   parentName String?
   email      String?
@@ -280,12 +349,12 @@ model Teacher {
   deletedAt DateTime?
 
   // Auth / profile
-  clerk_id  String?  @unique
+  clerk_id  String?
   profileId String?
   profile   Profile? @relation(fields: [profileId], references: [id])
 
   // Class ownership
-  classId Int?   @unique
+  classId Int?
   class   Class? @relation("ClassToTeacher")
 
   // Relations
@@ -296,12 +365,18 @@ model Teacher {
   linkedUserId String?     @unique
   linkedUser   LinkedUser? @relation(fields: [linkedUserId], references: [id])
 
+  schoolId String
+  school   SchoolInfo @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
   /**
    * ─────────────────────────────
    * INDEX STRATEGY
    * ─────────────────────────────
    */
-
+  @@unique([username, schoolId])
+  @@unique([clerk_id, schoolId])
+  @@unique([classId, schoolId])
+  @@index([schoolId])
   @@index([name]) // teacher search
   @@index([phone]) // quick lookup
   @@index([clerk_id])
@@ -311,11 +386,14 @@ model SubjectTeacher {
   subjectId Int
   teacherId String
   classId   Int
-  class     Class   @relation(fields: [classId], references: [id])
-  subject   Subject @relation(fields: [subjectId], references: [id])
-  teacher   Teacher @relation(fields: [teacherId], references: [id])
+  class     Class      @relation(fields: [classId], references: [id])
+  subject   Subject    @relation(fields: [subjectId], references: [id])
+  teacher   Teacher    @relation(fields: [teacherId], references: [id])
+  schoolId  String
+  school    SchoolInfo @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
-  @@id([subjectId, teacherId, classId])
+  @@id([subjectId, teacherId, classId, schoolId])
+  @@index([schoolId])
 }
 
 model FeeStructure {
@@ -329,8 +407,11 @@ model FeeStructure {
   academicYear AcademicYear  @default(Y2024_2025)
   grade        Grade         @relation("GradeToFeesStructure", fields: [gradeId], references: [id])
   studentFees  StudentFees[]
+  schoolId     String
+  school       SchoolInfo    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
-  @@unique([gradeId, term, academicYear])
+  @@unique([gradeId, term, academicYear, schoolId])
+  @@index([schoolId])
 }
 
 model FeeTransaction {
@@ -355,8 +436,11 @@ model FeeTransaction {
 
   studentFees StudentFees @relation("FeeTransactionStudentFees", fields: [studentFeesId], references: [id], onDelete: Cascade)
   student     Student     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  schoolId    String
+  school      SchoolInfo  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
-  @@index([receiptDate])
+  @@index([schoolId])
+  @@index([schoolId, receiptDate])
   @@index([academicYear, receiptDate])
   @@index([studentId, academicYear])
 }
@@ -381,13 +465,18 @@ model StudentFees {
   feeTransactions FeeTransaction[] @relation("FeeTransactionStudentFees")
   feeStructure    FeeStructure     @relation(fields: [feeStructureId], references: [id])
   student         Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  schoolId        String
+  school          SchoolInfo       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
-  @@unique([studentId, academicYear, term], name: "studentId_academicYear_term")
+  @@unique([studentId, academicYear, term, schoolId], name: "studentId_academicYear_term")
+  @@index([schoolId])
 }
 
 model StudentTotalFees {
   id                  Int    @id @default(autoincrement())
-  studentId           String @unique
+  studentId           String
+  schoolId            String
+
   totalPaidAmount     Float  @default(0)
   totalDiscountAmount Float  @default(0)
   totalFineAmount     Float  @default(0)
@@ -396,21 +485,31 @@ model StudentTotalFees {
   dueAmount           Float  @default(0)
   status              String @default("Not Paid")
 
-  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id])
+  school   SchoolInfo @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, schoolId])   // ✅ Composite unique
+  @@index([schoolId])
 }
 
+
+
 model Attendance {
-  id        Int      @id @default(autoincrement())
+  id        Int        @id @default(autoincrement())
   date      DateTime
-  present   Boolean  @default(true)
+  present   Boolean    @default(true)
   studentId String
   classId   Int
-  class     Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
-  Student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  class     Class      @relation(fields: [classId], references: [id], onDelete: Cascade)
+  Student   Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  schoolId  String
+  school    SchoolInfo @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
-  @@unique([studentId, date])
+  @@unique([studentId, date, schoolId])
   @@index([classId, date])
   @@index([studentId, classId])
+  @@index([schoolId])
+  @@index([schoolId, date])
 }
 
 model CancelledReceipt {
@@ -423,15 +522,18 @@ model CancelledReceipt {
   cancelledBy       String? // Optional: name or user ID of admin who cancelled
   reason            String? // Optional: why it was cancelled
 
-  cancelledAmount   Decimal @default(0)
-  cancelledDiscount Decimal @default(0)
-  cancelledFine     Decimal @default(0)
-  cancelledTotal    Decimal @default(0) // can also be computed as sum of above
+  cancelledAmount   Decimal    @default(0)
+  cancelledDiscount Decimal    @default(0)
+  cancelledFine     Decimal    @default(0)
+  cancelledTotal    Decimal    @default(0) // can also be computed as sum of above
+  schoolId          String
+  school            SchoolInfo @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   // Indexes for quick search
   @@index([studentId])
   @@index([term])
   @@index([originalReceiptNo])
+  @@index([schoolId])
 }
 
 model PermissionSlip {
@@ -442,13 +544,17 @@ model PermissionSlip {
   leaveType   LeaveType
   subReason   String?
   description String?
-  date        DateTime  @default(now()) // ✅ Defaults to today's date
-  timeIssued  DateTime  @default(now())
+  date        DateTime   @default(now()) // ✅ Defaults to today's date
+  timeIssued  DateTime   @default(now())
   withWhom    String?
   relation    String?
+  schoolId    String
+  school      SchoolInfo @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([schoolId])
 }
 
 model Profile {
@@ -492,7 +598,11 @@ model FeePayment {
   orderId       String? // Razorpay Order ID
 
   studentId String
-  student   Student @relation(fields: [studentId], references: [id])
+  student   Student    @relation(fields: [studentId], references: [id])
+  schoolId  String
+  school    SchoolInfo @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
 }
 
 model StudentEnrollment {
@@ -503,11 +613,14 @@ model StudentEnrollment {
   status         EnrollmentStatus @default(ACTIVE)
   promotedFromId Int?
 
-  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  class   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  student  Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  class    Class      @relation(fields: [classId], references: [id], onDelete: Cascade)
+  schoolId String
+  school   SchoolInfo @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
-  @@unique([studentId, academicYear])
+  @@unique([studentId, academicYear, schoolId])
   @@index([academicYear, classId])
+  @@index([schoolId])
 }
 
 enum LessonDay {

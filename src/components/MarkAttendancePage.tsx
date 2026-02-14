@@ -27,7 +27,7 @@ interface Props {
 }
 
 export default function MarkAttendancePage({ role, teacherClassId }: Props) {
-  const { register, handleSubmit, getValues } = useForm();
+  const { register, handleSubmit, getValues, watch } = useForm();
   const today = new Date().toISOString().split("T")[0];
 
   // --- Data State ---
@@ -52,6 +52,8 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
 
   // --- Refs ---
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const selectedDate = watch("date");
 
   /* -------------------- Custom Ctrl+F Logic -------------------- */
   useEffect(() => {
@@ -85,11 +87,12 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
   }, [role, selectedGrade]);
 
   /* -------------------- Auto Load for Teacher -------------------- */
+  /* -------------------- Auto Load for Teacher -------------------- */
   useEffect(() => {
-    if (role === "teacher" && teacherClassId) {
+    if (role === "teacher" && teacherClassId && selectedDate) {
       fetchStudents();
     }
-  }, [role, teacherClassId]);
+  }, [role, teacherClassId, selectedDate]);
 
   /* -------------------- Fetch Students -------------------- */
   const fetchStudents = async () => {
