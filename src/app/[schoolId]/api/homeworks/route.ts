@@ -3,31 +3,49 @@ import prisma from "@/lib/prisma";
 import { homeworkSchema } from "@/lib/formValidationSchemas";
 import { v4 as uuidv4 } from "uuid";
 
-export async function POST(req: NextRequest) {
+export async function POST(
+  req: NextRequest,
+  context: { params: Promise<{ schoolId: string }> }
+) {
   try {
+    const { schoolId } = await context.params;
+
     const body = await req.json();
     const parsed = homeworkSchema.safeParse(body);
 
     if (!parsed.success) {
-      return NextResponse.json({ success: false, message: "Invalid data", errors: parsed.error.errors }, { status: 400 });
+      return NextResponse.json(
+        { success: false, message: "Invalid data", errors: parsed.error.errors },
+        { status: 400 }
+      );
     }
 
     const { description, gradeId, classId, date } = parsed.data;
 
-    // If classId is given → create single
+    /* ----------------------------------
+       Single Class Homework
+    -----------------------------------*/
     if (classId !== undefined) {
       const hw = await prisma.homework.create({
-        data: { description, gradeId, classId, date },
+        data: {
+          description,
+          gradeId,
+          classId,
+          date: new Date(date),
+          schoolId, // ✅ REQUIRED
+        },
       });
 
       return NextResponse.json({ success: true, data: hw });
     }
 
-    // Else: bulk create for all classes under grade
+    /* ----------------------------------
+       Bulk Create for Grade
+    -----------------------------------*/
     const groupId = uuidv4();
 
     const classes = await prisma.class.findMany({
-      where: { gradeId },
+      where: { gradeId, schoolId }, // ✅ Tenant filter
       select: { id: true },
     });
 
@@ -35,22 +53,35 @@ export async function POST(req: NextRequest) {
       description,
       gradeId,
       classId: id,
-      date,
+      date: new Date(date),
       groupId,
+      schoolId, // ✅ REQUIRED
     }));
 
-    await prisma.homework.createMany({ data });
+    if (data.length > 0) {
+      await prisma.homework.createMany({ data });
+    }
 
     return NextResponse.json({ success: true, groupId });
+
   } catch (err) {
     console.error("POST /api/homeworks error:", err);
-    return NextResponse.json({ success: false, message: "Server error" }, { status: 500 });
+    return NextResponse.json(
+      { success: false, message: "Server error" },
+      { status: 500 }
+    );
   }
 }
 
-export async function GET() {
+export async function GET(
+  req: NextRequest,
+  context: { params: Promise<{ schoolId: string }> }
+) {
   try {
+    const { schoolId } = await context.params;
+
     const homeworks = await prisma.homework.findMany({
+      where: { schoolId }, // ✅ tenant filter
       orderBy: { date: "desc" },
       include: {
         Class: {
@@ -64,10 +95,13 @@ export async function GET() {
       },
     });
 
-    // Add type for frontend
-    const formatted = homeworks.map(hw => ({ ...hw, type: "HOMEWORK" }));
+    const formatted = homeworks.map(hw => ({
+      ...hw,
+      type: "HOMEWORK",
+    }));
 
-    return NextResponse.json(formatted, { status: 200 });
+    return NextResponse.json(formatted);
+
   } catch (error) {
     console.error("Error fetching homeworks:", error);
     return NextResponse.json(
@@ -76,5 +110,3 @@ export async function GET() {
     );
   }
 }
-
-

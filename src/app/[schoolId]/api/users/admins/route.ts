@@ -1,45 +1,53 @@
 import prisma from "@/lib/prisma";
 import { clerkClient } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { adminSchema } from "@/lib/formValidationSchemas";
 
-export async function POST(req: Request) {
+export async function POST(
+  req: NextRequest,
+  context: { params: Promise<{ schoolId: string }> }
+) {
   try {
+    const { schoolId } = await context.params;
+
     const body = await req.json();
     const data = adminSchema.parse(body);
 
     const client = await clerkClient();
 
-    // ✅ Step 1: Check if a Clerk user already exists for this phone
+    /* ---------------------------------------
+       1️⃣  Clerk User (Global Identity)
+    --------------------------------------- */
+
     const phoneNumber = `+91${data.phone}`;
-    let clerkUser;
-    const existingUsers = await client.users.getUserList({
+
+    const existingClerkUsers = await client.users.getUserList({
       phoneNumber: [phoneNumber],
     });
 
-    if (existingUsers.data.length > 0) {
-      clerkUser = existingUsers.data[0];
-      console.log("Existing Clerk user found:", clerkUser.id);
+    let clerkUser;
+
+    if (existingClerkUsers.data.length > 0) {
+      clerkUser = existingClerkUsers.data[0];
     } else {
-      // ✅ Create a new Clerk user
       clerkUser = await client.users.createUser({
         firstName: data.name,
         username: data.username,
         password: data.password,
-        phoneNumber: [`+91${data.phone}`],
+        phoneNumber: [phoneNumber],
       });
-
-      console.log("New Clerk user created:", clerkUser.id);
     }
 
     await client.users.updateUser(clerkUser.id, {
       publicMetadata: { role: "admin" },
     });
 
-    // ✅ Step 2: Find or create profile
+    /* ---------------------------------------
+       2️⃣  Find or Create Profile (GLOBAL)
+    --------------------------------------- */
+
     let profile = await prisma.profile.findFirst({
       where: { phone: data.phone },
-      include: { users: true },
     });
 
     if (!profile) {
@@ -48,94 +56,82 @@ export async function POST(req: Request) {
           phone: data.phone,
           clerk_id: clerkUser.id,
         },
-        include: { users: true },
       });
-      console.log("New profile created:", profile);
-    } else {
-      console.log("Existing profile reused:", profile);
     }
 
-    // ✅ Step 3: Check if username already exists for a role
+    /* ---------------------------------------
+       3️⃣  Create LinkedUser (School Scoped Role)
+    --------------------------------------- */
+
     const existingRole = await prisma.linkedUser.findFirst({
-      where: { username: data.username, role: "admin" },
+      where: {
+        username: data.username,
+        schoolId,
+      },
     });
 
     if (existingRole) {
       return NextResponse.json(
-        { message: `Role username "${data.username}" already exists!` },
+        { message: "Username already exists in this school" },
         { status: 409 }
       );
     }
 
-    // ✅ Step 4: Create new admin role
-    const role = await prisma.linkedUser.create({
+    const linkedUser = await prisma.linkedUser.create({
       data: {
-        role: "admin",
         username: data.username,
+        role: "admin",
         profileId: profile.id,
+        schoolId,
       },
     });
-    console.log("New role created:", role);
 
-    // ✅ Step 5: Create admin record
+    /* ---------------------------------------
+       4️⃣  Create Admin (School Scoped Entity)
+    --------------------------------------- */
+
     const admin = await prisma.admin.create({
       data: {
         username: data.username,
-        name: data.name,
         password: data.password,
+        name: data.name,
         parentName: data.parentName,
         gender: data.gender,
         email: data.email,
+        phone: data.phone,
         address: data.address,
         bloodType: data.bloodType,
         dob: data.dob,
         img: data.img ?? null,
-        phone: data.phone,
         clerk_id: clerkUser.id,
-        // ✅ This connects admin <-> linkedUser
-        profile: {
-          connect: { id: profile.id },
-        },
-        // ✅ This connects admin <-> linkedUser
-        linkedUser: {
-          connect: { id: role.id },
-        },
+        schoolId,
+
+        profileId: profile.id,
+        linkedUserId: linkedUser.id,
       },
     });
 
-    // ✅ Step 6: Set active relationships
-    await prisma.$transaction([
-      prisma.linkedUser.update({
-        where: { id: role.id },
-        data: {
-          activeFor: {
-            connect: { id: profile.id }, // ✅ correct way
-          },
-        },
-      }),
+    /* ---------------------------------------
+       5️⃣  Set Active Role
+    --------------------------------------- */
 
-      prisma.profile.update({
-        where: { id: profile.id },
-        data: {
-          activeUser: {
-            connect: { id: role.id }, // ✅ correct way
-          },
-        },
-      }),
-    ]);
+    await prisma.profile.update({
+      where: { id: profile.id },
+      data: {
+        activeUserId: linkedUser.id,
+      },
+    });
 
-    console.log("Active user relationships updated successfully");
+    return NextResponse.json(
+      { success: true, admin },
+      { status: 201 }
+    );
 
-    return NextResponse.json({ success: true, admin }, { status: 201 });
   } catch (error: any) {
     console.error("Admin creation error:", error);
 
-    if (error.name === "ZodError") {
-      return NextResponse.json({ error: error.errors }, { status: 400 });
-    }
-
     return NextResponse.json(
-      { error: error.message || "Internal server error" },
+      { message: error.message || "Internal Server Error" },
       { status: 500 }
     );
   }

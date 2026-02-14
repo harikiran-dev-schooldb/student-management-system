@@ -6,117 +6,99 @@ import { revalidatePath } from "next/cache";
 
 const client = await clerkClient();
 
-// ✅ PUT - Update teacher
 export async function PUT(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string; schoolId: string }> },
 ): Promise<NextResponse> {
   try {
-    const { id } = await params;
-    const teacherId = id;
+    const { id: teacherId, schoolId } = await params;
     const body = await req.json();
 
-    // ✅ Validate with schema
     const data = teacherschema.parse({ ...body, id: teacherId });
 
-    const existingTeacher = await prisma.teacher.findUnique({
-      where: { id: teacherId },
+    /* -----------------------------------------
+       1️⃣ Ensure Teacher Belongs To This School
+    ------------------------------------------ */
+    const existingTeacher = await prisma.teacher.findFirst({
+      where: {
+        id: teacherId,
+        schoolId,
+      },
     });
 
-    if (!existingTeacher || !existingTeacher.clerk_id) {
+    if (!existingTeacher) {
       return NextResponse.json(
-        { success: false, error: "Teacher not found or missing Clerk ID" },
-        { status: 404 }
+        { success: false, error: "Teacher not found" },
+        { status: 404 },
       );
     }
 
-    // 🔍 Clerk user
-    const user = await client.users.getUser(existingTeacher.clerk_id);
-    const formattedNewPhone = `+91${data.phone}`;
-    const updatedUsername = data.username || `t${teacherId}`;
+    /* -----------------------------------------
+       2️⃣ Prevent Username Duplicate (Per School)
+    ------------------------------------------ */
+    if (data.username) {
+      const duplicate = await prisma.teacher.findFirst({
+        where: {
+          username: data.username,
+          schoolId,
+          NOT: { id: teacherId },
+        },
+      });
 
-    // 🔑 Compare current vs new phone
-    const currentPhone = user.phoneNumbers.find(
-      (ph) => ph.id === user.primaryPhoneNumberId
-    )?.phoneNumber;
-
-    if (formattedNewPhone !== currentPhone) {
-      try {
-        // 1. Add new phone number
-        const newPhone = await client.phoneNumbers.createPhoneNumber({
-          userId: existingTeacher.clerk_id,
-          phoneNumber: formattedNewPhone,
-        });
-
-        // 2. Verify it
-        await client.phoneNumbers.updatePhoneNumber(newPhone.id, {
-          verified: true,
-        });
-
-        // 3. Set new number as primary
-        await client.users.updateUser(existingTeacher.clerk_id, {
-          primaryPhoneNumberID: newPhone.id,
-        });
-
-        // 4. Remove old phones
-        for (const ph of user.phoneNumbers) {
-          if (ph.phoneNumber !== formattedNewPhone) {
-            try {
-              await client.phoneNumbers.deletePhoneNumber(ph.id);
-              console.log("Deleted old phone:", ph.phoneNumber);
-            } catch (err) {
-              console.warn("Failed to delete old phone:", ph.phoneNumber, err);
-            }
-          }
-        }
-      } catch (err: any) {
-        if (err.errors?.[0]?.code === "form_identifier_exists") {
-          return NextResponse.json(
-            {
-              success: false,
-              error: "Phone number already exists in another account",
-            },
-            { status: 400 }
-          );
-        }
-        throw err;
+      if (duplicate) {
+        return NextResponse.json(
+          { success: false, error: "Username already exists in this school" },
+          { status: 409 },
+        );
       }
     }
 
-    // ✅ Update Clerk user basic info
-    await client.users.updateUser(existingTeacher.clerk_id, {
-      firstName: data.name,
-      username: updatedUsername,
-      // ⚠️ Do not set phone as password in production!
-    });
-
-    // ✅ Update Teacher in DB
-    const { dob, subjects, password, ...restData } = data;
-
-    const updateData: any = {
-      ...restData,
-      dob: dob ? new Date(dob) : undefined,
-    };
-
+    /* -----------------------------------------
+       3️⃣ Update Teacher
+    ------------------------------------------ */
     const updatedTeacher = await prisma.teacher.update({
-      where: { id: teacherId },
-      data: updateData,
+      where: {
+        id: teacherId,
+      },
+      data: {
+        username: data.username,
+        name: data.name,
+        parentName: data.parentName,
+        email: data.email,
+        phone: data.phone,
+        address: data.address,
+        img: data.img,
+        bloodType: data.bloodType,
+        gender: data.gender,
+        dob: data.dob ? new Date(data.dob) : null,
+        classId: data.classId ?? null,
+        supervisor: data.supervisor ?? false,
+      },
     });
 
-    // ✅ Update subject-class mappings
-    if (subjects && Array.isArray(subjects)) {
-      await prisma.subjectTeacher.deleteMany({ where: { teacherId } });
+    /* -----------------------------------------
+       4️⃣ Update Subject-Class Mapping (Tenant Safe)
+    ------------------------------------------ */
+    if (Array.isArray(data.subjects)) {
+      // delete only inside this school
+      await prisma.subjectTeacher.deleteMany({
+        where: {
+          teacherId,
+          schoolId,
+        },
+      });
 
-      const validSubjects = subjects.filter(
-        (s: any) => s.subjectId && s.classId
+      const validSubjects = data.subjects.filter(
+        (s: any) => s.subjectId && s.classId,
       );
 
       if (validSubjects.length > 0) {
         await prisma.subjectTeacher.createMany({
           data: validSubjects.map((s: any) => ({
-            subjectId: s.subjectId,
-            classId: s.classId,
+            subjectId: Number(s.subjectId),
+            classId: Number(s.classId),
             teacherId,
+            schoolId, // 🔒 REQUIRED
           })),
           skipDuplicates: true,
         });
@@ -127,104 +109,14 @@ export async function PUT(
 
     return NextResponse.json(
       { success: true, updatedTeacher },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error: any) {
-    console.error("PUT /api/users/teachers/[id] error:", error);
-    if (error.errors) console.error("Clerk error details:", error.errors);
+    console.error("Teacher update error:", error);
+
     return NextResponse.json(
       { success: false, error: error.message },
-      { status: error.name === "ZodError" ? 400 : 500 }
-    );
-  }
-}
-
-// ✅ PATCH - Update teacher status (lightweight)
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-): Promise<NextResponse> {
-  try {
-    const { id } = await params;
-    const { status } = await req.json();
-
-    if (!status) {
-      return NextResponse.json(
-        { success: false, error: "Status is required" },
-        { status: 400 }
-      );
-    }
-
-    const teacher = await prisma.teacher.findUnique({
-      where: { id },
-      select: { id: true },
-    });
-
-    if (!teacher) {
-      return NextResponse.json(
-        { success: false, error: "Teacher not found" },
-        { status: 404 }
-      );
-    }
-
-    await prisma.teacher.update({
-      where: { id },
-      data: { status },
-    });
-
-    revalidatePath("/list/users/teachers");
-
-    return NextResponse.json(
-      { success: true, message: "Status updated successfully" },
-      { status: 200 }
-    );
-  } catch (error: any) {
-    console.error("PATCH /api/users/teachers/[id] error:", error);
-    return NextResponse.json(
-      { success: false, error: error.message },
-      { status: 500 }
-    );
-  }
-}
-
-// ✅ DELETE - Delete teacher
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-): Promise<NextResponse> {
-  try {
-    const { id } = await params;
-    const teacherId = id;
-
-    const teacher = await prisma.teacher.findUnique({
-      where: { id: teacherId },
-    });
-
-    if (!teacher) {
-      return NextResponse.json(
-        { success: false, error: "Teacher not found" },
-        { status: 404 }
-      );
-    }
-
-    // Run Prisma + Clerk deletions in parallel
-    await Promise.all([
-      teacher.clerk_id ? client.users.deleteUser(teacher.clerk_id) : null,
-      prisma.teacher.delete({ where: { id: teacherId } }),
-      prisma.subjectTeacher.deleteMany({ where: { teacherId } }),
-    ]);
-
-    revalidatePath("/list/users/teachers");
-
-    return NextResponse.json(
-      { success: true, message: "Teacher deleted successfully" },
-      { status: 200 }
-    );
-  } catch (error: any) {
-    console.error("DELETE /api/users/teachers/[id] error:", error);
-    return NextResponse.json(
-      { success: false, error: error.message },
-      { status: 500 }
+      { status: error.name === "ZodError" ? 400 : 500 },
     );
   }
 }

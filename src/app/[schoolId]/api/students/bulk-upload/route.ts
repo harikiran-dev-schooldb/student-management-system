@@ -2,38 +2,41 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { clerkClient } from "@clerk/nextjs/server";
 
-const IS_PRODUCTION = process.env.NODE_ENV === "production";
-
-// Helper: Parse DOB in dd-mm-yyyy format
 function parseDDMMYYYY(dob: string): Date | null {
   const [dd, mm, yyyy] = dob.split("-");
   if (!dd || !mm || !yyyy) return null;
+
   const iso = `${yyyy}-${mm}-${dd}`;
   const date = new Date(iso);
+
   return isNaN(date.getTime()) ? null : date;
 }
 
-export async function POST(req: NextRequest) {
+export async function POST(
+  req: NextRequest,
+  context: { params: Promise<{ schoolId: string }> },
+) {
   try {
+    const { schoolId } = await context.params;
     const { students } = await req.json();
 
     if (!Array.isArray(students)) {
       return NextResponse.json(
         { error: "Invalid data format" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     let created = 0;
     let updated = 0;
     let feesMapped = 0;
-    const clerkCreated = 0;
     const errors: string[] = [];
 
     const client = await clerkClient();
 
     for (let i = 0; i < students.length; i++) {
       const s = students[i];
+
       const {
         id,
         username: rawUsername,
@@ -55,56 +58,69 @@ export async function POST(req: NextRequest) {
         academicYear,
       } = s;
 
+      /* -------------------------------------------------
+         1️⃣ BASIC VALIDATION
+      -------------------------------------------------- */
       if (!id || !rawUsername || !name || !dob || !classId || !phone) {
         errors.push(
-          `Missing required fields for student: ${rawUsername || id}`
+          `Missing required fields for student: ${rawUsername || id}`,
         );
         continue;
       }
 
       const parsedDob = parseDDMMYYYY(dob);
       if (!parsedDob) {
-        errors.push(`Invalid DOB format for student: ${id} (${dob})`);
+        errors.push(`Invalid DOB format for student: ${id}`);
         continue;
       }
 
-      const cls = await prisma.class.findUnique({
-        where: { id: Number(classId) },
+      /* -------------------------------------------------
+         2️⃣ VALIDATE CLASS (Tenant Safe)
+      -------------------------------------------------- */
+      const cls = await prisma.class.findFirst({
+        where: {
+          id: Number(classId),
+          schoolId,
+        },
         include: { Grade: true },
       });
 
       if (!cls || !cls.Grade) {
-        errors.push(`Invalid classId or missing grade for student ID: ${id}`);
+        errors.push(`Invalid class for student ID: ${id}`);
         continue;
       }
 
-      // ✅ Step 1: Ensure Profile exists for this phone
+      /* -------------------------------------------------
+         3️⃣ PROFILE (BY PHONE)
+      -------------------------------------------------- */
       let profile = await prisma.profile.findFirst({
         where: { phone },
         include: { users: true },
       });
 
       if (!profile) {
-        const normalizedClerkId =
-          providedClerkId && providedClerkId.trim() !== ""
-            ? providedClerkId
-            : null;
-
         profile = await prisma.profile.create({
           data: {
             phone,
-            clerk_id: normalizedClerkId,
+            clerk_id: providedClerkId || null,
           },
           include: { users: true },
         });
-        console.log(
-          `Created profile for phone: ${phone} (Profile ID: ${profile.id})`
-        );
       }
 
-      // ✅ Step 2: Ensure Student Role exists for this profile
+      /* -------------------------------------------------
+   4️⃣ ENSURE LINKED USER ROLE (Tenant Safe)
+-------------------------------------------------- */
+
       const studentUsername = `s${id}`;
-      let role = profile.users.find((r) => r.role === "student");
+
+      let role = await prisma.linkedUser.findFirst({
+        where: {
+          profileId: profile.id,
+          role: "student",
+          schoolId, // ✅ CRITICAL
+        },
+      });
 
       if (!role) {
         role = await prisma.linkedUser.create({
@@ -112,12 +128,20 @@ export async function POST(req: NextRequest) {
             role: "student",
             username: studentUsername,
             profileId: profile.id,
+            schoolId, // ✅ REQUIRED
           },
         });
       }
 
-      // ✅ Step 3: Upsert Student entity linked to Profile
-      let student = await prisma.student.findUnique({ where: { id } });
+      /* -------------------------------------------------
+         5️⃣ UPSERT STUDENT (Tenant Safe)
+      -------------------------------------------------- */
+      let student = await prisma.student.findFirst({
+        where: {
+          id,
+          schoolId,
+        },
+      });
 
       if (student) {
         student = await prisma.student.update({
@@ -141,6 +165,7 @@ export async function POST(req: NextRequest) {
             clerk_id: providedClerkId || profile.clerk_id,
             academicYear,
             profileId: profile.id,
+            schoolId, // ✅ REQUIRED
           },
         });
         updated++;
@@ -166,37 +191,39 @@ export async function POST(req: NextRequest) {
             clerk_id: providedClerkId || profile.clerk_id,
             academicYear,
             profileId: profile.id,
+            schoolId, // ✅ REQUIRED
           },
         });
         created++;
       }
 
-      console.log(`Processed student: ${id} - ${name} (${student.id})`);
-
-      // ✅ Step 4: Fee structure mapping (strict academic year match)
+      /* -------------------------------------------------
+         6️⃣ FEE STRUCTURE MAPPING (Tenant Safe)
+      -------------------------------------------------- */
       const feeStructures = await prisma.feeStructure.findMany({
         where: {
           gradeId: cls.Grade.id,
-          academicYear: academicYear as any,
+          academicYear,
+          schoolId,
         },
       });
 
       if (!feeStructures.length) {
         errors.push(
-          `No fee structure for student ${id} (grade: ${cls.Grade.id}, year: ${academicYear})`
+          `No fee structure for student ${id} (grade ${cls.Grade.id}, year ${academicYear})`,
         );
         continue;
       }
 
-      // 🧹 First, cleanup any mismatched fee records (wrong year)
+      // Remove wrong-year records
       await prisma.studentFees.deleteMany({
         where: {
           studentId: id,
-          NOT: { academicYear: academicYear as any },
+          schoolId,
+          NOT: { academicYear },
         },
       });
 
-      // 🛡️ Then only insert fees for the correct year if not already existing
       for (const fee of feeStructures) {
         await prisma.studentFees.upsert({
           where: {
@@ -204,9 +231,10 @@ export async function POST(req: NextRequest) {
               studentId: id,
               academicYear: fee.academicYear,
               term: fee.term,
+              schoolId,
             },
           },
-          update: {}, // do nothing if exists
+          update: {},
           create: {
             studentId: id,
             feeStructureId: fee.id,
@@ -217,6 +245,7 @@ export async function POST(req: NextRequest) {
             fineAmount: 0,
             abacusPaidAmount: 0,
             paymentMode: "CASH",
+            schoolId, // ✅ REQUIRED
           },
         });
       }
@@ -225,14 +254,17 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({
-      message: `✅ Upload complete: Created: ${created}, Updated: ${updated}, Fees Mapped: ${feesMapped}, Clerk Created: ${clerkCreated}`,
+      message: `✅ Upload complete`,
+      created,
+      updated,
+      feesMapped,
       errors,
     });
   } catch (error) {
     console.error("💥 Bulk upload failed:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

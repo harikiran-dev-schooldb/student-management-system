@@ -1,26 +1,26 @@
-// app/api/lessons/route.ts
-
 import { lessonsSchema } from "@/lib/formValidationSchemas";
 import prisma from "@/lib/prisma";
 import { PERIOD_TIMINGS } from "@/lib/utils/periods";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-export async function POST(req: Request) {
+export async function POST(
+  req: Request,
+  context: { params: Promise<{ schoolId: string }> }
+) {
   try {
-    const body = await req.json();
+    const { schoolId } = await context.params;
 
-    // ✅ Validate input (should include: day, period, subjectId, classId, teacherId)
+    const body = await req.json();
     const validated = lessonsSchema.parse(body);
 
-    // ✅ Check if provided period exists in PERIOD_TIMINGS
     const periodKey = validated.period as keyof typeof PERIOD_TIMINGS;
     const periodTiming = PERIOD_TIMINGS[periodKey];
+
     if (!periodTiming) {
       return NextResponse.json({ message: "Invalid period" }, { status: 400 });
     }
 
-    // Convert "HH:mm" → Date objects
     function timeStringToDate(timeStr: string): Date {
       const [hours, minutes] = timeStr.split(":").map(Number);
       const date = new Date();
@@ -31,39 +31,51 @@ export async function POST(req: Request) {
     const startTime = timeStringToDate(periodTiming.start);
     const endTime = timeStringToDate(periodTiming.end);
 
-    // ✅ Check if subject exists
-    const subject = await prisma.subject.findUnique({
-      where: { id: validated.subjectId },
+    /* -----------------------------
+       Tenant-safe subject check
+    ------------------------------ */
+    const subject = await prisma.subject.findFirst({
+      where: {
+        id: validated.subjectId,
+        schoolId,
+      },
     });
 
     if (!subject) {
-      return NextResponse.json({ message: "Subject not found" }, { status: 404 });
+      return NextResponse.json(
+        { message: "Subject not found" },
+        { status: 404 }
+      );
     }
 
-    // ✅ Delete any existing lesson for same class, day, and period
+    /* -----------------------------
+       Tenant-safe delete
+    ------------------------------ */
     await prisma.lesson.deleteMany({
       where: {
         classId: validated.classId,
         day: validated.day,
         period: periodKey,
+        schoolId,
       },
     });
 
-    // ✅ Create lesson with auto timings
+    /* -----------------------------
+       Create lesson (with schoolId)
+    ------------------------------ */
     const lesson = await prisma.lesson.create({
       data: {
         title: subject.name,
         day: validated.day,
-        period: periodKey, // save enum
+        period: periodKey,
         startTime,
         endTime,
         subjectId: validated.subjectId,
         classId: validated.classId,
         teacherId: validated.teacherId,
+        schoolId, // ✅ REQUIRED
       },
     });
-
-    console.log("Created lesson:", lesson);
 
     return NextResponse.json(lesson, { status: 201 });
   } catch (error) {
@@ -73,6 +85,7 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
+
     console.error("Lesson creation error:", error);
     return NextResponse.json({ message: "Server error" }, { status: 500 });
   }

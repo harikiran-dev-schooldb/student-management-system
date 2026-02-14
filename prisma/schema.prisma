@@ -44,6 +44,7 @@ model SchoolInfo {
   feePayments        FeePayment[]
   studentEnrollments StudentEnrollment[]
   subjectTeachers    SubjectTeacher[]
+  linkedUser         LinkedUser[]
 }
 
 model Admin {
@@ -492,8 +493,6 @@ model StudentTotalFees {
   @@index([schoolId])
 }
 
-
-
 model Attendance {
   id        Int        @id @default(autoincrement())
   date      DateTime
@@ -584,9 +583,15 @@ model LinkedUser {
 
   activeFor Profile? @relation("ActiveUser")
 
+  schoolId  String
+  school    SchoolInfo @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
   student Student?
   teacher Teacher?
   admin   Admin?
+
+  @@unique([username, schoolId])
+  @@index([schoolId])
 }
 
 model FeePayment {

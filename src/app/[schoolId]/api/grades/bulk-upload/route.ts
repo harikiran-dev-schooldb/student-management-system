@@ -1,8 +1,12 @@
 import prisma from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function POST(req: NextRequest) {
+export async function POST(
+  req: NextRequest,
+  context: { params: Promise<{ schoolId: string }> }
+) {
   try {
+    const { schoolId } = await context.params;
     const { grades } = await req.json();
 
     if (!Array.isArray(grades)) {
@@ -10,12 +14,17 @@ export async function POST(req: NextRequest) {
     }
 
     const formattedGrades = grades.map((g: any) => ({
-      id: parseInt(g.id),
-      level: g.level,
+      id: parseInt(g.id),          // optional
+      level: String(g.level).trim(),
+      schoolId,                    // ✅ REQUIRED
     }));
 
-    const existingIds = await prisma.grade.findMany({
+    /* ----------------------------------
+       Check duplicates (tenant scoped)
+    -----------------------------------*/
+    const existing = await prisma.grade.findMany({
       where: {
+        schoolId,
         id: {
           in: formattedGrades.map((g) => g.id),
         },
@@ -23,27 +32,31 @@ export async function POST(req: NextRequest) {
       select: { id: true },
     });
 
-    const duplicates = formattedGrades.filter((g) =>
-      existingIds.some((e) => e.id === g.id)
-    );
+    const existingIdSet = new Set(existing.map((e) => e.id));
 
     const toInsert = formattedGrades.filter(
-      (g) => !duplicates.includes(g)
+      (g) => !existingIdSet.has(g.id)
     );
 
-    await prisma.grade.createMany({
-      data: toInsert,
-      skipDuplicates: true,
-    });
+    /* ----------------------------------
+       Insert
+    -----------------------------------*/
+    if (toInsert.length > 0) {
+      await prisma.grade.createMany({
+        data: toInsert,
+        skipDuplicates: true,
+      });
+    }
 
     return NextResponse.json({
-      message: `Upload complete: Inserted ${toInsert.length}, Skipped ${duplicates.length}`,
-      duplicates,
+      message: `Upload complete: Inserted ${toInsert.length}, Skipped ${existing.length}`,
+      skipped: existing,
     });
-  } catch (err) {
+
+  } catch (err: any) {
     console.error("Bulk Grade Upload Error:", err);
     return NextResponse.json(
-      { message: "Upload failed", error: (err as any)?.message },
+      { message: "Upload failed", error: err.message },
       { status: 500 }
     );
   }

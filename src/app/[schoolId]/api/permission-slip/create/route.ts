@@ -5,13 +5,24 @@ import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import fs from "fs";
 import path from "path";
 
-export async function POST(req: NextRequest) {
+export async function POST(
+  req: NextRequest,
+  context: { params: Promise<{ schoolId: string }> }
+) {
   try {
+    const { schoolId } = await context.params; // ✅ REQUIRED
+
     const body = await req.json();
     const data = slipSchema.parse(body);
 
-    const student = await prisma.student.findUnique({
-      where: { id: data.studentId },
+    /* -----------------------------------
+       Fetch Student (Tenant Safe)
+    ----------------------------------- */
+    const student = await prisma.student.findFirst({
+      where: {
+        id: data.studentId,
+        schoolId, // ✅ TENANT SAFE
+      },
       include: {
         Class: {
           include: { Grade: true },
@@ -26,16 +37,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (data.classId !== undefined && student.classId !== data.classId) {
+    if (data.classId && student.classId !== data.classId) {
       return NextResponse.json(
-        { success: false, message: "Selected class doesn't match student's actual class." },
+        { success: false, message: "Selected class mismatch." },
         { status: 400 }
       );
     }
 
-    if (data.gradeId !== undefined && student.Class?.gradeId !== data.gradeId) {
+    if (data.gradeId && student.Class?.gradeId !== data.gradeId) {
       return NextResponse.json(
-        { success: false, message: "Selected grade doesn't match student's actual grade." },
+        { success: false, message: "Selected grade mismatch." },
         { status: 400 }
       );
     }
@@ -44,6 +55,9 @@ export async function POST(req: NextRequest) {
       ? new Date(data.date)
       : new Date(new Date().toDateString());
 
+    /* -----------------------------------
+       CREATE Permission Slip (FIXED)
+    ----------------------------------- */
     const newSlip = await prisma.permissionSlip.create({
       data: {
         studentId: data.studentId,
@@ -53,12 +67,14 @@ export async function POST(req: NextRequest) {
         date: leaveDate,
         withWhom: data.withWhom,
         relation: data.relation,
+        schoolId, // ✅ REQUIRED FIX
       },
     });
 
+    /* -----------------------------------
+       Generate PDF
+    ----------------------------------- */
     const pdfDoc = await PDFDocument.create();
-
-    // Page size: 9cm x 9cm in points
     const pageWidth = 255;
     const pageHeight = 255;
 
@@ -66,15 +82,12 @@ export async function POST(req: NextRequest) {
     const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
     const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
-    // --- EMBED LOGO DIRECTLY FROM PUBLIC FOLDER ---
     const logoPath = path.join(process.cwd(), "public", "logo.png");
     const logoBytes = fs.readFileSync(logoPath);
     const logoImage = await pdfDoc.embedPng(logoBytes);
 
-    // Scale down the logo
     const logoDims = logoImage.scale(0.07);
 
-    // Draw logo at top center
     page.drawImage(logoImage, {
       x: (pageWidth - logoDims.width) / 2,
       y: pageHeight - logoDims.height - 10,
@@ -82,49 +95,49 @@ export async function POST(req: NextRequest) {
       height: logoDims.height,
     });
 
-    // Title below logo (centered)
     page.drawText("KOTAK SALESIAN SCHOOL", {
-      x: (pageWidth - fontBold.widthOfTextAtSize("KOTAK SALESIAN SCHOOL", 11)) / 2,
+      x:
+        (pageWidth -
+          fontBold.widthOfTextAtSize("KOTAK SALESIAN SCHOOL", 11)) /
+        2,
       y: pageHeight - logoDims.height - 25,
       size: 11,
       font: fontBold,
       color: rgb(0, 0, 0),
     });
 
-    // Subtitle: GATE SLIP (centered)
     page.drawText("GATE SLIP", {
-      x: (pageWidth - fontRegular.widthOfTextAtSize("GATE SLIP", 10)) / 2,
+      x:
+        (pageWidth -
+          fontRegular.widthOfTextAtSize("GATE SLIP", 10)) /
+        2,
       y: pageHeight - logoDims.height - 40,
       size: 10,
       font: fontRegular,
-      color: rgb(0, 0, 0),
     });
 
-    // Content
     const lines = [
       `Name: ${student.name}`,
       `Class: ${student.Class?.Grade.level} – ${student.Class?.section ?? ""}`,
-      `Date & Time: ${leaveDate.toLocaleDateString("en-GB")} ${new Date().toLocaleTimeString("en-GB")}`,
-      `Permission Type: ${data.leaveType}`,
+      `Date: ${leaveDate.toLocaleDateString("en-GB")}`,
+      `Type: ${data.leaveType}`,
       `Reason: ${data.subReason || "-"}`,
-      `Description: ${data.description || "-"}`,
       `With Whom: ${data.withWhom || "-"}`,
       `Relation: ${data.relation || "-"}`,
     ];
 
-    let y = pageHeight - logoDims.height - 65; // start after header block
+    let y = pageHeight - logoDims.height - 65;
+
     for (const line of lines) {
       page.drawText(line, {
         x: 20,
         y,
         size: 9,
         font: fontRegular,
-        color: rgb(0, 0, 0),
       });
       y -= 14;
     }
 
-    // Footer
     page.drawText("Principal Signature", {
       x: 20,
       y: 20,

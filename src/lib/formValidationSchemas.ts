@@ -4,21 +4,27 @@ import { z } from "zod";
 // Teacher Schema
 export const teacherschema = z.object({
   id: z.string().optional(),
+
   username: z
     .string()
     .min(3, { message: "Username must be at least 3 characters long!" })
     .max(20, { message: "Username must be at most 20 characters long!" }),
+
   password: z
     .string()
     .min(5, { message: "Password must be at least 5 characters long!" })
     .optional()
     .or(z.literal("")),
+
   name: z.string().min(1, { message: "Name is required!" }),
   parentName: z.string().min(1, { message: "Parent Name is required!" }),
+
   phone: z
     .string()
     .regex(/^\d{10}$/, { message: "Phone number must be exactly 10 digits!" }),
-  address: z.string().min(1, { message: "Address is required!" }), // Made address mandatory
+
+  address: z.string().min(1, { message: "Address is required!" }),
+
   bloodType: z
     .enum([
       "A+",
@@ -33,14 +39,27 @@ export const teacherschema = z.object({
     ])
     .optional()
     .default("Under Investigation"),
+
   dob: z.union([z.coerce.date(), z.string().length(0)]).optional(),
+
   img: z.string().optional().nullable(),
+
   email: z
     .string()
     .email({ message: "Invalid email address!" })
     .optional()
     .nullable(),
-  gender: z.enum(["Male", "Female"], { message: "Gender is required!" }),
+
+  gender: z.enum(["Male", "Female"], {
+    message: "Gender is required!",
+  }),
+
+  // ✅ ADD THIS
+  classId: z.number().nullable().optional(),
+
+  // ✅ ADD THIS
+  supervisor: z.boolean().optional().default(false),
+
   subjects: z
     .array(
       z.object({
@@ -50,6 +69,7 @@ export const teacherschema = z.object({
     )
     .optional(),
 });
+
 
 // Infer the form data type from schema
 export type Teacherschema = z.infer<typeof teacherschema>;

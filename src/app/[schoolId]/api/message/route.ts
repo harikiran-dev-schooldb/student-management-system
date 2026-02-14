@@ -1,20 +1,30 @@
 import prisma from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function POST(req: NextRequest) {
+export async function POST(
+  req: NextRequest,
+  context: { params: Promise<{ schoolId: string }> }
+) {
   try {
-    const { message, type, studentId, classId, gradeId } = await req.json();
-    const formattedDate = new Date().toISOString();
+    const { schoolId } = await context.params;
 
-    // 1. Message to a specific student
+    const { message, type, studentId, classId, gradeId } =
+      await req.json();
+
+    const formattedDate = new Date();
+
+    /* --------------------------------
+       1️⃣ Message to specific student
+    ---------------------------------*/
     if (studentId) {
       const newMessage = await prisma.messages.create({
         data: {
           message,
           type,
           date: formattedDate,
-          Student: { connect: { id: studentId } },
-          ...(classId && { Class: { connect: { id: Number(classId) } } }),
+          studentId,
+          ...(classId && { classId: Number(classId) }),
+          schoolId, // ✅ REQUIRED
         },
       });
 
@@ -24,14 +34,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 2. Message to a whole class (single message)
+    /* --------------------------------
+       2️⃣ Message to whole class
+    ---------------------------------*/
     if (classId) {
       const newMessage = await prisma.messages.create({
         data: {
           message,
           type,
           date: formattedDate,
-          Class: { connect: { id: Number(classId) } },
+          classId: Number(classId),
+          schoolId, // ✅ REQUIRED
         },
       });
 
@@ -41,10 +54,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 3. Message to all classes in a grade (multiple messages — one per class)
+    /* --------------------------------
+       3️⃣ Message to grade (all classes)
+    ---------------------------------*/
     if (gradeId) {
       const classesInGrade = await prisma.class.findMany({
-        where: { gradeId: Number(gradeId) },
+        where: {
+          gradeId: Number(gradeId),
+          schoolId, // ✅ TENANT SAFE
+        },
         select: { id: true },
       });
 
@@ -55,25 +73,33 @@ export async function POST(req: NextRequest) {
               message,
               type,
               date: formattedDate,
-              Class: { connect: { id: cls.id } },
+              classId: cls.id,
+              schoolId, // ✅ REQUIRED
             },
           })
         )
       );
 
       return NextResponse.json(
-        { success: true, message: "Message sent to all classes in grade", count: messages.length },
+        {
+          success: true,
+          message: "Message sent to all classes in grade",
+          count: messages.length,
+        },
         { status: 201 }
       );
     }
 
-    // 4. Message to whole school (no classId)
+    /* --------------------------------
+       4️⃣ School-wide message
+    ---------------------------------*/
     const newMessage = await prisma.messages.create({
       data: {
         message,
         type,
         date: formattedDate,
         classId: null,
+        schoolId, // ✅ REQUIRED
       },
     });
 
@@ -90,10 +116,19 @@ export async function POST(req: NextRequest) {
   }
 }
 
-export async function GET() {
+/* --------------------------------
+   GET (Tenant Safe)
+---------------------------------*/
+export async function GET(
+  req: NextRequest,
+  context: { params: Promise<{ schoolId: string }> }
+) {
   try {
+    const { schoolId } = await context.params;
+
     const messages = await prisma.messages.findMany({
-      orderBy: { date: "desc" }, // latest first
+      where: { schoolId }, // ✅ IMPORTANT
+      orderBy: { date: "desc" },
       include: {
         Student: { select: { name: true } },
         Class: { select: { name: true } },

@@ -1,28 +1,25 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-
-// GET: Fetch all subjects/classes assigned to this teacher
 export async function GET(
   req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string; schoolId: string }> }
 ) {
   try {
-    const { id } = await params;
+    const { id: teacherId, schoolId } = await params;
 
     const mappings = await prisma.subjectTeacher.findMany({
       where: {
-        teacherId: id,
+        teacherId,
+        schoolId, // ✅ TENANT SAFE
       },
       include: {
-        subject: true, // Returns { id, name, ... }
-        class: true,   // Returns { id, name, ... }
+        subject: true,
+        class: true,
       },
       orderBy: {
-        class: {
-          name: 'asc' // Sort by class name for better UI
-        }
-      }
+        class: { name: "asc" },
+      },
     });
 
     return NextResponse.json(mappings);
@@ -35,24 +32,13 @@ export async function GET(
   }
 }
 
-// POST: Assign specific subjects and classes to the teacher (Upsert)
 export async function POST(
   req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string; schoolId: string }> }
 ) {
   try {
-    // 1. Await params to get the dynamic ID (Next.js 15 requirement)
-    const { id } = await params;
-    const teacherId = id;
-
-    const body = await req.json();
-    
-    // Expecting body: { assignments: [{ subjectId: 1, classId: 5 }, ...] }
-    const { assignments } = body;
-
-    if (!teacherId) {
-      return NextResponse.json({ error: "Teacher ID missing" }, { status: 400 });
-    }
+    const { id: teacherId, schoolId } = await params;
+    const { assignments } = await req.json();
 
     if (!assignments || !Array.isArray(assignments)) {
       return NextResponse.json(
@@ -61,24 +47,23 @@ export async function POST(
       );
     }
 
-    // 2. Transaction ensures all upserts happen or fail together
     const results = await prisma.$transaction(
-      assignments.map((item: { subjectId: string | number; classId: string | number }) =>
+      assignments.map((item: { subjectId: number; classId: number }) =>
         prisma.subjectTeacher.upsert({
           where: {
-            subjectId_teacherId_classId: {
-              teacherId: teacherId,
+            subjectId_teacherId_classId_schoolId: { // ✅ FIXED
+              teacherId,
               subjectId: Number(item.subjectId),
               classId: Number(item.classId),
+              schoolId,
             },
           },
-          // If relationship exists, do nothing
           update: {},
-          // If relationship does not exist, create it
           create: {
-            teacherId: teacherId,
+            teacherId,
             subjectId: Number(item.subjectId),
             classId: Number(item.classId),
+            schoolId, // ✅ REQUIRED
           },
         })
       )
@@ -97,32 +82,31 @@ export async function POST(
   }
 }
 
-// DELETE: Remove a specific subject mapping
 export async function DELETE(
   req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string; schoolId: string }> }
 ) {
   try {
-    const { id } = await params;
-    const teacherId = id;
-    
+    const { id: teacherId, schoolId } = await params;
+
     const { searchParams } = new URL(req.url);
     const subjectId = searchParams.get("subjectId");
     const classId = searchParams.get("classId");
 
     if (!subjectId || !classId) {
       return NextResponse.json(
-        { error: "subjectId and classId query params are required" },
+        { error: "subjectId and classId required" },
         { status: 400 }
       );
     }
 
     await prisma.subjectTeacher.delete({
       where: {
-        subjectId_teacherId_classId: {
-          teacherId: teacherId,
+        subjectId_teacherId_classId_schoolId: { // ✅ FIXED
+          teacherId,
           subjectId: Number(subjectId),
           classId: Number(classId),
+          schoolId,
         },
       },
     });

@@ -8,16 +8,18 @@ import { toast } from 'react-toastify';
 const client = await clerkClient();
 type ClerkUser = Awaited<ReturnType<typeof client.users.getUser>>;
 
-export async function POST(req: Request) {
+export async function POST(
+  req: Request,
+  context: { params: Promise<{ schoolId: string }> }
+) {
   try {
+    const { schoolId } = await context.params;
     const body = await req.json();
 
-    // ✅ Step 1: Validate input
     const result = teacherschema.safeParse(body);
     if (!result.success) {
-      const errors = result.error.flatten().fieldErrors;
       return NextResponse.json(
-        { message: 'Validation failed', errors },
+        { message: "Validation failed", errors: result.error.flatten().fieldErrors },
         { status: 400 }
       );
     }
@@ -38,23 +40,23 @@ export async function POST(req: Request) {
       subjects,
     } = result.data;
 
-    console.log('Received teacher data:', result.data);
-
-    // ✅ Step 2: Use provided username as Teacher ID
     const id = requestedId ?? username;
     const generatedUsername = username;
-    const finalPassword = password && password !== '' ? password : phone;
+    const finalPassword = password && password !== "" ? password : phone;
     const phoneNumber = `+91${phone}`;
+
+    /* -----------------------------
+       1️⃣ CLERK USER
+    ------------------------------ */
 
     const existingUsers = await client.users.getUserList({
       phoneNumber: [phoneNumber],
     });
 
-    let teacherUser: ClerkUser;
+    let teacherUser;
 
     if (existingUsers.data.length > 0) {
-      teacherUser = existingUsers.data[0];  // Reuse existing Clerk user
-      console.log("Reusing existing Clerk user:", teacherUser.id);
+      teacherUser = existingUsers.data[0];
     } else {
       teacherUser = await client.users.createUser({
         username: generatedUsername,
@@ -64,17 +66,17 @@ export async function POST(req: Request) {
       });
 
       await client.users.updateUser(teacherUser.id, {
-        publicMetadata: { role: 'teacher' },
+        publicMetadata: { role: "teacher" },
       });
     }
 
+    /* -----------------------------
+       2️⃣ PROFILE (NO schoolId here)
+    ------------------------------ */
 
-    console.log('Clerk Teacher User created:', teacherUser.id);
-
-    // ✅ Step 4: Create or reuse Profile
     let profile = await prisma.profile.findUnique({
       where: { clerk_id: teacherUser.id },
-      include: { users: true, activeUser: true },
+      include: { users: true },
     });
 
     if (!profile) {
@@ -83,16 +85,19 @@ export async function POST(req: Request) {
           phone,
           clerk_id: teacherUser.id,
         },
-        include: { users: true, activeUser: true },
+        include: { users: true },
       });
-      console.log('New Profile created:', profile);
-    } else {
-      console.log('Existing Profile reused:', profile);
     }
 
-    // ✅ Step 5: Ensure Linked Role (teacher) exists
+    /* -----------------------------
+       3️⃣ LINKED USER (NOW WITH schoolId)
+    ------------------------------ */
+
     const existingRole = await prisma.linkedUser.findFirst({
-      where: { username: generatedUsername },
+      where: {
+        username: generatedUsername,
+        schoolId, // ✅ tenant safe
+      },
     });
 
     if (existingRole) {
@@ -104,56 +109,62 @@ export async function POST(req: Request) {
 
     const role = await prisma.linkedUser.create({
       data: {
-        role: 'teacher',
+        role: "teacher",
         username: generatedUsername,
         profileId: profile.id,
+        schoolId, // ✅ REQUIRED
       },
     });
-    console.log('New Role created:', role);
 
-    // If profile has no active role yet, set this role as active
     if (!profile.activeUserId) {
       await prisma.profile.update({
         where: { id: profile.id },
         data: { activeUserId: role.id },
       });
-      console.log('Active role set for profile:', role.id);
     }
 
-    // ✅ Step 6: Create Teacher record
-    const existingTeacher = await prisma.teacher.findUnique({
-      where: { username: generatedUsername },
+    /* -----------------------------
+       4️⃣ CREATE TEACHER (Tenant Safe)
+    ------------------------------ */
+
+    const duplicateTeacher = await prisma.teacher.findFirst({
+      where: {
+        username: generatedUsername,
+        schoolId, // ✅ IMPORTANT
+      },
     });
 
-    if (existingTeacher) {
+    if (duplicateTeacher) {
       return NextResponse.json(
-        { message: `Teacher username "${generatedUsername}" already exists in DB!` },
+        { message: `Teacher username "${generatedUsername}" already exists.` },
         { status: 409 }
       );
     }
 
-    const teacherData: any = {
-      id,
-      username: generatedUsername,
-      name,
-      parentName: parentName ?? null,
-      dob: dob ? new Date(dob) : new Date(),
-      email: email ?? null,
-      phone,
-      address,
-      gender,
-      clerk_id: teacherUser.id,
-      img: img ?? null,
-      bloodType: bloodType ?? 'Under Investigation',
-      profileId: profile.id,
-      linkedUserId: role.id,
-    };
+    const teacher = await prisma.teacher.create({
+      data: {
+        id,
+        username: generatedUsername,
+        name,
+        parentName: parentName ?? null,
+        dob: dob ? new Date(dob) : new Date(),
+        email: email ?? null,
+        phone,
+        address,
+        gender,
+        clerk_id: teacherUser.id,
+        img: img ?? null,
+        bloodType: bloodType ?? "Under Investigation",
+        profileId: profile.id,
+        linkedUserId: role.id,
+        schoolId, // ✅ REQUIRED
+      },
+    });
 
-    const teacher = await prisma.teacher.create({ data: teacherData });
+    /* -----------------------------
+       5️⃣ SUBJECT ASSIGNMENT (Tenant Safe)
+    ------------------------------ */
 
-    console.log('Teacher created in DB:', teacher);
-
-    // ✅ Step 7: Assign subjects
     if (subjects && Array.isArray(subjects)) {
       const validSubjects = subjects.filter(
         (sub: any) => sub.subjectId && sub.classId
@@ -165,6 +176,7 @@ export async function POST(req: Request) {
             subjectId: sub.subjectId,
             classId: sub.classId,
             teacherId: teacher.id,
+            schoolId, // ✅ REQUIRED
           })),
           skipDuplicates: true,
         });
@@ -172,110 +184,19 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json(teacher, { status: 201 });
-    toast.success('Teacher created successfully!');
-  } catch (error: any) {
-    console.error('Error details:', JSON.stringify(error, null, 2));
 
-    if (error.code === 'P2002') {
+  } catch (error: any) {
+    console.error("Teacher creation error:", error);
+
+    if (error.code === "P2002") {
       return NextResponse.json(
-        { message: 'Unique constraint failed (probably username exists).' },
+        { message: "Duplicate record (username exists)." },
         { status: 409 }
       );
     }
 
     return NextResponse.json(
-      { message: 'Internal server error', error: error.message },
-      { status: 500 }
-    );
-  }
-}
-
-export async function GET(req: Request) {
-  try {
-    const { searchParams } = new URL(req.url);
-    const username = searchParams.get("username");
-    const id = searchParams.get("id");
-    const classId = searchParams.get("classId");
-    const gender = searchParams.get("gender");
-
-    const whereClause: any = {};
-
-    // 🎯 Filter by ID
-    if (id) {
-      const teacher = await prisma.teacher.findUnique({
-        where: { id },
-        include: {
-          profile: { include: { users: true, activeUser: true } },
-          subjects: { include: { subject: true, class: true } },
-        },
-      });
-
-      if (!teacher) {
-        return NextResponse.json(
-          { message: `Teacher with id "${id}" not found` },
-          { status: 404 }
-        );
-      }
-
-      return NextResponse.json(teacher, { status: 200 });
-    }
-
-    // 🎯 Filter by Username
-    if (username) {
-      const teacher = await prisma.teacher.findUnique({
-        where: { username },
-        include: {
-          profile: { include: { users: true, activeUser: true } },
-          subjects: { include: { subject: true, class: true } },
-        },
-      });
-
-      if (!teacher) {
-        return NextResponse.json(
-          { message: `Teacher with username "${username}" not found` },
-          { status: 404 }
-        );
-      }
-
-      return NextResponse.json(teacher, { status: 200 });
-    }
-
-    // 🎯 Add gender filter
-    if (gender) {
-      whereClause.gender = gender;
-    }
-
-    // 🎯 Add class filter (teachers who teach in a class)
-    let teachers;
-    if (classId) {
-      teachers = await prisma.teacher.findMany({
-        where: {
-          ...whereClause,
-          subjects: {
-            some: { classId: classId },
-          },
-        },
-        include: {
-          profile: { include: { users: true, activeUser: true } },
-          subjects: { include: { subject: true, class: true } },
-        },
-      });
-    } else {
-      teachers = await prisma.teacher.findMany({
-        where: whereClause,
-        include: {
-          profile: { include: { users: true, activeUser: true } },
-          subjects: { include: { subject: true, class: true } },
-        },
-        orderBy: { createdAt: "desc" },
-      });
-    }
-
-    return NextResponse.json(teachers, { status: 200 });
-  } catch (error: any) {
-    console.error("GET Teachers Error:", error);
-    return NextResponse.json(
-      { message: "Failed to fetch teachers", error: error.message },
+      { message: "Internal server error", error: error.message },
       { status: 500 }
     );
   }

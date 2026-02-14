@@ -1,54 +1,63 @@
 import prisma from '@/lib/prisma';
 import { NextResponse } from 'next/server';
 
-export async function POST(req: Request) {
+export async function POST(
+  req: Request,
+  context: { params: Promise<{ schoolId: string }> }
+) {
   try {
+    const { schoolId } = await context.params;
     const body = await req.json();
     const { name, gradeId } = body;
 
-    console.log('Received data:', body); // Debugging: Check the received data
-
-    // Check if a subject with the same name already exists
+    /* -------------------------
+       Check Duplicate (Tenant Safe)
+    -------------------------- */
     const existingSubject = await prisma.subject.findUnique({
       where: {
-        name: name.trim(),  // Check for duplicate name
+        name_schoolId: {
+          name: name.trim(),
+          schoolId,
+        },
       },
     });
 
     if (existingSubject) {
       return NextResponse.json(
-        { message: `Subject with the name "${name}" already exists!` },
+        { message: `Subject "${name}" already exists.` },
         { status: 409 }
       );
     }
 
-    // Check if all grade IDs are valid
+    /* -------------------------
+       Validate Grades (Tenant Safe)
+    -------------------------- */
     const validGradeCount = await prisma.grade.count({
       where: {
         id: { in: gradeId },
+        schoolId,
       },
     });
 
-    console.log('Valid grade count:', validGradeCount); // Debugging: Check how many grades are valid
-
     if (validGradeCount !== gradeId.length) {
       return NextResponse.json(
-        { message: 'Some grade IDs are invalid or do not exist.' },
+        { message: 'Some grade IDs are invalid.' },
         { status: 400 }
       );
     }
 
-    // Proceed with creating the new subject and linking it to the grades
+    /* -------------------------
+       Create Subject
+    -------------------------- */
     const newSubject = await prisma.subject.create({
       data: {
         name: name.trim(),
+        schoolId, // ✅ REQUIRED
         grades: {
-          connect: gradeId.map((id: number) => ({ id })) // Connect grades by their IDs
-        }
+          connect: gradeId.map((id: number) => ({ id })),
+        },
       },
     });
-
-    console.log('New subject created:', newSubject); // Debugging: Check the created subject data
 
     return NextResponse.json(newSubject, { status: 201 });
   } catch (error: any) {
@@ -56,42 +65,52 @@ export async function POST(req: Request) {
 
     if (error.code === 'P2002') {
       return NextResponse.json(
-        { message: 'Subject with this name already exists!' },
+        { message: 'Duplicate subject.' },
         { status: 409 }
       );
     }
 
-    return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
+    return NextResponse.json(
+      { message: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }
 
-
-export async function GET(req: Request) {
+export async function GET(
+  req: Request,
+  context: { params: Promise<{ schoolId: string }> }
+) {
   try {
+    const { schoolId } = await context.params;
     const { searchParams } = new URL(req.url);
     const gradeId = searchParams.get("gradeId");
 
     let subjects;
 
     if (gradeId) {
-      // Fetch subjects by grade
       subjects = await prisma.subject.findMany({
         where: {
-          grades: { some: { id: Number(gradeId) } },
+          schoolId,
+          grades: {
+            some: { id: Number(gradeId) },
+          },
         },
         include: { grades: true },
       });
     } else {
-      // Fetch all subjects
       subjects = await prisma.subject.findMany({
+        where: { schoolId },
         include: { grades: true },
       });
     }
 
     return NextResponse.json(subjects, { status: 200 });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error fetching subjects:", error);
-    return NextResponse.json({ message: "Internal server error" }, { status: 500 });
+    return NextResponse.json(
+      { message: "Internal server error" },
+      { status: 500 }
+    );
   }
 }
-    
