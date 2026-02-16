@@ -13,6 +13,7 @@ import { Filter } from "lucide-react";
 import IconButton from "@/components/IconButton";
 import SortButton from "@/components/SortButton";
 import { SearchParams } from "../../../../../../types";
+import { tenantPrisma } from "@/lib/tenant-prisma";
 
 type SubjectListType = Subject & {
   grades: Grade[];
@@ -70,29 +71,44 @@ const getColumns = (role: string | null) => [
 
 const SubjectList = async ({
   searchParams,
+  params,
 }: {
   searchParams: Promise<SearchParams>;
+  params: Promise<{ schoolId: string }>;
 }) => {
-  const userInfo = await fetchUserInfo();
+  // 1️⃣ Resolve route params
+  const { schoolId: slug } = await params;
+  const resolvedSearchParams = await searchParams;
+
+  // 2️⃣ Resolve internal school ID
+  const school = await prisma.schoolInfo.findUnique({
+    where: { schoolId: slug },
+    select: { id: true },
+  });
+
+  if (!school) throw new Error("Invalid school");
+
+  const userInfo = await fetchUserInfo(school.id);
   const { role, gradeId } = userInfo;
 
-  const params = await searchParams;
-  const { page, classId, ...queryParams } = params;
+  const { page, classId, ...queryParams } = resolvedSearchParams;
   const p = page ? (Array.isArray(page) ? page[0] : page) : "1";
 
   const columns = getColumns(role);
 
-  const sortOrder = params.sort === "desc" ? "desc" : "asc";
-  const sortKey = Array.isArray(params.sortKey)
-    ? params.sortKey[0]
-    : params.sortKey || "name";
+  const db = tenantPrisma(school.id);
+
+  const sortOrder = resolvedSearchParams.sort === "desc" ? "desc" : "asc";
+  const sortKey = Array.isArray(resolvedSearchParams.sortKey)
+    ? resolvedSearchParams.sortKey[0]
+    : resolvedSearchParams.sortKey || "name";
 
   const query: Prisma.SubjectWhereInput = {};
 
   // 🔒 Teacher / Student → ONLY their grade
   if (role === "teacher" || role === "student") {
     if (!gradeId) {
-      query.id = -1; // safety fallback
+      return [];
     } else {
       query.grades = {
         some: { id: gradeId },
@@ -102,15 +118,15 @@ const SubjectList = async ({
 
   // 🧑‍💼 Admin → free filtering
   if (role === "admin") {
-    if (params.gradeId && params.classId) {
+    if (resolvedSearchParams.gradeId && resolvedSearchParams.classId) {
       query.grades = {
         some: {
-          classes: { some: { id: Number(params.classId) } },
+          classes: { some: { id: Number(resolvedSearchParams.classId) } },
         },
       };
-    } else if (params.gradeId) {
+    } else if (resolvedSearchParams.gradeId) {
       query.grades = {
-        some: { id: Number(params.gradeId) },
+        some: { id: Number(resolvedSearchParams.gradeId) },
       };
     }
   }
@@ -138,15 +154,17 @@ const SubjectList = async ({
 
   const classes =
     role === "admin"
-      ? await prisma.class.findMany({
-          where: params.gradeId ? { gradeId: Number(params.gradeId) } : {},
+      ? await db.class.findMany({
+          where: resolvedSearchParams.gradeId
+            ? { gradeId: Number(resolvedSearchParams.gradeId) }
+            : {},
         })
       : [];
 
-  const grades = role === "admin" ? await prisma.grade.findMany() : [];
+  const grades = role === "admin" ? await db.grade.findMany() : [];
 
-  const [data, count] = await prisma.$transaction([
-    prisma.subject.findMany({
+  const [data, count] = await db.$transaction([
+    db.subject.findMany({
       orderBy: [{ [sortKey]: sortOrder }, { name: "asc" }],
       where: query,
       include: {
@@ -156,8 +174,10 @@ const SubjectList = async ({
       take: ITEM_PER_PAGE,
       skip: ITEM_PER_PAGE * (parseInt(p) - 1),
     }),
-    prisma.subject.count({ where: query }),
+    db.subject.count({ where: query }),
   ]);
+
+  const Path = `/${slug}/list/subjects`;
 
   return (
     <div className="flex-1 p-4 bg-white dark:bg-gray-900 text-black dark:text-white">
@@ -171,13 +191,13 @@ const SubjectList = async ({
             <ClassFilterDropdown
               classes={classes}
               grades={grades}
-              basePath="/list/subjects"
+              basePath={Path}
             />
           )}
           <div className="flex flex-col items-center w-full gap-4 md:flex-row md:w-auto">
             <TableSearch />
             <div className="flex items-center self-end gap-4">
-              <ResetFiltersButton basePath="/list/subjects" />
+              <ResetFiltersButton basePath={Path} />
               <IconButton icon={Filter} />
               <SortButton sortKey="id" />
               {role === "admin" && (

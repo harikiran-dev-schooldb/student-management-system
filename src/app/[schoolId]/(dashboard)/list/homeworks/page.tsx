@@ -14,6 +14,7 @@ import { Filter } from "lucide-react";
 import IconButton from "@/components/IconButton";
 import { Homeworks, SearchParams } from "../../../../../../types";
 import { HomeworkSelect } from "../../../../../../types/query-types";
+import { tenantPrisma } from "@/lib/tenant-prisma";
 
 // Render a single table row
 const renderRow = (item: Homeworks, role: string | null) => (
@@ -65,25 +66,32 @@ const getColumns = (role: string | null) => [
 
 const HomeworkListPage = async ({
   searchParams,
+  params,
 }: {
   searchParams: Promise<SearchParams>;
+  params: Promise<{ schoolId: string }>;
 }) => {
-  const params = await searchParams;
-  const { page, gradeId, date, classId, ...queryParams } = params;
+  const { schoolId } = await params;
+  const resolvedParams = await searchParams;
+
+  const { page, gradeId, date, classId, ...queryParams } = resolvedParams;
   const p = page ? (Array.isArray(page) ? page[0] : page) : "1";
 
-  const { role, userId } = await fetchUserInfo();
+  // ✅ Pass schoolId
+  const { role, userId } = await fetchUserInfo(schoolId);
   const columns = getColumns(role);
 
+  const db = tenantPrisma(schoolId);
+
   // Sorting
-  const sortOrder = params.sort === "desc" ? "desc" : "asc";
-  const sortKey = Array.isArray(params.sortKey)
-    ? params.sortKey[0]
-    : params.sortKey || "date";
+  const sortOrder = resolvedParams.sort === "desc" ? "desc" : "asc";
+  const sortKey = Array.isArray(resolvedParams.sortKey)
+    ? resolvedParams.sortKey[0]
+    : resolvedParams.sortKey || "date";
 
   const rawDate = Array.isArray(date) ? date[0] : date;
   const selectedDate = new Date(
-    rawDate ?? new Date().toISOString().split("T")[0]
+    rawDate ?? new Date().toISOString().split("T")[0],
   );
   const startDate = startOfDay(selectedDate);
   const endDate = endOfDay(selectedDate);
@@ -91,13 +99,15 @@ const HomeworkListPage = async ({
   let userClassIds: number[] = [];
 
   if (role === "teacher" && userId) {
-    const teacher = await prisma.teacher.findUnique({
+    const teacher = await db.teacher.findFirst({
       where: { linkedUserId: userId },
       select: { classId: true },
     });
     if (teacher?.classId) userClassIds = [teacher.classId];
-  } else if (role === "student" && userId) {
-    const student = await prisma.student.findFirst({
+  }
+
+  if (role === "student" && userId) {
+    const student = await db.student.findFirst({
       where: { linkedUserId: userId },
       select: { classId: true },
     });
@@ -124,27 +134,30 @@ const HomeworkListPage = async ({
       },
       {
         Class: {
-          name: { contains: queryParams.search as string, mode: "insensitive" },
+          name: {
+            contains: queryParams.search as string,
+            mode: "insensitive",
+          },
         },
       },
     ];
   }
 
-  const classes = await prisma.class.findMany();
-  const grades = await prisma.grade.findMany();
+  const classes = await db.class.findMany();
+  const grades = await db.grade.findMany();
 
-  const [data, count] = await prisma.$transaction([
-    prisma.homework.findMany({
+  const [data, count] = await db.$transaction([
+    db.homework.findMany({
       orderBy: [{ [sortKey]: sortOrder }, { id: "desc" }],
       where: filters,
       select: HomeworkSelect,
       take: ITEM_PER_PAGE,
       skip: ITEM_PER_PAGE * (parseInt(p) - 1),
     }),
-    prisma.homework.count({ where: filters }),
+    db.homework.count({ where: filters }),
   ]);
 
-  const Path = `/list/homeworks`;
+  const Path = `/${schoolId}/list/homeworks`;
 
   return (
     <div className="flex-1 p-4 bg-white dark:bg-gray-900 text-black dark:text-white">
@@ -167,7 +180,7 @@ const HomeworkListPage = async ({
 
           <div className="flex items-center gap-4">
             <ResetFiltersButton basePath={Path} />
-            <IconButton icon={Filter}/>
+            <IconButton icon={Filter} />
             <SortButton sortKey={sortKey} />
             {(role === "admin" || role === "teacher") && (
               <FormContainer table="homework" type="create" />

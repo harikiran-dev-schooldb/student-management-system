@@ -2,42 +2,75 @@ import { NextRequest, NextResponse } from "next/server";
 import { announcementSchema } from "@/lib/formValidationSchemas";
 import prisma from "@/lib/prisma";
 
-// Update Announcement
-export async function PUT(req: NextRequest) {
-  const paramId = req.nextUrl.pathname.split("/")[3]; // Assuming `/api/announcement/[id]`
-
+// ---------------- PUT ----------------
+export async function PUT(
+  req: NextRequest,
+  context: { params: Promise<{ schoolId: string; id: string }> },
+) {
   try {
+    const { schoolId, id } = await context.params;
+
     const body = await req.json();
+    const data = announcementSchema.parse(body);
 
-    const data = announcementSchema.parse({
-      ...body,
-      id: Number(paramId),
+    const result = await prisma.announcement.updateMany({
+      where: {
+        id: Number(id),
+        schoolId, // 🔒 tenant protection
+      },
+      data: {
+        title: data.title,
+        description: data.description,
+        date: data.date,
+        classId: data.classId ?? null,
+      },
     });
 
-    const updatedAnnouncement = await prisma.announcement.update({
-      where: { id: Number(paramId)  },
-      data,
-    });
+    if (result.count === 0) {
+      return NextResponse.json(
+        { success: false, error: "Not found or unauthorized" },
+        { status: 404 },
+      );
+    }
 
-    return NextResponse.json({ success: true, updatedAnnouncement }, { status: 200 });
+    return NextResponse.json({ success: true }, { status: 200 });
   } catch (error: any) {
-    console.error("PUT /api/announcement/[id] error:", error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error("PUT error:", error);
+    return NextResponse.json(
+      { success: false, error: error.message },
+      { status: 500 },
+    );
   }
 }
 
-// Delete Announcement
-export async function DELETE(req: NextRequest) {
-  const paramId = req.nextUrl.pathname.split("/")[3]; // Assuming `/api/announcement/[id]`
-
+// ---------------- DELETE ----------------
+export async function DELETE(
+  req: NextRequest,
+  context: { params: Promise<{ schoolId: string; id: string }> },
+) {
   try {
-    const deletedAnnouncement = await prisma.announcement.delete({
-      where: { id: Number(paramId)  },
+    const { schoolId, id } = await context.params;
+
+    const result = await prisma.announcement.deleteMany({
+      where: {
+        id: Number(id),
+        schoolId, // 🔒 tenant protection
+      },
     });
 
-    return NextResponse.json({ success: true, deletedAnnouncement }, { status: 200 });
+    if (result.count === 0) {
+      return NextResponse.json(
+        { success: false, error: "Not found or unauthorized" },
+        { status: 404 },
+      );
+    }
+
+    return NextResponse.json({ success: true }, { status: 200 });
   } catch (error: any) {
-    console.error("DELETE /api/announcement/[id] error:", error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error("DELETE error:", error);
+    return NextResponse.json(
+      { success: false, error: error.message },
+      { status: 500 },
+    );
   }
 }

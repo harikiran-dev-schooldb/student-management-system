@@ -3,18 +3,24 @@ export const dynamic = "force-dynamic";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
 import { redirect } from "next/navigation";
 
-export default async function AttendanceViewIndex() {
-  const user = await fetchUserInfo().catch(() => null);
+export default async function AttendanceViewIndex({
+  params,
+}: {
+  params: Promise<{ schoolId: string }>;
+}) {
+  const { schoolId } = await params;
+
+  const user = await fetchUserInfo(schoolId).catch(() => null);
 
   if (!user) {
-    redirect("/logout");
+    redirect(`/${schoolId}/logout`);
   }
 
   const { role, studentId } = user;
 
   if (role === "student" && studentId) {
-    redirect(`/list/attendance/calendar/${studentId}`);
+    redirect(`/${schoolId}/list/attendance/calendar/${studentId}`);
   }
 
-  redirect("/logout");
+  redirect(`/${schoolId}/logout`);
 }

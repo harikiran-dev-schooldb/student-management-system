@@ -8,38 +8,55 @@ import TeacherFilterDropdown from "@/components/dropdowns/teachers";
 import ResetFiltersButton from "@/components/ResetFiltersButton";
 import TableSearch from "@/components/TableSearch";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
-
+import { tenantPrisma } from "@/lib/tenant-prisma";
+import { SearchParams } from "../../../../../../types";
 
 const LessonsListPage = async ({
   searchParams,
+  params,
 }: {
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+  searchParams: Promise<SearchParams>;
+  params: Promise<{ schoolId: string }>;
 }) => {
-  const params = await searchParams;
+  const { schoolId: slug } = await params;
+  const resolvedSearchParams = await searchParams;
+
+  // 2️⃣ Resolve internal school ID
+  const school = await prisma.schoolInfo.findUnique({
+    where: { schoolId: slug },
+    select: { id: true },
+  });
+
+  if (!school) throw new Error("Invalid school");
+
   const {
     role,
     teacherId: userTeacherId,
     classId: userClassId,
-  } = await fetchUserInfo();
+  } = await fetchUserInfo(school.id);
+
+  // 3️⃣ Tenant-scoped Prisma
+  const db = tenantPrisma(school.id);
 
   // Normalize query params
-  const selectedTeacherId = Array.isArray(params.teacherId)
-    ? params.teacherId[0]
-    : params.teacherId;
-  const selectedClassId = Array.isArray(params.classId)
-    ? Number(params.classId[0])
-    : params.classId
-    ? Number(params.classId)
+  const selectedTeacherId = Array.isArray(resolvedSearchParams.teacherId)
+    ? resolvedSearchParams.teacherId[0]
+    : resolvedSearchParams.teacherId;
+
+  const selectedClassId = Array.isArray(resolvedSearchParams.classId)
+    ? Number(resolvedSearchParams.classId[0])
+    : resolvedSearchParams.classId
+    ? Number(resolvedSearchParams.classId)
     : undefined;
 
   // Fetch data for dropdowns
-  const classes = await prisma.class.findMany({
+  const classes = await db.class.findMany({
     select: { id: true, section: true, gradeId: true },
   });
-  const grades = await prisma.grade.findMany({
+  const grades = await db.grade.findMany({
     select: { id: true, level: true },
   });
-  const teachers = await prisma.teacher.findMany({
+  const teachers = await db.teacher.findMany({
     select: { id: true, name: true },
   });
 
@@ -52,14 +69,15 @@ const LessonsListPage = async ({
   const gradeData = grades.map((g) => ({ id: g.id, level: g.level }));
   const teacherData = teachers.map((t) => ({ id: t.id, name: t.name }));
 
-  const Path = "/list/lessons";
+  const Path = `/${slug}/list/lessons`;
+
+  const fallbackClassId = classes[0]?.id;
 
   return (
     <div className="flex-1 p-4 bg-white dark:bg-darkMode text-black dark:text-white">
       <div className="flex items-center justify-between mb-6">
         <h1 className="hidden text-lg font-semibold md:block">Schedule</h1>
 
-        {/* Filters only for admin */}
         {/* Filters only for admin */}
         {role === "admin" && (
           <div className="flex flex-col items-center w-full gap-4 md:flex-row md:w-auto">
@@ -95,20 +113,22 @@ const LessonsListPage = async ({
           </div>
         )}
       </div>
-
-      {/* Role-based timetable rendering */}
       {role === "admin" ? (
         selectedTeacherId ? (
           <TeacherTimetableContainer teacherId={selectedTeacherId} />
-        ) : (
+        ) : fallbackClassId ? (
           <ClassTimetableContainer
-            classId={selectedClassId || classes[0]?.id || 1}
+            classId={selectedClassId || fallbackClassId}
           />
+        ) : (
+          <p className="text-gray-500 dark:text-gray-400">
+            No classes available
+          </p>
         )
-      ) : role === "teacher" ? (
-        <TeacherTimetableContainer teacherId={userTeacherId || ""} />
-      ) : role === "student" ? (
-        <ClassTimetableContainer classId={userClassId || classes[0]?.id || 1} />
+      ) : role === "teacher" && userTeacherId ? (
+        <TeacherTimetableContainer teacherId={userTeacherId} />
+      ) : role === "student" && userClassId ? (
+        <ClassTimetableContainer classId={userClassId} />
       ) : (
         <p className="text-gray-500 dark:text-gray-400">
           No timetable available

@@ -1,13 +1,15 @@
 // lib/fees.ts
-import prisma from "./prisma";
+import { tenantPrisma } from "./tenant-prisma";
 
-export async function getGroupedStudentFees(studentIds: string[]) {
+export async function getGroupedStudentFees(
+  schoolId: string,
+  studentIds: string[]
+) {
   if (studentIds.length === 0) return [];
 
-  /**
-   * Fetch only required fee rows
-   */
-  const fees = await prisma.studentFees.findMany({
+  const db = tenantPrisma(schoolId);
+
+  const fees = await db.studentFees.findMany({
     where: {
       studentId: { in: studentIds },
     },
@@ -25,9 +27,6 @@ export async function getGroupedStudentFees(studentIds: string[]) {
     },
   });
 
-  /**
-   * Aggregate in ONE pass
-   */
   const feeMap = new Map<
     string,
     {
@@ -68,9 +67,6 @@ export async function getGroupedStudentFees(studentIds: string[]) {
     agg.dueAmount += termFee - fee.paidAmount;
   }
 
-  /**
-   * Final status calculation
-   */
   for (const agg of feeMap.values()) {
     agg.status =
       agg.totalPaidAmount >= agg.totalFeeAmount ? "Paid" : "Not Paid";

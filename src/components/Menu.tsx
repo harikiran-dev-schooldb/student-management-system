@@ -88,7 +88,7 @@ const menuSections: MenuSection[] = [
         dropdown: [
           {
             label: "Mark Attendance",
-            href: "/list/attendance/mark_attendance",
+            href: "/list/attendance/mark",
             icon: CalendarCheck,
             visible: ["admin", "teacher"],
           },
@@ -144,7 +144,7 @@ const menuSections: MenuSection[] = [
           },
           {
             label: "Fees Management",
-            href: "/list/fees/feemanagement",
+            href: "/list/fees/manage",
             icon: Edit,
             visible: ["admin"],
           },

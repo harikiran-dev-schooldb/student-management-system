@@ -1,55 +1,62 @@
-// app/teacher/page.tsx
 export const dynamic = "force-dynamic";
 
 import Messages from "@/components/Announcements";
 import EventCalendar from "@/components/EventCalendar";
 import TeacherTimetableContainer from "@/components/TeacherTimetableContainer";
-import UnauthorizedReload from "@/components/UnauthorizedReload";
 import prisma from "@/lib/prisma";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
-import {
-  CalendarClock,
-  CalendarDays,
-  Megaphone,
-  AlertCircle,
-} from "lucide-react";
-import { redirect } from "next/navigation";
+import { tenantPrisma } from "@/lib/tenant-prisma";
+import { redirect, notFound } from "next/navigation";
+import { AlertCircle, CalendarClock, CalendarDays, Megaphone } from "lucide-react";
 
-/* --- UI Tokens --- */
-const cardClass =
+interface PageProps {
+  params: Promise<{ schoolId: string }>;
+}
+
+/* --- UI Tokens --- */ const cardClass =
   "bg-white dark:bg-darkMode rounded-xl border border-gray-200/50 dark:border-gray-800 shadow-sm overflow-hidden p-6 transition-all hover:shadow-md";
 
-const TeacherPage = async () => {
-  const { userId, role, teacherId } = await fetchUserInfo().catch(
-    () => ({} as any)
-  );
+const TeacherPage = async ({ params }: PageProps) => {
+  // 1️⃣ Resolve slug
+  const { schoolId: slug } = await params;
+
+  // 2️⃣ Resolve internal school ID
+  const school = await prisma.schoolInfo.findUnique({
+    where: { schoolId: slug },
+    select: { id: true },
+  });
+
+  if (!school) return notFound();
+
+  // 3️⃣ Tenant scoped DB
+  const db = tenantPrisma(school.id);
+
+  // 4️⃣ Fetch user scoped to this school
+  const { userId, role, teacherId } = await fetchUserInfo(school.id);
 
   // 🔒 No session
   if (!userId) {
-    redirect("/logout");
+    redirect(`/${slug}/logout`);
   }
 
   // 🔁 Role routing
   if (role === "admin") {
-    redirect("/admin");
+    redirect(`/${slug}/admin`);
   }
 
-  
-
-  // 🔒 Only teacher is allowed beyond this point
+  // 🔒 Only teacher allowed
   if (role !== "teacher" || !teacherId) {
-    redirect("/logout");
+    redirect(`/${slug}/logout`);
   }
 
-  // Fetch teacher data
-  const teacher = await prisma.teacher.findUnique({
+  // 5️⃣ Fetch teacher safely
+  const teacher = await db.teacher.findUnique({
     where: { id: teacherId },
     include: { class: true },
   });
 
-  // 🔒 Teacher session exists but DB record missing
   if (!teacher) {
-    redirect("/logout");
+    redirect(`/${slug}/logout`);
   }
 
   return (

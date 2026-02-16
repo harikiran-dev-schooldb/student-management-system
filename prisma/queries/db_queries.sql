@@ -64,7 +64,9 @@ SELECT * FROM "Result";
 SELECT * FROM "Attendance";
 SELECT * FROM "Messages";
 SELECT * FROM "Profile" WHERE clerk_id is not null;
+SELECT * FROM "Profile" WHERE id = 'cmjf4q3hm00006cjq2nnukul3';
 SELECT * FROM "LinkedUser";
+SELECT * FROM "LinkedUser" WHERE id = 'cmjf4q3hv00016cjqg8jf9op8';
 
 ALTER TABLE "FeeStructure"
 ALTER COLUMN id

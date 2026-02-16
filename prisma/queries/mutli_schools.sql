@@ -194,8 +194,90 @@ SELECT * FROM "ExamGradeSubject";
 SELECT * FROM "Result";
 SELECT * FROM "Subject";
 SELECT * FROM "SchoolInfo";
+SELECT * FROM "LinkedUser";
+
+INSERT INTO "Profile" (
+  "id",
+  "clerk_id",
+  "phone",
+  "activeUserId"
+) VALUES (
+  'cmjf4q3hm00006cjq2nnukul3',
+  'user_34hDQUMuHoPtvaWMWsrnYaAYztu',
+  '7801049830',
+  NULL
+);
+
+INSERT INTO "LinkedUser" (
+  "id",
+  "username",
+  "role",
+  "profileId",
+  "schoolId"
+) VALUES (
+  'cmjf4q3hv00016cjqg8jf9op8',
+  'admin001',
+  'admin',
+  'cmjf4q3hm00006cjq2nnukul3',
+  1
+);
 
 
 
+INSERT INTO "LinkedUser" (
+  "id",
+  "username",
+  "role",
+  "profileId",
+  "schoolId"
+) VALUES (
+  'cmjf4q3hv00016cjqg8jf9op8',
+  'admin001',
+  'admin',
+  'cmjf4q3hm00006cjq2nnukul3',
+  1
+);
+
+UPDATE "Profile"
+SET "activeUserId" = 'cmjf4q3hv00016cjqg8jf9op8'
+WHERE "id" = 'cmjf4q3hm00006cjq2nnukul3';
+
+INSERT INTO "Admin" (
+  "id",
+  "username",
+  "password",
+  "name",
+  "parentName",
+  "gender",
+  "email",
+  "phone",
+  "address",
+  "dob",
+  "img",
+  "bloodType",
+  "createdAt",
+  "clerk_id",
+  "profileId",
+  "linkedUserId",
+  "schoolId"
+) VALUES (
+  'cmjf4q3i600026cjqnm2xzto4',
+  'admin001',
+  'admin001',
+  'A HARIKIRAN',
+  'A SRINIVASARAO',
+  'Male',
+  'hari.myskoolcom@gmail.com',
+  '7801049830',
+  '17-309, Golla Veedhi, OldGopalapatnam',
+  '1996-03-29 00:00:00',
+  'https://res.cloudinary.com/harikiran/image/upload/v1766285381/h4x8fjbq7hlfkvbv4vg9.jpg',
+  'O_POS',
+  '2025-12-21 02:50:03.195',
+  'user_34hDQUMuHoPtvaWMWsrnYaAYztu',
+  'cmjf4q3hm00006cjq2nnukul3',
+  'cmjf4q3hv00016cjqg8jf9op8',
+  1
+);
 
 

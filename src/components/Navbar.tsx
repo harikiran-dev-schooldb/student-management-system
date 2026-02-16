@@ -4,8 +4,10 @@ import prisma from "@/lib/prisma";
 import { ProfileWithUsersSelect } from "../../types/query-types";
 
 export async function NavbarServer({
+  schoolId,
   onToggleSidebar,
 }: {
+  schoolId: string;
   onToggleSidebar?: () => void;
 }) {
   const user = await currentUser();
@@ -13,12 +15,20 @@ export async function NavbarServer({
   if (!user) {
     return (
       <NavbarClient
+        schoolName={schoolId}
         roles={[]}
         activeUser={null}
         onToggleSidebar={onToggleSidebar}
       />
     );
   }
+
+  const school = await prisma.schoolInfo.findUnique({
+    where: { schoolId },
+    select: { name: true },
+  });
+
+  const schoolName = school?.name ?? schoolId;
 
   const profile = await prisma.profile.findFirst({
     where: { clerk_id: user.id },
@@ -28,6 +38,7 @@ export async function NavbarServer({
   if (!profile) {
     return (
       <NavbarClient
+        schoolName={schoolName}
         roles={[]}
         activeUser={null}
         onToggleSidebar={onToggleSidebar}
@@ -46,11 +57,10 @@ export async function NavbarServer({
 
   return (
     <NavbarClient
+      schoolName={schoolName}
       roles={roles}
       activeUser={
-        profile.activeUser
-          ? { username: profile.activeUser.username }
-          : null
+        profile.activeUser ? { username: profile.activeUser.username } : null
       }
       onToggleSidebar={onToggleSidebar}
     />

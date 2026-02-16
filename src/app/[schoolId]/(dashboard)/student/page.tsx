@@ -4,18 +4,39 @@ import prisma from "@/lib/prisma";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
 import { notFound } from "next/navigation";
 import { Calendar } from "lucide-react";
-import { SingleStudentSelect } from "../../../../types/query-types";
+import { SingleStudentSelect } from "../../../../../types/query-types";
+import { tenantPrisma } from "@/lib/tenant-prisma";
 
 /* --- Styles & Tokens --- */
 const cardClass =
   "bg-white dark:bg-darkMode rounded-xl border border-gray-200/50 dark:border-gray-800 shadow-sm overflow-hidden transition-all hover:shadow-md";
 
-const ProfilePage = async () => {
-  const { userId } = await fetchUserInfo();
+interface ProfilePageProps {
+  params: Promise<{ schoolId: string }>;
+}
 
+const ProfilePage = async ({ params }: ProfilePageProps) => {
+  const { schoolId: slug } = await params;
 
-  // Find the student in Prisma by linked user id
-  const student = await prisma.student.findFirst({
+  // 1️⃣ Resolve internal school ID
+  const school = await prisma.schoolInfo.findUnique({
+    where: { schoolId: slug },
+    select: { id: true },
+  });
+
+  if (!school) return notFound();
+
+  // 2️⃣ Fetch user info for THIS school
+  const { userId, role } = await fetchUserInfo(school.id);
+
+  if (!userId || role !== "student") {
+    return notFound();
+  }
+
+  // 3️⃣ Tenant-safe query
+  const db = tenantPrisma(school.id);
+
+  const student = await db.student.findFirst({
     where: { linkedUserId: userId },
     select: SingleStudentSelect,
   });

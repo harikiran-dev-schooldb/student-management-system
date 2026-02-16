@@ -1,23 +1,22 @@
-// src/app/(dashboard)/layout.tsx
+// app/[schoolId]/(dashboard)/layout.tsx
+
 export const dynamic = "force-dynamic";
 
-import DashboardClientLayout from "@/components/DashboardClientLayout";
 import PageNavbar from "@/components/PageNavbar";
+import DashboardClientLayout from "@/components/DashboardClientLayout";
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
+  params,
 }: {
   children: React.ReactNode;
+  params: Promise<{ schoolId: string }>;
 }) {
+  const { schoolId } = await params;
   return (
     <>
-      {/* SERVER: Clerk + Prisma allowed */}
-      <PageNavbar />
-
-      {/* CLIENT: sidebar + context */}
-      <DashboardClientLayout>
-        {children}
-      </DashboardClientLayout>
+      <PageNavbar schoolId={schoolId} />
+      <DashboardClientLayout>{children}</DashboardClientLayout>
     </>
   );
 }

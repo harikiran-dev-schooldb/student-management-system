@@ -6,7 +6,7 @@ export async function POST(
   context: { params: Promise<{ schoolId: string }> }
 ) {
   try {
-    const { schoolId } = await context.params;
+    const { schoolId: slug } = await context.params;
 
     const { feeStructures } = await req.json();
     const errors: string[] = [];
@@ -16,6 +16,18 @@ export async function POST(
       const parsed = new Date(`${yyyy}-${mm}-${dd}`);
       return isNaN(parsed.getTime()) ? null : parsed;
     };
+
+    // 🔥 STEP 1: Find school by slug
+        const school = await prisma.schoolInfo.findUnique({
+          where: { schoolId: slug },
+        });
+    
+        if (!school) {
+          return NextResponse.json(
+            { message: "School not found" },
+            { status: 404 }
+          );
+        }
 
     /* -----------------------------------
        Validate Input
@@ -73,7 +85,7 @@ export async function POST(
             gradeId: record.gradeId,
             term: record.term,
             academicYear: record.academicYear,
-            schoolId, // ✅ REQUIRED
+            schoolId: school.id,
           },
         },
         update: {
@@ -84,7 +96,7 @@ export async function POST(
         },
         create: {
           ...record,
-          schoolId, // ✅ REQUIRED
+          schoolId: school.id,
         },
       });
     }

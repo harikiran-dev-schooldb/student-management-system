@@ -7,7 +7,7 @@ export async function POST(
   context: { params: Promise<{ schoolId: string }> },
 ) {
   try {
-    const { schoolId } = await context.params;
+    const { schoolId: slug } = await context.params;
     const body = await req.json();
 
     const parsed = classSchema.safeParse(body);
@@ -23,6 +23,18 @@ export async function POST(
       );
     }
 
+    // 🔥 STEP 1: Find school by slug
+    const school = await prisma.schoolInfo.findUnique({
+      where: { schoolId: slug },
+    });
+
+    if (!school) {
+      return NextResponse.json(
+        { message: "School not found" },
+        { status: 404 },
+      );
+    }
+
     const { section, gradeId, supervisorId } = parsed.data;
     const cleanedSupervisorId = supervisorId?.trim() || undefined;
 
@@ -30,7 +42,7 @@ export async function POST(
     const grade = await prisma.grade.findFirst({
       where: {
         id: gradeId,
-        schoolId,
+        schoolId: school.id,
       },
     });
 
@@ -48,7 +60,7 @@ export async function POST(
       await prisma.class.updateMany({
         where: {
           supervisorId: cleanedSupervisorId,
-          schoolId,
+          schoolId: school.id,
         },
         data: { supervisorId: null },
       });
@@ -60,7 +72,7 @@ export async function POST(
         section,
         gradeId,
         supervisorId: cleanedSupervisorId,
-        schoolId, // ✅ REQUIRED
+        schoolId: school.id,
       },
     });
 

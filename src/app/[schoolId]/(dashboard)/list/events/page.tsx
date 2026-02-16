@@ -90,23 +90,34 @@ const getColumns = (role: string | null) => [
 
 const EventsList = async ({
   searchParams,
+  params,
 }: {
   searchParams: Promise<SearchParams>;
+  params: Promise<{ schoolId: string }>;
 }) => {
+  const resolvedParams = await params;
+  const resolvedSearchParams = await searchParams;
+  const { schoolId: slug } = resolvedParams;
+
+  const school = await prisma.schoolInfo.findUnique({
+    where: { schoolId: slug },
+    select: { id: true },
+  });
+
+  if (!school) {
+    throw new Error("Invalid school");
+  }
   // Fetch user info and role
-  const { userId, role } = await fetchUserInfo();
+  const { userId, role } = await fetchUserInfo(school.id);
 
   const columns = getColumns(role); // Get dynamic columns
-
-  // Await the searchParams first
-  const params = await searchParams;
   // Fixing the 'page' parameter issue
-  const pageParam = params.page;
+  const pageParam = resolvedSearchParams.page;
   const currentPage = Array.isArray(pageParam)
     ? parseInt(pageParam[0])
     : parseInt(pageParam || "1");
 
-  const { ...queryParams } = params;
+  const { ...queryParams } = resolvedSearchParams;
   const p = currentPage;
 
   // Initialize Prisma query object

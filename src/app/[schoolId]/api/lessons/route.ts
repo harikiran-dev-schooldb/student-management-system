@@ -9,7 +9,7 @@ export async function POST(
   context: { params: Promise<{ schoolId: string }> }
 ) {
   try {
-    const { schoolId } = await context.params;
+    const { schoolId: slug } = await context.params;
 
     const body = await req.json();
     const validated = lessonsSchema.parse(body);
@@ -19,6 +19,18 @@ export async function POST(
 
     if (!periodTiming) {
       return NextResponse.json({ message: "Invalid period" }, { status: 400 });
+    }
+
+    // 🔥 STEP 1: Find school by slug
+    const school = await prisma.schoolInfo.findUnique({
+      where: { schoolId: slug },
+    });
+
+    if (!school) {
+      return NextResponse.json(
+        { message: "School not found" },
+        { status: 404 }
+      );
     }
 
     function timeStringToDate(timeStr: string): Date {
@@ -37,7 +49,7 @@ export async function POST(
     const subject = await prisma.subject.findFirst({
       where: {
         id: validated.subjectId,
-        schoolId,
+        schoolId: school.id,
       },
     });
 
@@ -56,7 +68,7 @@ export async function POST(
         classId: validated.classId,
         day: validated.day,
         period: periodKey,
-        schoolId,
+        schoolId: school.id, // ✅ REQUIRED
       },
     });
 
@@ -73,7 +85,7 @@ export async function POST(
         subjectId: validated.subjectId,
         classId: validated.classId,
         teacherId: validated.teacherId,
-        schoolId, // ✅ REQUIRED
+        schoolId: school.id,
       },
     });
 

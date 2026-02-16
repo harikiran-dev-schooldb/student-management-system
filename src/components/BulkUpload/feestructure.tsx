@@ -14,6 +14,7 @@ import {
   FileText,
   CreditCard // Changed icon to represent Fee Structure
 } from "lucide-react";
+import { useParams } from "next/navigation";
 
 type FeeStructureCSV = {
   id: string;
@@ -101,10 +102,14 @@ export default function BulkFeeStructureUpload() {
     }
   };
 
+  const params = useParams();
+  const slug  = params.schoolId as string;
+  console.log("School ID from params:", slug );
+
   const handleUpload = async () => {
     setLoading(true);
     try {
-      const response = await axios.post("/api/feestructure/bulk-upload", {
+      const response = await axios.post(`/${slug}/api/feestructure/bulk-upload`, {
         feeStructures,
       });
 

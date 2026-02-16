@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useMemo, useRef } from "react";
 import { useForm } from "react-hook-form";
-// 👇 Import 'type' to avoid server-side bundling errors
 import type { Class, Grade, Student } from "@prisma/client";
 import { toast } from "react-toastify";
 import {
@@ -18,13 +17,13 @@ import {
   Loader2,
   ChevronLeft,
   ChevronRight,
-  Command, // Icon for Command/Ctrl visual
 } from "lucide-react";
 
 interface Props {
   role: "admin" | "teacher";
   teacherClassId?: number;
 }
+
 
 export default function MarkAttendancePage({ role, teacherClassId }: Props) {
   const { register, handleSubmit, getValues, watch } = useForm();

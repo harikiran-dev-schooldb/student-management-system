@@ -20,6 +20,7 @@ import { notFound } from "next/navigation";
 import IconButton from "@/components/IconButton";
 import { SearchParams, StudentsList } from "../../../../../../../types";
 import { StudentSelect } from "../../../../../../../types/query-types";
+import { tenantPrisma } from "@/lib/tenant-prisma";
 
 // --- 1. Render Row (Ultimate UI) ---
 const renderRow = (item: StudentsList, role: string | null) => (
@@ -107,10 +108,22 @@ const getColumns = (role: string | null) => [
 
 const StudentListPage = async ({
   searchParams,
+  params,
 }: {
   searchParams: Promise<SearchParams>;
+  params: Promise<{ schoolId: string }>;
 }) => {
-  const params = await searchParams;
+  // 1️⃣ Resolve route params
+  const { schoolId: slug } = await params;
+  const resolvedSearchParams = await searchParams;
+
+  // 2️⃣ Resolve internal school ID
+  const school = await prisma.schoolInfo.findUnique({
+    where: { schoolId: slug },
+    select: { id: true },
+  });
+
+  if (!school) throw new Error("Invalid school");
   const {
     page,
     gradeId,
@@ -119,17 +132,17 @@ const StudentListPage = async ({
     studentStatus,
     gender,
     ...queryParams
-  } = params;
+  } = resolvedSearchParams;
   const p = page ? (Array.isArray(page) ? page[0] : page) : "1";
 
-  const { role, classId: teacherClassId } = await fetchUserInfo();
+  const { role, classId: teacherClassId } = await fetchUserInfo(school.id);
   const columns = getColumns(role);
 
   // Sorting
-  const sortOrder = params.sort === "desc" ? "desc" : "asc";
-  const sortKey = Array.isArray(params.sortKey)
-    ? params.sortKey[0]
-    : params.sortKey || "classId";
+  const sortOrder = resolvedSearchParams.sort === "desc" ? "desc" : "asc";
+  const sortKey = Array.isArray(resolvedSearchParams.sortKey)
+    ? resolvedSearchParams.sortKey[0]
+    : resolvedSearchParams.sortKey || "classId";
 
   const search = Array.isArray(queryParams.search)
     ? queryParams.search[0]
@@ -139,10 +152,11 @@ const StudentListPage = async ({
   const classIdNum = Array.isArray(classId)
     ? Number(classId[0])
     : classId
-      ? Number(classId)
-      : undefined;
+    ? Number(classId)
+    : undefined;
 
   const classFilter: Prisma.ClassWhereInput = {
+    schoolId: school.id,
     ...(teacher && { supervisorId: teacher }),
     ...(grade && { gradeId: Number(grade) }),
   };
@@ -151,13 +165,23 @@ const StudentListPage = async ({
     return notFound();
   }
 
+  const db = tenantPrisma(school.id);
+
+  let finalClassId = classIdNum;
+
+  if (role === "teacher" && teacherClassId) {
+    finalClassId = teacherClassId;
+  }
+
+  const hasClassFilter = teacher || grade;
+
   const query: Prisma.StudentWhereInput = {
+    schoolId: school.id,
     status: {
       equals: (studentStatus as $Enums.StudentStatus) || "ACTIVE",
     },
-
-    ...(classIdNum && { classId: classIdNum }),
-    ...(Object.keys(classFilter).length && { Class: classFilter }),
+    ...(finalClassId && { classId: finalClassId }),
+    ...(hasClassFilter && { Class: classFilter }),
     ...(search && {
       OR: [
         { name: { contains: search, mode: "insensitive" } },
@@ -166,21 +190,21 @@ const StudentListPage = async ({
       ],
     }),
     ...(gender ? { gender: gender as $Enums.Gender } : {}),
-    ...(role === "teacher" && teacherClassId
-      ? { classId: teacherClassId }
-      : {}),
   };
 
-  const classes = await prisma.class.findMany({
+  const classes = await db.class.findMany({
     where: gradeId ? { gradeId: Number(gradeId) } : {},
   });
 
-  const grades = await prisma.grade.findMany();
+  const grades = await db.grade.findMany();
 
-  const [data, count] = await prisma.$transaction([
-    prisma.student.findMany({
+  const allowedSortKeys = ["id", "name", "classId", "gender"];
+  const safeSortKey = allowedSortKeys.includes(sortKey) ? sortKey : "classId";
+
+  const [data, count] = await db.$transaction([
+    db.student.findMany({
       orderBy: [
-        { [sortKey]: sortOrder },
+        { [safeSortKey]: sortOrder },
         { classId: "asc" },
         { gender: "desc" },
         { name: "asc" },
@@ -190,10 +214,10 @@ const StudentListPage = async ({
       take: ITEM_PER_PAGE,
       skip: ITEM_PER_PAGE * (parseInt(p) - 1),
     }),
-    prisma.student.count({ where: query }),
+    db.student.count({ where: query }),
   ]);
 
-  const Path = `/list/users/students`;
+  const Path = `/${slug}/list/users/students`;
 
   return (
     <div className="flex-1 p-4 bg-white dark:bg-darkbg">

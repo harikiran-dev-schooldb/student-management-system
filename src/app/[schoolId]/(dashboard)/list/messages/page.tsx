@@ -13,6 +13,7 @@ import IconButton from "@/components/IconButton";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
 import { MessageList, SearchParams } from "../../../../../../types";
 import { MessagesSelect } from "../../../../../../types/query-types";
+import { tenantPrisma } from "@/lib/tenant-prisma";
 
 const renderRow = (item: MessageList, role: string | null) => (
   <tr
@@ -118,14 +119,32 @@ const getColumns = (role: string | null) => [
 
 const MessagesList = async ({
   searchParams,
+  params,
 }: {
   searchParams: Promise<SearchParams>;
+  params: Promise<{ schoolId: string }>;
 }) => {
-  const params = await searchParams;
-  const { page, ...queryParams } = params;
+  // 1️⃣ Resolve route params
+  const { schoolId: slug } = await params;
+  const resolvedSearchParams = await searchParams;
+
+  // 2️⃣ Resolve internal school ID
+  const school = await prisma.schoolInfo.findUnique({
+    where: { schoolId: slug },
+    select: { id: true },
+  });
+
+  if (!school) throw new Error("Invalid school");
+
+  const userInfo = await fetchUserInfo(school.id);
+
+  // 3️⃣ Tenant-scoped Prisma
+  const db = tenantPrisma(school.id);
+
+  const { page, ...queryParams } = resolvedSearchParams;
+
   const p = page ? (Array.isArray(page) ? page[0] : page) : "1";
 
-  const userInfo = await fetchUserInfo();
   const { role, userId, classId: teacherClassId, studentId } = userInfo;
 
   const columns = getColumns(role);
@@ -138,10 +157,10 @@ const MessagesList = async ({
     ? queryParams.classId[0]
     : queryParams.classId;
 
-  const sortOrder = params.sort === "asc" ? "asc" : "desc";
-  const sortKey = Array.isArray(params.sortKey)
-    ? params.sortKey[0]
-    : params.sortKey || "id";
+  const sortOrder = resolvedSearchParams.sort === "asc" ? "asc" : "desc";
+  const sortKey = Array.isArray(resolvedSearchParams.sortKey)
+    ? resolvedSearchParams.sortKey[0]
+    : resolvedSearchParams.sortKey || "id";
 
   const searchValue = Array.isArray(queryParams.search)
     ? queryParams.search[0]
@@ -149,10 +168,10 @@ const MessagesList = async ({
 
   // Get user class(es)
   const userClassIds =
-    role === "student" || role === "teacher"
-      ? teacherClassId
-        ? [teacherClassId]
-        : []
+    role === "teacher" && teacherClassId
+      ? [teacherClassId]
+      : role === "student" && userInfo.classId
+      ? [userInfo.classId]
       : [];
 
   const filterConditions: Prisma.MessagesWhereInput[] = [];
@@ -216,30 +235,30 @@ const MessagesList = async ({
   // Combine filters safely
   const query: Prisma.MessagesWhereInput = {
     AND: [
-      roleFilter,
+      ...(Object.keys(roleFilter).length ? [roleFilter] : []),
       ...(searchFilter ? [searchFilter] : []),
       ...filterConditions,
     ],
   };
 
-  const [data, count] = await prisma.$transaction([
-    prisma.messages.findMany({
+  const [data, count] = await db.$transaction([
+    db.messages.findMany({
       orderBy: [{ [sortKey]: sortOrder }, { id: "desc" }],
       where: query,
       select: MessagesSelect,
       take: ITEM_PER_PAGE,
       skip: ITEM_PER_PAGE * (parseInt(p) - 1),
     }),
-    prisma.messages.count({ where: query }),
+    db.messages.count({ where: query }),
   ]);
 
-  const Path = `/list/messages`;
+  const Path = `/${slug}/list/messages`;
 
-  const classes = await prisma.class.findMany({
+  const classes = await db.class.findMany({
     where: gradeId ? { gradeId: Number(gradeId) } : {},
   });
 
-  const grades = await prisma.grade.findMany();
+  const grades = await db.grade.findMany();
 
   return (
     <div className="flex-1 p-4 bg-white dark:bg-gray-900 dark:text-gray-100 transition-colors duration-300">

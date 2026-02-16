@@ -15,6 +15,7 @@ import IconButton from "@/components/IconButton";
 import { Filter } from "lucide-react";
 import { Exams, SearchParams } from "../../../../../../types";
 import { ExamListSelect } from "../../../../../../types/query-types";
+import { tenantPrisma } from "@/lib/tenant-prisma";
 
 // Extended Exam type
 
@@ -66,30 +67,45 @@ const getColumns = (role: string | null) => [
 
 const ExamsList = async ({
   searchParams,
+  params,
 }: {
   searchParams: Promise<SearchParams>;
+  params: Promise<{ schoolId: string }>;
 }) => {
-  const params = await searchParams;
-  const { page, date, gradeId, ...queryParams } = params;
+  const resolvedParams = await params;
+  const resolvedSearchParams = await searchParams;
+  const { schoolId: slug } = resolvedParams;
+
+  const school = await prisma.schoolInfo.findUnique({
+    where: { schoolId: slug },
+    select: { id: true },
+  });
+
+  if (!school) {
+    throw new Error("Invalid school");
+  }
+
+  const { role, students } = await fetchUserInfo(school.id);
+  const { page, date, gradeId, ...queryParams } = resolvedSearchParams;
   const p = page ? (Array.isArray(page) ? page[0] : page) : "1";
-  const { role, students } = await fetchUserInfo();
   const columns = getColumns(role);
 
-  const sortOrder = params.sort === "asc" ? "asc" : "desc";
-  const sortKey = Array.isArray(params.sortKey)
-    ? params.sortKey[0]
-    : params.sortKey || "id";
-  const teacherId = Array.isArray(params.teacherId)
-    ? params.teacherId[0]
-    : params.teacherId;
+  const sortOrder = resolvedSearchParams.sort === "asc" ? "asc" : "desc";
+  const sortKey = Array.isArray(resolvedSearchParams.sortKey)
+    ? resolvedSearchParams.sortKey[0]
+    : resolvedSearchParams.sortKey || "id";
+  const teacherId = Array.isArray(resolvedSearchParams.teacherId)
+    ? resolvedSearchParams.teacherId[0]
+    : resolvedSearchParams.teacherId;
 
-  const query: Prisma.ExamWhereInput = {};
+  const db = tenantPrisma(school.id);
+  const query: Prisma.ExamWhereInput = { schoolId: school.id };
   const examGradeSubjectsWhere: Prisma.ExamGradeSubjectWhereInput = {};
 
   // Teacher restriction
   if (role === "teacher" && teacherId) {
-    const teacherClasses = await prisma.class.findMany({
-      where: { supervisorId: teacherId },
+    const teacherClasses = await db.class.findMany({
+      where: { supervisorId: teacherId, schoolId: school.id },
       select: { gradeId: true },
     });
     const teacherGradeIds = teacherClasses.map((cls) => cls.gradeId);
@@ -97,12 +113,11 @@ const ExamsList = async ({
   }
 
   // Student restriction
-  // Student restriction (FIXED)
   if (role === "student" && students?.length) {
     const studentId = students[0].studentId;
 
     const student = await prisma.student.findUnique({
-      where: { id: studentId },
+      where: { id: studentId, schoolId: school.id },
       select: {
         Class: {
           select: {
@@ -164,7 +179,7 @@ const ExamsList = async ({
     query.examGradeSubjects = { some: examGradeSubjectsWhere };
 
   const [data, count] = await prisma.$transaction([
-    prisma.exam.findMany({
+    db.exam.findMany({
       where: query,
       orderBy: [{ [sortKey]: sortOrder }, { id: "desc" }],
       select: {
@@ -183,50 +198,50 @@ const ExamsList = async ({
     prisma.exam.count({ where: query }),
   ]);
 
-  const classes = await prisma.class.findMany();
-  const grades = await prisma.grade.findMany();
-  const Path = "/list/exams";
+  const classes = await db.class.findMany();
+  const grades = await db.grade.findMany();
+  const Path = `${school.id}/list/exams`;
 
   return (
-      <div className="flex-1 p-4 bg-white dark:bg-darkbg">
-        {/* HEADER */}
-        <div className="flex items-center justify-between mb-3">
-          <h1 className="hidden text-lg font-semibold md:block">Exams</h1>
+    <div className="flex-1 p-4 bg-white dark:bg-darkbg">
+      {/* HEADER */}
+      <div className="flex items-center justify-between mb-3">
+        <h1 className="hidden text-lg font-semibold md:block">Exams</h1>
+        <div className="flex flex-col items-center w-full gap-4 md:flex-row md:w-auto">
+          <TableSearch />
+          <TitleFilterDropdown basePath={Path} />
+          <DateFilter basePath={Path} />
+          {(role === "admin" || role === "teacher") && (
+            <ClassFilterDropdown
+              classes={classes}
+              grades={grades}
+              basePath={Path}
+              showClassFilter={false}
+            />
+          )}
           <div className="flex flex-col items-center w-full gap-4 md:flex-row md:w-auto">
-            <TableSearch />
-            <TitleFilterDropdown basePath={Path} />
-            <DateFilter basePath={Path} />
-            {(role === "admin" || role === "teacher") && (
-              <ClassFilterDropdown
-                classes={classes}
-                grades={grades}
-                basePath={Path}
-                showClassFilter={false}
-              />
-            )}
-            <div className="flex flex-col items-center w-full gap-4 md:flex-row md:w-auto">
-              <div className="flex items-center self-end gap-4">
-                <ResetFiltersButton basePath={Path} />
-                <IconButton icon={Filter} />
-                <SortButton sortKey="id" />
-                {(role === "admin" || role === "teacher") && (
-                  <FormContainer table="exam" type="create" />
-                )}
-              </div>
+            <div className="flex items-center self-end gap-4">
+              <ResetFiltersButton basePath={Path} />
+              <IconButton icon={Filter} />
+              <SortButton sortKey="id" />
+              {(role === "admin" || role === "teacher") && (
+                <FormContainer table="exam" type="create" />
+              )}
             </div>
           </div>
         </div>
-
-        {/* TABLE */}
-        <Table
-          columns={columns}
-          renderRow={(item) => renderRow(item, role)}
-          data={data}
-        />
-
-        {/* PAGINATION */}
-        <Pagination page={parseInt(p)} count={count} />
       </div>
+
+      {/* TABLE */}
+      <Table
+        columns={columns}
+        renderRow={(item) => renderRow(item, role)}
+        data={data}
+      />
+
+      {/* PAGINATION */}
+      <Pagination page={parseInt(p)} count={count} />
+    </div>
   );
 };
 

@@ -18,8 +18,22 @@ import {
   FileText,
 } from "lucide-react";
 
-const AdminProfilePage = async () => {
-  const { userId } = await fetchUserInfo();
+const AdminProfilePage = async ({
+  params,
+}: {
+  params: Promise<{ schoolId: string }>;
+}) => {
+  const { schoolId: slug } = await params;
+
+  // 2️⃣ Resolve internal school ID
+  const school = await prisma.schoolInfo.findUnique({
+    where: { schoolId: slug },
+    select: { id: true },
+  });
+
+  if (!school) throw new Error("Invalid school");
+
+  const { userId } = await fetchUserInfo(school.id);
 
   if (!userId) return notFound();
 
@@ -47,7 +61,7 @@ const AdminProfilePage = async () => {
   const formatDate = (date: Date | string | null) => {
     if (!date) return "Not provided";
     return new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" }).format(
-      new Date(date)
+      new Date(date),
     );
   };
 

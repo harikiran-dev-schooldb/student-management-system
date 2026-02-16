@@ -12,6 +12,7 @@ import ResetFiltersButton from "@/components/ResetFiltersButton";
 import ExportButton from "@/components/ExportButton";
 import { PermissionWithRelations, SearchParams } from "../../../../../../types";
 import { PermissionSlipSelect } from "../../../../../../types/query-types";
+import { tenantPrisma } from "@/lib/tenant-prisma";
 
 // 🔹 Render Table Row
 const renderRow = (item: PermissionWithRelations, role: string | null) => {
@@ -37,7 +38,9 @@ const renderRow = (item: PermissionWithRelations, role: string | null) => {
           : "N/A"}
       </td>
       <td className="px-2 py-1 hidden md:table-cell">{item.leaveType}</td>
-      <td className="px-2 py-1 hidden md:table-cell">{item.description || "-"}</td>
+      <td className="px-2 py-1 hidden md:table-cell">
+        {item.description || "-"}
+      </td>
       <td className="px-2 py-1 hidden md:table-cell">{item.withWhom}</td>
       <td className="px-2 py-1 hidden md:table-cell">{item.relation}</td>
       {(role === "admin" || role === "teacher") && (
@@ -54,13 +57,29 @@ const renderRow = (item: PermissionWithRelations, role: string | null) => {
 
 // 🔹 Table Columns
 const getColumns = (role: string | null) => [
-  { header: "Issued Time", accessor: "timeIssued"},
+  { header: "Issued Time", accessor: "timeIssued" },
   { header: "Student", accessor: "student" },
   { header: "Class", accessor: "class" },
-  { header: "Leave Type", accessor: "leaveType", className: "hidden md:table-cell" },
-  { header: "Description", accessor: "description", className: "hidden md:table-cell" },
-  { header: "Person Name", accessor: "withWhom", className: "hidden md:table-cell" },
-  { header: "Relation", accessor: "relation", className: "hidden md:table-cell" },
+  {
+    header: "Leave Type",
+    accessor: "leaveType",
+    className: "hidden md:table-cell",
+  },
+  {
+    header: "Description",
+    accessor: "description",
+    className: "hidden md:table-cell",
+  },
+  {
+    header: "Person Name",
+    accessor: "withWhom",
+    className: "hidden md:table-cell",
+  },
+  {
+    header: "Relation",
+    accessor: "relation",
+    className: "hidden md:table-cell",
+  },
   ...(role === "admin" || role === "teacher"
     ? [{ header: "Actions", accessor: "action" }]
     : []),
@@ -68,23 +87,44 @@ const getColumns = (role: string | null) => [
 
 const PermissionSlipListPage = async ({
   searchParams,
+  params,
 }: {
   searchParams: Promise<SearchParams>;
+  params: Promise<{ schoolId: string }>;
 }) => {
-  const params = await searchParams;
-  const { page, gradeId, classId, date, search } = params;
-  const p = page ? (Array.isArray(page) ? page[0] : page) : "1";
+  const { schoolId: slug } = await params;
+  const resolvedSearchParams = await searchParams;
+
+  const school = await prisma.schoolInfo.findUnique({
+    where: { schoolId: slug },
+    select: { id: true },
+  });
+
+  if (!school) throw new Error("Invalid school");
+
+  const db = tenantPrisma(school.id);
+
+  const getSingle = (value?: string | string[]) =>
+    Array.isArray(value) ? value[0] : value;
+
+  const p = getSingle(resolvedSearchParams.page) ?? "1";
+  const gradeId = getSingle(resolvedSearchParams.gradeId);
+  const classId = getSingle(resolvedSearchParams.classId);
+  const date = getSingle(resolvedSearchParams.date);
+  const search = getSingle(resolvedSearchParams.search);
 
   // 🔹 User Info
-  const { role, userId } = await fetchUserInfo();
-  const userClassIds = await getClassIdForRole(role, userId); // array
+  const { role, userId } = await fetchUserInfo(school.id);
+
+  const userClassIds = await getClassIdForRole(role, userId, school.id);
+
   const columns = getColumns(role);
 
   // 🔹 Sorting
-  const sortOrder = params.sort === "asc" ? "asc" : "desc";
-  const sortKey = Array.isArray(params.sortKey)
-    ? params.sortKey[0]
-    : params.sortKey || "id";
+  const sortOrder = resolvedSearchParams.sort === "asc" ? "asc" : "desc";
+  const sortKey = Array.isArray(resolvedSearchParams.sortKey)
+    ? resolvedSearchParams.sortKey[0]
+    : resolvedSearchParams.sortKey || "id";
 
   // 🔹 Query Builder
   const query: Prisma.PermissionSlipWhereInput = {};
@@ -125,22 +165,22 @@ const PermissionSlipListPage = async ({
     };
   }
 
-  const [data, count] = await prisma.$transaction([
-    prisma.permissionSlip.findMany({
+  const [data, count] = await db.$transaction([
+    db.permissionSlip.findMany({
       where: query,
       orderBy: [{ [sortKey]: sortOrder }, { id: "desc" }],
       select: PermissionSlipSelect,
       take: ITEM_PER_PAGE,
       skip: ITEM_PER_PAGE * (parseInt(p) - 1),
     }),
-    prisma.permissionSlip.count({ where: query }),
+    db.permissionSlip.count({ where: query }),
   ]);
 
   // 🔹 For filters
-  const grades = await prisma.grade.findMany();
-  const classes = await prisma.class.findMany();
+  const grades = await db.grade.findMany();
+  const classes = await db.class.findMany();
 
-  const Path = "/list/permissions";
+  const Path = `/${slug}/list/permissions`;
 
   return (
     <div className="flex-1 p-4 bg-white dark:bg-gray-900 text-black dark:text-white shadow-md">

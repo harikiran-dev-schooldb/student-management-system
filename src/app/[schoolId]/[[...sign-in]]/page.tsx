@@ -78,6 +78,7 @@ export default function Page() {
   const [currentFeature, setCurrentFeature] = useState(0);
   // Track if we have already triggered a redirect to prevent double execution
   const [hasRedirected, setHasRedirected] = useState(false);
+  const [schoolName, setSchoolName] = useState("");
 
   const otpInputRef = useRef<HTMLInputElement>(null);
 
@@ -92,26 +93,43 @@ export default function Page() {
 
   /* ---------------- Session Logic ---------------- */
   useEffect(() => {
-    if (!isUserLoaded || !isSessionLoaded || hasRedirected) return;
+    const fetchSchool = async () => {
+      try {
+        const res = await fetch(`/${schoolId}/api/school`);
 
-    if (isSignedIn && user) {
-      const role = user.publicMetadata?.role as string | undefined;
+        if (!res.ok) return;
 
-      if (role) {
-        toast.success(`Welcome back, ${user.firstName}!`);
-        setHasRedirected(true); // Prevent multiple redirect attempts
-
-        // ✅ FIX: Small timeout allows toast to render before navigation cuts it off
-        setTimeout(() => {
-          router.replace(`/${schoolId}/${role}`);
-        }, 100);
-      } else {
-        // Only show error if we haven't already tried to redirect
-        if (!hasRedirected)
-          toast.error("User role or school not found. Contact Admin.");
+        const data = await res.json();
+        setSchoolName(data?.name || "");
+      } catch (err) {
+        console.error("Failed to fetch school");
       }
-    }
-  }, [isUserLoaded, isSessionLoaded, isSignedIn, user, router, hasRedirected]);
+    };
+
+    if (schoolId) fetchSchool();
+  }, [schoolId]);
+
+  useEffect(() => {
+    const resolveRole = async () => {
+      if (!isSignedIn) return;
+
+      try {
+        const res = await fetch(`/${schoolId}/api/auth/resolve-role`);
+
+        if (!res.ok) {
+          toast.error("Access denied for this school.");
+          return;
+        }
+
+        const data = await res.json();
+        router.replace(`/${schoolId}/${data.role}`);
+      } catch {
+        toast.error("Failed to verify user.");
+      }
+    };
+
+    resolveRole();
+  }, [isSignedIn, schoolId, router]);
 
   useEffect(() => {
     if (pendingVerification) otpInputRef.current?.focus();
@@ -232,7 +250,7 @@ export default function Page() {
               </span>
             </div>
             <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">
-              Kotak Salesian School
+              {schoolName}
             </h1>
           </div>
 

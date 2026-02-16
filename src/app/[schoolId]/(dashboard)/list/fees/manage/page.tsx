@@ -10,11 +10,12 @@ import { ITEM_PER_PAGE } from "@/lib/settings";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
 import ResetFiltersButton from "@/components/ResetFiltersButton";
 import AcademicYearDropdown from "@/components/dropdowns/AcademicYearDropdown";
-import { AcademicYear } from "@prisma/client";
+import { AcademicYear, Prisma } from "@prisma/client";
 import { Filter } from "lucide-react";
 import IconButton from "@/components/IconButton";
 import { FeesList, SearchParams } from "../../../../../../../types";
 import { FeeGradeSelect } from "../../../../../../../types/query-types";
+import { tenantPrisma } from "@/lib/tenant-prisma";
 
 // Row Renderer
 const renderRow = (grade: FeesList, role: string | null) => {
@@ -60,41 +61,69 @@ const getColumns = (role: string | null) => [
   { header: "Grade", accessor: "level" },
   { header: "Term", accessor: "feestructure.term" },
   { header: "Term Fees", accessor: "feestructure.termFees" },
-  { header: "Start Date", accessor: "feestructure.startDate", className: "hidden md:table-cell" },
-  { header: "Due Date", accessor: "feestructure.dueDate", className: "hidden md:table-cell" },
+  {
+    header: "Start Date",
+    accessor: "feestructure.startDate",
+    className: "hidden md:table-cell",
+  },
+  {
+    header: "Due Date",
+    accessor: "feestructure.dueDate",
+    className: "hidden md:table-cell",
+  },
   ...(role === "admin" ? [{ header: "Actions", accessor: "action" }] : []),
 ];
 
-// Main Page
 const FeesListPage = async ({
   searchParams,
+  params,
 }: {
   searchParams: Promise<SearchParams>;
+  params: Promise<{ schoolId: string }>;
 }) => {
-  const params = await searchParams;
-  const page = Number(
-    Array.isArray(params.page) ? params.page[0] : params.page || "1"
-  );
-  const academicYear = params.academicYear || undefined;
-  const gradeId = Array.isArray(params.gradeId)
-    ? params.gradeId[0]
-    : params.gradeId;
-  const sortOrder = params.sort === "desc" ? "desc" : "asc";
-  const sortKey = Array.isArray(params.sortKey)
-    ? params.sortKey[0]
-    : params.sortKey || "id";
+  const { schoolId: slug } = await params;
+  const resolvedSearchParams = await searchParams;
 
-  const { role } = await fetchUserInfo();
+  const school = await prisma.schoolInfo.findUnique({
+    where: { schoolId: slug },
+    select: { id: true },
+  });
+
+  if (!school) throw new Error("Invalid school");
+
+  const db = tenantPrisma(school.id);
+
+  const page = Number(
+    Array.isArray(resolvedSearchParams.page)
+      ? resolvedSearchParams.page[0]
+      : resolvedSearchParams.page || "1"
+  );
+
+  const academicYear = resolvedSearchParams.academicYear || undefined;
+
+  const gradeId = Array.isArray(resolvedSearchParams.gradeId)
+    ? resolvedSearchParams.gradeId[0]
+    : resolvedSearchParams.gradeId;
+
+  const sortOrder =
+    resolvedSearchParams.sort === "desc" ? "desc" : "asc";
+
+  const sortKey = Array.isArray(resolvedSearchParams.sortKey)
+    ? resolvedSearchParams.sortKey[0]
+    : resolvedSearchParams.sortKey || "id";
+
+  const { role } = await fetchUserInfo(school.id);
   const columns = getColumns(role);
 
-  const whereClause: any = {};
+  const whereClause: Prisma.GradeWhereInput = {};
 
   if (gradeId) whereClause.id = Number(gradeId);
 
-  // Cast to enum if it's a valid value
   const parsedAcademicYear =
     academicYear &&
-    Object.values(AcademicYear).includes(academicYear as AcademicYear)
+    Object.values(AcademicYear).includes(
+      academicYear as AcademicYear
+    )
       ? (academicYear as AcademicYear)
       : undefined;
 
@@ -105,7 +134,7 @@ const FeesListPage = async ({
   }
 
   const [grades, totalCount] = await Promise.all([
-    prisma.grade.findMany({
+    db.grade.findMany({
       where: whereClause,
       select: {
         ...FeeGradeSelect,
@@ -116,18 +145,18 @@ const FeesListPage = async ({
           select: FeeGradeSelect.feestructure.select,
         },
       },
-      orderBy: { [sortKey || "id"]: sortOrder || "asc" },
+      orderBy: { [sortKey]: sortOrder },
       take: ITEM_PER_PAGE,
-      skip: ITEM_PER_PAGE * ((page ?? 1) - 1),
+      skip: ITEM_PER_PAGE * (page - 1),
     }),
-    prisma.grade.count({ where: whereClause }),
+    db.grade.count({ where: whereClause }),
   ]);
 
-  const allGrades = await prisma.grade.findMany({
+  const allGrades = await db.grade.findMany({
     select: { id: true, level: true },
   });
 
-  const Path = `/list/fees/feemanagement`;
+  const Path = `/${slug}/list/fees/feemanagement`;
 
   return (
     <div className="flex-1 p-4 bg-white dark:bg-gray-900 text-black dark:text-white">
@@ -150,7 +179,7 @@ const FeesListPage = async ({
           <div className="flex flex-col items-center w-full gap-4 md:flex-row md:w-auto">
             <div className="flex items-center self-end gap-4">
               <ResetFiltersButton basePath={Path} />
-              <IconButton icon={Filter}/>
+              <IconButton icon={Filter} />
               <SortButton sortKey="level" />
               {role === "admin" && <FormContainer table="fees" type="create" />}
             </div>

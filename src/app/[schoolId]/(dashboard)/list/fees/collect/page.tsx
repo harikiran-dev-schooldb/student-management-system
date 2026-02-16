@@ -19,11 +19,12 @@ import { Eye, Filter, UserRound, X } from "lucide-react";
 import IconButton from "@/components/IconButton";
 import { FeeColectList, SearchParams } from "../../../../../../../types";
 import { StudentFeeSelect } from "../../../../../../../types/query-types";
+import { tenantPrisma } from "@/lib/tenant-prisma";
 
 const renderRow = (
   item: FeeColectList,
   role: string | null,
-  feeMap: Map<string, any>
+  feeMap: Map<string, any>,
 ) => {
   const studentFee = feeMap.get(item.id);
 
@@ -91,14 +92,14 @@ const renderRow = (
           "",
           status === "Fully Paid" && "text-LamaGreen dark:text-LamaGreen",
           status === "Not Paid" && "text-red-500 dark:text-red-400",
-          status.includes("Term") && "text-orange-500 dark:text-LamaYellow"
+          status.includes("Term") && "text-orange-500 dark:text-LamaYellow",
         )}
       >
         {status}
       </td>
 
       <td className="p-2">
-        {(role === "admin") && (
+        {role === "admin" && (
           <div className="flex items-center gap-2">
             {/* Collect Fees Button */}
             <Link href={`/list/fees/collect/${item.id}`}>
@@ -150,41 +151,61 @@ const getColumns = (role: string | null) => [
 
 const StudentFeeListPage = async ({
   searchParams,
+  params,
 }: {
   searchParams: Promise<SearchParams>;
+  params: Promise<{ schoolId: string }>;
 }) => {
-  const params = await searchParams;
-  const { page, gradeId, classId, studentStatus, ...queryParams } = params;
-  const p = page ? (Array.isArray(page) ? page[0] : page) : "1";
+  // 1️⃣ Resolve route params
+  const { schoolId: slug } = await params;
+  const resolvedSearchParams = await searchParams;
 
-  const { role, classId: teacherClassId } = await fetchUserInfo();
+  // 2️⃣ Resolve internal school ID
+  const school = await prisma.schoolInfo.findUnique({
+    where: { schoolId: slug },
+    select: { id: true },
+  });
+
+  if (!school) throw new Error("Invalid school");
+
+  // 3️⃣ Tenant-scoped Prisma
+  const db = tenantPrisma(school.id);
+
+  // 4️⃣ Auth
+  const { role, classId: teacherClassId } = await fetchUserInfo(school.id);
+
   const columns = getColumns(role);
 
-  const sortOrder = params.sort === "desc" ? "desc" : "asc";
-  const sortKey = Array.isArray(params.sortKey)
-    ? params.sortKey[0]
-    : params.sortKey || "classId";
+  // 5️⃣ Extract filters from searchParams
+  const { page, gradeId, classId, studentStatus, ...queryParams } =
+    resolvedSearchParams;
+
+  const p = page ? (Array.isArray(page) ? page[0] : page) : "1";
+
+  const sortOrder = resolvedSearchParams.sort === "desc" ? "desc" : "asc";
+
+  const sortKey = Array.isArray(resolvedSearchParams.sortKey)
+    ? resolvedSearchParams.sortKey[0]
+    : resolvedSearchParams.sortKey || "classId";
 
   const classIdNum = classId ? Number(classId) : undefined;
-  const classFilter = gradeId ? { gradeId: Number(gradeId) } : {};
 
+  // 6️⃣ Build where clause (NO nested "where")
   const query: Prisma.StudentWhereInput = {
-    // ✅ Always include status (default to "ACTIVE")
     status: {
       equals: (studentStatus as $Enums.StudentStatus) || "ACTIVE",
     },
 
-    // ✅ If role is teacher and teacherClassId exists, override classId
     ...(role === "teacher" && teacherClassId
       ? { classId: teacherClassId }
       : classIdNum
       ? { classId: classIdNum }
       : {}),
 
-    // ✅ Add grade filter if applicable
-    ...(Object.keys(classFilter).length > 0 && { Class: classFilter }),
+    ...(gradeId && {
+      Class: { gradeId: Number(gradeId) },
+    }),
 
-    // ✅ Add search filters (name or id)
     ...(queryParams.search && {
       OR: [
         {
@@ -217,40 +238,39 @@ const StudentFeeListPage = async ({
     }),
   };
 
-  const classes =
-    role === "admin"
-      ? await prisma.class.findMany({
-          where: gradeId ? { gradeId: Number(gradeId) } : {},
-        })
-      : [];
-  const grades = role === "admin" ? await prisma.grade.findMany() : [];
-
-  const [data, count] = await prisma.$transaction([
-    prisma.student.findMany({
+  // 7️⃣ Tenant-safe queries
+  const [data, count] = await db.$transaction([
+    db.student.findMany({
+      where: query,
       orderBy: [
         { [sortKey]: sortOrder },
         { classId: "asc" },
         { gender: "desc" },
         { name: "asc" },
       ],
-      where: query,
       select: StudentFeeSelect,
       take: ITEM_PER_PAGE,
       skip: ITEM_PER_PAGE * (parseInt(p) - 1),
     }),
-    prisma.student.count({ where: query }),
+    db.student.count({ where: query }),
   ]);
 
-  // ✅ NOW data exists
+  // 8️⃣ Tenant-safe class & grade filters
+  const classes =
+    role === "admin"
+      ? await db.class.findMany({
+          where: gradeId ? { gradeId: Number(gradeId) } : {},
+        })
+      : [];
+
+  const grades = role === "admin" ? await db.grade.findMany() : [];
+
+  // 9️⃣ Fetch grouped fees
   const studentIds = data.map((s) => s.id);
-
-  // ✅ Fetch fees ONLY for these students
-  const rawGroupedFees = await getGroupedStudentFees(studentIds);
-
-  // ✅ Build map ONCE
+  const rawGroupedFees = await getGroupedStudentFees(school.id, studentIds);
   const feeMap = new Map(rawGroupedFees.map((fee) => [fee.studentId, fee]));
 
-  const Path = "/list/fees/collect";
+  const Path = `${slug}/list/fees/collect`;
 
   return (
     <div className="flex-1 p-4 bg-white dark:bg-gray-900 text-black dark:text-white">
@@ -277,7 +297,7 @@ const StudentFeeListPage = async ({
             <div className="flex flex-col md:flex-row items-center gap-4 w-full">
               <div className="flex items-center gap-4">
                 <ResetFiltersButton basePath={Path} />
-                <IconButton icon={Filter}/>
+                <IconButton icon={Filter} />
                 <SortButton sortKey="id" />
               </div>
             </div>

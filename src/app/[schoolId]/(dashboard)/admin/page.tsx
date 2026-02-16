@@ -6,7 +6,7 @@ import CountChartContainer from "@/components/CountChartContainer";
 import FinanceChartContainer from "@/components/FinanceChartContainer";
 import EventCalendarContainer from "@/components/EventCalendarContainer";
 import { getAdminDashboardData } from "@/lib/dashboard";
-import { SearchParams } from "../../../../types";
+import { SearchParams } from "../../../../../types";
 
 /* -----------------------------
    UI Tokens

@@ -6,51 +6,40 @@ export async function POST(
   context: { params: Promise<{ schoolId: string }> }
 ) {
   try {
-    const { schoolId } = await context.params;
+    const { schoolId: slug } = await context.params;
+
     const { grades } = await req.json();
 
     if (!Array.isArray(grades)) {
       return NextResponse.json({ message: "Invalid input" }, { status: 400 });
     }
 
-    const formattedGrades = grades.map((g: any) => ({
-      id: parseInt(g.id),          // optional
-      level: String(g.level).trim(),
-      schoolId,                    // ✅ REQUIRED
-    }));
-
-    /* ----------------------------------
-       Check duplicates (tenant scoped)
-    -----------------------------------*/
-    const existing = await prisma.grade.findMany({
-      where: {
-        schoolId,
-        id: {
-          in: formattedGrades.map((g) => g.id),
-        },
-      },
-      select: { id: true },
+    // 🔥 STEP 1: Find school by slug
+    const school = await prisma.schoolInfo.findUnique({
+      where: { schoolId: slug },
     });
 
-    const existingIdSet = new Set(existing.map((e) => e.id));
-
-    const toInsert = formattedGrades.filter(
-      (g) => !existingIdSet.has(g.id)
-    );
-
-    /* ----------------------------------
-       Insert
-    -----------------------------------*/
-    if (toInsert.length > 0) {
-      await prisma.grade.createMany({
-        data: toInsert,
-        skipDuplicates: true,
-      });
+    if (!school) {
+      return NextResponse.json(
+        { message: "School not found" },
+        { status: 404 }
+      );
     }
 
+    // 🔥 STEP 2: Use PRIMARY KEY for FK
+    const formattedGrades = grades.map((g: any) => ({
+      level: String(g.level).trim(),
+      schoolId: school.id, // ✅ THIS IS THE FIX
+    }));
+
+    // 🔥 STEP 3: Insert
+    await prisma.grade.createMany({
+      data: formattedGrades,
+      skipDuplicates: true,
+    });
+
     return NextResponse.json({
-      message: `Upload complete: Inserted ${toInsert.length}, Skipped ${existing.length}`,
-      skipped: existing,
+      message: "Grades uploaded successfully",
     });
 
   } catch (err: any) {
@@ -61,3 +50,4 @@ export async function POST(
     );
   }
 }
+

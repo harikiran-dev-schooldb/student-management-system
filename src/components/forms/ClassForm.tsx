@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { classSchema, ClassSchema } from "@/lib/formValidationSchemas";
 import React, { Dispatch, SetStateAction } from "react";
 import { toast } from "react-toastify";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 
 const ClassForm = ({
   type,
@@ -35,38 +35,43 @@ const ClassForm = ({
   const router = useRouter();
   const { teachers = [], grades = [] } = relatedData || {};
 
+  const params = useParams();
+  const slug = params.schoolId as string;
+  console.log("School ID from params:", slug);
+
   const onSubmit = async (formData: ClassSchema) => {
-  try {
-    const url = type === "create" ? "/api/classes/create" : "/api/classes/update";
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ ...formData, id: data?.id }), // include id for update
-    });
+    try {
+      const url =
+        type === "create" ? `/${slug}/api/classes/create` : `/${slug}/api/classes/update`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ ...formData, id: data?.id }), // include id for update
+      });
 
-    const result = await res.json();
+      const result = await res.json();
 
-    if (!res.ok) {
-      console.error("API error response:", result);
-      toast.error(result?.error || "Something went wrong.");
-      return;
+      if (!res.ok) {
+        console.error("API error response:", result);
+        toast.error(result?.error || "Something went wrong.");
+        return;
+      }
+
+      toast.success(
+        `Class ${type === "create" ? "created" : "updated"} successfully!`,
+      );
+      setOpen(false);
+      router.refresh();
+    } catch (error) {
+      console.error("Client-side error:", error);
+      toast.error("Something went wrong. Please try again.");
     }
-
-    toast.success(`Class ${type === "create" ? "created" : "updated"} successfully!`);
-    setOpen(false);
-    router.refresh();
-  } catch (error) {
-    console.error("Client-side error:", error);
-    toast.error("Something went wrong. Please try again.");
-  }
-};
-
+  };
 
   return (
     <form className="flex flex-col gap-8" onSubmit={handleSubmit(onSubmit)}>
-
       <div className="flex flex-wrap justify-between gap-4">
         {/* Grade */}
         <div className="flex flex-col w-full gap-2 md:w-1/4">
@@ -75,7 +80,9 @@ const ClassForm = ({
             className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
             {...register("gradeId")}
           >
-            <option value="" disabled>Select Grade</option>
+            <option value="" disabled>
+              Select Grade
+            </option>
             {grades.map((grade: { id: string; level: string }) => (
               <option value={grade.id} key={grade.id}>
                 {grade.level}
@@ -89,15 +96,21 @@ const ClassForm = ({
 
         {/* Section */}
         <div className="flex flex-col w-full gap-2 md:w-1/4">
-          <label htmlFor="section" className="text-xs text-gray-500">Section</label>
+          <label htmlFor="section" className="text-xs text-gray-500">
+            Section
+          </label>
           <select
             id="section"
             {...register("section")}
             className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
           >
-            <option value="" disabled>Select Section</option>
+            <option value="" disabled>
+              Select Section
+            </option>
             {["A", "B", "C", "D", "E"].map((section) => (
-              <option key={section} value={section}>{section}</option>
+              <option key={section} value={section}>
+                {section}
+              </option>
             ))}
           </select>
           {errors.section?.message && (
@@ -112,7 +125,9 @@ const ClassForm = ({
             className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
             {...register("supervisorId")}
           >
-            <option value="" disabled>Select Teacher</option>
+            <option value="" disabled>
+              Select Teacher
+            </option>
             {teachers.map((teacher: { id: string; name: string }) => (
               <option value={teacher.id} key={teacher.id}>
                 {teacher.name}
@@ -120,7 +135,9 @@ const ClassForm = ({
             ))}
           </select>
           {errors.supervisorId?.message && (
-            <p className="text-xs text-red-400">{errors.supervisorId.message}</p>
+            <p className="text-xs text-red-400">
+              {errors.supervisorId.message}
+            </p>
           )}
         </div>
       </div>
@@ -130,7 +147,11 @@ const ClassForm = ({
         className="p-2 text-white bg-blue-400 rounded-md disabled:opacity-50"
         disabled={isSubmitting}
       >
-        {isSubmitting ? "Submitting..." : type === "create" ? "Create" : "Update"}
+        {isSubmitting
+          ? "Submitting..."
+          : type === "create"
+          ? "Create"
+          : "Update"}
       </button>
     </form>
   );

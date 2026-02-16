@@ -1,7 +1,12 @@
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
-export async function GET(req: Request) {
+export async function GET(
+  req: Request,
+  context: { params: Promise<{ schoolId: string }> }
+) {
+  const { schoolId } = await context.params;
+
   const { searchParams } = new URL(req.url);
 
   const from = searchParams.get("from");
@@ -22,10 +27,11 @@ export async function GET(req: Request) {
   const end = new Date(to);
   end.setHours(23, 59, 59, 999);
 
-  // --------------------------------------------
-  // Attendance filter
-  // --------------------------------------------
+  /* -------------------------------------------- */
+  /* Attendance filter (🔒 TENANT SAFE) */
+  /* -------------------------------------------- */
   const attendanceWhere: any = {
+    schoolId,
     date: { gte: start, lte: end },
   };
 
@@ -33,7 +39,10 @@ export async function GET(req: Request) {
     attendanceWhere.classId = Number(classId);
   } else if (gradeId) {
     const classIds = await prisma.class.findMany({
-      where: { gradeId: Number(gradeId) },
+      where: {
+        gradeId: Number(gradeId),
+        schoolId,
+      },
       select: { id: true },
     });
 
@@ -42,23 +51,18 @@ export async function GET(req: Request) {
     };
   }
 
-  // --------------------------------------------
-  // Attendance records
-  // --------------------------------------------
   const attendance = await prisma.attendance.findMany({
     where: attendanceWhere,
     orderBy: { date: "desc" },
   });
 
-  // --------------------------------------------
-  // Students (SELECT only what UI needs)
-  // --------------------------------------------
   const studentIds = [...new Set(attendance.map((a) => a.studentId))];
 
   const students = await prisma.student.findMany({
     where: {
       id: { in: studentIds },
       status: "ACTIVE",
+      schoolId,
     },
     select: {
       id: true,

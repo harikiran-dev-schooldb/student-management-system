@@ -18,7 +18,11 @@ import { getGroupedStudentFees } from "@/lib/fees";
 import prisma from "@/lib/prisma";
 import { ITEM_PER_PAGE } from "@/lib/settings";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
-import { SearchParams, StudentsFeeReportList } from "../../../../../../../types";
+import {
+  SearchParams,
+  StudentsFeeReportList,
+} from "../../../../../../../types";
+import { tenantPrisma } from "@/lib/tenant-prisma";
 
 // --- Types & Interfaces ---
 
@@ -62,7 +66,7 @@ const StatusBadge = ({
 const renderRow = (
   item: StudentsFeeReportList,
   role: string | null,
-  feeMap: Map<string, StudentFeeData>
+  feeMap: Map<string, StudentFeeData>,
 ) => {
   const studentFee = feeMap.get(item.id);
 
@@ -135,19 +139,35 @@ const renderRow = (
 
 const StudentListPage = async ({
   searchParams,
+  params,
 }: {
   searchParams: Promise<SearchParams>;
+  params: Promise<{ schoolId: string }>;
 }) => {
-  const { role } = await fetchUserInfo();
-  const params = await searchParams;
+  const resolvedParams = await params;
+  const resolvedSearchParams = await searchParams;
+  const { schoolId: slug } = resolvedParams;
+
+  const school = await prisma.schoolInfo.findUnique({
+    where: { schoolId: slug },
+    select: { id: true },
+  });
+
+  if (!school) {
+    throw new Error("Invalid school");
+  }
+
+  const { role } = await fetchUserInfo(school.id);
+
+  const db = tenantPrisma(school.id);
 
   // Parse params
-  const { page, gradeId, classId, ...queryParams } = params;
+  const { page, gradeId, classId, ...queryParams } = resolvedSearchParams;
   const p = page ? (Array.isArray(page) ? page[0] : page) : "1";
-  const sortOrder = params.sort === "desc" ? "desc" : "asc";
-  const sortKey = Array.isArray(params.sortKey)
-    ? params.sortKey[0]
-    : params.sortKey || "classId";
+  const sortOrder = resolvedSearchParams.sort === "desc" ? "desc" : "asc";
+  const sortKey = Array.isArray(resolvedSearchParams.sortKey)
+    ? resolvedSearchParams.sortKey[0]
+    : resolvedSearchParams.sortKey || "classId";
 
   // Build Query
   const query: Prisma.StudentWhereInput = { status: "ACTIVE" };
@@ -165,13 +185,13 @@ const StudentListPage = async ({
   }
 
   // Fetch Data
-  const classes = await prisma.class.findMany({
+  const classes = await db.class.findMany({
     where: gradeId ? { gradeId: Number(gradeId) } : {},
   });
-  const grades = await prisma.grade.findMany();
+  const grades = await db.grade.findMany();
 
-  const [data, count] = await prisma.$transaction([
-    prisma.student.findMany({
+  const [data, count] = await db.$transaction([
+    db.student.findMany({
       where: query,
       include: {
         Class: { include: { Grade: { include: { feestructure: true } } } },
@@ -187,12 +207,13 @@ const StudentListPage = async ({
       take: ITEM_PER_PAGE,
       skip: ITEM_PER_PAGE * (parseInt(p) - 1),
     }),
-    prisma.student.count({ where: query }),
+    db.student.count({ where: query }),
   ]);
 
   // Process Fee Data
   const studentIds = data.map((s) => s.id);
-  const rawGroupedFees = await getGroupedStudentFees(studentIds);
+  const rawGroupedFees = await getGroupedStudentFees(school.id, studentIds);
+
   const feeMap = new Map(rawGroupedFees.map((fee) => [fee.studentId, fee]));
 
   // Table Config
@@ -227,7 +248,7 @@ const StudentListPage = async ({
     },
   ];
 
-  const Path = "/list/reports/student-fees";
+  const Path = `/${slug}/list/reports/student-fees`;
 
   return (
     <div className="flex-1 p-4 md:p-6 space-y-6 bg-gray-50/50 dark:bg-darkMode min-h-screen">

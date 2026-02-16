@@ -19,6 +19,7 @@ import IconButton from "@/components/IconButton";
 import { notFound } from "next/navigation";
 import { SearchParams, TeachersList } from "../../../../../../../types";
 import { TeachersSelect } from "../../../../../../../types/query-types";
+import { tenantPrisma } from "@/lib/tenant-prisma";
 
 // -------------------- Table Row --------------------
 const renderRow = (item: TeachersList, role: string | null) => (
@@ -51,14 +52,16 @@ const renderRow = (item: TeachersList, role: string | null) => (
           return (
             <div
               className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium
-            ${hasClass
-                  ? "border-indigo-100 bg-indigo-50/50 text-indigo-700 dark:border-indigo-900/30 dark:bg-indigo-900/10 dark:text-indigo-300"
-                  : "border-red-200 bg-red-50 text-red-700 dark:border-red-900/30 dark:bg-red-900/10 dark:text-red-300"
-                }`}
+            ${
+              hasClass
+                ? "border-indigo-100 bg-indigo-50/50 text-indigo-700 dark:border-indigo-900/30 dark:bg-indigo-900/10 dark:text-indigo-300"
+                : "border-red-200 bg-red-50 text-red-700 dark:border-red-900/30 dark:bg-red-900/10 dark:text-red-300"
+            }`}
             >
               <span
-                className={`h-1.5 w-1.5 rounded-full ${hasClass ? "bg-indigo-500" : "bg-red-500"
-                  }`}
+                className={`h-1.5 w-1.5 rounded-full ${
+                  hasClass ? "bg-indigo-500" : "bg-red-500"
+                }`}
               />
               {hasClass ? item.class!.name : "No Class"}
             </div>
@@ -66,7 +69,6 @@ const renderRow = (item: TeachersList, role: string | null) => (
         })()}
       </td>
     )}
-
 
     {/* Phone */}
     <td className="px-2 w-36 md:table-cell text-gray-700 dark:text-gray-200">
@@ -118,18 +120,37 @@ const getColumns = (role: string | null) => [
   ...(role === "admin" ? [{ header: "Actions", accessor: "action" }] : []),
 ];
 
-
 // -------------------- Page --------------------
 const TeacherListPage = async ({
   searchParams,
+  params,
 }: {
   searchParams: Promise<SearchParams>;
+  params: Promise<{ schoolId: string }>;
 }) => {
-  const { role } = await fetchUserInfo();
+  // 1️⃣ Resolve route params
+  const { schoolId: slug } = await params;
+  const resolvedSearchParams = await searchParams;
+
+  // 2️⃣ Resolve internal school ID
+  const school = await prisma.schoolInfo.findUnique({
+    where: { schoolId: slug },
+    select: { id: true },
+  });
+
+  if (!school) throw new Error("Invalid school");
+
+  // 3️⃣ Tenant-scoped Prisma
+  const db = tenantPrisma(school.id);
+
+  const { role } = await fetchUserInfo(school.id);
   const columns = getColumns(role);
-  const params = await searchParams;
-  const { page, userStatus, ...queryParams } = params;
+  const { page, userStatus, ...queryParams } = resolvedSearchParams;
   const p = page ? (Array.isArray(page) ? page[0] : page) : "1";
+  const sortOrder = resolvedSearchParams.sort === "desc" ? "desc" : "asc";
+  const sortKey = Array.isArray(resolvedSearchParams.sortKey)
+    ? resolvedSearchParams.sortKey[0]
+    : resolvedSearchParams.sortKey || "id";
 
   const query: Prisma.TeacherWhereInput = {
     status: {
@@ -138,10 +159,10 @@ const TeacherListPage = async ({
   };
 
   const normalize = (
-    value: string | string[] | undefined
+    value: string | string[] | undefined,
   ): string | undefined => (Array.isArray(value) ? value[0] : value);
 
-  if (role === "student") {
+  if (!role || role === "student") {
     return notFound();
   }
 
@@ -170,18 +191,18 @@ const TeacherListPage = async ({
     }
   }
 
-  const [data, count] = await prisma.$transaction([
-    prisma.teacher.findMany({
+  const [data, count] = await db.$transaction([
+    db.teacher.findMany({
       where: query,
-      orderBy: [{ id: "asc" }],
+      orderBy: [{ [sortKey]: sortOrder }, { id: "asc" }],
       select: TeachersSelect,
       take: ITEM_PER_PAGE,
       skip: ITEM_PER_PAGE * (parseInt(p) - 1),
     }),
-    prisma.teacher.count({ where: query }),
+    db.teacher.count({ where: query }),
   ]);
 
-  const Path = "/list/users/teachers";
+  const Path = `/${slug}/list/users/teachers`;
 
   return (
     <div className="flex-1 p-4 bg-white dark:bg-darkbg">

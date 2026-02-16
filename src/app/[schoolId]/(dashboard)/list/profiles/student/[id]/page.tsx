@@ -20,29 +20,39 @@ import {
 } from "lucide-react";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
 import { SingleStudentSelect } from "../../../../../../../../types/query-types";
+import { tenantPrisma } from "@/lib/tenant-prisma";
 
 interface StudentSinglePageProps {
-  params: Promise<{ id: string }>;
+  params: Promise<{ schoolId: string; id: string }>;
 }
 
 const StudentProfilePage = async ({ params }: StudentSinglePageProps) => {
-  const { id } = await params;
-  const { role, studentId } = await fetchUserInfo();
+  const { schoolId: slug, id } = await params;
+
+  const school = await prisma.schoolInfo.findUnique({
+    where: { schoolId: slug },
+    select: { id: true },
+  });
+
+  if (!school) notFound();
+
+  const { role, studentId } = await fetchUserInfo(school.id);
 
   // Only students can view their own profile
   if (role !== "student") {
     redirect("/logout");
   }
 
-  // Fetch Student Data
-  const student = await prisma.student.findUnique({
+  const db = tenantPrisma(school.id);
+
+  const student = await db.student.findFirst({
     where: { id },
     select: SingleStudentSelect,
   });
 
   if (!student) return notFound();
 
-  const classStudentCount = await prisma.student.count({
+  const classStudentCount = await db.student.count({
     where: {
       classId: student.classId,
       status: "ACTIVE", // optional but recommended
@@ -57,7 +67,7 @@ const StudentProfilePage = async ({ params }: StudentSinglePageProps) => {
   const formatDate = (date: Date | string | null) => {
     if (!date) return "Not provided";
     return new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" }).format(
-      new Date(date)
+      new Date(date),
     );
   };
 

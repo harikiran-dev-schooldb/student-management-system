@@ -1,7 +1,6 @@
 import "server-only";
 import { auth } from "@clerk/nextjs/server";
 import prisma from "@/lib/prisma";
-import { cache } from "react";
 
 /* -------------------------------------------------------
    Types
@@ -83,8 +82,10 @@ async function getTeacherInfo(linkedUserId: string) {
    Main fetchUserInfo (cached)
 ------------------------------------------------------- */
 
-export const fetchUserInfo = cache(
-  async (schoolId: string): Promise<UserInfo> => {
+export async function fetchUserInfo(
+  schoolId: string
+): Promise<UserInfo> {
+
     try {
       const { userId: clerkId } = await auth();
       if (!clerkId) return { userId: null, role: null };
@@ -191,8 +192,7 @@ export const fetchUserInfo = cache(
       console.error("fetchUserInfo error:", error);
       return { userId: null, role: null };
     }
-  },
-);
+  }
 
 export async function getClassIdForRole(
   role: string | null,

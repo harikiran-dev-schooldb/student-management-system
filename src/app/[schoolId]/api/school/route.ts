@@ -3,13 +3,60 @@ import { fetchUserInfo } from "@/lib/utils/server-utils";
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 
-export async function POST(
+type RouteContext = {
+  params: Promise<{ schoolId: string }>;
+};
+
+/* -------------------------------------------------------
+   GET → Fetch School Info
+------------------------------------------------------- */
+export async function GET(
   req: Request,
-  context: { params: Promise<{ schoolId: string }> }
+  context: RouteContext
 ) {
   try {
     const { schoolId } = await context.params;
-    const { role } = await fetchUserInfo();
+
+    const school = await prisma.schoolInfo.findUnique({
+      where: { schoolId }, // 🔥 use slug, not id
+      select: {
+        name: true,
+        logo: true,
+        address: true,
+        phone: true,
+        email: true,
+        website: true,
+      },
+    });
+
+    if (!school) {
+      return NextResponse.json(
+        { error: "Invalid school" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(school);
+  } catch (error) {
+    console.error("[SCHOOL_GET_ERROR]", error);
+    return NextResponse.json(
+      { message: "Error fetching school info" },
+      { status: 500 }
+    );
+  }
+}
+
+/* -------------------------------------------------------
+   POST → Create or Update School
+------------------------------------------------------- */
+export async function POST(
+  req: Request,
+  context: RouteContext
+) {
+  try {
+    const { schoolId } = await context.params;
+
+    const { role } = await fetchUserInfo(schoolId);
 
     if (role !== "admin") {
       return NextResponse.json(
@@ -34,12 +81,12 @@ export async function POST(
 
     const schoolInfo = await prisma.$transaction(async (tx) => {
       const existing = await tx.schoolInfo.findUnique({
-        where: { id: schoolId }, // or schoolId field depending on usage
+        where: { schoolId }, // 🔥 important: slug field
       });
 
       if (existing) {
         return tx.schoolInfo.update({
-          where: { id: schoolId },
+          where: { schoolId },
           data: payload,
         });
       }
@@ -47,7 +94,7 @@ export async function POST(
       return tx.schoolInfo.create({
         data: {
           ...payload,
-          schoolId, // ✅ REQUIRED
+          schoolId,
         },
       });
     });

@@ -7,15 +7,39 @@ import { Settings, ShieldCheck, GraduationCap } from "lucide-react";
  * SchoolSettingsPage (Server Component)
  * Handles data fetching and permission logic before rendering the form.
  */
-const SchoolSettingsPage = async () => {
-  // 1. Get the current user's role (admin, teacher, student)
-  const { role } = await fetchUserInfo();
+interface SchoolSettingsPageProps {
+  params: Promise<{ schoolId: string }>;
+}
 
-  // 2. Fetch the school configuration from the database.
-  // We use findFirst because there is typically only one global config record.
-  const schoolInfo = await prisma.schoolInfo.findFirst();
+const SchoolSettingsPage = async ({ params }: SchoolSettingsPageProps) => {
+  const { schoolId: slug } = await params;
 
-  // 3. Determine if the user has write access (Admins only)
+  // 1️⃣ Resolve internal numeric/string school ID
+  const school = await prisma.schoolInfo.findUnique({
+    where: { schoolId: slug },
+    select: { id: true },
+  });
+
+  if (!school) {
+    throw new Error("Invalid school");
+  }
+
+  // 2️⃣ Get role for THIS school
+  const { role } = await fetchUserInfo(school.id);
+
+  if (!role) {
+    throw new Error("Unauthorized");
+  }
+
+  // 3️⃣ Fetch THIS school's settings only
+  const schoolInfo = await prisma.schoolInfo.findUnique({
+    where: { id: school.id },
+  });
+
+  if (!schoolInfo) {
+    throw new Error("School config not found");
+  }
+
   const isAdmin = role === "admin";
 
   return (

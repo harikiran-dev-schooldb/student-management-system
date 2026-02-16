@@ -18,11 +18,13 @@ import {
   Phone,
   Calendar,
   CalendarDays,
+  School,
 } from "lucide-react";
 import { SingleStudentSelect } from "../../../../../../../../types/query-types";
+import { tenantPrisma } from "@/lib/tenant-prisma";
 
 interface StudentSinglePageProps {
-  params: Promise<{ id: string }>;
+  params: Promise<{ id: string; schoolId: string }>;
 }
 
 /* --- Styles & Tokens --- */
@@ -61,10 +63,21 @@ const InfoRow = ({
 );
 
 const SingleStudentPage = async ({ params }: StudentSinglePageProps) => {
-  const { id } = await params;
-  const { role } = await fetchUserInfo();
+  const { id, schoolId: slug } = await params;
 
-  const student = await prisma.student.findUnique({
+  // 1️⃣ Resolve internal school ID
+  const school = await prisma.schoolInfo.findUnique({
+    where: { schoolId: slug },
+    select: { id: true },
+  });
+
+  if (!school) return notFound();
+
+  // 2️⃣ Tenant scoped Prisma
+  const db = tenantPrisma(school.id);
+  const { role } = await fetchUserInfo(school.id);
+
+  const student = await db.student.findFirst({
     where: { id },
     select: SingleStudentSelect,
   });
@@ -146,7 +159,7 @@ const SingleStudentPage = async ({ params }: StudentSinglePageProps) => {
                   value={
                     student.dob
                       ? new Intl.DateTimeFormat("en-GB").format(
-                          new Date(student.dob)
+                          new Date(student.dob),
                         )
                       : "N/A"
                   }

@@ -90,13 +90,13 @@ export default function BulkGradeUpload() {
   };
 
   const params = useParams();
-  const schoolId = params.schoolId as string;
-  console.log("School ID from params:", schoolId);
+  const slug  = params.schoolId as string;
+  console.log("School ID from params:", slug );
 
   const handleUpload = async () => {
     setLoading(true);
     try {
-      await axios.post(`/${schoolId}/api/grades/bulk-upload`, {
+      const response = await axios.post(`/${slug}/api/grades/bulk-upload`, {
         grades,
       });
 

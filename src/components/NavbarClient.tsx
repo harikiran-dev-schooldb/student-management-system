@@ -3,9 +3,12 @@
 import SwitchUser from "./SwitchUser";
 import ThemeToggle from "./ThemeToggle";
 import Image from "next/image";
-import { MessageSquare, Bell, Menu } from "lucide-react";
+import { MessageSquare, Bell } from "lucide-react";
+import { useParams } from "next/navigation";
+import { useState } from "react";
 
 interface NavbarClientProps {
+  schoolName: string;
   roles: Array<{
     id: string;
     username: string;
@@ -72,8 +75,13 @@ export default function NavbarClient({
   roles,
   activeUser,
   onToggleSidebar,
+  schoolName,
 }: NavbarClientProps) {
+  const params = useParams();
+  const schoolId = params.schoolId as string;
+
   const activeRole = roles.find((r) => r.username === activeUser?.username);
+
   const dashboardLabel =
     activeRole?.role === "admin"
       ? "Admin Dashboard"
@@ -82,6 +90,11 @@ export default function NavbarClient({
       : activeRole?.role === "student"
       ? "Student Dashboard"
       : "Dashboard";
+
+  // 👇 Automatically fallback if logo not found
+  const [logoError, setLogoError] = useState(false);
+
+  const logoPath = logoError ? "/logo.png" : `/logos/${schoolId}.png`;
 
   return (
     <nav className="sticky top-0 z-30 w-full bg-white/80 dark:bg-darkMode backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors duration-300">
@@ -100,16 +113,17 @@ export default function NavbarClient({
             <div className="relative w-8 h-8 sm:w-10 sm:h-10">
               <Image
                 src="/logo.png"
-                alt="Logo"
+                alt={schoolId}
                 fill
                 className="object-contain"
+                onError={() => setLogoError(true)}
               />
             </div>
 
             {/* Text Branding - Visible on larger screens */}
             <div className="hidden lg:flex flex-col -space-y-0.5">
               <span className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">
-                Kotak Salesian School
+                {schoolName}
               </span>
               <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                 {dashboardLabel}

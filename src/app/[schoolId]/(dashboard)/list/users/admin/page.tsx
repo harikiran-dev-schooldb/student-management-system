@@ -17,6 +17,7 @@ import IconButton from "@/components/IconButton";
 import { notFound } from "next/navigation";
 import Avatar from "@/components/Avatar";
 import { SearchParams } from "../../../../../../../types";
+import { tenantPrisma } from "@/lib/tenant-prisma";
 
 // -------------------- Types --------------------
 type AdminList = Admin;
@@ -90,31 +91,45 @@ const getColumns = (role: string | null) => [
 // -------------------- Page --------------------
 const AdminListPage = async ({
   searchParams,
+  params,
 }: {
   searchParams: Promise<SearchParams>;
+  params: Promise<{ schoolId: string }>;
 }) => {
-  const { role } = await fetchUserInfo();
+  // 1️⃣ Resolve route params
+  const { schoolId: slug } = await params;
+  const resolvedSearchParams = await searchParams;
+
+  // 2️⃣ Resolve internal school ID
+  const school = await prisma.schoolInfo.findUnique({
+    where: { schoolId: slug },
+    select: { id: true },
+  });
+
+  if (!school) throw new Error("Invalid school");
+  const { role } = await fetchUserInfo(school.id);
   const columns = getColumns(role);
 
-  const params = await searchParams;
-  const { page, ...queryParams } = params;
+  const { page, ...queryParams } = resolvedSearchParams;
   const p = page ? (Array.isArray(page) ? page[0] : page) : "1";
 
-  const sortOrder = params.sort === "desc" ? "desc" : "asc";
-  const sortKey = Array.isArray(params.sortKey)
-    ? params.sortKey[0]
-    : params.sortKey || "id";
+  const sortOrder = resolvedSearchParams.sort === "desc" ? "desc" : "asc";
+  const sortKey = Array.isArray(resolvedSearchParams.sortKey)
+    ? resolvedSearchParams.sortKey[0]
+    : resolvedSearchParams.sortKey || "id";
 
-  const query: Prisma.AdminWhereInput = {};
+  // 3️⃣ Tenant-scoped Prisma
+  const db = tenantPrisma(school.id);
+
+  const query: Prisma.AdminWhereInput = { schoolId: school.id };
 
   if (role !== "admin") {
     return notFound();
-  };
+  }
 
   const normalize = (
-    value: string | string[] | undefined
+    value: string | string[] | undefined,
   ): string | undefined => (Array.isArray(value) ? value[0] : value);
-
 
   // -------------------- Filters --------------------
   for (const [key, value] of Object.entries(queryParams)) {
@@ -125,7 +140,14 @@ const AdminListPage = async ({
       case "search":
         query.OR = [
           { name: { contains: normalizedValue, mode: "insensitive" } },
-          { username: { contains: normalizedValue, mode: "insensitive" } },
+          {
+            linkedUser: {
+              username: {
+                contains: normalizedValue,
+                mode: "insensitive",
+              },
+            },
+          },
         ];
         break;
 
@@ -138,17 +160,20 @@ const AdminListPage = async ({
     }
   }
 
-  const [data, count] = await prisma.$transaction([
-    prisma.admin.findMany({
+  const allowedSortKeys = ["id", "name", "createdAt"];
+  const safeSortKey = allowedSortKeys.includes(sortKey) ? sortKey : "id";
+
+  const [data, count] = await db.$transaction([
+    db.admin.findMany({
       where: query,
-      orderBy: { [sortKey]: sortOrder },
+      orderBy: { [safeSortKey]: sortOrder },
       take: ITEM_PER_PAGE,
       skip: ITEM_PER_PAGE * (parseInt(p) - 1),
     }),
-    prisma.admin.count({ where: query }),
+    db.admin.count({ where: query }),
   ]);
 
-  const Path = "/list/users/admin";
+  const Path = `/${slug}/list/users/admin`;
 
   return (
     <div className="flex-1 p-4 bg-white dark:bg-darkbg">

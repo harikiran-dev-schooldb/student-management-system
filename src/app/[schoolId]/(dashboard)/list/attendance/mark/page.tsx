@@ -1,8 +1,13 @@
 import MarkAttendancePage from "@/components/MarkAttendancePage";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
 
-export default async function Page() {
-  const user = await fetchUserInfo();
+type PageProps = {
+  params: Promise<{ schoolId: string }>;
+};
+
+export default async function Page({ params }: PageProps) {
+  const { schoolId } = await params;
+  const user = await fetchUserInfo(schoolId);
 
   if (!user?.role) {
     return <div className="p-6 text-red-500">Unauthorized</div>;

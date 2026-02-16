@@ -22,9 +22,10 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { SingleStudentFeeSelect } from "../../../../../../../../types/query-types";
+import { tenantPrisma } from "@/lib/tenant-prisma";
 
 interface StudentFeePageProps {
-  params: Promise<{ mode: string; id: string }>;
+  params: Promise<{ mode: string; id: string; schoolId: string }>;
 }
 
 /* --- Styles & Tokens --- */
@@ -95,24 +96,33 @@ const QuickLink = ({
 );
 
 const StudentFeePage = async ({ params }: StudentFeePageProps) => {
-  const { mode, id } = await params;
-  const { role, studentId } = await fetchUserInfo();
+  const { schoolId: slug, mode, id } = await params;
 
-  if (mode !== "collect" && mode !== "cancel" && mode !== "view") {
+  if (!["collect", "cancel", "view"].includes(mode)) {
     notFound();
   }
 
-  // 🔒 Student can ONLY access their own fee page
+  const school = await prisma.schoolInfo.findUnique({
+    where: { schoolId: slug },
+    select: { id: true },
+  });
+
+  if (!school) notFound();
+
+  const db = tenantPrisma(school.id);
+
+  const { role, studentId } = await fetchUserInfo(school.id);
+
   if (role === "student" && id !== studentId) {
     notFound();
   }
 
-  const student = await prisma.student.findUnique({
+  const student = await db.student.findFirst({
     where: { id },
     select: SingleStudentFeeSelect,
   });
 
-  if (!student) return notFound();
+  if (!student) notFound();
 
   return (
     <div className="flex flex-col gap-6 p-6 min-h-screen bg-gray-50/50 dark:bg-darkMode">
@@ -184,8 +194,8 @@ const StudentFeePage = async ({ params }: StudentFeePageProps) => {
                     value={
                       student.dob
                         ? new Intl.DateTimeFormat("en-GB").format(
-                          new Date(student.dob)
-                        )
+                            new Date(student.dob),
+                          )
                         : "N/A"
                     }
                   />
@@ -311,12 +321,13 @@ const StudentFeePage = async ({ params }: StudentFeePageProps) => {
             Fee Overview
           </h3>
           <span
-            className={`text-xs font-bold px-2 py-1 rounded border uppercase ${mode === "collect"
+            className={`text-xs font-bold px-2 py-1 rounded border uppercase ${
+              mode === "collect"
                 ? "bg-green-50 text-green-700 border-green-200"
                 : mode === "cancel"
-                  ? "bg-red-50 text-red-700 border-red-200"
-                  : "bg-gray-50 text-gray-700 border-gray-200"
-              }`}
+                ? "bg-red-50 text-red-700 border-red-200"
+                : "bg-gray-50 text-gray-700 border-gray-200"
+            }`}
           >
             {mode} Mode
           </span>
@@ -324,9 +335,14 @@ const StudentFeePage = async ({ params }: StudentFeePageProps) => {
 
         {/* Full Width Table Container */}
         <div className="w-full overflow-x-auto">
-          <FeesTableContainer studentId={student.id} mode={mode as any} role={role as "admin" | "student"}
+          <FeesTableContainer
+            studentId={student.id}
+            mode={mode as any}
+            role={role as "admin" | "student"}
             studentName={student.name}
-            studentEmail={student.email || ""} studentMobile={student.phone} />
+            studentEmail={student.email || ""}
+            studentMobile={student.phone}
+          />
         </div>
       </div>
     </div>

@@ -5,7 +5,7 @@ import { MessageType } from "../../../../../../types";
 
 export async function PUT(
   req: Request,
-  context: { params: Promise<{ schoolId: string }> }
+  context: { params: Promise<{ schoolId: string }> },
 ) {
   const { schoolId } = await context.params;
 
@@ -27,7 +27,7 @@ export async function PUT(
     if (!existing) {
       return NextResponse.json(
         { error: "Attendance record not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -61,13 +61,10 @@ export async function PUT(
       });
 
       if (student) {
-        const message = getMessageContent(
-          "ABSENT" as MessageType,
-          {
-            name: student.name,
-            className: student.Class?.name ?? "Unknown",
-          }
-        );
+        const message = getMessageContent("ABSENT" as MessageType, {
+          name: student.name,
+          className: student.Class?.name ?? "Unknown",
+        });
 
         await prisma.messages.create({
           data: {
@@ -83,17 +80,27 @@ export async function PUT(
     }
 
     // ✅ Update attendance tenant-safe
-    const updatedAttendance = await prisma.attendance.update({
-      where: { id: attendanceId },
+    const result = await prisma.attendance.updateMany({
+      where: {
+        id: attendanceId,
+        schoolId, // 🔒 REQUIRED
+      },
       data: { present },
     });
 
-    return NextResponse.json(updatedAttendance);
+    if (result.count === 0) {
+      return NextResponse.json(
+        { error: "Not found or unauthorized" },
+        { status: 404 },
+      );
+    }
+
+    return NextResponse.json(result, { status: 200 });
   } catch (error) {
     console.error("❌ Attendance update error:", error);
     return NextResponse.json(
       { error: "Failed to update attendance" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

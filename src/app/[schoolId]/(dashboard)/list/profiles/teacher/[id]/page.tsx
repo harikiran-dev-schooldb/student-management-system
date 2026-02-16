@@ -21,17 +21,37 @@ import {
   ArrowRight,
   MoreHorizontal,
 } from "lucide-react";
+import { tenantPrisma } from "@/lib/tenant-prisma";
 
 interface TeacherSinglePageProps {
-  params: Promise<{ id: string }>;
+  params: Promise<{ schoolId: string; id: string }>;
 }
 
 const TeacherProfilePage = async ({ params }: TeacherSinglePageProps) => {
-  const { id } = await params;
-  const { role } = await fetchUserInfo();
+  const { schoolId: slug, id } = await params;
+
+  const school = await prisma.schoolInfo.findUnique({
+    where: { schoolId: slug },
+    select: { id: true },
+  });
+
+  if (!school) notFound();
+
+  const { role, teacherId } = await fetchUserInfo(school.id);
+
+  const db = tenantPrisma(school.id);
+
+  // 🔐 Role-based access control
+  if (role === "student") {
+    notFound();
+  }
+
+  if (role === "teacher" && teacherId !== id) {
+    notFound();
+  }
 
   // Fetch Teacher Data with Relations
-  const teacher = await prisma.teacher.findUnique({
+  const teacher = await db.teacher.findUnique({
     where: { id },
     include: {
       class: {
@@ -50,7 +70,7 @@ const TeacherProfilePage = async ({ params }: TeacherSinglePageProps) => {
   const formatDate = (date: Date | string | null) => {
     if (!date) return "Not provided";
     return new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" }).format(
-      new Date(date)
+      new Date(date),
     );
   };
 

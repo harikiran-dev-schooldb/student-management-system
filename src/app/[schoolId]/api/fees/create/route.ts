@@ -3,10 +3,10 @@ import prisma from "@/lib/prisma";
 
 export async function POST(
   req: NextRequest,
-  context: { params: Promise<{ schoolId: string }> }
+  context: { params: Promise<{ schoolId: string }> },
 ) {
   try {
-    const { schoolId } = await context.params;
+    const { schoolId: slug } = await context.params;
     const body = await req.json();
 
     // 🧹 Remove id if present
@@ -14,6 +14,18 @@ export async function POST(
 
     if ("id" in body) {
       console.warn("⚠️ Incoming data contained id, removing it:", body.id);
+    }
+
+    // 🔥 STEP 1: Find school by slug
+    const school = await prisma.schoolInfo.findUnique({
+      where: { schoolId: slug },
+    });
+
+    if (!school) {
+      return NextResponse.json(
+        { message: "School not found" },
+        { status: 404 },
+      );
     }
 
     /* ─────────────────────────────
@@ -25,7 +37,7 @@ export async function POST(
           gradeId: data.gradeId,
           term: data.term,
           academicYear: data.academicYear,
-          schoolId, // ✅ REQUIRED
+          schoolId: school.id,
         },
       },
     });
@@ -36,7 +48,7 @@ export async function POST(
           error:
             "Fee structure already exists for this grade, term, and academic year.",
         },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
@@ -52,19 +64,16 @@ export async function POST(
         dueDate: new Date(data.dueDate),
         termFees: Number(data.termFees),
         abacusFees: data.abacusFees ? Number(data.abacusFees) : 0,
-        schoolId, // ✅ REQUIRED
+        schoolId: school.id,
       },
     });
 
-    return NextResponse.json(
-      { success: true, fee },
-      { status: 201 }
-    );
+    return NextResponse.json({ success: true, fee }, { status: 201 });
   } catch (error: any) {
     console.error("❌ Fee creation error:", error);
     return NextResponse.json(
       { error: error.message || "Internal Server Error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -3,14 +3,15 @@ import Pagination from "@/components/Pagination";
 import ResetFiltersButton from "@/components/ResetFiltersButton";
 import Table from "@/components/Table";
 import TableSearch from "@/components/TableSearch";
-import prisma from "@/lib/prisma";
 import { ITEM_PER_PAGE } from "@/lib/settings";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
 import { Prisma } from "@prisma/client";
 import { Filter, SlidersHorizontal } from "lucide-react"; // Import Icons
 import IconButton from "@/components/IconButton";
-import { AnnouncementList } from "../../../../../../types";
+import { AnnouncementList, SearchParams } from "../../../../../../types";
 import { AnnouncementSelect } from "../../../../../../types/query-types";
+import { tenantPrisma } from "@/lib/tenant-prisma";
+import prisma from "@/lib/prisma";
 
 // --- Utility: Modern Date Formatter ---
 const formatDate = (date: Date) => {
@@ -79,39 +80,57 @@ const getColumns = (role: string | null) => [
 
 const AnnouncementsList = async ({
   searchParams,
+  params,
 }: {
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+  searchParams: Promise<SearchParams>;
+  params: Promise<{ schoolId: string }>;
 }) => {
-  const params = await searchParams;
-  const { role } = await fetchUserInfo();
+  const resolvedParams = await params;
+  const resolvedSearchParams = await searchParams;
+  
+  const { schoolId: slug } = resolvedParams;
+
+  const school = await prisma.schoolInfo.findUnique({
+    where: { schoolId: slug },
+    select: { id: true },
+  });
+
+  if (!school) {
+    throw new Error("Invalid school");
+  }
+
+  const { role } = await fetchUserInfo(school.id);
+  // 🔐 Create tenant-scoped prisma
+  const db = tenantPrisma(school.id);
   const columns = getColumns(role);
 
-  // Pagination Logic
-  const page = params.page;
+  // Pagination
+  const page = resolvedSearchParams.page;
   const pageValue = Array.isArray(page) ? page[0] : page;
   const p = pageValue ? parseInt(pageValue) : 1;
 
-  // Query Builder
-  const query: Prisma.AnnouncementWhereInput = {};
-  for (const [key, value] of Object.entries(params)) {
+  // Query
+  const query: Prisma.AnnouncementWhereInput = {
+    schoolId: school.id,
+  };
+
+  for (const [key, value] of Object.entries(resolvedSearchParams)) {
     const val = Array.isArray(value) ? value[0] : value;
-    if (val !== undefined) {
-      if (key === "search") {
-        query.title = { contains: val, mode: "insensitive" }; // Added case-insensitive
-      }
+
+    if (val && key === "search") {
+      query.title = { contains: val, mode: "insensitive" };
     }
   }
 
-  // Data Fetching
-  const [data, count] = await prisma.$transaction([
-    prisma.announcement.findMany({
+  const [data, count] = await db.$transaction([
+    db.announcement.findMany({
       where: query,
       select: AnnouncementSelect,
       take: ITEM_PER_PAGE,
       skip: ITEM_PER_PAGE * (p - 1),
-      orderBy: { date: "desc" }, // Good UX: Show newest first by default
+      orderBy: { date: "desc" },
     }),
-    prisma.announcement.count({ where: query }),
+    db.announcement.count({ where: query }),
   ]);
 
   return (

@@ -1,7 +1,7 @@
 "use client";
 
 import { useClerk } from "@clerk/nextjs";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { useEffect } from "react";
 import { motion } from "framer-motion";
 import { School, ShieldCheck, LogOut } from "lucide-react";
@@ -9,22 +9,29 @@ import { School, ShieldCheck, LogOut } from "lucide-react";
 export default function LogoutPage() {
   const { signOut } = useClerk();
   const router = useRouter();
+  const params = useParams();
+
+  const schoolId = params?.schoolId as string;
 
   useEffect(() => {
     const signOutAndRedirect = async () => {
       try {
         await signOut();
+
         setTimeout(() => {
-          router.replace("/login");
-        }, 800); // smooth UX
+          // redirect to school-specific login
+          router.replace(`/${schoolId}/login`);
+        });
       } catch (err) {
         console.error("Logout failed:", err);
-        router.replace("/login");
+        router.replace(`/${schoolId}/login`);
       }
     };
 
-    signOutAndRedirect();
-  }, [signOut, router]);
+    if (schoolId) {
+      signOutAndRedirect();
+    }
+  }, [signOut, router, schoolId]);
 
   return (
     <div className="flex min-h-screen w-full bg-white dark:bg-darkMode font-sans transition-colors">
@@ -43,7 +50,7 @@ export default function LogoutPage() {
             </div>
 
             <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
-              Kotak Salesian School
+              {schoolId?.toUpperCase()}
             </h1>
           </div>
 
@@ -74,13 +81,11 @@ export default function LogoutPage() {
         </motion.div>
       </div>
 
-      {/* RIGHT SIDE (Showcase) */}
+      {/* RIGHT SIDE */}
       <div className="hidden relative w-[55%] lg:flex items-center justify-center bg-[#050505] overflow-hidden">
-        {/* Gradients */}
         <div className="absolute top-0 right-0 h-[300px] w-[300px] rounded-full bg-indigo-500/10 blur-[120px]" />
         <div className="absolute bottom-0 left-0 h-[300px] w-[300px] rounded-full bg-emerald-500/10 blur-[120px]" />
 
-        {/* Content */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}

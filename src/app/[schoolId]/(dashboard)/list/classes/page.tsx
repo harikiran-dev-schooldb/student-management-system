@@ -12,6 +12,7 @@ import { Filter } from "lucide-react";
 import IconButton from "@/components/IconButton";
 import { ClassList, SearchParams } from "../../../../../../types";
 import { ClassSelect } from "../../../../../../types/query-types";
+import { tenantPrisma } from "@/lib/tenant-prisma";
 
 const renderRow = (item: ClassList, role: string | null) => (
   <tr
@@ -50,26 +51,42 @@ const getColumns = (role: string | null) => [
 
 const ClassesList = async ({
   searchParams,
+  params,
 }: {
   searchParams: Promise<SearchParams>;
+  params: Promise<{ schoolId: string }>;
 }) => {
-  const params = await searchParams;
-  const { role } = await fetchUserInfo();
+  const resolvedParams = await params;
+  const resolvedSearchParams = await searchParams;
+  const { schoolId: slug } = resolvedParams;
 
-  const pageParam = params.page;
+  const school = await prisma.schoolInfo.findUnique({
+    where: { schoolId: slug },
+    select: { id: true },
+  });
+
+  if (!school) {
+    throw new Error("Invalid school");
+  }
+
+  const { role } = await fetchUserInfo(school.id);
+  // 🔐 Create tenant-scoped prisma
+  const db = tenantPrisma(school.id);
+
+  const pageParam = resolvedSearchParams.page;
   const currentPage = Array.isArray(pageParam)
     ? parseInt(pageParam[0])
     : parseInt(pageParam || "1");
 
-  const sortOrder = params.sort === "desc" ? "desc" : "asc";
-  const sortKeyRaw = params.sortKey;
+  const sortOrder = resolvedSearchParams.sort === "desc" ? "desc" : "asc";
+  const sortKeyRaw = resolvedSearchParams.sortKey;
   const sortKey = Array.isArray(sortKeyRaw)
     ? sortKeyRaw[0]
     : sortKeyRaw || "id";
 
-  const query: Prisma.ClassWhereInput = {};
+  const query: Prisma.ClassWhereInput = { schoolId: school.id };
 
-  for (const [key, value] of Object.entries(params)) {
+  for (const [key, value] of Object.entries(resolvedSearchParams)) {
     const val = Array.isArray(value) ? value[0] : value;
     if (!val) continue;
 
@@ -85,18 +102,18 @@ const ClassesList = async ({
     }
   }
 
-  const [data, count] = await prisma.$transaction([
-    prisma.class.findMany({
+  const [data, count] = await db.$transaction([
+    db.class.findMany({
       where: query,
       orderBy: { [sortKey]: sortOrder },
       select: ClassSelect,
       take: ITEM_PER_PAGE,
       skip: ITEM_PER_PAGE * (currentPage - 1),
     }),
-    prisma.class.count({ where: query }),
+    db.class.count({ where: query }),
   ]);
 
-  const Path = "/list/classes";
+  const Path = `${slug}/list/classes`;
   return (
     <div className="flex-1 p-4 bg-white dark:bg-gray-900 text-black dark:text-white">
       {/* Top Controls */}
