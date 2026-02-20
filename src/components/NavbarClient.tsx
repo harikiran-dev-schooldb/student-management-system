@@ -9,6 +9,7 @@ import { useState } from "react";
 
 interface NavbarClientProps {
   schoolName: string;
+  logoUrl?: string | null;
   roles: Array<{
     id: string;
     username: string;
@@ -76,6 +77,7 @@ export default function NavbarClient({
   activeUser,
   onToggleSidebar,
   schoolName,
+  logoUrl,
 }: NavbarClientProps) {
   const params = useParams();
   const schoolId = params.schoolId as string;
@@ -94,7 +96,7 @@ export default function NavbarClient({
   // 👇 Automatically fallback if logo not found
   const [logoError, setLogoError] = useState(false);
 
-  const logoPath = logoError ? "/logo.png" : `/logos/${schoolId}.png`;
+  const logoPath = !logoUrl || logoError ? "/logo.png" : logoUrl;
 
   return (
     <nav className="sticky top-0 z-30 w-full bg-white/80 dark:bg-darkMode backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors duration-300">
@@ -111,12 +113,13 @@ export default function NavbarClient({
 
           <div className="flex items-center gap-3">
             <div className="relative w-8 h-8 sm:w-10 sm:h-10">
-              <Image
-                src="/logo.png"
-                alt={schoolId}
-                fill
-                className="object-contain"
-                onError={() => setLogoError(true)}
+              <img
+                src={logoPath}
+                alt={schoolName}
+                className="object-contain w-full h-full"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = "/logo.png";
+                }}
               />
             </div>
 

@@ -95,8 +95,9 @@ export default function Page() {
   useEffect(() => {
     const fetchSchool = async () => {
       try {
-        const res = await fetch(`/${schoolId}/api/school`);
-
+        const res = await fetch(
+          `/api/v1/public/school/${schoolId}`,
+        );
         if (!res.ok) return;
 
         const data = await res.json();
@@ -114,7 +115,9 @@ export default function Page() {
       if (!isSignedIn) return;
 
       try {
-        const res = await fetch(`/${schoolId}/api/auth/resolve-role`);
+        const res = await fetch(
+          `/api/v1/tenants/${schoolId}/auth/resolve-role`,
+        );
 
         if (!res.ok) {
           toast.error("Access denied for this school.");

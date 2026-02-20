@@ -17,10 +17,11 @@ const useApiRequest = () => {
     try {
       const res = await fetch(url, {
         method,
+        credentials: "include", // 🔥 REQUIRED for Clerk
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(body),
+        body: body ? JSON.stringify(body) : undefined,
       });
 
       const data = await res.json();
@@ -65,11 +66,16 @@ const AnnouncementForm = ({
   });
 
   const router = useRouter();
+
   const { makeRequest } = useApiRequest();
 
   useEffect(() => {
     if (state.success) {
-      toast.success(`Announcement ${type === "create" ? "created" : "updated"} successfully!`);
+      toast.success(
+        `Announcement ${
+          type === "create" ? "created" : "updated"
+        } successfully!`,
+      );
       setOpen(false);
       router.refresh();
     }
@@ -84,9 +90,11 @@ const AnnouncementForm = ({
         classId: formData.classId ?? null,
       };
 
-      const url = type === "create"
-        ? "/api/announcement"
-        : `/api/announcement/${data?.id}`;
+      const url =
+        type === "create"
+          ? `/api/v1/tenants/current/announcements`
+          : `/api/v1/tenants/current/announcements/${data?.id}`;
+
       const method = type === "create" ? "POST" : "PUT";
 
       const result = await makeRequest(url, method, payload);

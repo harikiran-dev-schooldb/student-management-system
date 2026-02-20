@@ -16,6 +16,9 @@ model SchoolInfo {
   email    String?
   website  String?
   logo     String?
+  taxId          String?
+  receiptHeader  String?
+  receiptFooter  String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -73,6 +76,7 @@ model Admin {
   schoolId String
   school   SchoolInfo @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
+  @@unique([id, schoolId])
   @@unique([clerk_id, schoolId])
   @@unique([username, schoolId])
   @@unique([email, schoolId])
@@ -596,18 +600,28 @@ model LinkedUser {
 
 model FeePayment {
   id            Int      @id @default(autoincrement())
-  amount        Float
-  paymentDate   DateTime @default(now())
-  status        String   @default("PENDING") // SUCCESS, FAILED
-  transactionId String? // Razorpay Payment ID
-  orderId       String? // Razorpay Order ID
 
-  studentId String
-  student   Student    @relation(fields: [studentId], references: [id])
-  schoolId  String
-  school    SchoolInfo @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  amount        Float
+  currency      String   @default("INR")
+
+  paymentDate   DateTime @default(now())
+
+  status        PaymentStatus @default(PENDING)
+
+  transactionId String?  @unique  // Razorpay Payment ID
+  orderId       String   @unique  // Razorpay Order ID (must be unique)
+
+  studentId     String
+  student       Student    @relation(fields: [studentId], references: [id])
+
+  schoolId      String
+  school        SchoolInfo @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   @@index([schoolId])
+  @@index([studentId])
 }
 
 model StudentEnrollment {
@@ -724,4 +738,10 @@ enum EnrollmentStatus {
   PROMOTED
   REPEATED
   TRANSFERRED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
 }

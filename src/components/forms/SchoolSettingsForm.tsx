@@ -77,7 +77,7 @@ const SchoolSettingsForm = ({ initialData, userRole }: Props) => {
     if (!isAdmin) return;
     setIsLoading(true);
     try {
-      const response = await fetch("/api/school", {
+      const response = await fetch("/api/v1/public/school/info", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),

@@ -25,7 +25,7 @@ export async function NavbarServer({
 
   const school = await prisma.schoolInfo.findUnique({
     where: { schoolId },
-    select: { name: true },
+    select: { name: true, logo: true },
   });
 
   const schoolName = school?.name ?? schoolId;
@@ -39,6 +39,7 @@ export async function NavbarServer({
     return (
       <NavbarClient
         schoolName={schoolName}
+        logoUrl={school?.logo ?? null}
         roles={[]}
         activeUser={null}
         onToggleSidebar={onToggleSidebar}
@@ -58,6 +59,7 @@ export async function NavbarServer({
   return (
     <NavbarClient
       schoolName={schoolName}
+      logoUrl={school?.logo ?? null}
       roles={roles}
       activeUser={
         profile.activeUser ? { username: profile.activeUser.username } : null

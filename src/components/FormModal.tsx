@@ -14,6 +14,7 @@ import {
   AlertTriangle, 
   Loader2 
 } from "lucide-react";
+import { useSchoolSlug } from "./hooks/getschool";
 
 // Mapping logical table names to API routes
 const deleteActionMap: Record<string, string> = {
@@ -22,10 +23,10 @@ const deleteActionMap: Record<string, string> = {
   teacher: "teacher",
   student: "student",
   exam: "exam",
-  lesson: "subject",
-  assignment: "subject",
-  attendance: "subject",
-  event: "subject",
+  lesson: "lessons",
+  assignment: "assignment",
+  attendance: "attendance",
+  event: "event",
   announcement: "announcement",
   fees: "fees",
   fees_structure: "fees",
@@ -142,6 +143,8 @@ const FormModal = ({
 
   const selectedConfig = buttonConfig[type];
 
+  const schoolId = useSchoolSlug();
+
   // --- Delete Handler ---
   const handleDelete = async () => {
     setLoading(true);
@@ -150,7 +153,7 @@ const FormModal = ({
       if (!endpoint) return toast.error("Invalid delete target.");
 
       const url = ["student", "teacher", "admin"].includes(endpoint)
-        ? `/api/users/${endpoint}s/${id}`
+        ? `/api/v1/tenants/${schoolId}/users/${endpoint}s/${id}`
         : `/api/${endpoint}/${id}`;
 
       const res = await fetch(url, { method: "DELETE" });

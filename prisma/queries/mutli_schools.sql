@@ -193,7 +193,7 @@ SELECT * FROM "Exam";
 SELECT * FROM "ExamGradeSubject";
 SELECT * FROM "Result";
 SELECT * FROM "Subject";
-SELECT * FROM "SchoolInfo";
+SELECT * FROM "Profile";
 SELECT * FROM "LinkedUser";
 
 INSERT INTO "Profile" (

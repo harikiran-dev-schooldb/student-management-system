@@ -7,22 +7,15 @@ import prisma from "@/lib/prisma";
 ------------------------------------------------------- */
 
 export interface UserInfo {
-  userId: string | null;
+  profileId: string | null;
+  linkedUserId: string | null;
   role: "admin" | "teacher" | "student" | null;
+  schoolId?: string;
 
-  // student
   studentId?: string;
+  teacherId?: string;
   classId?: number;
   gradeId?: number;
-  students?: {
-    studentId: string;
-    classId: number;
-    gradeId: number;
-    name: string;
-  }[];
-
-  // teacher
-  teacherId?: string;
   className?: string | null;
 }
 
@@ -82,122 +75,109 @@ async function getTeacherInfo(linkedUserId: string) {
    Main fetchUserInfo (cached)
 ------------------------------------------------------- */
 
-export async function fetchUserInfo(
-  schoolId: string
-): Promise<UserInfo> {
+export async function fetchUserInfo(schoolId: string): Promise<UserInfo> {
+  try {
+    const { userId: clerkId } = await auth();
+    if (!clerkId) {
+      return { profileId: null, linkedUserId: null, role: null };
+    }
 
-    try {
-      const { userId: clerkId } = await auth();
-      if (!clerkId) return { userId: null, role: null };
+    /* 1️⃣ Get Profile */
+    const profile = await prisma.profile.findUnique({
+      where: { clerk_id: clerkId },
+      include: {
+        activeUser: true,
+      },
+    });
 
-      // 1️⃣ Find profile by Clerk ID
-      const profile = await prisma.profile.findUnique({
-        where: { clerk_id: clerkId },
-        select: { id: true },
-      });
+    if (!profile) {
+      return { profileId: null, linkedUserId: null, role: null };
+    }
 
-      if (!profile) return { userId: null, role: null };
+    /* 2️⃣ Validate active user belongs to this school */
+    const activeUser = profile.activeUser;
 
-      // 2️⃣ Find active linked user FOR THIS SCHOOL
-      const linkedUser = await prisma.linkedUser.findFirst({
+    if (!activeUser || activeUser.schoolId !== schoolId) {
+      return {
+        profileId: profile.id,
+        linkedUserId: null,
+        role: null,
+      };
+    }
+
+    /* ---------------- STUDENT ---------------- */
+    if (activeUser.role === "student") {
+      const student = await prisma.student.findFirst({
         where: {
-          profileId: profile.id,
-          schoolId, // 🔒 TENANT FILTER
+          linkedUserId: activeUser.id,
+          schoolId,
         },
         select: {
           id: true,
-          role: true,
+          classId: true,
+          Class: { select: { gradeId: true } },
         },
       });
 
-      if (!linkedUser) {
-        return { userId: null, role: null };
-      }
-
-      /* ---------------- STUDENT ---------------- */
-      if (linkedUser.role === "student") {
-        const student = await prisma.student.findFirst({
-          where: {
-            linkedUserId: linkedUser.id,
-            schoolId, // 🔒 TENANT FILTER
-          },
-          select: {
-            id: true,
-            name: true,
-            classId: true,
-            Class: { select: { gradeId: true } },
-          },
-        });
-
-        if (!student) {
-          return { userId: linkedUser.id, role: "student" };
-        }
-
-        return {
-          userId: linkedUser.id,
-          role: "student",
-          studentId: student.id,
-          classId: student.classId,
-          gradeId: student.Class.gradeId,
-          students: [
-            {
-              studentId: student.id,
-              classId: student.classId,
-              gradeId: student.Class.gradeId,
-              name: student.name,
-            },
-          ],
-        };
-      }
-
-      /* ---------------- TEACHER ---------------- */
-      if (linkedUser.role === "teacher") {
-        const teacher = await prisma.teacher.findFirst({
-          where: {
-            linkedUserId: linkedUser.id,
-            schoolId, // 🔒 TENANT FILTER
-          },
-          select: {
-            id: true,
-            class: {
-              select: {
-                id: true,
-                name: true,
-                gradeId: true,
-              },
-            },
-          },
-        });
-
-        if (!teacher || !teacher.class) {
-          return { userId: linkedUser.id, role: "teacher" };
-        }
-
-        return {
-          userId: linkedUser.id,
-          role: "teacher",
-          teacherId: teacher.id,
-          classId: teacher.class.id,
-          className: teacher.class.name,
-          gradeId: teacher.class.gradeId,
-        };
-      }
-
-      /* ---------------- ADMIN ---------------- */
       return {
-        userId: linkedUser.id,
-        role: "admin",
+        profileId: profile.id,
+        linkedUserId: activeUser.id,
+        role: "student",
+        schoolId,
+        studentId: student?.id,
+        classId: student?.classId,
+        gradeId: student?.Class.gradeId,
       };
-    } catch (error) {
-      console.error("fetchUserInfo error:", error);
-      return { userId: null, role: null };
     }
+
+    /* ---------------- TEACHER ---------------- */
+    if (activeUser.role === "teacher") {
+      const teacher = await prisma.teacher.findFirst({
+        where: {
+          linkedUserId: activeUser.id,
+          schoolId,
+        },
+        select: {
+          id: true,
+          class: {
+            select: {
+              id: true,
+              name: true,
+              gradeId: true,
+            },
+          },
+        },
+      });
+
+      return {
+        profileId: profile.id,
+        linkedUserId: activeUser.id,
+        role: "teacher",
+        schoolId,
+        teacherId: teacher?.id,
+        classId: teacher?.class?.id,
+        className: teacher?.class?.name,
+        gradeId: teacher?.class?.gradeId,
+      };
+    }
+
+    /* ---------------- ADMIN ---------------- */
+    return {
+      profileId: profile.id,
+      linkedUserId: activeUser.id,
+      role: "admin",
+      schoolId,
+    };
+  } catch (error) {
+    console.error("fetchUserInfo error:", error);
+    return { profileId: null, linkedUserId: null, role: null };
   }
+}
 
 export async function getClassIdForRole(
   role: string | null,
   userId: string | null,
-  schoolId: string
+  schoolId: string,
 ): Promise<number[]> {
   if (!userId || !role) return [];
 
@@ -227,4 +207,3 @@ export async function getClassIdForRole(
 
   return [];
 }
-
