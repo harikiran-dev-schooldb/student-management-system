@@ -2,12 +2,13 @@ import prisma from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
 
 export type TenantAccess = {
-  schoolId: string; // Internal DB PK
-  schoolSlug: string; // URL slug
+  schoolId: string;          // Internal DB PK
+  schoolSlug: string;        // URL slug
   role: "admin" | "teacher" | "student";
   userId: string;
   profileId: string;
   classId?: number;
+  studentId?: string;
 };
 
 export async function requireTenantAccess(): Promise<TenantAccess> {
@@ -21,9 +22,7 @@ export async function requireTenantAccess(): Promise<TenantAccess> {
     where: { clerk_id: userId },
     include: {
       activeUser: {
-        include: {
-          school: true,
-        },
+        include: { school: true },
       },
     },
   });
@@ -49,12 +48,16 @@ export async function requireTenantAccess(): Promise<TenantAccess> {
         linkedUserId: activeUser.id,
         schoolId: activeUser.schoolId,
       },
-      select: { classId: true },
+      select: {
+        id: true,
+        classId: true,
+      },
     });
 
     return {
       ...baseAccess,
-      classId: student?.classId,
+      studentId: student?.id,
+      classId: student?.classId ?? undefined,
     };
   }
 

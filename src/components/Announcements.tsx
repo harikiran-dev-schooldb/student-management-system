@@ -33,18 +33,24 @@ const Messages = async ({
 }) => {
   try {
     const access = await requireTenantAccess();
-    const { schoolId, role } = access;
+    const { schoolId, role, classId } = access;
 
     const whereCondition: Prisma.MessagesWhereInput = {
       type,
       schoolId,
-      ...(role !== "admin" && {
-        OR: [
-          { classId: access.role === "student" ? access.profileId : undefined },
-          { classId: null },
-        ],
-      }),
     };
+
+    // Restrict non-admins
+    if (role !== "admin") {
+      whereCondition.OR = [];
+
+      if (classId !== undefined) {
+        whereCondition.OR.push({ classId });
+      }
+
+      // Always allow global messages
+      whereCondition.OR.push({ classId: null });
+    }
 
     const data = await prisma.messages.findMany({
       take: 3,

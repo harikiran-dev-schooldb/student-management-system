@@ -1,17 +1,16 @@
 import prisma from "@/lib/prisma";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
 import { NextRequest, NextResponse } from "next/server";
-import {
-  resolveSchoolId,
-  SchoolNotFoundError,
-} from "@/lib/resolveSchool";
+import { resolveSchoolId, SchoolNotFoundError } from "@/lib/resolveSchool";
+import { requireTenantAccess } from "@/lib/requireTenantAccess";
+import { Prisma } from "@prisma/client";
 
 /* ======================================================
    GET → Fetch Results (Tenant + Role Safe)
 ====================================================== */
 export async function GET(
   req: NextRequest,
-  { params }: { params: Promise<{ schoolId: string }> }
+  { params }: { params: Promise<{ schoolId: string }> },
 ) {
   try {
     /* -------------------------------
@@ -32,58 +31,68 @@ export async function GET(
     /* -------------------------------
        3️⃣ Get Current User
     -------------------------------- */
-    const user = await fetchUserInfo(schoolId);
+    const access = await requireTenantAccess();
 
-    if (!user?.role) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+    if (access.schoolId !== schoolId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    if (!access?.role) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     /* -------------------------------
        4️⃣ Build Tenant-Safe Filter
     -------------------------------- */
-    const where: any = { schoolId };
+    const where: Prisma.ResultWhereInput = { schoolId };
 
     // STUDENT → Only own results
-    if (user.role === "student") {
-      const myStudentId = user.students?.[0]?.studentId;
+    if (access.role === "student") {
+      const myStudentId = access.studentId;
 
       if (!examId || !myStudentId) {
-        return NextResponse.json(
-          { error: "Exam required" },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: "Exam required" }, { status: 400 });
       }
 
-      where.examId = Number(examId);
+      const parsedExamId = examId ? Number(examId) : undefined;
+
+      if (examId && Number.isNaN(parsedExamId)) {
+        return NextResponse.json({ error: "Invalid examId" }, { status: 400 });
+      }
       where.studentId = myStudentId;
     }
 
     // TEACHER → Only their class
-    else if (user.role === "teacher") {
-      if (!examId || !user.classId) {
-        return NextResponse.json(
-          { error: "Exam required" },
-          { status: 400 }
-        );
+    else if (access.role === "teacher") {
+      if (!examId || !access.classId) {
+        return NextResponse.json({ error: "Exam required" }, { status: 400 });
       }
 
-      where.examId = Number(examId);
+      const parsedExamId = examId ? Number(examId) : undefined;
+
+      if (examId && Number.isNaN(parsedExamId)) {
+        return NextResponse.json({ error: "Invalid examId" }, { status: 400 });
+      }
       where.Student = {
         is: {
-          classId: user.classId,
+          classId: access.classId,
         },
       };
     }
 
     // ADMIN → Flexible filtering
-    else if (user.role === "admin") {
+    else if (access.role === "admin") {
       if (studentId) {
         where.studentId = studentId;
       } else if (examId && gradeId && classId) {
-        where.examId = Number(examId);
+        const parsedExamId = examId ? Number(examId) : undefined;
+
+        if (examId && Number.isNaN(parsedExamId)) {
+          return NextResponse.json(
+            { error: "Invalid examId" },
+            { status: 400 },
+          );
+        }
         where.Student = {
           is: {
             Class: {
@@ -138,7 +147,7 @@ export async function GET(
     examGradeSubjects.forEach((egs) => {
       maxMarksMap.set(
         `${egs.examId}-${egs.subjectId}-${egs.gradeId}`,
-        egs.maxMarks
+        egs.maxMarks,
       );
     });
 
@@ -146,27 +155,21 @@ export async function GET(
       ...r,
       maxMarks:
         maxMarksMap.get(
-          `${r.examId}-${r.subjectId}-${r.Student.Class.gradeId}`
+          `${r.examId}-${r.subjectId}-${r.Student.Class.gradeId}`,
         ) ?? 100,
     }));
 
-    return NextResponse.json(
-      { results: resultsWithMaxMarks },
-      { status: 200 }
-    );
+    return NextResponse.json({ results: resultsWithMaxMarks }, { status: 200 });
   } catch (error) {
     if (error instanceof SchoolNotFoundError) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: error.message }, { status: 404 });
     }
 
     console.error("Results GET error:", error);
 
     return NextResponse.json(
       { error: "Failed to fetch results" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
