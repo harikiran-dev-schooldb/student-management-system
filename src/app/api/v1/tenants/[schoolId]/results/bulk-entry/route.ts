@@ -8,13 +8,13 @@ import { fetchUserInfo } from "@/lib/utils/server-utils";
 ====================================================== */
 export async function POST(
   request: NextRequest,
-  context: { params: { schoolId: string } }
+  { params }: { params: Promise<{ schoolId: string; }> },
 ) {
   try {
     /* -------------------------
        1️⃣ Resolve Tenant
     -------------------------- */
-    const schoolSlug = context.params.schoolId;
+    const { schoolId: schoolSlug } = await params;
     const schoolId = await resolveSchoolId(schoolSlug);
 
     /* -------------------------
@@ -23,10 +23,7 @@ export async function POST(
     const user = await fetchUserInfo(schoolId);
 
     if (!user || (user.role !== "admin" && user.role !== "teacher")) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
     const { gradeId, examId, entries } = await request.json();
@@ -35,10 +32,7 @@ export async function POST(
        3️⃣ Payload Validation
     -------------------------- */
     if (!gradeId || !examId || !Array.isArray(entries)) {
-      return NextResponse.json(
-        { error: "Invalid payload" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
     }
 
     /* -------------------------
@@ -50,10 +44,7 @@ export async function POST(
     });
 
     if (!exam) {
-      return NextResponse.json(
-        { error: "Invalid exam" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Invalid exam" }, { status: 404 });
     }
 
     /* -------------------------
@@ -85,7 +76,7 @@ export async function POST(
       select: { id: true },
     });
 
-    const validStudentSet = new Set(validStudents.map(s => s.id));
+    const validStudentSet = new Set(validStudents.map((s) => s.id));
 
     /* -------------------------
        7️⃣ Prepare Upserts
@@ -127,7 +118,7 @@ export async function POST(
               marks: numericMark,
               schoolId,
             },
-          })
+          }),
         );
       }
     }
@@ -145,21 +136,18 @@ export async function POST(
         message: "Results saved successfully",
         count: transactionOperations.length,
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     if (error instanceof SchoolNotFoundError) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: error.message }, { status: 404 });
     }
 
     console.error("Bulk Entry Error:", error);
 
     return NextResponse.json(
       { error: "Failed to save results" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

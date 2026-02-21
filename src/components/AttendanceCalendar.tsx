@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 
@@ -17,64 +17,67 @@ type ValuePiece = Date | null;
 type Value = ValuePiece | [ValuePiece, ValuePiece];
 
 const AttendanceCalendar = ({ attendanceData }: Props) => {
-  const [value, setValue] = useState<Value>(new Date());
-  const [tileClassNameMap, setTileClassNameMap] = useState<{
-    [key: string]: string;
-  }>({});
+  const [selectedDate, setSelectedDate] = useState<Value>(new Date());
+  const [activeDate, setActiveDate] = useState<Date>(new Date());
 
-  const formatDate = (date: Date | string) => {
-    const d = new Date(date);
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    return `${yyyy}-${mm}-${dd}`;
-  };
+  // --- Normalize date to YYYY-MM-DD (UTC safe)
+  const formatDate = (date: Date | string) =>
+    new Date(date).toISOString().split("T")[0];
 
-  useEffect(() => {
-    const map: { [key: string]: string } = {};
+  // --- Build lookup map
+  const tileClassNameMap = useMemo(() => {
+    const map: Record<string, string> = {};
 
-    // First, mark given attendance data
+    // Mark actual attendance records
     attendanceData.forEach((att) => {
       const day = formatDate(att.date);
+
       if (att.present === true) map[day] = "present-day";
       else if (att.present === false) map[day] = "absent-day";
-      else map[day] = "holiday-day"; // null → holiday
+      else map[day] = "holiday-day";
     });
 
-    // Mark missing records till today as Holiday (excluding Sundays)
+    // Fill missing past weekdays in active month as holiday
     const today = new Date();
-    const year = today.getFullYear();
-    const month = today.getMonth();
+    const year = activeDate.getFullYear();
+    const month = activeDate.getMonth();
 
-    // Loop all days of current month
     const daysInMonth = new Date(year, month + 1, 0).getDate();
+
     for (let i = 1; i <= daysInMonth; i++) {
       const date = new Date(year, month, i);
       const key = formatDate(date);
 
-      // only mark till today
-      if (date <= today && !map[key] && date.getDay() !== 0) {
-        map[key] = "holiday-day"; // treat missing attendance as holiday
+      // Only mark strictly past days (not today)
+      if (
+        date < today &&
+        !map[key] &&
+        date.getDay() !== 0 // exclude Sundays
+      ) {
+        map[key] = "holiday-day";
       }
     }
 
-    setTileClassNameMap(map);
-  }, [attendanceData]);
+    return map;
+  }, [attendanceData, activeDate]);
 
-  const handleChange = (newValue: Value) => {
-    if (newValue instanceof Date) setValue(newValue);
+  const handleChange = (value: Value) => {
+    if (value instanceof Date) setSelectedDate(value);
   };
 
   return (
     <div className="space-y-4">
       <Calendar
         onChange={handleChange}
-        value={value instanceof Date ? value : new Date()}
+        value={selectedDate instanceof Date ? selectedDate : new Date()}
         locale="en-GB"
+        onActiveStartDateChange={({ activeStartDate }) => {
+          if (activeStartDate) setActiveDate(activeStartDate);
+        }}
         tileClassName={({ date, view }) => {
           if (view === "month") {
-            const day = formatDate(date);
-            return tileClassNameMap[day] || "";
+            const key = formatDate(date);
+            return tileClassNameMap[key] || "";
           }
           return "";
         }}
@@ -82,23 +85,21 @@ const AttendanceCalendar = ({ attendanceData }: Props) => {
 
       {/* Legend */}
       <div className="flex justify-center gap-6 mt-2 text-sm text-gray-600 dark:text-gray-300">
-        <div className="flex items-center gap-2">
-          <span className="w-4 h-4 rounded-full bg-emerald-500/80 ring-1 ring-emerald-600/30"></span>
-          <span>Present</span>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <span className="w-4 h-4 rounded-full bg-rose-500/80 ring-1 ring-rose-600/30"></span>
-          <span>Absent</span>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <span className="w-4 h-4 rounded-full bg-slate-400/70 ring-1 ring-slate-500/30"></span>
-          <span>Holiday</span>
-        </div>
+        <Legend color="bg-emerald-500/80 ring-emerald-600/30" label="Present" />
+        <Legend color="bg-rose-500/80 ring-rose-600/30" label="Absent" />
+        <Legend color="bg-slate-400/70 ring-slate-500/30" label="Holiday" />
       </div>
     </div>
   );
 };
+
+const Legend = ({ color, label }: { color: string; label: string }) => (
+  <div className="flex items-center gap-2">
+    <span
+      className={`w-4 h-4 rounded-full ring-1 ${color}`}
+    />
+    <span>{label}</span>
+  </div>
+);
 
 export default AttendanceCalendar;

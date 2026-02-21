@@ -9,12 +9,11 @@ import { fetchUserInfo } from "@/lib/utils/server-utils";
 =================================================== */
 export async function PUT(
   req: NextRequest,
-  context: { params: { schoolId: string; id: string } }
+  { params }: { params: Promise<{ schoolId: string; id: string }> },
 ) {
   try {
-    const schoolId = await resolveSchoolId(
-      context.params.schoolId
-    );
+    const { schoolId: slug, id: homeworkIdStr } = await params;
+    const schoolId = await resolveSchoolId(slug);
 
     const user = await fetchUserInfo(schoolId);
     if (!user.userId || !["admin", "teacher"].includes(user.role!)) {
@@ -24,7 +23,7 @@ export async function PUT(
       );
     }
 
-    const homeworkId = Number(context.params.id);
+    const homeworkId = Number(homeworkIdStr);
     if (isNaN(homeworkId)) {
       return NextResponse.json(
         { error: "Invalid ID" },
@@ -98,12 +97,11 @@ export async function PUT(
 =================================================== */
 export async function DELETE(
   _req: NextRequest,
-  context: { params: { schoolId: string; id: string } }
+  { params }: { params: Promise<{ schoolId: string; id: string }> },
 ) {
   try {
-    const schoolId = await resolveSchoolId(
-      context.params.schoolId
-    );
+    const { schoolId: slug, id: homeworkIdStr } = await params;
+    const schoolId = await resolveSchoolId(slug);
 
     const user = await fetchUserInfo(schoolId);
     if (!user.userId || !["admin", "teacher"].includes(user.role!)) {
@@ -113,7 +111,7 @@ export async function DELETE(
       );
     }
 
-    const homeworkId = Number(context.params.id);
+    const homeworkId = Number(homeworkIdStr);
     if (isNaN(homeworkId)) {
       return NextResponse.json(
         { error: "Invalid ID" },

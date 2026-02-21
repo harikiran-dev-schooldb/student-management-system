@@ -48,6 +48,7 @@ model SchoolInfo {
   studentEnrollments StudentEnrollment[]
   subjectTeachers    SubjectTeacher[]
   linkedUser         LinkedUser[]
+  bulkUpload         BulkUploadJob[]
 }
 
 model Admin {
@@ -595,7 +596,7 @@ model LinkedUser {
   admin   Admin?
 
   @@unique([username, schoolId])
-  @@index([schoolId])
+  @@index([profileId, schoolId])
 }
 
 model FeePayment {
@@ -639,6 +640,23 @@ model StudentEnrollment {
 
   @@unique([studentId, academicYear, schoolId])
   @@index([academicYear, classId])
+  @@index([schoolId])
+}
+
+model BulkUploadJob {
+  id         String   @id @default(cuid())
+  schoolId   String
+  status     String   @default("PENDING") // PENDING | PROCESSING | DONE | FAILED
+  total      Int
+  processed  Int      @default(0)
+  created    Int      @default(0)
+  updated    Int      @default(0)
+  errors     Json?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  school     SchoolInfo @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
   @@index([schoolId])
 }
 

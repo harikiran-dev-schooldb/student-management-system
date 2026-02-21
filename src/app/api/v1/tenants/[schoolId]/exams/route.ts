@@ -9,10 +9,10 @@ import { resolveSchoolId, SchoolNotFoundError } from "@/lib/resolveSchool";
 
 export async function POST(
   req: NextRequest,
-  context: { params: { schoolId: string } }
+  { params }: { params: Promise<{ schoolId: string }> },
 ) {
   try {
-    const { schoolId: slug } = context.params;
+    const { schoolId: slug } = await params;
     const schoolId = await resolveSchoolId(slug);
 
     const body = await req.json();
@@ -21,7 +21,7 @@ export async function POST(
     if (!parsed.success) {
       return NextResponse.json(
         { error: "Invalid data", details: parsed.error.format() },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -37,7 +37,7 @@ export async function POST(
     if (!grade) {
       return NextResponse.json(
         { error: "Invalid grade for this school" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -54,7 +54,7 @@ export async function POST(
     if (!subjectBelongsToGrade) {
       return NextResponse.json(
         { error: "Subject not assigned to this grade" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -100,7 +100,6 @@ export async function POST(
     });
 
     return NextResponse.json({ success: true, exam }, { status: 201 });
-
   } catch (error) {
     if (error instanceof SchoolNotFoundError) {
       return NextResponse.json({ error: error.message }, { status: 404 });
@@ -110,7 +109,7 @@ export async function POST(
 
     return NextResponse.json(
       { error: "Failed to create exam" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -121,10 +120,10 @@ export async function POST(
 
 export async function GET(
   req: NextRequest,
-  context: { params: { schoolId: string } }
+  { params }: { params: Promise<{ schoolId: string }> },
 ) {
   try {
-    const { schoolId: slug } = context.params;
+    const { schoolId: slug } = await params;
     const schoolId = await resolveSchoolId(slug);
 
     const exams = await prisma.exam.findMany({
@@ -142,7 +141,6 @@ export async function GET(
     });
 
     return NextResponse.json({ exams });
-
   } catch (error) {
     if (error instanceof SchoolNotFoundError) {
       return NextResponse.json({ error: error.message }, { status: 404 });
@@ -150,7 +148,7 @@ export async function GET(
 
     return NextResponse.json(
       { error: "Failed to fetch exams" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

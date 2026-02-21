@@ -1,33 +1,40 @@
-// src/lib/fees/getFullStudentFeesReport.ts
 import prisma from "@/lib/prisma";
 import { calculateStudentFeeReport } from "@/lib/fees/feeUtils";
 
-export async function getFullStudentFeesReport() {
-  try {
-    const allStudents = await prisma.student.findMany({
-      where: { status: "ACTIVE" },
-      include: {
-        Class: {
-          include: {
-            Grade: {
-              include: { feestructure: true },
-            },
-          },
-        },
-        totalFees: true,
-        studentFees: { include: { feeStructure: true } },
-      },
-    });
+export async function getFullStudentFeesReport(
+  schoolId: string,
+  academicYear?: string
+) {
+  const whereClause: any = {
+    schoolId,
+    status: "ACTIVE",
+  };
 
-    // ✅ Normalize Class.name before passing to calculateStudentFeeReport
-    return allStudents.map((student) =>
-      calculateStudentFeeReport({
-        ...student,
-        Class: { name: student.Class?.name ?? "-" },
-      })
-    );
-  } catch (error) {
-    console.error("Error fetching student fees report:", error);
-    throw error;
+  if (academicYear) {
+    whereClause.academicYear = academicYear;
   }
+
+  const students = await prisma.student.findMany({
+    where: whereClause,
+    include: {
+      Class: {
+        select: {
+          name: true,
+        },
+      },
+      totalFees: true,
+      studentFees: {
+        include: {
+          feeStructure: true,
+        },
+      },
+    },
+  });
+
+  return students.map((student) =>
+    calculateStudentFeeReport({
+      ...student,
+      Class: { name: student.Class?.name ?? "-" },
+    })
+  );
 }

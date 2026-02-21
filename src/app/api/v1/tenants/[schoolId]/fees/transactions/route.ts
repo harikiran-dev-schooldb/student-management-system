@@ -8,10 +8,11 @@ import { getMessageContent } from "@/lib/utils/messageUtils";
 
 export async function POST(
   req: NextRequest,
-  context: { params: { schoolId: string } },
+  { params }: { params: Promise<{ schoolId: string; }> },
 ) {
   try {
-    const schoolId = await resolveSchoolId(context.params.schoolId);
+    const { schoolId: schoolSlug } = await params;
+    const schoolId = await resolveSchoolId(schoolSlug);
 
     const user = await currentUser();
     if (!user) {
@@ -145,10 +146,11 @@ export async function POST(
 
 export async function GET(
   req: NextRequest,
-  context: { params: { schoolId: string } },
+  { params }: { params: Promise<{ schoolId: string; }> },
 ) {
   try {
-    const schoolId = await resolveSchoolId(context.params.schoolId);
+    const { schoolId: schoolSlug } = await params;
+    const schoolId = await resolveSchoolId(schoolSlug);
 
     const { searchParams } = new URL(req.url);
 

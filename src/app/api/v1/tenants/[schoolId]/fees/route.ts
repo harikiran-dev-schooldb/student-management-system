@@ -5,10 +5,11 @@ import { resolveSchoolId, SchoolNotFoundError } from "@/lib/resolveSchool";
 
 export async function POST(
   req: NextRequest,
-  context: { params: { schoolId: string } },
+  { params }: { params: Promise<{ schoolId: string; }> },
 ) {
   try {
-    const schoolId = await resolveSchoolId(context.params.schoolId);
+    const { schoolId: schoolSlug } = await params;
+    const schoolId = await resolveSchoolId(schoolSlug);
     const body = await req.json();
 
     const {
@@ -84,10 +85,11 @@ export async function POST(
 
 export async function GET(
   req: NextRequest,
-  context: { params: { schoolId: string } }
+  { params }: { params: Promise<{ schoolId: string; }> },
 ) {
   try {
-    const schoolId = await resolveSchoolId(context.params.schoolId);
+    const { schoolId: slug } = await params;
+    const schoolId = await resolveSchoolId(slug);
 
     const { searchParams } = new URL(req.url);
 

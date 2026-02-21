@@ -7,10 +7,10 @@ import { NextRequest, NextResponse } from "next/server";
 ======================= */
 export async function GET(
   req: NextRequest,
-  context: { params: { schoolId: string; gradeId: string } }
+  { params }: { params: Promise<{ schoolId: string; id: string }> },
 ) {
   try {
-    const { schoolId: slug, gradeId } = context.params;
+    const { schoolId: slug, id: gradeId } = await params;
     const parsedGradeId = parseInt(gradeId, 10);
 
     if (Number.isNaN(parsedGradeId)) {
@@ -77,10 +77,10 @@ export async function GET(
 
 export async function PUT(
   req: NextRequest,
-  context: { params: { schoolId: string; gradeId: string } }
+  { params }: { params: Promise<{ schoolId: string; id: string }> },
 ) {
   try {
-    const { schoolId: slug, gradeId } = context.params;
+    const { schoolId: slug, id: gradeId } = await params;
     const parsedGradeId = parseInt(gradeId, 10);
 
     if (Number.isNaN(parsedGradeId)) {
@@ -156,10 +156,10 @@ export async function PUT(
 
 export async function DELETE(
   req: NextRequest,
-  context: { params: { schoolId: string; gradeId: string } }
+  { params }: { params: Promise<{ schoolId: string; id: string }> },
 ) {
   try {
-    const { schoolId: slug, gradeId } = context.params;
+    const { schoolId: slug, id: gradeId } = await params;
     const parsedGradeId = parseInt(gradeId, 10);
 
     if (Number.isNaN(parsedGradeId)) {

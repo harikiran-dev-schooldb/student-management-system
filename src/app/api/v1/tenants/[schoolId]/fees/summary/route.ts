@@ -4,10 +4,11 @@ import { resolveSchoolId } from "@/lib/resolveSchool";
 
 export async function GET(
   req: NextRequest,
-  context: { params: { schoolId: string } }
+  { params }: { params: Promise<{ schoolId: string;}> },
 ) {
   try {
-    const schoolId = await resolveSchoolId(context.params.schoolId);
+    const { schoolId: schoolSlug } = await params;
+    const schoolId = await resolveSchoolId(schoolSlug);
 
     const { searchParams } = new URL(req.url);
     const from = searchParams.get("from");
@@ -82,9 +83,7 @@ export async function GET(
       },
     });
 
-    const studentIds = [
-      ...new Set(rawTransactions.map((r) => r.studentId)),
-    ];
+    const studentIds = [...new Set(rawTransactions.map((r) => r.studentId))];
 
     const students = await prisma.student.findMany({
       where: {
@@ -100,10 +99,7 @@ export async function GET(
     });
 
     const classMap = new Map(
-      students.map((s) => [
-        s.id,
-        s.Class?.name ?? "Unknown",
-      ])
+      students.map((s) => [s.id, s.Class?.name ?? "Unknown"]),
     );
 
     const classWiseMap: Record<
@@ -112,8 +108,7 @@ export async function GET(
     > = {};
 
     for (const txn of rawTransactions) {
-      const className =
-        classMap.get(txn.studentId) ?? "Unknown";
+      const className = classMap.get(txn.studentId) ?? "Unknown";
 
       if (!classWiseMap[className]) {
         classWiseMap[className] = {
@@ -136,13 +131,12 @@ export async function GET(
       termWise,
       classWise,
     });
-
   } catch (error) {
     console.error("Fees summary error:", error);
 
     return NextResponse.json(
       { error: "Failed to generate summary" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

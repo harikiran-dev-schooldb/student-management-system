@@ -116,7 +116,11 @@ const PermissionSlipListPage = async ({
   // 🔹 User Info
   const { role, userId } = await fetchUserInfo(school.id);
 
-  const userClassIds = await getClassIdForRole(role, userId, school.id);
+  const userClassIds = await getClassIdForRole(
+    role ?? null,
+    userId ?? null,
+    school.id,
+  );
 
   const columns = getColumns(role);
 

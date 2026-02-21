@@ -3,10 +3,10 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(
   req: NextRequest,
-  context: { params: { schoolId: string } },
+  { params }: { params: Promise<{ schoolId: string; }> },
 ) {
   try {
-    const { schoolId: slug } = context.params;
+    const { schoolId: slug } = await params;
 
     const { grades } = await req.json();
 
@@ -62,10 +62,10 @@ export async function POST(
 
 export async function GET(
   req: Request,
-  context: { params: { schoolId: string } },
+  { params }: { params: Promise<{ schoolId: string; }> },
 ) {
   try {
-    const { schoolId: slug } = context.params;
+    const { schoolId: slug } = await params;
 
     // 🔎 Resolve school using slug
     const school = await prisma.schoolInfo.findUnique({
@@ -74,10 +74,7 @@ export async function GET(
     });
 
     if (!school) {
-      return NextResponse.json(
-        { error: "School not found" },
-        { status: 404 },
-      );
+      return NextResponse.json({ error: "School not found" }, { status: 404 });
     }
 
     const grades = await prisma.grade.findMany({
@@ -90,7 +87,6 @@ export async function GET(
     });
 
     return NextResponse.json(grades);
-
   } catch (error: any) {
     console.error("❌ Error fetching grades:", error);
     return NextResponse.json(
@@ -99,4 +95,3 @@ export async function GET(
     );
   }
 }
-

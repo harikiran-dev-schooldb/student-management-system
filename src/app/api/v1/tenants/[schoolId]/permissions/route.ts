@@ -11,10 +11,11 @@ import path from "path";
 ====================================================== */
 export async function POST(
   req: NextRequest,
-  context: { params: { schoolId: string } }
+  { params }: { params: Promise<{ schoolId: string }> }
 ) {
   try {
-    const schoolId = await resolveSchoolId(context.params.schoolId);
+    const { schoolId: slug } = await params;
+    const schoolId = await resolveSchoolId(slug);
 
     /* -----------------------------------
        Validate Body
@@ -206,10 +207,11 @@ export async function POST(
 ====================================================== */
 export async function GET(
   _req: NextRequest,
-  context: { params: { schoolId: string} }
+  { params }: { params: Promise<{ schoolId: string }> }
 ) {
   try {
-    const schoolId = await resolveSchoolId(context.params.schoolId);
+    const { schoolId: slug } = await params;
+    const schoolId = await resolveSchoolId(slug);
     
 
     const slip = await prisma.permissionSlip.findFirst({

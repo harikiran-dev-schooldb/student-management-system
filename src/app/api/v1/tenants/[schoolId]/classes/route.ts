@@ -5,11 +5,11 @@ import { classSchema } from "@/lib/formValidationSchemas";
 
 export async function GET(
   req: NextRequest,
-  context: { params: { schoolId: string } }
+  { params }: { params: Promise<{ schoolId: string }> },
 ) {
   try {
-    const { schoolId: slug } = context.params;
-    const schoolId = await resolveSchoolId(slug);
+    const { schoolId: schoolSlug } = await params;
+    const schoolId = await resolveSchoolId(schoolSlug);
 
     const { searchParams } = new URL(req.url);
     const gradeIdParam = searchParams.get("gradeId");
@@ -39,22 +39,24 @@ export async function GET(
     });
 
     return NextResponse.json(classes);
-
   } catch (error) {
     if (error instanceof SchoolNotFoundError) {
       return NextResponse.json({ error: error.message }, { status: 404 });
     }
-    return NextResponse.json({ error: "Failed to fetch classes" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch classes" },
+      { status: 500 },
+    );
   }
 }
 
 export async function POST(
   req: NextRequest,
-  context: { params: { schoolId: string } }
+  { params }: { params: Promise<{ schoolId: string }> },
 ) {
   try {
-    const { schoolId: slug } = context.params;
-    const schoolId = await resolveSchoolId(slug);
+    const { schoolId: schoolSlug } = await params;
+    const schoolId = await resolveSchoolId(schoolSlug);
 
     const body = await req.json();
     const parsed = classSchema.safeParse(body);
@@ -62,7 +64,7 @@ export async function POST(
     if (!parsed.success) {
       return NextResponse.json(
         { error: "Invalid data", details: parsed.error.format() },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -96,14 +98,16 @@ export async function POST(
     });
 
     return NextResponse.json(newClass, { status: 201 });
-
   } catch (error: any) {
     if (error.code === "P2002") {
       return NextResponse.json(
         { error: "Class already exists or supervisor assigned" },
-        { status: 409 }
+        { status: 409 },
       );
     }
-    return NextResponse.json({ error: "Failed to create class" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to create class" },
+      { status: 500 },
+    );
   }
 }

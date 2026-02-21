@@ -6,10 +6,11 @@ import { z } from "zod";
 
 export async function GET(
   req: NextRequest,
-  context: { params: { schoolId: string; id: string } }
+  { params }: { params: Promise<{ schoolId: string; id: string }> },
 ) {
-  const schoolId = await resolveSchoolId(context.params.schoolId);
-  const classId = Number(context.params.id);
+  const { schoolId: schoolSlug, id: classIdString } = await params;
+  const schoolId = await resolveSchoolId(schoolSlug);
+  const classId = Number(classIdString);
 
   const cls = await prisma.class.findFirst({
     where: { id: classId, schoolId },
@@ -28,15 +29,18 @@ export async function GET(
 
 export async function PUT(
   req: NextRequest,
-  context: { params: { schoolId: string; id: string } }
+  { params }: { params: Promise<{ schoolId: string; id: string }> },
 ) {
-  const schoolId = await resolveSchoolId(context.params.schoolId);
-  const classId = Number(context.params.id);
+  const { schoolId: schoolSlug, id: classIdString } = await params;
+  const schoolId = await resolveSchoolId(schoolSlug);
+  const classId = Number(classIdString);
 
   const body = await req.json();
-  const parsed = classSchema.extend({
-    gradeId: z.coerce.number(),
-  }).safeParse(body);
+  const parsed = classSchema
+    .extend({
+      gradeId: z.coerce.number(),
+    })
+    .safeParse(body);
 
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid data" }, { status: 400 });
@@ -64,10 +68,11 @@ export async function PUT(
 
 export async function DELETE(
   req: NextRequest,
-  context: { params: { schoolId: string; id: string } }
+  { params }: { params: Promise<{ schoolId: string; id: string }> },
 ) {
-  const schoolId = await resolveSchoolId(context.params.schoolId);
-  const classId = Number(context.params.id);
+  const { schoolId: schoolSlug, id: classIdString } = await params;
+  const schoolId = await resolveSchoolId(schoolSlug);
+  const classId = Number(classIdString);
 
   const cls = await prisma.class.findFirst({
     where: { id: classId, schoolId },
@@ -84,7 +89,7 @@ export async function DELETE(
   if (studentCount > 0) {
     return NextResponse.json(
       { error: "Cannot delete class with students" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 

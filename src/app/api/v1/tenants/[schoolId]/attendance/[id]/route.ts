@@ -8,10 +8,11 @@ import { requireTenantAccess } from "@/lib/requireTenantAccess";
 
 export async function PUT(
   req: NextRequest,
-  context: { params: Promise<{ schoolId: string; id: string }> }
+  { params }: { params: Promise<{ schoolId: string; id: string }> }
 ) {
   try {
-    const { schoolId: slug, id } = await context.params;
+    const { schoolId: slug, id } = await params;
+
     const access = await requireTenantAccess();
 
     if (access.schoolId !== slug) {

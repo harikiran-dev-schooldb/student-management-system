@@ -6,10 +6,11 @@ import { bulkExamCSVSchema, examSchema } from "@/lib/formValidationSchemas";
 
 export async function POST(
   req: NextRequest,
-  context: { params: { schoolId: string } }
+  { params }: { params: Promise<{ schoolId: string;}> }
 ) {
   try {
-    const schoolId = await resolveSchoolId(context.params.schoolId);
+    const { schoolId: schoolSlug } = await params;
+    const schoolId = await resolveSchoolId(schoolSlug);
 
     const formData = await req.formData();
     const file = formData.get("file") as File;

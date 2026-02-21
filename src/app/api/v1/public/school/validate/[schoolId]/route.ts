@@ -6,10 +6,10 @@ import prisma from "@/lib/prisma";
 ====================================================== */
 export async function GET(
   req: NextRequest,
-  context: { params: { schoolId: string } }
+  { params }: { params: Promise<{ schoolId: string }> }
 ) {
   try {
-    const schoolSlug = context.params.schoolId;
+    const { schoolId: schoolSlug } = await params;
 
     if (!schoolSlug) {
       return NextResponse.json(
@@ -19,7 +19,7 @@ export async function GET(
     }
 
     const school = await prisma.schoolInfo.findUnique({
-      where: { schoolId: schoolSlug }, // slug lookup
+      where: { schoolId: schoolSlug },
       select: {
         id: true,
         name: true,
@@ -36,10 +36,7 @@ export async function GET(
     }
 
     return NextResponse.json(
-      {
-        success: true,
-        school,
-      },
+      { success: true, school },
       { status: 200 }
     );
   } catch (error) {

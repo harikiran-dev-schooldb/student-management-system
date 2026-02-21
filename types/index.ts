@@ -60,9 +60,14 @@ export type MessageType =
 export type CurrentState = { success: boolean; error: boolean };
 
 // types.ts
-export type SearchParams = { [key: string]: string | string[] | undefined };
+export type SearchParams = {
+  [key: string]: string | string[] | undefined;
+};
 
-export type PageProps = { searchParams?: SearchParams };
+export type PageProps = {
+  params: Promise<{ schoolId: string }>;
+  searchParams?: Promise<SearchParams>;
+};
 
 export interface StudentFeesTable {
   id: number;
@@ -260,11 +265,11 @@ export type TeachersList = {
   dob: Date | string;
   address: string | null;
   status: string;
-  class:{
+  class: {
     id: number;
     name: string;
     supervisorId: string | null;
-  }
+  };
   subjects: { Subject: { id: number; name: string } }[];
 };
 
@@ -368,7 +373,8 @@ export type FeeColectList = Prisma.StudentGetPayload<{
     feeTransactions: {
       select: {
         id: true;
-        receiptNo: true;};
+        receiptNo: true;
+      };
     };
     totalFees: {
       select: {

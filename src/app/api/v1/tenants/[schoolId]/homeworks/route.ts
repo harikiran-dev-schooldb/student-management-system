@@ -10,12 +10,11 @@ import { v4 as uuidv4 } from "uuid";
 =================================================== */
 export async function POST(
   req: NextRequest,
-  context: { params: { schoolId: string } }
+  { params }: { params: Promise<{ schoolId: string;}> },
 ) {
   try {
-    const schoolId = await resolveSchoolId(
-      context.params.schoolId
-    );
+    const { schoolId: slug } = await params;
+    const schoolId = await resolveSchoolId(slug);
 
     const user = await fetchUserInfo(schoolId);
 
@@ -137,12 +136,11 @@ export async function POST(
 =================================================== */
 export async function GET(
   req: NextRequest,
-  context: { params: { schoolId: string } }
+  { params }: { params: Promise<{ schoolId: string; }> },
 ) {
   try {
-    const schoolId = await resolveSchoolId(
-      context.params.schoolId
-    );
+    const { schoolId: slug } = await params;
+    const schoolId = await resolveSchoolId(slug);
 
     const { searchParams } = new URL(req.url);
     const classId = searchParams.get("classId");

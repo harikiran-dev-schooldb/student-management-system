@@ -7,15 +7,15 @@ import { requireTenantAccess } from "@/lib/requireTenantAccess";
 
 export async function GET(
   req: NextRequest,
-  context: { params: Promise<{ schoolId: string }> }
+  { params }: { params: Promise<{ schoolId: string }> }
 ) {
   try {
-    const { schoolId: slug } = await context.params;
+    const { schoolId: schoolSlug } = await params;
 
     const access = await requireTenantAccess();
 
     // 🔐 Tenant isolation
-    if (access.schoolSlug !== slug) {
+    if (access.schoolSlug !== schoolSlug) {
       return NextResponse.json(
         { error: "Forbidden" },
         { status: 403 }

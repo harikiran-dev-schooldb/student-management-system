@@ -4,9 +4,10 @@ import prisma from "@/lib/prisma";
 
 export async function POST(
   req: NextRequest,
-  context: { params: { schoolId: string } }
+  { params }: { params: Promise<{ schoolId: string }> },
 ) {
-  const schoolId = await resolveSchoolId(context.params.schoolId);
+  const { schoolId: schoolSlug } = await params;
+  const schoolId = await resolveSchoolId(schoolSlug);
   const { classes } = await req.json();
 
   if (!Array.isArray(classes)) {

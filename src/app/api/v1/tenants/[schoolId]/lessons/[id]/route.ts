@@ -11,12 +11,11 @@ import { fetchUserInfo } from "@/lib/utils/server-utils";
 =================================================== */
 export async function PUT(
   req: NextRequest,
-  context: { params: { schoolId: string; id: string } }
+  { params }: { params: Promise<{ schoolId: string, id: string }> }
 ) {
   try {
-    const schoolId = await resolveSchoolId(
-      context.params.schoolId
-    );
+    const { schoolId: slug, id: lessonIdStr } = await params;
+    const schoolId = await resolveSchoolId(slug);
 
     const user = await fetchUserInfo(schoolId);
 
@@ -27,7 +26,7 @@ export async function PUT(
       );
     }
 
-    const lessonId = Number(context.params.id);
+    const lessonId = Number(lessonIdStr);
 
     if (isNaN(lessonId)) {
       return NextResponse.json(
@@ -139,12 +138,11 @@ export async function PUT(
 =================================================== */
 export async function DELETE(
   _req: NextRequest,
-  context: { params: { schoolId: string; id: string } }
+  { params }: { params: Promise<{ schoolId: string, id: string }> }
 ) {
   try {
-    const schoolId = await resolveSchoolId(
-      context.params.schoolId
-    );
+    const { schoolId: slug, id: lessonIdStr } = await params;
+    const schoolId = await resolveSchoolId(slug);
 
     const user = await fetchUserInfo(schoolId);
 
@@ -155,7 +153,7 @@ export async function DELETE(
       );
     }
 
-    const lessonId = Number(context.params.id);
+    const lessonId = Number(lessonIdStr);
 
     if (isNaN(lessonId)) {
       return NextResponse.json(

@@ -8,10 +8,10 @@ import { z } from "zod";
 
 export async function POST(
   req: Request,
-  context: { params: Promise<{ schoolId: string }> }
+  { params }: { params: Promise<{ schoolId: string }> },
 ) {
   try {
-    const { schoolId: slug } = await context.params;
+    const { schoolId: slug } = await params;
 
     const body = await req.json();
     const validated = lessonsSchema.parse(body);
@@ -31,7 +31,7 @@ export async function POST(
     if (!school) {
       return NextResponse.json(
         { message: "School not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -58,7 +58,7 @@ export async function POST(
     if (!subject) {
       return NextResponse.json(
         { message: "Subject not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -96,7 +96,7 @@ export async function POST(
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { message: "Validation failed", errors: error.errors },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -113,19 +113,15 @@ export async function POST(
 =================================================== */
 export async function GET(
   req: NextRequest,
-  context: { params: { schoolId: string } }
+  { params }: { params: Promise<{ schoolId: string; }> },
 ) {
   try {
-    const schoolId = await resolveSchoolId(
-      context.params.schoolId
-    );
+    const { schoolId: slug } = await params;
+    const schoolId = await resolveSchoolId(slug);
 
     const user = await fetchUserInfo(schoolId);
     if (!user.userId) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { searchParams } = new URL(req.url);
@@ -137,7 +133,7 @@ export async function GET(
     if (!classIdParam && !teacherId) {
       return NextResponse.json(
         { error: "Provide classId or teacherId" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -147,10 +143,7 @@ export async function GET(
     if (classIdParam) {
       const classId = Number(classIdParam);
       if (isNaN(classId)) {
-        return NextResponse.json(
-          { error: "Invalid classId" },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: "Invalid classId" }, { status: 400 });
       }
 
       where.classId = classId;
@@ -168,10 +161,7 @@ export async function GET(
 
     const lessons = await prisma.lesson.findMany({
       where,
-      orderBy: [
-        { day: "asc" },
-        { period: "asc" },
-      ],
+      orderBy: [{ day: "asc" }, { period: "asc" }],
       include: {
         Subject: {
           select: { id: true, name: true },
@@ -190,13 +180,12 @@ export async function GET(
       count: lessons.length,
       lessons,
     });
-
   } catch (error) {
     console.error("Lesson GET error:", error);
 
     return NextResponse.json(
       { error: "Failed to fetch lessons" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

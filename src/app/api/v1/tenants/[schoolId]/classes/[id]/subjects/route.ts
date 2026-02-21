@@ -4,13 +4,14 @@ import { resolveSchoolId } from "@/lib/resolveSchool";
 
 export async function GET(
   req: NextRequest,
-  context: { params: { schoolId: string; classId: string } }
+  { params }:  { params: Promise<{ schoolId: string; id: string }> }
 ) {
-  const schoolId = await resolveSchoolId(context.params.schoolId);
-  const classId = Number(context.params.classId);
+  const { schoolId, id: classId } = await params;
+  const resolvedSchoolId = await resolveSchoolId(schoolId);
+  const classIdNumber = Number(classId);
 
   const cls = await prisma.class.findFirst({
-    where: { id: classId, schoolId },
+    where: { id: classIdNumber, schoolId: resolvedSchoolId },
     select: { gradeId: true },
   });
 
@@ -20,7 +21,7 @@ export async function GET(
 
   const subjects = await prisma.subject.findMany({
     where: {
-      schoolId,
+      schoolId: resolvedSchoolId,
       grades: { some: { id: cls.gradeId } },
     },
   });

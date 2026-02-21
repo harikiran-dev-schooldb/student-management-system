@@ -6,7 +6,7 @@ import CountChartContainer from "@/components/CountChartContainer";
 import FinanceChartContainer from "@/components/FinanceChartContainer";
 import EventCalendarContainer from "@/components/EventCalendarContainer";
 import { getAdminDashboardData } from "@/lib/dashboard";
-import { SearchParams } from "../../../../../types";
+import { PageProps } from "../../../../../types";
 
 /* -----------------------------
    UI Tokens
@@ -43,26 +43,22 @@ const ChartSkeleton = ({ height = 450 }: { height?: number }) => (
 /* -----------------------------
    Page
 ------------------------------*/
-interface PageProps {
-  searchParams: Promise<SearchParams>;
-}
 
-export default async function AdminPage({ searchParams }: PageProps) {
+export default async function AdminPage({ searchParams, params }: PageProps) {
+  const resolvedParams = await params;
+  const resolvedSearchParams = (await searchParams) ?? {};
 
- 
-  const params = await searchParams;
-
+  const { schoolId } = resolvedParams;
   const dateParam =
-    typeof params?.date === "string"
-      ? params.date
-      : Array.isArray(params?.date)
-      ? params.date[0]
+    typeof resolvedSearchParams.date === "string"
+      ? resolvedSearchParams.date
+      : Array.isArray(resolvedSearchParams.date)
+      ? resolvedSearchParams.date[0]
       : undefined;
 
   const date = dateParam ? new Date(dateParam) : new Date();
 
-  // ✅ Single backend call
-  const dashboard = await getAdminDashboardData(date);
+  const dashboard = await getAdminDashboardData(schoolId, date);
 
   return (
     <div className="flex flex-col gap-6 p-4 xl:flex-row">
@@ -108,7 +104,7 @@ export default async function AdminPage({ searchParams }: PageProps) {
           <div className={`${cardBase} ${cardHover} p-4`}>
             <EventCalendarContainer
               events={dashboard.events}
-              searchParams={params}
+              searchParams={resolvedSearchParams}
             />
           </div>
         </Suspense>

@@ -2,11 +2,12 @@ import prisma from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
 
 export type TenantAccess = {
-  schoolId: string;      // Internal DB ID
-  schoolSlug: string;    // URL slug
-  role: string;
+  schoolId: string; // Internal DB PK
+  schoolSlug: string; // URL slug
+  role: "admin" | "teacher" | "student";
   userId: string;
   profileId: string;
+  classId?: number;
 };
 
 export async function requireTenantAccess(): Promise<TenantAccess> {
@@ -31,11 +32,48 @@ export async function requireTenantAccess(): Promise<TenantAccess> {
     throw new Error("No active school selected");
   }
 
-  return {
-    schoolId: profile.activeUser.schoolId,
-    schoolSlug: profile.activeUser.school.schoolId,
-    role: profile.activeUser.role,
+  const { activeUser } = profile;
+
+  const baseAccess = {
+    schoolId: activeUser.schoolId,
+    schoolSlug: activeUser.school.schoolId,
+    role: activeUser.role as "admin" | "teacher" | "student",
     userId,
     profileId: profile.id,
   };
+
+  /* ---------------- STUDENT ---------------- */
+  if (activeUser.role === "student") {
+    const student = await prisma.student.findFirst({
+      where: {
+        linkedUserId: activeUser.id,
+        schoolId: activeUser.schoolId,
+      },
+      select: { classId: true },
+    });
+
+    return {
+      ...baseAccess,
+      classId: student?.classId,
+    };
+  }
+
+  /* ---------------- TEACHER ---------------- */
+  if (activeUser.role === "teacher") {
+    const teacher = await prisma.teacher.findFirst({
+      where: {
+        linkedUserId: activeUser.id,
+        schoolId: activeUser.schoolId,
+      },
+      select: { classId: true },
+    });
+
+    return {
+      ...baseAccess,
+      classId: teacher?.classId ?? undefined,
+    };
+  }
+
+  /* ---------------- ADMIN ---------------- */
+  return baseAccess;
 }

@@ -8,11 +8,12 @@ import { slipSchema } from "@/lib/formValidationSchemas";
 ====================================================== */
 export async function PUT(
   req: NextRequest,
-  context: { params: { schoolId: string; id: string } }
+  { params }: { params: Promise<{ schoolId: string, id: string }> }
 ) {
   try {
-    const schoolId = await resolveSchoolId(context.params.schoolId);
-    const slipId = Number(context.params.id);
+    const { schoolId: slug, id: slipIdStr } = await params;
+    const schoolId = await resolveSchoolId(slug);
+    const slipId = Number(slipIdStr);
 
     
 
@@ -79,11 +80,12 @@ export async function PUT(
 ====================================================== */
 export async function DELETE(
   _req: NextRequest,
-  context: { params: { schoolId: string; id: string } }
+  { params }: { params: Promise<{ schoolId: string, id: string }> }
 ) {
   try {
-    const schoolId = await resolveSchoolId(context.params.schoolId);
-    const slipId = Number(context.params.id);
+    const { schoolId: slug, id: slipIdStr } = await params;
+    const schoolId = await resolveSchoolId(slug);
+    const slipId = Number(slipIdStr);
 
     const existingSlip = await prisma.permissionSlip.findFirst({
       where: { id: slipId, schoolId },

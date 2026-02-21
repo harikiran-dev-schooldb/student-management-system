@@ -9,7 +9,24 @@ interface Props {
 
 const AdminTimetable = ({ classes }: Props) => {
   const searchParams = useSearchParams();
-  const selectedClassId = Number(searchParams.get("classId")) || classes[0]?.id || 1;
+
+  const param = searchParams.get("classId");
+  const parsedClassId = param ? Number(param) : null;
+
+  const selectedClassId =
+    parsedClassId && !Number.isNaN(parsedClassId)
+      ? parsedClassId
+      : classes.length > 0
+      ? classes[0].id
+      : null;
+
+  if (!selectedClassId) {
+    return (
+      <p className="text-sm text-gray-500">
+        No classes available.
+      </p>
+    );
+  }
 
   return <ClassTimetableContainer classId={selectedClassId} />;
 };

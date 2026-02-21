@@ -9,10 +9,10 @@ import { requireTenantAccess } from "@/lib/requireTenantAccess";
 
 export async function GET(
   req: NextRequest,
-  context: { params: Promise<{ schoolId: string }> }
+  { params }: { params: Promise<{ schoolId: string}> }
 ) {
   try {
-    const { schoolId: slug } = await context.params;
+    const { schoolId: slug } = await params;
 
     /* 🔐 Clerk Authentication */
     const { userId } = await auth();

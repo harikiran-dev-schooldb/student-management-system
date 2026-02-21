@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma";
+import { requireTenantAccess } from "@/lib/requireTenantAccess";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
 import { Prisma } from "@prisma/client";
 import clsx from "clsx";
@@ -31,43 +32,28 @@ const Messages = async ({
   type?: "ANNOUNCEMENT" | "GENERAL";
 }) => {
   try {
-    const { userId, role, students } = await fetchUserInfo();
+    const access = await requireTenantAccess();
+    const { schoolId, role } = access;
 
-    // Guard clause: If no user info, stop early
-    if (!userId || !role) {
-      return <ErrorState message="Could not authenticate user." />;
-    }
-
-    let classId: number | null = null;
-
-    // Role-based logic: Students only see global + their class messages
-    if (role === "student") {
-      const student = students?.[0];
-      // Fallback: If logic says student but no record found, filtering might fail safely
-      classId = student?.classId ?? null;
-    }
-
-    // Dynamic Query Construction
     const whereCondition: Prisma.MessagesWhereInput = {
       type,
+      schoolId,
       ...(role !== "admin" && {
         OR: [
-          { classId: classId ?? undefined }, // Class-specific
-          { classId: null },                 // Global (School-wide)
+          { classId: access.role === "student" ? access.profileId : undefined },
+          { classId: null },
         ],
       }),
     };
 
     const data = await prisma.messages.findMany({
-      take: 3, // Limit to top 3 for the dashboard widget
+      take: 3,
       orderBy: { date: "desc" },
       where: whereCondition,
-      include: {
-        Class: true, // Include class name if it exists
-      },
+      include: { Class: true },
     });
 
-    if (data.length === 0) return <EmptyState />;
+    if (!data.length) return <EmptyState />;
 
     return (
       <div className="flex h-full flex-col justify-between rounded-2xl border border-gray-100 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-darkMode">
@@ -107,18 +93,19 @@ const Messages = async ({
                   "group relative flex flex-col gap-2 rounded-xl border border-gray-100 p-4 transition-all duration-200",
                   "bg-white hover:-translate-y-0.5 hover:shadow-md dark:border-darkMode dark:bg-darkMode",
                   "border-l-[4px]", // The premium accent strip
-                  style.border
+                  style.border,
                 )}
               >
                 {/* Message Header */}
                 <div className="flex items-start justify-between">
                   <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100">
-                    {msg.Class?.name ?? (type === "GENERAL" ? "General Update" : "Announcement")}
+                    {msg.Class?.name ??
+                      (type === "GENERAL" ? "General Update" : "Announcement")}
                   </h2>
                   <div
                     className={clsx(
                       "flex items-center gap-1.5 rounded-md px-2 py-1",
-                      "bg-gray-50 dark:bg-darkMode"
+                      "bg-gray-50 dark:bg-darkMode",
                     )}
                   >
                     <CalendarDays className="h-3 w-3 text-gray-400" />

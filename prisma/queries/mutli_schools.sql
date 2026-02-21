@@ -196,11 +196,30 @@ SELECT * FROM "Subject";
 SELECT * FROM "Profile";
 SELECT * FROM "LinkedUser";
 
+-- 1️⃣ SchoolInfo
+INSERT INTO "SchoolInfo" (
+  "id","name","address","phone","email","website","logo",
+  "taxId","receiptHeader","receiptFooter","createdAt","updatedAt","schoolId"
+) VALUES (
+  'cmju1hey9000104l54r6cmpsu',
+  'KOTAK SALESIAN SCHOOL',
+  '17-309, Golla Veedhi, Old Gopalapatnam',
+  '9949523412',
+  'kotakschoolvsp@gmail.com',
+  'https://kotaksalesianschool-vizag.com/',
+  NULL,
+  'AP050',
+  '(Affiliated to the Council for the I.S.C. Examination, New Delhi) Affiliation No. AP/050 - Dt. 04-11-1987',
+  'Fees once paid are not refundable.',
+  NOW(),
+  NOW(),
+  'kss_vizag'
+);
+
+
+-- 2️⃣ Profile
 INSERT INTO "Profile" (
-  "id",
-  "clerk_id",
-  "phone",
-  "activeUserId"
+  "id","clerk_id","phone","activeUserId"
 ) VALUES (
   'cmjf4q3hm00006cjq2nnukul3',
   'user_34hDQUMuHoPtvaWMWsrnYaAYztu',
@@ -208,76 +227,48 @@ INSERT INTO "Profile" (
   NULL
 );
 
+
+-- 3️⃣ LinkedUser (ONLY ONCE)
 INSERT INTO "LinkedUser" (
-  "id",
-  "username",
-  "role",
-  "profileId",
-  "schoolId"
+  "id","username","role","profileId","schoolId"
 ) VALUES (
   'cmjf4q3hv00016cjqg8jf9op8',
   'admin001',
   'admin',
   'cmjf4q3hm00006cjq2nnukul3',
-  1
+  'cmju1hey9000104l54r6cmpsu'
 );
 
 
-
-INSERT INTO "LinkedUser" (
-  "id",
-  "username",
-  "role",
-  "profileId",
-  "schoolId"
-) VALUES (
-  'cmjf4q3hv00016cjqg8jf9op8',
-  'admin001',
-  'admin',
-  'cmjf4q3hm00006cjq2nnukul3',
-  1
-);
-
+-- 4️⃣ Update Profile activeUserId
 UPDATE "Profile"
 SET "activeUserId" = 'cmjf4q3hv00016cjqg8jf9op8'
 WHERE "id" = 'cmjf4q3hm00006cjq2nnukul3';
 
+
+-- 5️⃣ Admin
 INSERT INTO "Admin" (
-  "id",
-  "username",
-  "password",
-  "name",
-  "parentName",
-  "gender",
-  "email",
-  "phone",
-  "address",
-  "dob",
-  "img",
-  "bloodType",
-  "createdAt",
-  "clerk_id",
-  "profileId",
-  "linkedUserId",
-  "schoolId"
+  "id","username","password","name","parentName","gender","email",
+  "phone","address","dob","img","bloodType","createdAt",
+  "clerk_id","profileId","linkedUserId","schoolId"
 ) VALUES (
   'cmjf4q3i600026cjqnm2xzto4',
   'admin001',
-  'admin001',
+  'tester0001',  -- 🔐 use bcrypt
   'A HARIKIRAN',
   'A SRINIVASARAO',
   'Male',
   'hari.myskoolcom@gmail.com',
   '7801049830',
-  '17-309, Golla Veedhi, OldGopalapatnam',
-  '1996-03-29 00:00:00',
+  '17-309, Golla Veedhi, Old Gopalapatnam',
+  '1996-03-29',
   'https://res.cloudinary.com/harikiran/image/upload/v1766285381/h4x8fjbq7hlfkvbv4vg9.jpg',
   'O_POS',
-  '2025-12-21 02:50:03.195',
+  NOW(),
   'user_34hDQUMuHoPtvaWMWsrnYaAYztu',
   'cmjf4q3hm00006cjq2nnukul3',
   'cmjf4q3hv00016cjqg8jf9op8',
-  1
+  'cmju1hey9000104l54r6cmpsu'
 );
 
-
+SELECT id, 'schoolId', role FROM "LinkedUser";

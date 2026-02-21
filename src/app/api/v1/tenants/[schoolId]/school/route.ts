@@ -9,10 +9,10 @@ import { revalidatePath } from "next/cache";
 ====================================================== */
 export async function GET(
   req: NextRequest,
-  context: { params: { schoolId: string } }
+  { params }: { params: Promise<{ schoolId: string }> }
 ) {
   try {
-    const schoolSlug = context.params.schoolId;
+    const { schoolId: schoolSlug } = await params;
 
     const school = await prisma.schoolInfo.findUnique({
       where: { schoolId: schoolSlug }, // slug lookup
@@ -51,10 +51,10 @@ export async function GET(
 ====================================================== */
 export async function PUT(
   req: NextRequest,
-  context: { params: { schoolId: string } }
+  { params }: { params: Promise<{ schoolId: string}> }
 ) {
   try {
-    const schoolSlug = context.params.schoolId;
+    const { schoolId: schoolSlug } = await params;
 
     // Resolve to internal ID
     const schoolId = await resolveSchoolId(schoolSlug);

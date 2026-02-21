@@ -7,11 +7,11 @@ import { resolveSchoolId } from "@/lib/resolveSchool";
 ====================================================== */
 export async function PUT(
   req: NextRequest,
-  context: { params: { schoolId: string; id: string } }
+  { params }: { params: Promise<{ schoolId: string; id: string }> }
 ) {
   try {
-    const schoolId = await resolveSchoolId(context.params.schoolId);
-    const messageId = context.params.id;
+    const { schoolId: slug, id: messageId } = await params;
+    const schoolId = await resolveSchoolId(slug);
 
     if (!messageId) {
       return NextResponse.json(

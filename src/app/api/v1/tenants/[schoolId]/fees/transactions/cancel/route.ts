@@ -5,17 +5,18 @@ import { fetchUserInfo } from "@/lib/utils/server-utils";
 
 export async function POST(
   req: NextRequest,
-  context: { params: { schoolId: string } }
+  { params }: { params: Promise<{ schoolId: string;}> },
 ) {
   try {
-    const schoolId = await resolveSchoolId(context.params.schoolId);
+    const { schoolId: schoolSlug } = await params;
+    const schoolId = await resolveSchoolId(schoolSlug);
 
     const user = await fetchUserInfo(schoolId);
 
     if (!user.userId || user.role !== "admin") {
       return NextResponse.json(
         { error: "Only admin can cancel transactions" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -24,7 +25,7 @@ export async function POST(
     if (!transactionId) {
       return NextResponse.json(
         { error: "transactionId is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -74,8 +75,7 @@ export async function POST(
           totalDiscountAmount: { decrement: txn.discountAmount },
           totalFineAmount: { decrement: txn.fineAmount },
           totalFeeAmount: {
-            decrement:
-              txn.amount + txn.discountAmount + txn.fineAmount,
+            decrement: txn.amount + txn.discountAmount + txn.fineAmount,
           },
         },
       });
@@ -89,8 +89,7 @@ export async function POST(
           cancelledAmount: txn.amount,
           cancelledDiscount: txn.discountAmount,
           cancelledFine: txn.fineAmount,
-          cancelledTotal:
-            txn.amount + txn.discountAmount + txn.fineAmount,
+          cancelledTotal: txn.amount + txn.discountAmount + txn.fineAmount,
           cancelledBy: user.userId,
           reason,
           schoolId,
@@ -101,13 +100,12 @@ export async function POST(
     return NextResponse.json({
       message: "Transaction cancelled successfully",
     });
-
   } catch (error: any) {
     console.error("Cancel transaction error:", error);
 
     return NextResponse.json(
       { error: error.message || "Cancel failed" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 }

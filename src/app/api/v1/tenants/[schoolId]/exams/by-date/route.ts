@@ -4,10 +4,11 @@ import { resolveSchoolId } from "@/lib/resolveSchool";
 
 export async function POST(
   req: NextRequest,
-  context: { params: { schoolId: string } }
+  { params }: { params: Promise<{ schoolId: string; }> }
 ) {
   try {
-    const schoolId = await resolveSchoolId(context.params.schoolId);
+    const { schoolId: schoolSlug } = await params;
+    const schoolId = await resolveSchoolId(schoolSlug);
     const { date } = await req.json();
 
     if (!date) {

@@ -11,14 +11,17 @@ import { Prisma } from "@prisma/client";
 
 export async function POST(
   req: NextRequest,
-  context: { params: { schoolId: string } }
+  { params }: { params: Promise<{ schoolId: string }> },
 ) {
   try {
-    const { schoolId: slug } = context.params;
+    const { schoolId: slug } = await params;
     const access = await requireTenantAccess();
 
     /* 🔐 Tenant + RBAC */
-    if (access.schoolId !== slug || !["admin", "teacher"].includes(access.role)) {
+    if (
+      access.schoolId !== slug ||
+      !["admin", "teacher"].includes(access.role)
+    ) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -28,7 +31,7 @@ export async function POST(
     if (!Array.isArray(payload) || payload.length === 0) {
       return NextResponse.json(
         { error: "Invalid or empty payload" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -42,12 +45,12 @@ export async function POST(
       Date.UTC(
         rawDate.getUTCFullYear(),
         rawDate.getUTCMonth(),
-        rawDate.getUTCDate()
-      )
+        rawDate.getUTCDate(),
+      ),
     );
 
     /* ---------- Validate Classes ---------- */
-    const classIds = [...new Set(payload.map(e => e.classId))];
+    const classIds = [...new Set(payload.map((e) => e.classId))];
 
     const validClasses = await prisma.class.findMany({
       where: { id: { in: classIds }, schoolId },
@@ -57,12 +60,12 @@ export async function POST(
     if (validClasses.length !== classIds.length) {
       return NextResponse.json(
         { error: "Invalid class for this school" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     /* ---------- Validate Students ---------- */
-    const studentIds = [...new Set(payload.map(e => e.studentId))];
+    const studentIds = [...new Set(payload.map((e) => e.studentId))];
 
     const students = await prisma.student.findMany({
       where: { id: { in: studentIds }, schoolId },
@@ -77,18 +80,18 @@ export async function POST(
     if (students.length !== studentIds.length) {
       return NextResponse.json(
         { error: "Invalid student for this school" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    const studentMap = new Map(students.map(s => [s.id, s]));
+    const studentMap = new Map(students.map((s) => [s.id, s]));
 
     for (const entry of payload) {
       const student = studentMap.get(entry.studentId);
       if (!student || student.classId !== entry.classId) {
         return NextResponse.json(
           { error: "Student does not belong to provided class" },
-          { status: 400 }
+          { status: 400 },
         );
       }
     }
@@ -158,12 +161,11 @@ export async function POST(
     });
 
     return NextResponse.json({ success: true }, { status: 200 });
-
   } catch (error) {
     console.error("Attendance POST error:", error);
     return NextResponse.json(
       { error: "Failed to save attendance" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -174,10 +176,10 @@ export async function POST(
 
 export async function GET(
   req: NextRequest,
-  context: { params: { schoolId: string } }
+  { params }: { params: Promise<{ schoolId: string }> },
 ) {
   try {
-    const { schoolId: slug } = context.params;
+    const { schoolId: slug } = await params;
     const access = await requireTenantAccess();
 
     if (access.schoolId !== slug) {
@@ -204,10 +206,7 @@ export async function GET(
     if (classIdParam) {
       const parsedClassId = Number(classIdParam);
       if (Number.isNaN(parsedClassId)) {
-        return NextResponse.json(
-          { error: "Invalid classId" },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: "Invalid classId" }, { status: 400 });
       }
       where.classId = parsedClassId;
     }
@@ -215,10 +214,7 @@ export async function GET(
     if (dateParam) {
       const date = new Date(`${dateParam}T00:00:00.000Z`);
       if (Number.isNaN(date.getTime())) {
-        return NextResponse.json(
-          { error: "Invalid date" },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: "Invalid date" }, { status: 400 });
       }
       where.date = date;
     } else if (startParam && endParam) {
@@ -228,7 +224,7 @@ export async function GET(
       if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
         return NextResponse.json(
           { error: "Invalid date range" },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
@@ -238,7 +234,7 @@ export async function GET(
     if (!studentIdParam && !classIdParam) {
       return NextResponse.json(
         { error: "Provide studentId or classId" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -255,12 +251,11 @@ export async function GET(
     });
 
     return NextResponse.json({ success: true, records });
-
   } catch (error) {
     console.error("Attendance GET error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

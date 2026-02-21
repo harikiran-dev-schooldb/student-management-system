@@ -6,16 +6,17 @@ import { fetchUserInfo } from "@/lib/utils/server-utils";
 
 export async function POST(
   req: NextRequest,
-  context: { params: { schoolId: string } }
+  { params }: { params: Promise<{ schoolId: string }> },
 ) {
   try {
-    const schoolId = await resolveSchoolId(context.params.schoolId);
+    const { schoolId: schoolSlug } = await params;
+    const schoolId = await resolveSchoolId(schoolSlug);
 
     const user = await fetchUserInfo(schoolId);
     if (!user.userId || user.role !== "admin") {
       return NextResponse.json(
         { error: "Only admin can perform bulk fee collection" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -24,7 +25,7 @@ export async function POST(
     if (!Array.isArray(records) || records.length === 0) {
       return NextResponse.json(
         { error: "Invalid input array" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -53,11 +54,7 @@ export async function POST(
         continue;
       }
 
-      if (
-        !Object.values(AcademicYear).includes(
-          academicYear as AcademicYear
-        )
-      ) {
+      if (!Object.values(AcademicYear).includes(academicYear as AcademicYear)) {
         results.push({
           studentId,
           status: "error",
@@ -95,13 +92,10 @@ export async function POST(
             studentFee.discountAmount +
             studentFee.fineAmount;
 
-          const incoming =
-            amount + discountAmount + fineAmount;
+          const incoming = amount + discountAmount + fineAmount;
 
           if (incoming > due) {
-            throw new Error(
-              `Overpayment not allowed. Due: ₹${due}`
-            );
+            throw new Error(`Overpayment not allowed. Due: ₹${due}`);
           }
 
           /* 2️⃣ Update StudentFees */
@@ -113,12 +107,8 @@ export async function POST(
               fineAmount: { increment: fineAmount },
               paymentMode,
               remarks,
-              receiptDate: receiptDate
-                ? new Date(receiptDate)
-                : new Date(),
-              receiptNo: receiptNo
-                ? String(receiptNo)
-                : null,
+              receiptDate: receiptDate ? new Date(receiptDate) : new Date(),
+              receiptNo: receiptNo ? String(receiptNo) : null,
               updatedByName: user.userId,
             },
           });
@@ -162,12 +152,8 @@ export async function POST(
               amount,
               discountAmount,
               fineAmount,
-              receiptDate: receiptDate
-                ? new Date(receiptDate)
-                : new Date(),
-              receiptNo: receiptNo
-                ? String(receiptNo)
-                : "",
+              receiptDate: receiptDate ? new Date(receiptDate) : new Date(),
+              receiptNo: receiptNo ? String(receiptNo) : "",
               paymentMode,
               remarks,
               updatedByName: user.userId,
@@ -191,13 +177,12 @@ export async function POST(
       message: "Bulk fee collection completed",
       results,
     });
-
   } catch (error: any) {
     console.error("Bulk fee error:", error);
 
     return NextResponse.json(
       { error: "Bulk operation failed" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

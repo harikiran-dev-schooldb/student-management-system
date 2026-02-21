@@ -9,10 +9,10 @@ import { requireTenantAccess } from "@/lib/requireTenantAccess";
 
 export async function POST(
   req: NextRequest,
-  context: { params: Promise<{ schoolId: string }> }
+  { params }: { params: Promise<{ schoolId: string }> },
 ) {
   try {
-    const { schoolId: slug } = await context.params;
+    const { schoolId: slug } = await params;
 
     const access = await requireTenantAccess();
 
@@ -35,7 +35,7 @@ export async function POST(
     if (!schoolExists) {
       return NextResponse.json(
         { message: "School not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -56,7 +56,7 @@ export async function POST(
       if (!classExists) {
         return NextResponse.json(
           { message: "Invalid class for this school" },
-          { status: 400 }
+          { status: 400 },
         );
       }
     }
@@ -72,11 +72,7 @@ export async function POST(
       },
     });
 
-    return NextResponse.json(
-      { success: true, announcement },
-      { status: 201 }
-    );
-
+    return NextResponse.json({ success: true, announcement }, { status: 201 });
   } catch (error: any) {
     console.error("POST Announcement Error:", error);
 
@@ -88,11 +84,10 @@ export async function POST(
             ? error.errors
             : error.message || "Internal Server Error",
       },
-      { status: error.name === "ZodError" ? 400 : 500 }
+      { status: error.name === "ZodError" ? 400 : 500 },
     );
   }
 }
-
 
 /* =======================================================
    GET  /api/v1/tenants/[schoolId]/announcements
@@ -101,10 +96,10 @@ export async function POST(
 
 export async function GET(
   req: NextRequest,
-  context: { params: Promise<{ schoolId: string }> }
+  { params }: { params: Promise<{ schoolId: string }> },
 ) {
   try {
-    const { schoolId: slug } = await context.params;
+    const { schoolId: slug } = await params;
 
     const access = await requireTenantAccess();
 
@@ -134,14 +129,11 @@ export async function GET(
       if (isNaN(parsedClassId)) {
         return NextResponse.json(
           { message: "Invalid classId" },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
-      whereClause.OR = [
-        { classId: parsedClassId },
-        { classId: null },
-      ];
+      whereClause.OR = [{ classId: parsedClassId }, { classId: null }];
     }
 
     const announcements = await prisma.announcement.findMany({
@@ -150,11 +142,7 @@ export async function GET(
       include: { Class: true },
     });
 
-    return NextResponse.json(
-      { success: true, announcements },
-      { status: 200 }
-    );
-
+    return NextResponse.json({ success: true, announcements }, { status: 200 });
   } catch (error: any) {
     console.error("GET Announcement Error:", error);
 
@@ -163,7 +151,7 @@ export async function GET(
         success: false,
         error: error.message || "Internal Server Error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -7,6 +7,7 @@ import prisma from "@/lib/prisma";
 ------------------------------------------------------- */
 
 export interface UserInfo {
+  userId?: string;
   profileId: string | null;
   linkedUserId: string | null;
   role: "admin" | "teacher" | "student" | null;
@@ -14,6 +15,7 @@ export interface UserInfo {
 
   studentId?: string;
   teacherId?: string;
+
   classId?: number;
   gradeId?: number;
   className?: string | null;
@@ -121,6 +123,7 @@ export async function fetchUserInfo(schoolId: string): Promise<UserInfo> {
 
       return {
         profileId: profile.id,
+        userId: activeUser.id,
         linkedUserId: activeUser.id,
         role: "student",
         schoolId,
@@ -151,6 +154,7 @@ export async function fetchUserInfo(schoolId: string): Promise<UserInfo> {
 
       return {
         profileId: profile.id,
+        userId: activeUser.id,
         linkedUserId: activeUser.id,
         role: "teacher",
         schoolId,
@@ -164,6 +168,7 @@ export async function fetchUserInfo(schoolId: string): Promise<UserInfo> {
     /* ---------------- ADMIN ---------------- */
     return {
       profileId: profile.id,
+      userId: activeUser.id,
       linkedUserId: activeUser.id,
       role: "admin",
       schoolId,

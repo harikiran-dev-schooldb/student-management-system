@@ -85,8 +85,14 @@ const ExamsList = async ({
     throw new Error("Invalid school");
   }
 
-  const { role, students } = await fetchUserInfo(school.id);
-  const { page, date, gradeId, ...queryParams } = resolvedSearchParams;
+  const userInfo = await fetchUserInfo(school.id);
+  const { role, studentId, gradeId, teacherId } = userInfo;
+  const {
+    page,
+    date,
+    gradeId: searchGradeId,
+    ...queryParams
+  } = resolvedSearchParams;
   const p = page ? (Array.isArray(page) ? page[0] : page) : "1";
   const columns = getColumns(role);
 
@@ -94,42 +100,30 @@ const ExamsList = async ({
   const sortKey = Array.isArray(resolvedSearchParams.sortKey)
     ? resolvedSearchParams.sortKey[0]
     : resolvedSearchParams.sortKey || "id";
-  const teacherId = Array.isArray(resolvedSearchParams.teacherId)
-    ? resolvedSearchParams.teacherId[0]
-    : resolvedSearchParams.teacherId;
 
   const db = tenantPrisma(school.id);
   const query: Prisma.ExamWhereInput = { schoolId: school.id };
   const examGradeSubjectsWhere: Prisma.ExamGradeSubjectWhereInput = {};
 
   // Teacher restriction
+  let teacherGradeIds: number[] | null = null;
+
   if (role === "teacher" && teacherId) {
     const teacherClasses = await db.class.findMany({
-      where: { supervisorId: teacherId, schoolId: school.id },
+      where: {
+        supervisorId: teacherId,
+        schoolId: school.id,
+      },
       select: { gradeId: true },
     });
-    const teacherGradeIds = teacherClasses.map((cls) => cls.gradeId);
+
+    teacherGradeIds = teacherClasses.map((cls) => cls.gradeId);
     examGradeSubjectsWhere.gradeId = { in: teacherGradeIds };
   }
 
   // Student restriction
-  if (role === "student" && students?.length) {
-    const studentId = students[0].studentId;
-
-    const student = await prisma.student.findUnique({
-      where: { id: studentId, schoolId: school.id },
-      select: {
-        Class: {
-          select: {
-            gradeId: true,
-          },
-        },
-      },
-    });
-
-    if (student?.Class?.gradeId) {
-      examGradeSubjectsWhere.gradeId = student.Class.gradeId;
-    }
+  if (role === "student" && gradeId) {
+    examGradeSubjectsWhere.gradeId = gradeId;
   }
 
   if (role === "student" && !examGradeSubjectsWhere.gradeId) {
@@ -138,6 +132,42 @@ const ExamsList = async ({
         ⚠️ Unable to determine student grade.
       </p>
     );
+  }
+
+  // Grade filter from query params (safe)
+  if (searchGradeId) {
+    const parsedGradeId = Number(
+      Array.isArray(searchGradeId) ? searchGradeId[0] : searchGradeId,
+    );
+
+    if (!Number.isNaN(parsedGradeId)) {
+      if (role === "admin") {
+        examGradeSubjectsWhere.gradeId = parsedGradeId;
+      }
+
+      if (role === "teacher") {
+        const existing = examGradeSubjectsWhere.gradeId;
+
+        if (
+          existing &&
+          typeof existing === "object" &&
+          "in" in existing &&
+          Array.isArray(existing.in)
+        ) {
+          if (existing.in.includes(parsedGradeId)) {
+            examGradeSubjectsWhere.gradeId = parsedGradeId;
+          }
+        }
+      }
+    }
+  }
+
+  if (searchGradeId && role === "teacher" && teacherGradeIds) {
+    const parsed = Number(searchGradeId);
+
+    if (teacherGradeIds.includes(parsed)) {
+      examGradeSubjectsWhere.gradeId = parsed;
+    }
   }
 
   // Date filter
@@ -161,9 +191,6 @@ const ExamsList = async ({
     ];
   }
 
-  // Grade filter
-  if (gradeId) examGradeSubjectsWhere.gradeId = Number(gradeId);
-
   // Exam title filter
   if (queryParams.title) {
     query.title = {
@@ -178,7 +205,7 @@ const ExamsList = async ({
   if (Object.keys(examGradeSubjectsWhere).length > 0)
     query.examGradeSubjects = { some: examGradeSubjectsWhere };
 
-  const [data, count] = await prisma.$transaction([
+  const [data, count] = await db.$transaction([
     db.exam.findMany({
       where: query,
       orderBy: [{ [sortKey]: sortOrder }, { id: "desc" }],
@@ -195,7 +222,7 @@ const ExamsList = async ({
       skip: ITEM_PER_PAGE * (parseInt(p) - 1),
     }),
 
-    prisma.exam.count({ where: query }),
+    db.exam.count({ where: query }),
   ]);
 
   const classes = await db.class.findMany();

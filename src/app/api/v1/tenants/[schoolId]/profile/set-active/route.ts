@@ -10,13 +10,13 @@ export const runtime = "nodejs";
 ====================================================== */
 export async function POST(
   req: NextRequest,
-  context: { params: { schoolId: string } }
+  { params }: { params: Promise<{ schoolId: string }> }
 ) {
   try {
     /* -----------------------------
        1️⃣ Resolve Tenant Slug → ID
     ------------------------------ */
-    const schoolSlug = context.params.schoolId;
+    const { schoolId: schoolSlug } = await params;
     const schoolId = await resolveSchoolId(schoolSlug);
 
     /* -----------------------------

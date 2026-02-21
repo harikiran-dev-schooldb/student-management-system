@@ -6,10 +6,11 @@ import { AcademicYear } from "@prisma/client";
 
 export async function GET(
   req: NextRequest,
-  context: { params: { schoolId: string } },
+  { params }: { params: Promise<{ schoolId: string; }> }
 ) {
   try {
-    const schoolId = await resolveSchoolId(context.params.schoolId);
+    const { schoolId: schoolSlug } = await params;
+    const schoolId = await resolveSchoolId(schoolSlug);
 
     /* ---------- Auth ---------- */
     const user = await fetchUserInfo(schoolId);
