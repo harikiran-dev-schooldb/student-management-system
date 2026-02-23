@@ -36,7 +36,7 @@ const StudentProfilePage = async ({ params }: StudentSinglePageProps) => {
 
   if (!school) notFound();
 
-  const { role, studentId } = await fetchUserInfo(school.id);
+  const { role, studentId } = await fetchUserInfo(slug);
 
   // Only students can view their own profile
   if (role !== "student") {

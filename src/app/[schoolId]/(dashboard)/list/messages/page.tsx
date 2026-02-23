@@ -136,7 +136,7 @@ const MessagesList = async ({
 
   if (!school) throw new Error("Invalid school");
 
-  const userInfo = await fetchUserInfo(school.id);
+  const userInfo = await fetchUserInfo(slug);
 
   // 3️⃣ Tenant-scoped Prisma
   const db = tenantPrisma(school.id);

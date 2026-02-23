@@ -25,7 +25,7 @@ const SchoolSettingsPage = async ({ params }: SchoolSettingsPageProps) => {
   }
 
   // 2️⃣ Get role for THIS school
-  const { role } = await fetchUserInfo(school.id);
+  const { role } = await fetchUserInfo(slug);
 
   if (!role) {
     throw new Error("Unauthorized");

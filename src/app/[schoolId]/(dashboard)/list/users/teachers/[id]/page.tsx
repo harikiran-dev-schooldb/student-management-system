@@ -93,7 +93,7 @@ const SingleTeacherPage = async ({ params }: TeacherSinglePageProps) => {
 
   if (!school) return notFound();
 
-  const { role } = await fetchUserInfo(school.id);
+  const { role } = await fetchUserInfo(slug);
 
   if (role !== "admin" && role !== "teacher") {
     return notFound();

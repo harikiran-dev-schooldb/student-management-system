@@ -301,7 +301,7 @@ const menuSections: MenuSection[] = [
 
 export default function Menu({ role }: { role: Role }) {
   const params = useParams();
-  const schoolId = params.schoolId as string;
+  const schoolId = typeof params.schoolId === "string" ? params.schoolId : "";
 
   const pathname = usePathname();
   const { t } = useTranslation();
@@ -369,7 +369,7 @@ export default function Menu({ role }: { role: Role }) {
 
               const resolvedHref = `/${schoolId}${rawHref}`;
 
-              const active = pathname === resolvedHref;
+              const active = pathname.startsWith(resolvedHref);
 
               return (
                 <Link

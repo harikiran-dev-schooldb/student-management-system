@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import { Class, Grade, Student, AcademicYear } from "@prisma/client";
 import { toast } from "react-toastify";
 import { Users, ArrowRight, Loader2, GraduationCap } from "lucide-react";
+import { useParams } from "next/navigation";
+import { tenantFetch } from "@/lib/tenantFetch";
 
 export default function PromoteStudentsPage() {
   const [grades, setGrades] = useState<Grade[]>([]);
@@ -24,16 +26,20 @@ export default function PromoteStudentsPage() {
   const [promoting, setPromoting] = useState(false);
 
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
+  const { schoolId } = useParams<{ schoolId: string }>();
 
   /* ---------------- Load Grades (Sorted Once) ---------------- */
+
   useEffect(() => {
-    fetch("/api/grades")
-      .then((r) => r.json())
-      .then((data: Grade[]) => {
-        const sorted = data.sort((a, b) => a.id - b.id);
+    if (!schoolId) return;
+
+    tenantFetch<Grade[]>(schoolId, "/grades")
+      .then((data) => {
+        const sorted = [...data].sort((a, b) => a.id - b.id);
         setGrades(sorted);
-      });
-  }, []);
+      })
+      .catch(() => toast.error("Failed to load grades"));
+  }, [schoolId]);
 
   /* ---------------- Auto Select Next Grade ---------------- */
   useEffect(() => {
@@ -50,20 +56,20 @@ export default function PromoteStudentsPage() {
 
   /* ---------------- Load Classes ---------------- */
   useEffect(() => {
-    if (!selectedGrade) return;
+    if (!schoolId || !selectedGrade) return;
 
-    fetch(`/api/classes?gradeId=${selectedGrade}`)
-      .then((r) => r.json())
-      .then(setFromClasses);
-  }, [selectedGrade]);
+    tenantFetch<Class[]>(schoolId, `/classes?gradeId=${selectedGrade}`)
+      .then(setFromClasses)
+      .catch(console.error);
+  }, [selectedGrade, schoolId]);
 
   useEffect(() => {
-    if (!toGrade) return;
+    if (!schoolId || !toGrade) return;
 
-    fetch(`/api/classes?gradeId=${toGrade}`)
-      .then((r) => r.json())
-      .then(setToClasses);
-  }, [toGrade]);
+    tenantFetch<Class[]>(schoolId, `/classes?gradeId=${toGrade}`)
+      .then(setToClasses)
+      .catch(console.error);
+  }, [toGrade, schoolId]);
 
   /* ---------------- Auto Match Same Section ---------------- */
   useEffect(() => {
@@ -83,16 +89,18 @@ export default function PromoteStudentsPage() {
 
   /* ---------------- Load Students ---------------- */
   const loadStudents = async () => {
-    if (!fromClass) return;
+    if (!schoolId || !fromClass) return;
 
     setLoading(true);
+
     try {
-      const data = await fetch(`/api/students?classId=${fromClass}`).then((r) =>
-        r.json(),
+      const data = await tenantFetch<Student[]>(
+        schoolId,
+        `/students?classId=${fromClass}`,
       );
 
       setStudents(data);
-      setSelectedStudents(data.map((s: Student) => s.id)); // auto-select all
+      setSelectedStudents(data.map((s) => s.id));
     } catch {
       toast.error("Failed to load students");
     } finally {
@@ -102,14 +110,13 @@ export default function PromoteStudentsPage() {
 
   /* ---------------- Promote ---------------- */
   const promoteStudents = async () => {
-    if (!fromClass || !toClass || !selectedStudents.length) return;
+    if (!schoolId || !fromClass || !toClass || !selectedStudents.length) return;
 
     setPromoting(true);
 
     try {
-      const res = await fetch("/api/student/promote-student", {
+      await tenantFetch(schoolId, "/students/promote", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           studentIds: selectedStudents,
           fromClassId: fromClass,
@@ -117,8 +124,6 @@ export default function PromoteStudentsPage() {
           academicYear: newAcademicYear,
         }),
       });
-
-      if (!res.ok) throw new Error();
 
       toast.success("Students promoted successfully");
       setStudents([]);

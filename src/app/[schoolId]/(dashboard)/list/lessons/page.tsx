@@ -33,7 +33,7 @@ const LessonsListPage = async ({
     role,
     teacherId: userTeacherId,
     classId: userClassId,
-  } = await fetchUserInfo(school.id);
+  } = await fetchUserInfo(slug);
 
   // 3️⃣ Tenant-scoped Prisma
   const db = tenantPrisma(school.id);

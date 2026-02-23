@@ -30,6 +30,7 @@ export default clerkMiddleware(async (auth, req) => {
     segments[2] === "tenants"
   ) {
     const { userId } = await auth();
+    console.log("Authenticated userId:", userId);
 
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

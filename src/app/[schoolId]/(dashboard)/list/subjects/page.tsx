@@ -88,7 +88,7 @@ const SubjectList = async ({
 
   if (!school) throw new Error("Invalid school");
 
-  const userInfo = await fetchUserInfo(school.id);
+  const userInfo = await fetchUserInfo(slug);
   const { role, gradeId } = userInfo;
 
   const { page, classId, ...queryParams } = resolvedSearchParams;

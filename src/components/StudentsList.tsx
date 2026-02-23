@@ -2,6 +2,7 @@
 "use client"; // Ensure this component is rendered on the client
 
 import React, { useEffect, useState } from 'react';
+import { useSchoolSlug } from './hooks/getschool';
 
 // Define the type for a student
 interface Student {
@@ -17,10 +18,12 @@ const StudentsList = () => {
     const [students, setStudents] = useState<Student[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string>('');
+    const schoolId = useSchoolSlug();
 
     const fetchStudents = async () => {
+        if (!schoolId) return;
         try {
-            const response = await fetch('/api/students');
+            const response = await fetch(`/api/v1/tenants/${schoolId}/students`);
             if (!response.ok) {
                 throw new Error('Failed to fetch students');
             }

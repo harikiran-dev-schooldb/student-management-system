@@ -108,7 +108,7 @@ const EventsList = async ({
     throw new Error("Invalid school");
   }
   // Fetch user info and role
-  const { userId, role } = await fetchUserInfo(school.id);
+  const { userId, role } = await fetchUserInfo(slug);
 
   const columns = getColumns(role); // Get dynamic columns
   // Fixing the 'page' parameter issue

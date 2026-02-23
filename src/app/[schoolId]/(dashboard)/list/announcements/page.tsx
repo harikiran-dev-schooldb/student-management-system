@@ -99,7 +99,7 @@ const AnnouncementsList = async ({
     throw new Error("Invalid school");
   }
 
-  const { role } = await fetchUserInfo(school.id);
+  const { role } = await fetchUserInfo(slug);
   // 🔐 Create tenant-scoped prisma
   const db = tenantPrisma(school.id);
   const columns = getColumns(role);

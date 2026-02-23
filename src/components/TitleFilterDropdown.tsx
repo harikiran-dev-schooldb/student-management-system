@@ -1,7 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { dropdownUI } from "../../types";
+import { tenantFetch } from "@/lib/tenantFetch";
+import { toast } from "react-toastify";
 
 export default function TitleFilterDropdown({
   basePath,
@@ -12,22 +14,28 @@ export default function TitleFilterDropdown({
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { schoolId } = useParams<{ schoolId: string }>();
 
   useEffect(() => {
+    if (!schoolId) return;
+
     const fetchTitles = async () => {
       try {
-        const res = await fetch("/api/exams/titles");
-        const data = await res.json();
-        setTitles(data.titles || []);
-      } catch (err) {
-        console.error("Failed to fetch exam titles:", err);
+        const data = await tenantFetch<{
+          titles: { id: number; title: string }[];
+        }>(schoolId, "/exams?titles=true");
+
+        setTitles((data.titles ?? []).map((t) => t.title));
+      } catch {
+        toast.error("Failed to fetch exam titles.");
+        setTitles([]);
       } finally {
         setLoading(false);
       }
     };
 
     fetchTitles();
-  }, []);
+  }, [schoolId]);
 
   const handleChange = (title: string) => {
     const params = new URLSearchParams(searchParams);

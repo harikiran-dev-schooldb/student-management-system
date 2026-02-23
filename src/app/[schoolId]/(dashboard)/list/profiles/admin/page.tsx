@@ -33,7 +33,7 @@ const AdminProfilePage = async ({
 
   if (!school) throw new Error("Invalid school");
 
-  const { userId } = await fetchUserInfo(school.id);
+  const { userId } = await fetchUserInfo(slug);
 
   if (!userId) return notFound();
 

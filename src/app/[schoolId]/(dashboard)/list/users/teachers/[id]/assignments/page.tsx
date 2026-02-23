@@ -11,6 +11,7 @@ import {
   Loader2,
   Filter,
 } from "lucide-react";
+import { tenantFetch } from "@/lib/tenantFetch";
 
 // TYPES
 interface Grade {
@@ -38,8 +39,9 @@ interface Assignment {
 }
 
 export default function TeacherAssignmentsPage() {
-  const params = useParams<{ id: string }>();
+  const params = useParams<{ schoolId: string; id: string }>();
   const teacherId = params.id;
+  const schoolId = params.schoolId;
   const router = useRouter();
 
   // Loading States
@@ -64,33 +66,21 @@ export default function TeacherAssignmentsPage() {
         setLoading(true);
 
         // A. Assignments
-        const assignRes = await fetch(
-          `/api/users/teachers/${teacherId}/subjects`
+        const assignData = await tenantFetch<Assignment[]>(
+          schoolId,
+          `/users/teachers/${teacherId}/subjects`,
         );
-        const assignData = await assignRes.json();
-        if (Array.isArray(assignData)) setAssignments(assignData);
+        setAssignments(assignData);
 
-        // B. Classes
-        const classRes = await fetch(`/api/classes`);
-        const classData = await classRes.json();
-        // Handle if API returns { data: [] } or just []
-        const classes = Array.isArray(classData)
-          ? classData
-          : classData.data || [];
-        setAllClasses(classes);
+        const classData = await tenantFetch<Class[]>(schoolId, `/classes`);
+        setAllClasses(classData);
 
-        // C. Subjects (UPDATED PATH to singular '/api/subject')
-        const subjectRes = await fetch(`/api/subject`);
-        const subjectData = await subjectRes.json();
-        const subjects = Array.isArray(subjectData)
-          ? subjectData
-          : subjectData.data || [];
-
-        setAllSubjects(subjects);
+        const subjectData = await tenantFetch<Subject[]>(schoolId, `/subjects`);
+        setAllSubjects(subjectData);
 
         // DEBUGGING: Check Console to see if data has the right structure
-        console.log("Classes Loaded:", classes);
-        console.log("Subjects Loaded:", subjects);
+        console.log("Classes Loaded:", classData);
+        console.log("Subjects Loaded:", subjectData);
       } catch (error) {
         console.error("Failed to load data", error);
       } finally {
@@ -107,7 +97,7 @@ export default function TeacherAssignmentsPage() {
 
     // Find the selected Class
     const selectedClass = allClasses.find(
-      (c) => c.id === Number(selectedClassId)
+      (c) => c.id === Number(selectedClassId),
     );
 
     // DEBUGGING: Check what class was found
@@ -117,19 +107,19 @@ export default function TeacherAssignmentsPage() {
     }
     if (!selectedClass.gradeId) {
       console.warn(
-        "Selected Class is missing 'gradeId'. Check /api/classes response.",
-        selectedClass
+        "Selected Class is missing 'gradeId'. This is required for filtering subjects.",
+        selectedClass,
       );
       return [];
     }
 
     // Filter Subjects
     const filtered = allSubjects.filter((subject) =>
-      subject.grades?.some((g) => g.id === selectedClass.gradeId)
+      subject.grades?.some((g) => g.id === selectedClass.gradeId),
     );
 
     console.log(
-      `Filtering for Grade ID: ${selectedClass.gradeId}. Found ${filtered.length} subjects.`
+      `Filtering for Grade ID: ${selectedClass.gradeId}. Found ${filtered.length} subjects.`,
     );
     return filtered;
   }, [selectedClassId, allClasses, allSubjects]);
@@ -147,7 +137,7 @@ export default function TeacherAssignmentsPage() {
     const exists = assignments.find(
       (a) =>
         a.classId === Number(selectedClassId) &&
-        a.subjectId === Number(selectedSubjectId)
+        a.subjectId === Number(selectedSubjectId),
     );
     if (exists) {
       alert("This subject is already assigned to this teacher for this class.");
@@ -165,11 +155,14 @@ export default function TeacherAssignmentsPage() {
         ],
       };
 
-      const res = await fetch(`/api/users/teachers/${teacherId}/subjects`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      const res = await tenantFetch(
+        schoolId,
+        `/users/teachers/${teacherId}/subjects`,
+        {
+          method: "POST",
+          body: JSON.stringify(payload),
+        },
+      );
 
       if (!res.ok) {
         const err = await res.json();
@@ -177,10 +170,11 @@ export default function TeacherAssignmentsPage() {
       }
 
       // Refresh list
-      const refreshRes = await fetch(
-        `/api/users/teachers/${teacherId}/subjects`
+      const refreshData = await tenantFetch<Assignment[]>(
+        schoolId,
+        `/users/teachers/${teacherId}/subjects`,
       );
-      const refreshData = await refreshRes.json();
+
       setAssignments(refreshData);
 
       setSelectedSubjectId("");
@@ -197,19 +191,22 @@ export default function TeacherAssignmentsPage() {
     if (!confirm("Are you sure you want to remove this assignment?")) return;
 
     const previousState = [...assignments];
+
+    // optimistic update
     setAssignments((prev) =>
-      prev.filter((a) => !(a.subjectId === sId && a.classId === cId))
+      prev.filter((a) => !(a.subjectId === sId && a.classId === cId)),
     );
 
     try {
-      const res = await fetch(
-        `/api/users/teachers/${teacherId}/subjects?subjectId=${sId}&classId=${cId}`,
-        { method: "DELETE" }
+      await tenantFetch(
+        schoolId,
+        `/users/teachers/${teacherId}/subjects?subjectId=${sId}&classId=${cId}`,
+        { method: "DELETE" },
       );
-
-      if (!res.ok) throw new Error("Failed to delete");
     } catch (error) {
       console.error(error);
+
+      // rollback
       setAssignments(previousState);
       alert("Failed to remove assignment");
     }

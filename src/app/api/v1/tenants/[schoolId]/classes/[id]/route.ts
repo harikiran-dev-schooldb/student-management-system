@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { resolveSchoolId } from "@/lib/resolveSchool";
-import { classSchema } from "@/lib/formValidationSchemas";
-import { z } from "zod";
 
 export async function GET(
   req: NextRequest,
@@ -31,39 +29,66 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ schoolId: string; id: string }> },
 ) {
-  const { schoolId: schoolSlug, id: classIdString } = await params;
-  const schoolId = await resolveSchoolId(schoolSlug);
-  const classId = Number(classIdString);
+  try {
+    const { schoolId: schoolSlug, id: classIdString } = await params;
+    const schoolId = await resolveSchoolId(schoolSlug);
+    const classId = Number(classIdString);
 
-  const body = await req.json();
-  const parsed = classSchema
-    .extend({
-      gradeId: z.coerce.number(),
-    })
-    .safeParse(body);
+    if (Number.isNaN(classId)) {
+      return NextResponse.json({ error: "Invalid class ID" }, { status: 400 });
+    }
 
-  if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid data" }, { status: 400 });
+    const body = await req.json();
+    const { supervisorId } = body;
+
+    if (!supervisorId) {
+      return NextResponse.json(
+        { error: "Supervisor ID is required" },
+        { status: 400 },
+      );
+    }
+
+    // 🔹 Get existing class with grade
+    const existingClass = await prisma.class.findFirst({
+      where: {
+        id: classId,
+        schoolId,
+      },
+      include: {
+        Grade: true,
+      },
+    });
+
+    if (!existingClass) {
+      return NextResponse.json({ error: "Class not found" }, { status: 404 });
+    }
+
+    // 🔹 Regenerate name from grade + section
+    const name = `${existingClass.Grade.level} - ${existingClass.section}`;
+
+    const updated = await prisma.class.updateMany({
+      where: {
+        id: classId,
+        schoolId,
+      },
+      data: {
+        supervisorId,
+        name,
+      },
+    });
+
+    if (updated.count === 0) {
+      return NextResponse.json({ error: "Update failed" }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Update supervisor error:", error);
+    return NextResponse.json(
+      { error: "Something went wrong" },
+      { status: 500 },
+    );
   }
-
-  const { section, gradeId, supervisorId } = parsed.data;
-
-  const grade = await prisma.grade.findFirst({
-    where: { id: gradeId, schoolId },
-  });
-
-  if (!grade) {
-    return NextResponse.json({ error: "Invalid grade" }, { status: 400 });
-  }
-
-  const name = `${grade.level} - ${section}`;
-
-  await prisma.class.update({
-    where: { id: classId },
-    data: { section, gradeId, supervisorId, name },
-  });
-
-  return NextResponse.json({ success: true });
 }
 
 export async function DELETE(

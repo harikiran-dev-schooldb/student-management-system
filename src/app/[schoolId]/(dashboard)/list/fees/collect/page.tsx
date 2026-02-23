@@ -25,6 +25,7 @@ const renderRow = (
   item: FeeColectList,
   role: string | null,
   feeMap: Map<string, any>,
+  schoolId: string,
 ) => {
   const studentFee = feeMap.get(item.id);
 
@@ -102,7 +103,7 @@ const renderRow = (
         {role === "admin" && (
           <div className="flex items-center gap-2">
             {/* Collect Fees Button */}
-            <Link href={`/list/fees/collect/${item.id}`}>
+            <Link href={`/${schoolId}/list/fees/collect/${item.id}`}>
               <button
                 className="flex items-center justify-center rounded-full w-8 h-8
              bg-LamaSky dark:bg-LamaSkyLight"
@@ -112,7 +113,7 @@ const renderRow = (
             </Link>
 
             {/* Cancel Fees Button */}
-            <Link href={`/list/fees/cancel/${item.id}`}>
+            <Link href={`/${schoolId}/list/fees/cancel/${item.id}`}>
               <button
                 className="flex items-center justify-center rounded-full w-8 h-8
              bg-LamaPurple dark:bg-LamaPurple"
@@ -172,7 +173,7 @@ const StudentFeeListPage = async ({
   const db = tenantPrisma(school.id);
 
   // 4️⃣ Auth
-  const { role, classId: teacherClassId } = await fetchUserInfo(school.id);
+  const { role, classId: teacherClassId } = await fetchUserInfo(slug);
 
   const columns = getColumns(role);
 
@@ -270,7 +271,7 @@ const StudentFeeListPage = async ({
   const rawGroupedFees = await getGroupedStudentFees(school.id, studentIds);
   const feeMap = new Map(rawGroupedFees.map((fee) => [fee.studentId, fee]));
 
-  const Path = `${slug}/list/fees/collect`;
+  const Path = `/${slug}/list/fees/collect`;
 
   return (
     <div className="flex-1 p-4 bg-white dark:bg-gray-900 text-black dark:text-white">
@@ -308,7 +309,7 @@ const StudentFeeListPage = async ({
       {/* Table */}
       <Table
         columns={columns}
-        renderRow={(item) => renderRow(item, role, feeMap)}
+        renderRow={(item) => renderRow(item, role, feeMap, slug)}
         data={data}
       />
 

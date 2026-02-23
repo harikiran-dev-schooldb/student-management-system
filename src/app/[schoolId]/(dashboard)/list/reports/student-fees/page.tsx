@@ -157,7 +157,7 @@ const StudentListPage = async ({
     throw new Error("Invalid school");
   }
 
-  const { role } = await fetchUserInfo(school.id);
+  const { role } = await fetchUserInfo(slug);
 
   const db = tenantPrisma(school.id);
 

@@ -18,7 +18,6 @@ import {
   Phone,
   Calendar,
   CalendarDays,
-  School,
 } from "lucide-react";
 import { SingleStudentSelect } from "../../../../../../../../types/query-types";
 import { tenantPrisma } from "@/lib/tenant-prisma";
@@ -75,7 +74,7 @@ const SingleStudentPage = async ({ params }: StudentSinglePageProps) => {
 
   // 2️⃣ Tenant scoped Prisma
   const db = tenantPrisma(school.id);
-  const { role } = await fetchUserInfo(school.id);
+  const { role } = await fetchUserInfo(slug);
 
   const student = await db.student.findFirst({
     where: { id },

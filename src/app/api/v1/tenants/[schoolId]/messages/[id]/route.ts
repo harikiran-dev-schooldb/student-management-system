@@ -187,3 +187,56 @@ export async function PUT(
     );
   }
 }
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ schoolId: string; id: string }> }
+) {
+  try {
+    const { schoolId: slug, id: messageId } = await params;
+    const schoolId = await resolveSchoolId(slug);
+
+    if (!messageId) {
+      return NextResponse.json(
+        { error: "Message ID is required" },
+        { status: 400 }
+      );
+    }
+
+    /* ----------------------------------------------------
+       Ensure Message Belongs to This School
+    ----------------------------------------------------- */
+    const existingMessage = await prisma.messages.findFirst({
+      where: {
+        id: messageId,
+        schoolId,
+      },
+      select: { id: true },
+    });
+
+    if (!existingMessage) {
+      return NextResponse.json(
+        { error: "Message not found in this school" },
+        { status: 404 }
+      );
+    }
+
+    /* ----------------------------------------------------
+       Tenant-Safe Delete
+    ----------------------------------------------------- */
+    await prisma.messages.delete({
+      where: { id: messageId },
+    });
+
+    return NextResponse.json(
+      { success: true, message: "Message deleted successfully" },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error("Message DELETE error:", error);
+    return NextResponse.json(
+      { error: "Failed to delete message" },
+      { status: 500 }
+    );
+  }
+}

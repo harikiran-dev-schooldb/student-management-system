@@ -18,6 +18,8 @@ import {
   GraduationCap,
   Users,
 } from "lucide-react";
+import { useParams } from "next/navigation";
+import { tenantFetch } from "@/lib/tenantFetch";
 
 // --- Types ---
 type Exam = { id: number; title: string };
@@ -53,97 +55,122 @@ export default function ResultsViewer() {
   const [selectedGradeId, setSelectedGradeId] = useState<number>();
   const [selectedClassId, setSelectedClassId] = useState<number>();
 
-  const [role, setRole] = useState<"student" | "teacher" | "admin">();
   const [studentId, setStudentId] = useState<string>();
   const [teacherClassId, setTeacherClassId] = useState<number>();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const { schoolId } = useParams<{ schoolId: string }>();
+  const [role, setRole] = useState<
+    "student" | "teacher" | "admin" | undefined
+  >();
 
   // --- Effects ---
 
   // 1. Initial Load (User & Exams)
   useEffect(() => {
+    if (!schoolId) return;
+
     let mounted = true;
+
     const init = async () => {
       try {
-        const userRes = await axios.get("/api/users/me");
-        const { role, studentId, classId } = userRes.data;
+        const user = await tenantFetch<{
+          role: "student" | "teacher" | "admin";
+          studentId?: string;
+          classId?: number;
+        }>(schoolId, "/users/me");
 
         if (!mounted) return;
-        setRole(role);
-        if (role === "student") setStudentId(studentId);
-        if (role === "teacher") setTeacherClassId(Number(classId));
 
-        // Parallel API calls
+        setRole(user.role);
+        if (user.role === "student") setStudentId(user.studentId);
+        if (user.role === "teacher") setTeacherClassId(user.classId);
+
         const [examsRes, gradesRes] = await Promise.all([
-          axios.get("/api/exams"),
-          role === "admin"
-            ? axios.get("/api/grades")
-            : Promise.resolve({ data: [] }),
+          tenantFetch<{ exams: Exam[] }>(schoolId, "/exams"),
+          user.role === "admin"
+            ? tenantFetch<Grade[]>(schoolId, "/grades")
+            : Promise.resolve<Grade[]>([]),
         ]);
 
-        if (mounted) {
-          setExams(examsRes.data.exams || []);
-          if (role === "admin") setGrades(gradesRes.data || []);
-        }
+        if (!mounted) return;
 
-        if (role === "teacher" && classId && mounted) {
-          const clsRes = await axios.get(`/api/classes?classId=${classId}`);
-          setClasses(clsRes.data);
-          setSelectedClassId(Number(classId));
+        setExams(examsRes.exams || []);
+        if (user.role === "admin") setGrades(gradesRes || []);
+
+        if (user.role === "teacher" && user.classId) {
+          const clsRes = await tenantFetch<any[]>(
+            schoolId,
+            `/classes?classId=${user.classId}`,
+          );
+
+          if (!mounted) return;
+
+          setClasses(clsRes);
+          setSelectedClassId(user.classId);
         }
       } catch (err) {
         console.error(err);
       }
     };
+
     init();
+
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [schoolId]);
 
   // 2. Fetch classes when grade changes (Admin only)
   useEffect(() => {
-    if (role !== "admin" || !selectedGradeId) return;
-    axios
-      .get(`/api/classes?gradeId=${selectedGradeId}`)
-      .then((res) => setClasses(res.data));
-  }, [selectedGradeId, role]);
+    if (!schoolId || role !== "admin" || !selectedGradeId) return;
+
+    tenantFetch<any[]>(schoolId, `/classes?gradeId=${selectedGradeId}`)
+      .then(setClasses)
+      .catch(console.error);
+  }, [selectedGradeId, role, schoolId]);
 
   // 3. Main Search Function
   const fetchResults = async () => {
+    if (!schoolId) return;
+
     setLoading(true);
     setError(null);
+
     try {
       if (!selectedExamId) {
         setError("Please select an exam.");
-        setLoading(false);
         return;
       }
 
       const params: any = { examId: selectedExamId };
 
-      if (role === "student") params.studentId = studentId;
-      else if (role === "teacher") {
+      if (role === "student") {
+        params.studentId = studentId;
+      } else if (role === "teacher") {
         if (!teacherClassId) {
           setError("No class assigned.");
-          setLoading(false);
           return;
         }
         params.classId = teacherClassId;
       } else if (role === "admin") {
         if (!selectedGradeId || !selectedClassId) {
           setError("Please select grade and class.");
-          setLoading(false);
           return;
         }
         params.gradeId = selectedGradeId;
         params.classId = selectedClassId;
       }
 
-      const res = await axios.get("/api/results", { params });
-      setResults(res.data.results);
+      const query = new URLSearchParams(params).toString();
+
+      const res = await tenantFetch<{ results: Result[] }>(
+        schoolId,
+        `/results?${query}`,
+      );
+
+      setResults(res.results);
     } catch (err) {
       console.error(err);
       setError("Failed to fetch results.");
@@ -153,22 +180,20 @@ export default function ResultsViewer() {
   };
 
   // Auto-fetch results when all required filters are ready
+  const hasFetchedRef = useRef(false);
+
   useEffect(() => {
     if (!selectedExamId) return;
 
-    if (role === "admin") {
-      if (!selectedGradeId || !selectedClassId) return;
-    }
+    if (role === "admin" && (!selectedGradeId || !selectedClassId)) return;
+    if (role === "teacher" && !teacherClassId) return;
+    if (role === "student" && !studentId) return;
 
-    if (role === "teacher") {
-      if (!teacherClassId) return;
+    if (hasFetchedRef.current) {
+      fetchResults();
+    } else {
+      hasFetchedRef.current = true;
     }
-
-    if (role === "student") {
-      if (!studentId) return;
-    }
-
-    fetchResults();
   }, [
     selectedExamId,
     selectedGradeId,
@@ -178,11 +203,10 @@ export default function ResultsViewer() {
     studentId,
   ]);
 
-
   // --- Data Processing ---
   const subjects = useMemo(
     () => Array.from(new Set(results.map((r) => r.Subject.name))).sort(),
-    [results]
+    [results],
   );
 
   const studentMap = useMemo(() => {
@@ -214,10 +238,11 @@ export default function ResultsViewer() {
   // --- UI ---
   return (
     <div
-      className={`flex flex-col bg-gray-50 dark:bg-darkMode text-zinc-900 dark:text-zinc-100 transition-all duration-300 ${isFullScreen
-        ? "fixed inset-0 z-[100] h-screen w-screen"
-        : "relative min-h-[calc(100vh-4rem)] w-full"
-        }`}
+      className={`flex flex-col bg-gray-50 dark:bg-darkMode text-zinc-900 dark:text-zinc-100 transition-all duration-300 ${
+        isFullScreen
+          ? "fixed inset-0 z-[100] h-screen w-screen"
+          : "relative min-h-[calc(100vh-4rem)] w-full"
+      }`}
     >
       {/* 1. Premium Header */}
       <header className="bg-white/80 dark:bg-darkMode backdrop-blur-xl border-b border-zinc-200 dark:border-darkfg top-0 z-30 shadow-sm px-4 md:px-6 py-4 transition-all">
@@ -248,7 +273,6 @@ export default function ResultsViewer() {
               )}
             </button>
           </div>
-
         </div>
 
         {/* Floating Filter Bar (same as Marks Entry) */}
@@ -283,12 +307,14 @@ export default function ResultsViewer() {
                 onChange={(val) => setSelectedClassId(Number(val))}
                 placeholder="Select Section"
                 disabled={!selectedGradeId}
-                options={classes.map((c) => ({ value: c.id, label: c.section }))}
+                options={classes.map((c) => ({
+                  value: c.id,
+                  label: c.section,
+                }))}
               />
             </>
           )}
         </div>
-
 
         {error && (
           <div className="mt-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm flex items-center justify-center gap-2 border border-red-200 dark:border-red-800">
@@ -296,8 +322,6 @@ export default function ResultsViewer() {
             {error}
           </div>
         )}
-
-
       </header>
 
       {/* 2. Main Content */}
@@ -379,7 +403,7 @@ export default function ResultsViewer() {
                     <td className="px-4 py-3 text-center text-zinc-800 dark:text-zinc-100">
                       {subjects.reduce(
                         (sum, subj) => sum + (subjectMaxMap.get(subj) ?? 0),
-                        0
+                        0,
                       )}
                     </td>
                     <td className="px-4 py-3 text-center text-zinc-800 dark:text-zinc-100">
@@ -391,11 +415,11 @@ export default function ResultsViewer() {
                   {studentRows.map(([id, student], idx) => {
                     const total = subjects.reduce(
                       (sum, subj) => sum + (student.marks[subj] ?? 0),
-                      0
+                      0,
                     );
                     const maxTotal = subjects.reduce(
                       (sum, subj) => sum + (subjectMaxMap.get(subj) ?? 0),
-                      0
+                      0,
                     );
                     const percentage =
                       maxTotal > 0
@@ -450,11 +474,11 @@ export default function ResultsViewer() {
               {studentRows.map(([id, student], idx) => {
                 const total = subjects.reduce(
                   (sum, subj) => sum + (student.marks[subj] ?? 0),
-                  0
+                  0,
                 );
                 const maxTotal = subjects.reduce(
                   (sum, subj) => sum + (subjectMaxMap.get(subj) ?? 0),
-                  0
+                  0,
                 );
                 const percentage =
                   maxTotal > 0 ? ((total / maxTotal) * 100).toFixed(1) : "0.0";
@@ -514,8 +538,6 @@ export default function ResultsViewer() {
   );
 }
 
-
-
 // --- Premium Custom Select Component ---
 // This replaces the native <select> with a simulated UI that looks like Shadcn/Headless
 function CustomSelect({
@@ -545,7 +567,7 @@ function CustomSelect({
   }, []);
 
   const selectedLabel = options.find(
-    (o) => String(o.value) === String(value)
+    (o) => String(o.value) === String(value),
   )?.label;
 
   return (
@@ -560,18 +582,20 @@ function CustomSelect({
            bg-zinc-50 dark:bg-darkMode hover:bg-zinc-100 dark:hover:bg-zinc-800/50 
            border border-transparent hover:border-zinc-200 dark:hover:border-zinc-700
            rounded-xl cursor-pointer transition-all duration-200
-           ${isOpen ? "ring-2 ring-indigo-500/20 bg-white dark:bg-darkMode" : ""
-          }
+           ${
+             isOpen ? "ring-2 ring-indigo-500/20 bg-white dark:bg-darkMode" : ""
+           }
          `}
       >
         <div className="flex items-center gap-3 overflow-hidden">
           <div
             className={`
              p-2 rounded-lg transition-colors
-             ${value
-                ? "bg-indigo-100 dark:bg-darkMode text-indigo-600 dark:text-indigo-400"
-                : "bg-zinc-200 dark:bg-darkMode text-zinc-500"
-              }
+             ${
+               value
+                 ? "bg-indigo-100 dark:bg-darkMode text-indigo-600 dark:text-indigo-400"
+                 : "bg-zinc-200 dark:bg-darkMode text-zinc-500"
+             }
            `}
           >
             {icon}
@@ -581,16 +605,18 @@ function CustomSelect({
               {label}
             </span>
             <span
-              className={`text-sm font-semibold truncate ${value ? "text-zinc-900 dark:text-white" : "text-zinc-400"
-                }`}
+              className={`text-sm font-semibold truncate ${
+                value ? "text-zinc-900 dark:text-white" : "text-zinc-400"
+              }`}
             >
               {selectedLabel || placeholder}
             </span>
           </div>
         </div>
         <ChevronDown
-          className={`w-4 h-4 text-zinc-400 transition-transform duration-300 ${isOpen ? "rotate-180" : ""
-            }`}
+          className={`w-4 h-4 text-zinc-400 transition-transform duration-300 ${
+            isOpen ? "rotate-180" : ""
+          }`}
         />
       </div>
 
@@ -607,10 +633,11 @@ function CustomSelect({
                 }}
                 className={`
                    px-4 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-colors flex items-center justify-between
-                   ${String(value) === String(opt.value)
-                    ? "bg-indigo-50 dark:bg-darkMode text-indigo-700 dark:text-indigo-300"
-                    : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-darkbg"
-                  }
+                   ${
+                     String(value) === String(opt.value)
+                       ? "bg-indigo-50 dark:bg-darkMode text-indigo-700 dark:text-indigo-300"
+                       : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-darkbg"
+                   }
                  `}
               >
                 {opt.label}

@@ -107,7 +107,7 @@ const AdminListPage = async ({
   });
 
   if (!school) throw new Error("Invalid school");
-  const { role } = await fetchUserInfo(school.id);
+  const { role } = await fetchUserInfo(slug);
   const columns = getColumns(role);
 
   const { page, ...queryParams } = resolvedSearchParams;

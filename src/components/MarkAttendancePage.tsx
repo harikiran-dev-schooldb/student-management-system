@@ -18,12 +18,13 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import { useParams } from "next/navigation";
+import { tenantFetch } from "@/lib/tenantFetch";
 
 interface Props {
   role: "admin" | "teacher";
   teacherClassId?: number;
 }
-
 
 export default function MarkAttendancePage({ role, teacherClassId }: Props) {
   const { register, handleSubmit, getValues, watch } = useForm();
@@ -54,6 +55,9 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
 
   const selectedDate = watch("date");
 
+  const { schoolId } = useParams<{ schoolId: string }>();
+  console.log("School ID param:", schoolId);
+
   /* -------------------- Custom Ctrl+F Logic -------------------- */
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -70,22 +74,21 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
 
   /* -------------------- Load Grades/Classes -------------------- */
   useEffect(() => {
-    if (role === "admin") {
-      fetch("/api/grades")
-        .then((r) => r.json())
-        .then(setGrades);
-    }
-  }, [role]);
+    if (role !== "admin" || !schoolId) return;
+
+    tenantFetch<Grade[]>(schoolId, "/grades")
+      .then(setGrades)
+      .catch(console.error);
+  }, [role, schoolId]);
 
   useEffect(() => {
     if (role === "admin" && selectedGrade) {
-      fetch(`/api/classes?gradeId=${selectedGrade}`)
-        .then((r) => r.json())
-        .then(setClasses);
+      tenantFetch<Class[]>(schoolId, `/grades/${selectedGrade}/classes`)
+        .then(setClasses)
+        .catch(console.error);
     }
   }, [role, selectedGrade]);
 
-  /* -------------------- Auto Load for Teacher -------------------- */
   /* -------------------- Auto Load for Teacher -------------------- */
   useEffect(() => {
     if (role === "teacher" && teacherClassId && selectedDate) {
@@ -95,37 +98,54 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
 
   /* -------------------- Fetch Students -------------------- */
   const fetchStudents = async () => {
-    setLoading(true);
-    const selectedDate = getValues("date") || today;
-    let url = "/api/students";
-    let queryClassId = null;
+    if (!schoolId) return;
 
-    if (role === "teacher" && teacherClassId) {
-      url += `?classId=${teacherClassId}`;
-      queryClassId = teacherClassId;
-    } else if (selectedClass) {
-      url += `?classId=${selectedClass}`;
-      queryClassId = selectedClass;
-    } else if (selectedGrade) {
-      url += `?gradeId=${selectedGrade}`;
-    }
+    setLoading(true);
+
+    
 
     try {
-      const studentsData = await fetch(url).then((r) => r.json());
-      setStudents(studentsData);
-      setCurrentPage(1); // Reset to page 1
+      const selectedDate = getValues("date") || today;
 
-      // Load History
+      const params = new URLSearchParams();
+      let queryClassId: number | null = null;
+
+      // 🔹 Query Building (Type-safe)
+      if (role === "teacher" && teacherClassId != null) {
+        params.append("classId", teacherClassId.toString());
+        queryClassId = teacherClassId;
+      } else if (selectedClass != null) {
+        params.append("classId", selectedClass.toString());
+        queryClassId = selectedClass;
+      } else if (selectedGrade != null) {
+        params.append("gradeId", selectedGrade.toString());
+      }
+
+      const studentsData = await tenantFetch<Student[]>(
+        schoolId,
+        `/students?${params.toString()}`,
+      );
+
+      setStudents(studentsData);
+      setCurrentPage(1);
+
+      // 🔹 Load Attendance History
       const existingMap: Record<string, boolean> = {};
       let hasHistory = false;
 
-      if (queryClassId) {
+      if (queryClassId != null) {
+        const historyParams = new URLSearchParams();
+        historyParams.append("date", selectedDate);
+        historyParams.append("classId", queryClassId.toString());
+
         try {
           const historyRes = await fetch(
-            `/api/attendance?date=${selectedDate}&classId=${queryClassId}`,
+            `/api/v1/tenants/${schoolId}/attendance?${historyParams.toString()}`,
           );
+
           if (historyRes.ok) {
             const historyData = await historyRes.json();
+
             if (Array.isArray(historyData) && historyData.length > 0) {
               historyData.forEach((rec: any) => {
                 existingMap[rec.studentId] = rec.present;
@@ -138,8 +158,10 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
         }
       }
 
+      // 🔹 Initialize Attendance State
       const initialAttendance: Record<string, boolean> = {};
-      studentsData.forEach((s: Student) => {
+
+      studentsData.forEach((s) => {
         initialAttendance[s.id] =
           s.id in existingMap ? existingMap[s.id] : true;
       });
@@ -149,6 +171,7 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
       const isEveryoneAbsent = Object.values(initialAttendance).every(
         (val) => val === false,
       );
+
       setAllAbsent(isEveryoneAbsent);
     } catch (error) {
       console.error(error);
@@ -159,6 +182,8 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
   };
 
   /* -------------------- Filtering & Pagination -------------------- */
+
+  
 
   // 1. Filter Logic: Runs on the ENTIRE list first
   const filteredStudents = useMemo(() => {
@@ -218,20 +243,19 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
     }));
 
     try {
-      const res = await fetch("/api/attendance/mark", {
+      await tenantFetch(schoolId, "/attendance", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
-      if (!res.ok) throw new Error();
+      toast.success("Attendance submitted successfully!");
 
-      toast.success("Attendance updated successfully!");
       setStudents([]);
       setAttendance({});
       setAllAbsent(false);
       setSearchQuery("");
-    } catch {
+    } catch (error) {
+      console.error(error);
       toast.error("Failed to submit attendance");
     } finally {
       setSubmitting(false);

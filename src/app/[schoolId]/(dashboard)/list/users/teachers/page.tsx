@@ -22,7 +22,7 @@ import { TeachersSelect } from "../../../../../../../types/query-types";
 import { tenantPrisma } from "@/lib/tenant-prisma";
 
 // -------------------- Table Row --------------------
-const renderRow = (item: TeachersList, role: string | null) => (
+const renderRow = (item: TeachersList, role: string | null, schoolId: string) => (
   <tr
     className="text-sm border-b border-gray-200 even:bg-gray-50 hover:bg-LamaPurpleLight dark:border-gray-700 dark:even:bg-gray-800 dark:hover:bg-gray-700"
     key={item.id}
@@ -92,7 +92,7 @@ const renderRow = (item: TeachersList, role: string | null) => (
       <div className="flex items-center gap-2">
         {(role === "admin" || role === "teacher") && (
           <>
-            <Link href={`/list/users/teachers/${item.id}`}>
+            <Link href={`/${schoolId}/list/users/teachers/${item.id}`}>
               <div className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-darkfg dark:text-gray-300 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-900/20 dark:hover:text-indigo-400 transition-colors">
                 <Eye className="h-4 w-4" />
               </div>
@@ -143,7 +143,7 @@ const TeacherListPage = async ({
   // 3️⃣ Tenant-scoped Prisma
   const db = tenantPrisma(school.id);
 
-  const { role } = await fetchUserInfo(school.id);
+  const { role } = await fetchUserInfo(slug);
   const columns = getColumns(role);
   const { page, userStatus, ...queryParams } = resolvedSearchParams;
   const p = page ? (Array.isArray(page) ? page[0] : page) : "1";
@@ -235,7 +235,7 @@ const TeacherListPage = async ({
       {/* Table */}
       <Table
         columns={columns}
-        renderRow={(item) => renderRow(item, role)}
+        renderRow={(item) => renderRow(item, role, slug)}
         data={data}
       />
 

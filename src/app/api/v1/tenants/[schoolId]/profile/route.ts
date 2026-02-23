@@ -9,7 +9,7 @@ import { requireTenantAccess } from "@/lib/requireTenantAccess";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: Promise<{ schoolId: string}> }
+  { params }: { params: Promise<{ schoolId: string }> },
 ) {
   try {
     const { schoolId: slug } = await params;
@@ -17,20 +17,14 @@ export async function GET(
     /* 🔐 Clerk Authentication */
     const { userId } = await auth();
     if (!userId) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     /* 🔐 Tenant Validation */
     const access = await requireTenantAccess();
 
-    if (access.schoolId !== slug) {
-      return NextResponse.json(
-        { error: "Forbidden" },
-        { status: 403 }
-      );
+    if (access.schoolSlug !== slug) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const schoolId = access.schoolId;
@@ -53,10 +47,7 @@ export async function GET(
     });
 
     if (!profile) {
-      return NextResponse.json(
-        { error: "Profile not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Profile not found" }, { status: 404 });
     }
 
     return NextResponse.json({
@@ -66,13 +57,12 @@ export async function GET(
       activeRoleId: profile.activeUserId,
       roles: profile.users,
     });
-
   } catch (error) {
     console.error("GET /profile error:", error);
 
     return NextResponse.json(
       { error: "Internal Server Error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

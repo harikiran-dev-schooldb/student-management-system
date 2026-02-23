@@ -22,7 +22,7 @@ const StudentProfile = async ({
   const db = tenantPrisma(school.id);
 
   // 3️⃣ Fetch user info with tenant
-  const { role, userId } = await fetchUserInfo(school.id);
+  const { role, userId } = await fetchUserInfo(slug);
 
   if (role === "student" && userId) {
     const student = await db.student.findFirst({

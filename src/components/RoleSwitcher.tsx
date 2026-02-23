@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useClerk } from "@clerk/nextjs";
+import { useSchoolSlug } from "./hooks/getschool";
 
 type Role = { id: number; role: string };
 type Props = { roles: Role[]; activeRoleId?: number | null };
@@ -11,6 +12,7 @@ export default function RoleSwitcher({ roles, activeRoleId }: Props) {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { session } = useClerk();
+  const schoolId = useSchoolSlug();
 
   // ✅ Remove duplicate role names
   const uniqueRoles = useMemo(() => {
@@ -27,7 +29,7 @@ export default function RoleSwitcher({ roles, activeRoleId }: Props) {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/switch-role", {
+      const res = await fetch(`/api/v1/tenants/${schoolId}/switch-profile`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ roleId }),

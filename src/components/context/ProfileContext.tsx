@@ -1,8 +1,15 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+} from "react";
+import { useParams } from "next/navigation";
+import { tenantFetch } from "@/lib/tenantFetch";
 
-// 🔹 Define Role type
 export type Role = {
   id: number;
   role: string;
@@ -10,7 +17,6 @@ export type Role = {
   profileId: string;
 };
 
-// 🔹 Define Profile type
 export type Profile = {
   id: string;
   phone: string;
@@ -20,53 +26,72 @@ export type Profile = {
   activeRole?: Role;
 };
 
-// 🔹 Define Context shape
 type ProfileContextType = {
   profile: Profile | null;
   loading: boolean;
   switchRole: (roleId: number) => Promise<void>;
+  refreshProfile: () => Promise<void>;
 };
 
 const ProfileContext = createContext<ProfileContextType | null>(null);
 
 export function ProfileProvider({ children }: { children: React.ReactNode }) {
+  const { schoolId } = useParams<{ schoolId: string }>();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Fetch profile on mount
-  useEffect(() => {
-    async function fetchProfile() {
+  const fetchProfile = useCallback(async () => {
+    if (!schoolId) return;
+
+    try {
       setLoading(true);
-      const res = await fetch("/api/profile");
-      const data = await res.json();
+
+      const data = await tenantFetch<Profile>(
+        schoolId,
+        "/profile"
+      );
+
       setProfile(data);
+    } catch (error) {
+      console.error("Profile fetch failed:", error);
+      setProfile(null);
+    } finally {
       setLoading(false);
     }
-    fetchProfile();
-  }, []);
+  }, [schoolId]);
 
-  // Switch role
-  async function switchRole(roleId: number) {
-    setLoading(true);
-    await fetch("/api/switch-role", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ roleId }),
-    });
-    const res = await fetch("/api/profile");
-    const data = await res.json();
-    setProfile(data);
-    setLoading(false);
-  }
+  useEffect(() => {
+    fetchProfile();
+  }, [fetchProfile]);
+
+  const switchRole = async (roleId: number) => {
+    if (!schoolId) return;
+
+    try {
+      setLoading(true);
+
+      await tenantFetch(schoolId, "/switch-role", {
+        method: "POST",
+        body: JSON.stringify({ roleId }),
+      });
+
+      await fetchProfile();
+    } catch (error) {
+      console.error("Switch role failed:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <ProfileContext.Provider value={{ profile, loading, switchRole }}>
+    <ProfileContext.Provider
+      value={{ profile, loading, switchRole, refreshProfile: fetchProfile }}
+    >
       {children}
     </ProfileContext.Provider>
   );
 }
 
-// 🔹 Custom hook
 export function useProfile() {
   const context = useContext(ProfileContext);
   if (!context) {

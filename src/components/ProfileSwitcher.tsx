@@ -1,50 +1,71 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { useClerk } from "@clerk/nextjs";
+import { useSchoolSlug } from "./hooks/getschool";
 
-type Profile = {
-    id: string;
-    role: string;
-};
+type Role = { id: number; role: string };
+type Props = { roles: Role[]; activeRoleId?: number | null };
 
-type Props = {
-    profiles: Profile[];
-    activeProfileId: string;
-};
+export default function RoleSwitcher({ roles, activeRoleId }: Props) {
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+  const { session } = useClerk();
+  const schoolId = useSchoolSlug();
 
-export default function ProfileSwitcher({ profiles, activeProfileId }: Props) {
-    const [selectedProfileId, setSelectedProfileId] = useState(activeProfileId);
+  const uniqueRoles = useMemo(() => {
+    const seen = new Set<string>();
+    return roles.filter((r) => {
+      if (seen.has(r.role)) return false;
+      seen.add(r.role);
+      return true;
+    });
+  }, [roles]);
 
-    useEffect(() => {
-        setSelectedProfileId(activeProfileId);
-    }, [activeProfileId]);
+  async function switchRole(roleId: number) {
+    if (!roleId || !schoolId) return;
 
-    const handleSwitch = async (profileId: string) => {
-        setSelectedProfileId(profileId);
+    setLoading(true);
 
-        await fetch("/api/set-active-profile", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ profileId }),
-        });
+    try {
+      const res = await fetch(
+        `/api/v1/tenants/${schoolId}/switch-profile`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ roleId: roleId.toString() }),
+        }
+      );
 
-        // Optional: refresh page after switching
-        window.location.reload();
-    };
+      if (!res.ok) {
+        console.error("Failed to switch role", await res.json());
+        return;
+      }
 
-    return (
-        <div className="flex gap-2 mt-2">
-            {profiles.map((p: Profile) => (
-                <button
-                    key={p.id}
-                    onClick={() => handleSwitch(p.id)}
-                    className={`px-3 py-1 rounded-md ${selectedProfileId === p.id ? "bg-blue-500 text-white" : "bg-gray-200"
-                        }`}
-                >
-                    {p.role}
-                </button>
-            ))}
+      // ✅ Reload Clerk session to get new metadata
+      await session?.reload();
 
-        </div>
-    );
+      // ✅ Refresh server components / middleware
+      router.refresh();
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <select
+      disabled={loading}
+      value={activeRoleId ?? ""}
+      onChange={(e) => switchRole(Number(e.target.value))}
+      className="p-2 rounded-md border text-xs cursor-pointer"
+    >
+      <option value="">Switch Role</option>
+      {uniqueRoles.map((r) => (
+        <option key={r.id} value={r.id}>
+          {r.role}
+        </option>
+      ))}
+    </select>
+  );
 }

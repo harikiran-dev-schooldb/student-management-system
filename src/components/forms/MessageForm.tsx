@@ -8,6 +8,7 @@ import React, { Dispatch, SetStateAction, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 import { getMessageContent } from "@/lib/utils/messageUtils";
+import { useSchoolSlug } from "../hooks/getschool";
 
 const useApiRequest = () => {
   const makeRequest = async (url: string, method: string, body: any) => {
@@ -47,9 +48,6 @@ const MessageForm = ({
     error: false,
   });
 
-  const [studentName, setStudentName] = useState("");
-  const [Class, setClass] = useState("");
-
   const {
     register,
     handleSubmit,
@@ -71,33 +69,33 @@ const MessageForm = ({
 
   const selectedGradeId = watch("gradeId");
   const selectedClassId = watch("classId");
+  const selectedStudentId = watch("studentId");
+  const selectedType = watch("type");
 
   const router = useRouter();
   const { makeRequest } = useApiRequest();
+  const schoolId = useSchoolSlug();
 
   const { classes = [], grades = [], students = [] } = relatedData || {};
-
-  // Debugging: Check the data being passed
-  console.log("Classes:", classes);
-  console.log("Students:", students);
-  console.log("Grades:", grades);
-
-  console.log("Related Data:", relatedData);
-
 
   // Filter classes based on selected gradeId
   const filteredClasses = selectedGradeId
     ? classes.filter((cls: any) => cls.gradeId === Number(selectedGradeId))
     : classes;
 
+  useEffect(() => {
+    setValue("classId", undefined);
+    setValue("studentId", undefined);
+  }, [selectedGradeId, setValue]);
+
   // Final filtered students: only from selected class
   const filteredStudents = selectedClassId
     ? students.filter((std: any) => std.classId === Number(selectedClassId))
     : [];
 
-  // Debugging: Check the filtered results
-  console.log("Filtered Classes:", filteredClasses);
-  console.log("Filtered Students by Grade:", filteredStudents);
+  useEffect(() => {
+    setValue("studentId", undefined);
+  }, [selectedClassId, setValue]);
 
   useEffect(() => {
     setValue("studentId", "");
@@ -105,21 +103,41 @@ const MessageForm = ({
 
   useEffect(() => {
     if (state.success) {
-      toast.success(`Message ${type === "create" ? "created" : "updated"} successfully!`);
+      toast.success(
+        `Message ${type === "create" ? "created" : "updated"} successfully!`,
+      );
       setOpen(false);
       router.refresh();
     }
   }, [state.success, setOpen, router, type]);
 
   useEffect(() => {
-    const generatedMessage = getMessageContent(watch("type"), {
-      name: studentName,
-      className: Class,
+    if (!selectedType) return;
+
+    const student = students.find(
+      (s: any) => String(s.id) === String(selectedStudentId),
+    );
+
+    const cls = classes.find(
+      (c: any) => Number(c.id) === Number(selectedClassId),
+    );
+
+    const generatedMessage = getMessageContent(selectedType, {
+      name: student?.name || "",
+      className: cls?.section || "",
     });
-    
 
     setValue("message", generatedMessage);
-  }, [studentName, Class, watch("type"), setValue]);
+  }, [
+    selectedType,
+    selectedStudentId,
+    selectedClassId,
+    students,
+    classes,
+    setValue,
+  ]);
+
+  const baseUrl = `/api/v1/tenants/${schoolId}/messages`;
 
   const onSubmit = handleSubmit(async (formData) => {
     if (type === "update" && !data?.id) {
@@ -137,9 +155,9 @@ const MessageForm = ({
         gradeId: formData.gradeId || null,
       };
 
-      console.log("Created Message:", payload)
+      console.log("Created Message:", payload);
 
-      const url = type === "create" ? "/api/message" : `/api/message/${data.id}`;
+      const url = type === "create" ? baseUrl : `${baseUrl}/${data?.id}`;
       const method = type === "create" ? "POST" : "PUT";
 
       const result = await makeRequest(url, method, payload);
@@ -152,11 +170,13 @@ const MessageForm = ({
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-6">
-      <h1 className="text-xl font-semibold">
-        {type === "create" ? "Create Message" : "Update Message"}
-      </h1>
-
-      <InputField label="Date" name="date" type="date" register={register} error={errors?.date} />
+      <InputField
+        label="Date"
+        name="date"
+        type="date"
+        register={register}
+        error={errors?.date}
+      />
 
       {/* Grade Select */}
       <div className="flex flex-col gap-2">
@@ -175,7 +195,9 @@ const MessageForm = ({
           ))}
         </select>
         {errors?.gradeId && (
-          <p className="text-xs text-red-400">{errors.gradeId.message?.toString()}</p>
+          <p className="text-xs text-red-400">
+            {errors.gradeId.message?.toString()}
+          </p>
         )}
       </div>
 
@@ -196,7 +218,9 @@ const MessageForm = ({
           ))}
         </select>
         {errors?.classId && (
-          <p className="text-xs text-red-400">{errors.classId.message?.toString()}</p>
+          <p className="text-xs text-red-400">
+            {errors.classId.message?.toString()}
+          </p>
         )}
       </div>
 
@@ -210,13 +234,17 @@ const MessageForm = ({
           })}
         >
           <option value="">Select Student</option>
-          {filteredStudents.map((std: { id: number; name: string }) => (
-            <option key={std.id} value={std.id}>{std.name}</option>
+          {filteredStudents.map((std: { id: string; name: string }) => (
+            <option key={std.id} value={std.id}>
+              {std.name}
+            </option>
           ))}
         </select>
 
         {errors?.studentId && (
-          <p className="text-xs text-red-400">{errors.studentId.message?.toString()}</p>
+          <p className="text-xs text-red-400">
+            {errors.studentId.message?.toString()}
+          </p>
         )}
       </div>
 
@@ -246,10 +274,14 @@ const MessageForm = ({
           <option value="ANNOUNCEMENT">ANNOUNCEMENT</option>
           <option value="GENERAL">GENERAL</option>
         </select>
-        {errors?.type && <p className="text-xs text-red-400">{errors.type.message}</p>}
+        {errors?.type && (
+          <p className="text-xs text-red-400">{errors.type.message}</p>
+        )}
       </div>
 
-      {state.error && <span className="text-red-500 text-sm">Something went wrong!</span>}
+      {state.error && (
+        <span className="text-red-500 text-sm">Something went wrong!</span>
+      )}
 
       <button className="p-2 text-white bg-blue-500 rounded-md">
         {type === "create" ? "Create" : "Update"}

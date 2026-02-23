@@ -18,7 +18,7 @@ const TeacherProfile = async ({ params }: TeacherProfileIndexProps) => {
   if (!school) notFound();
 
   // 2️⃣ Get user info (tenant-aware)
-  const { role, userId } = await fetchUserInfo(school.id);
+  const { role, userId } = await fetchUserInfo(slug);
 
   if (role === "teacher" && userId) {
     const teacher = await prisma.teacher.findFirst({

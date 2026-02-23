@@ -1,5 +1,5 @@
 "use client";
-
+import { useParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import InputField from "../InputField";
@@ -15,6 +15,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import { CldUploadWidget } from "next-cloudinary";
 import Image from "next/image";
+import { tenantFetch } from "@/lib/tenantFetch";
 
 const StudentForm = ({
   type,
@@ -57,6 +58,8 @@ const StudentForm = ({
   });
 
   const router = useRouter();
+  const { schoolId } = useParams<{ schoolId: string }>();
+  
 
   useEffect(() => {
     reset(data);
@@ -81,37 +84,25 @@ const StudentForm = ({
   });
 
   const formAction = async (data: any) => {
-    const payload = { ...data, img: img?.secure_url };
+  const payload = { ...data, img: img?.secure_url };
 
-    const apiUrl =
+  try {
+    await tenantFetch(
+      schoolId,
       type === "update"
-        ? `/api/users/students/${data.id}`
-        : `/api/users/students`;
-
-    try {
-      const response = await fetch(apiUrl, {
+        ? `/users/students/${data.id}`
+        : `/users/students`,
+      {
         method: type === "update" ? "PUT" : "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
         body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error("API Error Response:", errorData);
-        throw new Error(errorData.message || "Error in API request");
       }
+    );
 
-      const result = await response.json();
-      console.log("Response from server:", result);
-
-      setState({ success: true, error: null });
-    } catch (error: any) {
-      console.error("Form Submission Error:", error);
-      setState({ success: false, error: String(error) });
-    }
-  };
+    setState({ success: true, error: null });
+  } catch (error: any) {
+    setState({ success: false, error: String(error) });
+  }
+};
 
   useEffect(() => {
     if (state.success) {
@@ -137,11 +128,11 @@ const StudentForm = ({
       </span>
       <div className="flex flex-wrap justify-between gap-4">
         <InputField
-          label="Admission No (Optional)"
+          label="Admission No"
           name="id"
           defaultValue={data?.id}
           register={register}
-          placeholder="Enter admission number"
+          placeholder="Enter Admission No"
           error={errors.id}
         />
       </div>

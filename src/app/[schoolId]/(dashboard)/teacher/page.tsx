@@ -32,7 +32,7 @@ const TeacherPage = async ({ params }: PageProps) => {
   const db = tenantPrisma(school.id);
 
   // 4️⃣ Fetch user scoped to this school
-  const { userId, role, teacherId } = await fetchUserInfo(school.id);
+  const { userId, role, teacherId } = await fetchUserInfo(slug);
 
   // 🔒 No session
   if (!userId) {

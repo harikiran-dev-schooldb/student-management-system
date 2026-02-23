@@ -6,6 +6,7 @@ import { classSchema, ClassSchema } from "@/lib/formValidationSchemas";
 import React, { Dispatch, SetStateAction } from "react";
 import { toast } from "react-toastify";
 import { useParams, useRouter } from "next/navigation";
+import { tenantFetch } from "@/lib/api/tenantFetch";
 
 const ClassForm = ({
   type,
@@ -35,38 +36,35 @@ const ClassForm = ({
   const router = useRouter();
   const { teachers = [], grades = [] } = relatedData || {};
 
-  const params = useParams();
-  const slug = params.schoolId as string;
-  console.log("School ID from params:", slug);
+  const { schoolId } = useParams<{ schoolId: string }>();
 
   const onSubmit = async (formData: ClassSchema) => {
+    if (!schoolId) return;
+
     try {
-      const url =
-        type === "create" ? `/${slug}/api/classes/create` : `/${slug}/api/classes/update`;
-      const res = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ ...formData, id: data?.id }), // include id for update
-      });
+      if (type === "create") {
+        // 🔹 CREATE
+        await tenantFetch(schoolId, "/classes", {
+          method: "POST",
+          body: JSON.stringify(formData),
+        });
 
-      const result = await res.json();
+        toast.success("Class created successfully!");
+      } else {
+        // 🔹 UPDATE
+        await tenantFetch(schoolId, `/classes/${data?.id}`, {
+          method: "PUT",
+          body: JSON.stringify(formData),
+        });
 
-      if (!res.ok) {
-        console.error("API error response:", result);
-        toast.error(result?.error || "Something went wrong.");
-        return;
+        toast.success("Class updated successfully!");
       }
 
-      toast.success(
-        `Class ${type === "create" ? "created" : "updated"} successfully!`,
-      );
       setOpen(false);
       router.refresh();
-    } catch (error) {
-      console.error("Client-side error:", error);
-      toast.error("Something went wrong. Please try again.");
+    } catch (error: any) {
+      console.error("API error:", error);
+      toast.error(error.message || "Something went wrong.");
     }
   };
 

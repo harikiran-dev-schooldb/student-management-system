@@ -85,7 +85,7 @@ const ExamsList = async ({
     throw new Error("Invalid school");
   }
 
-  const userInfo = await fetchUserInfo(school.id);
+  const userInfo = await fetchUserInfo(slug);
   const { role, studentId, gradeId, teacherId } = userInfo;
   const {
     page,

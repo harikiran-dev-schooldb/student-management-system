@@ -5,14 +5,14 @@ import { useRouter } from "next/navigation";
 import React, { Dispatch, SetStateAction, useState } from "react";
 import { toast } from "react-toastify";
 import { FormContainerProps } from "./FormContainer";
-import { 
-  Plus, 
-  Trash2, 
-  Pencil, 
-  X, 
-  RotateCcw, 
-  AlertTriangle, 
-  Loader2 
+import {
+  Plus,
+  Trash2,
+  Pencil,
+  X,
+  RotateCcw,
+  AlertTriangle,
+  Loader2,
 } from "lucide-react";
 import { useSchoolSlug } from "./hooks/getschool";
 
@@ -37,18 +37,42 @@ const deleteActionMap: Record<string, string> = {
 };
 
 // Dynamic form imports (kept as is)
-const TeacherForm = dynamic(() => import("./forms/TeacherForm"), { loading: () => <LoadingSpinner /> });
-const StudentForm = dynamic(() => import("./forms/StudentForm"), { loading: () => <LoadingSpinner /> });
-const SubjectForm = dynamic(() => import("./forms/SubjectForm"), { loading: () => <LoadingSpinner /> });
-const ClassForm = dynamic(() => import("./forms/ClassForm"), { loading: () => <LoadingSpinner /> });
-const ExamForm = dynamic(() => import("./forms/ExamForm"), { loading: () => <LoadingSpinner /> });
-const LessonsForm = dynamic(() => import("./forms/LessonsForm"), { loading: () => <LoadingSpinner /> });
-const AdminForm = dynamic(() => import("./forms/AdminForm"), { loading: () => <LoadingSpinner /> });
-const HomeworkForm = dynamic(() => import("./forms/HomeworkForm"), { loading: () => <LoadingSpinner /> });
-const FeesManagementForm = dynamic(() => import("./forms/FeesManagementForm"), { loading: () => <LoadingSpinner /> });
-const AnnouncementForm = dynamic(() => import("./forms/AnnouncementForm"), { loading: () => <LoadingSpinner /> });
-const MessagesForm = dynamic(() => import("./forms/MessageForm"), { loading: () => <LoadingSpinner /> });
-const PermissionForm = dynamic(() => import("./forms/PermissionForm"), { loading: () => <LoadingSpinner /> });
+const TeacherForm = dynamic(() => import("./forms/TeacherForm"), {
+  loading: () => <LoadingSpinner />,
+});
+const StudentForm = dynamic(() => import("./forms/StudentForm"), {
+  loading: () => <LoadingSpinner />,
+});
+const SubjectForm = dynamic(() => import("./forms/SubjectForm"), {
+  loading: () => <LoadingSpinner />,
+});
+const ClassForm = dynamic(() => import("./forms/ClassForm"), {
+  loading: () => <LoadingSpinner />,
+});
+const ExamForm = dynamic(() => import("./forms/ExamForm"), {
+  loading: () => <LoadingSpinner />,
+});
+const LessonsForm = dynamic(() => import("./forms/LessonsForm"), {
+  loading: () => <LoadingSpinner />,
+});
+const AdminForm = dynamic(() => import("./forms/AdminForm"), {
+  loading: () => <LoadingSpinner />,
+});
+const HomeworkForm = dynamic(() => import("./forms/HomeworkForm"), {
+  loading: () => <LoadingSpinner />,
+});
+const FeesManagementForm = dynamic(() => import("./forms/FeesManagementForm"), {
+  loading: () => <LoadingSpinner />,
+});
+const AnnouncementForm = dynamic(() => import("./forms/AnnouncementForm"), {
+  loading: () => <LoadingSpinner />,
+});
+const MessagesForm = dynamic(() => import("./forms/MessageForm"), {
+  loading: () => <LoadingSpinner />,
+});
+const PermissionForm = dynamic(() => import("./forms/PermissionForm"), {
+  loading: () => <LoadingSpinner />,
+});
 
 const LoadingSpinner = () => (
   <div className="flex items-center justify-center p-8">
@@ -57,21 +81,106 @@ const LoadingSpinner = () => (
 );
 
 const forms: Record<string, any> = {
-  subject: (setOpen: any, type: any, data: any, relatedData: any) => <SubjectForm type={type} data={data} setOpen={setOpen} relatedData={relatedData} />,
-  class: (setOpen: any, type: any, data: any, relatedData: any) => <ClassForm type={type} data={data} setOpen={setOpen} relatedData={relatedData} />,
-  teacher: (setOpen: any, type: any, data: any, relatedData: any) => <TeacherForm type={type} data={data} setOpen={setOpen} relatedData={relatedData} />,
-  student: (setOpen: any, type: any, data: any, relatedData: any) => <StudentForm type={type} data={data} setOpen={setOpen} relatedData={relatedData} />,
-  exam: (setOpen: any, type: any, data: any, relatedData: any) => <ExamForm type={type} data={data} setOpen={setOpen} relatedData={relatedData} />,
-  lesson: (setOpen: any, type: any, data: any, relatedData: any) => <LessonsForm type={type} data={data} setOpen={setOpen} relatedData={relatedData} />,
-  admin: (setOpen: any, type: any, data: any, relatedData: any) => <AdminForm type={type} data={data} setOpen={setOpen} relatedData={relatedData} />,
-  homework: (setOpen: any, type: any, data: any, relatedData: any) => <HomeworkForm type={type} data={data} setOpen={setOpen} relatedData={relatedData} />,
-  fees: (setOpen: any, type: any, data: any, relatedData: any) => <FeesManagementForm type={type} data={data} setOpen={setOpen} relatedData={relatedData} />,
-  announcement: (setOpen: any, type: any, data: any, relatedData: any) => <AnnouncementForm type={type} data={data} setOpen={setOpen} relatedData={relatedData} />,
-  messages: (setOpen: any, type: any, data: any, relatedData: any) => <MessagesForm type={type} data={data} setOpen={setOpen} relatedData={relatedData} />,
-  permissions: (setOpen: any, type: any, data: any, relatedData: any) => <PermissionForm type={type} data={data} setOpen={setOpen} relatedData={relatedData} />,
+  subject: (setOpen: any, type: any, data: any, relatedData: any) => (
+    <SubjectForm
+      type={type}
+      data={data}
+      setOpen={setOpen}
+      relatedData={relatedData}
+    />
+  ),
+  class: (setOpen: any, type: any, data: any, relatedData: any) => (
+    <ClassForm
+      type={type}
+      data={data}
+      setOpen={setOpen}
+      relatedData={relatedData}
+    />
+  ),
+  teacher: (setOpen: any, type: any, data: any, relatedData: any) => (
+    <TeacherForm
+      type={type}
+      data={data}
+      setOpen={setOpen}
+      relatedData={relatedData}
+    />
+  ),
+  student: (setOpen: any, type: any, data: any, relatedData: any) => (
+    <StudentForm
+      type={type}
+      data={data}
+      setOpen={setOpen}
+      relatedData={relatedData}
+    />
+  ),
+  exam: (setOpen: any, type: any, data: any, relatedData: any) => (
+    <ExamForm
+      type={type}
+      data={data}
+      setOpen={setOpen}
+      relatedData={relatedData}
+    />
+  ),
+  lesson: (setOpen: any, type: any, data: any, relatedData: any) => (
+    <LessonsForm
+      type={type}
+      data={data}
+      setOpen={setOpen}
+      relatedData={relatedData}
+    />
+  ),
+  admin: (setOpen: any, type: any, data: any, relatedData: any) => (
+    <AdminForm
+      type={type}
+      data={data}
+      setOpen={setOpen}
+      relatedData={relatedData}
+    />
+  ),
+  homework: (setOpen: any, type: any, data: any, relatedData: any) => (
+    <HomeworkForm
+      type={type}
+      data={data}
+      setOpen={setOpen}
+      relatedData={relatedData}
+    />
+  ),
+  fees: (setOpen: any, type: any, data: any, relatedData: any) => (
+    <FeesManagementForm
+      type={type}
+      data={data}
+      setOpen={setOpen}
+      relatedData={relatedData}
+    />
+  ),
+  announcement: (setOpen: any, type: any, data: any, relatedData: any) => (
+    <AnnouncementForm
+      type={type}
+      data={data}
+      setOpen={setOpen}
+      relatedData={relatedData}
+    />
+  ),
+  messages: (setOpen: any, type: any, data: any, relatedData: any) => (
+    <MessagesForm
+      type={type}
+      data={data}
+      setOpen={setOpen}
+      relatedData={relatedData}
+    />
+  ),
+  permissions: (setOpen: any, type: any, data: any, relatedData: any) => (
+    <PermissionForm
+      type={type}
+      data={data}
+      setOpen={setOpen}
+      relatedData={relatedData}
+    />
+  ),
 };
 
-const capitalizeFirstLetter = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
+const capitalizeFirstLetter = (str: string) =>
+  str.charAt(0).toUpperCase() + str.slice(1);
 
 function ResponsiveModal({
   open,
@@ -87,9 +196,9 @@ function ResponsiveModal({
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center">
       {/* Backdrop with blur */}
-      <div 
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" 
-        onClick={onClose} 
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+        onClick={onClose}
       />
 
       {/* Modal Content */}
@@ -126,17 +235,20 @@ const FormModal = ({
   const buttonConfig = {
     create: {
       icon: <Plus size={20} />,
-      className: "w-8 h-8 rounded-full bg-LamaBlue hover:bg-amber-500 text-white dark:text-white transition-colors",
+      className:
+        "w-8 h-8 rounded-full bg-LamaBlue hover:bg-amber-500 text-white dark:text-white transition-colors",
       label: "Create",
     },
     update: {
       icon: <Pencil size={16} />,
-      className: "w-7 h-7 rounded-full bg-indigo-100 hover:bg-indigo-200 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 dark:hover:bg-indigo-900 transition-colors",
+      className:
+        "w-7 h-7 rounded-full bg-indigo-100 hover:bg-indigo-200 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 dark:hover:bg-indigo-900 transition-colors",
       label: "Edit",
     },
     delete: {
       icon: <Trash2 size={16} />,
-      className: "w-7 h-7 rounded-full bg-rose-100 hover:bg-rose-200 text-rose-600 dark:bg-rose-900/50 dark:text-rose-400 dark:hover:bg-rose-900 transition-colors",
+      className:
+        "w-7 h-7 rounded-full bg-rose-100 hover:bg-rose-200 text-rose-600 dark:bg-rose-900/50 dark:text-rose-400 dark:hover:bg-rose-900 transition-colors",
       label: "Delete",
     },
   };
@@ -153,8 +265,10 @@ const FormModal = ({
       if (!endpoint) return toast.error("Invalid delete target.");
 
       const url = ["student", "teacher", "admin"].includes(endpoint)
-        ? `/api/v1/tenants/${schoolId}/users/${endpoint}s/${id}`
-        : `/api/${endpoint}/${id}`;
+        ? `/api/v1/tenants/${schoolId}/users/${endpoint}/${id}`
+        : `/api/v1/tenants/${schoolId}/${endpoint}/${id}`;
+
+      console.log("Delete URL:", url);
 
       const res = await fetch(url, { method: "DELETE" });
       const result = await res.json();
@@ -183,11 +297,14 @@ const FormModal = ({
           <div className="w-12 h-12 rounded-full bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center text-rose-600 dark:text-rose-400">
             <AlertTriangle size={24} />
           </div>
-          
+
           <div className="space-y-2">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Delete {capitalizeFirstLetter(table)}?</h3>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+              Delete {capitalizeFirstLetter(table)}?
+            </h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 max-w-xs mx-auto">
-              This action cannot be undone. This will permanently delete this record from the database.
+              This action cannot be undone. This will permanently delete this
+              record from the database.
             </p>
           </div>
 
@@ -219,7 +336,8 @@ const FormModal = ({
           {/* Modal Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              {type === "create" ? "Add New" : "Update"} {capitalizeFirstLetter(table)}
+              {type === "create" ? "Add New" : "Update"}{" "}
+              {capitalizeFirstLetter(table)}
             </h2>
             <div className="flex items-center gap-2">
               <button
@@ -244,7 +362,9 @@ const FormModal = ({
           <div className="p-6">
             <div key={formKey}>
               {forms[table]?.(setOpen, type, data, relatedData) ?? (
-                <div className="text-center py-10 text-gray-500">Form not found for {table}</div>
+                <div className="text-center py-10 text-gray-500">
+                  Form not found for {table}
+                </div>
               )}
             </div>
           </div>

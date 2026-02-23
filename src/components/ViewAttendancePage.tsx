@@ -1,21 +1,23 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Class, Grade } from "@prisma/client";
+import { Attendance, Class, Grade } from "@prisma/client";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
-import { 
-  Calendar, 
-  Search, 
-  Download, 
-  Filter, 
-  Edit2, 
-  ChevronLeft, 
-  ChevronRight, 
+import {
+  Calendar,
+  Search,
+  Download,
+  Filter,
+  Edit2,
+  ChevronLeft,
+  ChevronRight,
   Loader2,
-  Users
+  Users,
 } from "lucide-react";
-import { AttendanceResponse } from "../../types";
+import { AttendanceRangeResponse, AttendanceResponse } from "../../types";
+import { useParams } from "next/navigation";
+import { tenantFetch } from "@/lib/tenantFetch";
 
 interface Props {
   role: "admin" | "teacher";
@@ -56,32 +58,44 @@ export default function ViewAttendancePage({ role, teacherClassId }: Props) {
   const [classes, setClasses] = useState<Class[]>([]);
   const [selectedGrade, setSelectedGrade] = useState<string | number>("");
   const [selectedClass, setSelectedClass] = useState<string | number>(
-    role === "teacher" && teacherClassId ? teacherClassId : ""
+    role === "teacher" && teacherClassId ? teacherClassId : "",
   );
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterStatus, setFilterStatus] = useState<"all" | "present" | "absent">("all");
+  const [filterStatus, setFilterStatus] = useState<
+    "all" | "present" | "absent"
+  >("all");
 
   const [loading, setLoading] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
   const recordsPerPage = 30;
+  const { schoolId } = useParams<{ schoolId: string }>();
 
   /* -------------------- Data Fetching -------------------- */
   const fetchAttendance = async () => {
+    if (!schoolId) return;
+
     setLoading(true);
+
     try {
-      let url = `/api/attendance/range?from=${from}&to=${to}`;
+      const params = new URLSearchParams({
+        start: from,
+        end: to,
+      });
 
       if (role === "admin") {
-        if (selectedGrade) url += `&gradeId=${selectedGrade}`;
-        if (selectedClass) url += `&classId=${selectedClass}`;
+        if (selectedGrade) params.append("gradeId", String(selectedGrade));
+        if (selectedClass) params.append("classId", String(selectedClass));
       } else if (teacherClassId) {
-        url += `&classId=${teacherClassId}`;
+        params.append("classId", String(teacherClassId));
       }
 
-      const res = await fetch(url);
-      const data = await res.json();
+      const data = await tenantFetch<AttendanceResponse>(
+        schoolId,
+        `/attendance?${params.toString()}`,
+      );
+
       setRecords(data);
       setCurrentPage(1);
     } catch (err) {
@@ -94,17 +108,20 @@ export default function ViewAttendancePage({ role, teacherClassId }: Props) {
   useEffect(() => {
     const load = async () => {
       if (role === "admin") {
-        const g = await fetch("/api/grades").then((r) => r.json());
-        setGrades(g);
+        const g = tenantFetch<Grade[]>(schoolId, "/grades").then(setGrades);
 
         if (selectedGrade) {
-          const c = await fetch(`/api/classes?gradeId=${selectedGrade}`).then((r) => r.json());
-          setClasses(c);
+          const c = await tenantFetch<Class[]>(
+            schoolId,
+            `/classes?gradeId=${selectedGrade}`,
+          ).then(setClasses);
         } else {
           setClasses([]);
         }
       } else if (teacherClassId) {
-        const c = await fetch(`/api/classes?id=${teacherClassId}`).then((r) => r.json());
+        const c = await fetch(`/api/classes?id=${teacherClassId}`).then((r) =>
+          r.json(),
+        );
         setClasses(Array.isArray(c) ? c : [c]);
       }
     };
@@ -118,9 +135,8 @@ export default function ViewAttendancePage({ role, teacherClassId }: Props) {
 
   /* -------------------- Logic -------------------- */
   const updateAttendance = async (id: number, present: boolean) => {
-    const res = await fetch("/api/attendance/update", {
+    const res = await tenantFetch(schoolId, "/attendance", {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ attendanceId: id, present: !present }),
     });
 
@@ -128,7 +144,7 @@ export default function ViewAttendancePage({ role, teacherClassId }: Props) {
       setRecords((prev) => ({
         ...prev,
         attendance: prev.attendance.map((a) =>
-          a.id === id ? { ...a, present: !present } : a
+          a.id === id ? { ...a, present: !present } : a,
         ),
       }));
     }
@@ -160,7 +176,7 @@ export default function ViewAttendancePage({ role, teacherClassId }: Props) {
   const totalPages = Math.ceil(filteredAttendance.length / recordsPerPage);
   const paginated = filteredAttendance.slice(
     (currentPage - 1) * recordsPerPage,
-    currentPage * recordsPerPage
+    currentPage * recordsPerPage,
   );
 
   const exportToExcel = async () => {
@@ -170,9 +186,9 @@ export default function ViewAttendancePage({ role, teacherClassId }: Props) {
     const dates = Array.from(
       new Set(
         filteredAttendance.map((a) =>
-          new Date(a.date).toLocaleDateString("en-GB")
-        )
-      )
+          new Date(a.date).toLocaleDateString("en-GB"),
+        ),
+      ),
     );
 
     ws.columns = [
@@ -193,7 +209,7 @@ export default function ViewAttendancePage({ role, teacherClassId }: Props) {
         const a = filteredAttendance.find(
           (x) =>
             x.studentId === s.id &&
-            new Date(x.date).toLocaleDateString("en-GB") === d
+            new Date(x.date).toLocaleDateString("en-GB") === d,
         );
         row[d] = a ? (a.present ? "Present" : "Absent") : "";
       });
@@ -206,9 +222,10 @@ export default function ViewAttendancePage({ role, teacherClassId }: Props) {
   };
 
   // --- Style Constants ---
-  const inputClass = 
+  const inputClass =
     "w-full h-10 px-3 rounded-lg text-sm border bg-white dark:bg-darkfg border-slate-200 dark:border-slate-700 text-darkfg dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors";
-  const labelClass = "block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5";
+  const labelClass =
+    "block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5";
 
   /* ============================================================ */
   return (
@@ -228,7 +245,6 @@ export default function ViewAttendancePage({ role, teacherClassId }: Props) {
 
       {/* Control Panel Card */}
       <div className="bg-white dark:bg-darkfg border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm p-5 space-y-6">
-        
         {/* Top Row: Date Range & Class Selection */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
           <div>
@@ -294,18 +310,25 @@ export default function ViewAttendancePage({ role, teacherClassId }: Props) {
             </>
           )}
 
-          <div className={`${role !== 'admin' ? 'lg:col-span-3' : ''}`}>
-            <label className="block text-xs font-semibold text-transparent mb-1.5 md:hidden lg:block">Action</label>
+          <div className={`${role !== "admin" ? "lg:col-span-3" : ""}`}>
+            <label className="block text-xs font-semibold text-transparent mb-1.5 md:hidden lg:block">
+              Action
+            </label>
             <button
               onClick={fetchAttendance}
               disabled={loading}
               className={`w-full h-10 inline-flex items-center justify-center gap-2 rounded-lg font-medium text-white transition-all
-                ${loading 
-                  ? "bg-indigo-400 cursor-not-allowed" 
-                  : "bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] shadow-sm hover:shadow"
+                ${
+                  loading
+                    ? "bg-indigo-400 cursor-not-allowed"
+                    : "bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] shadow-sm hover:shadow"
                 }`}
             >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+              {loading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Search className="w-4 h-4" />
+              )}
               {loading ? "Fetching..." : "Get Records"}
             </button>
           </div>
@@ -352,17 +375,26 @@ export default function ViewAttendancePage({ role, teacherClassId }: Props) {
 
       {/* Data Section */}
       <div className="bg-white dark:bg-darkfg border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
-        
         {/* Desktop Table */}
         <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
-                <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">Student</th>
-                <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">Date</th>
-                <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">Class</th>
-                <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">Status</th>
-                <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300 text-right">Actions</th>
+                <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">
+                  Student
+                </th>
+                <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">
+                  Date
+                </th>
+                <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">
+                  Class
+                </th>
+                <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">
+                  Status
+                </th>
+                <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300 text-right">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -371,15 +403,22 @@ export default function ViewAttendancePage({ role, teacherClassId }: Props) {
                   const s = records.students.find((x) => x.id === a.studentId);
                   if (!s) return null;
                   return (
-                    <tr key={a.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                    <tr
+                      key={a.id}
+                      className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors"
+                    >
                       <td className="px-6 py-3">
                         <div className="flex items-center gap-3">
                           <div className="h-8 w-8 rounded-full bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center text-xs font-bold text-indigo-700 dark:text-indigo-400">
                             {s.name.charAt(0)}
                           </div>
                           <div>
-                            <p className="font-medium text-darkfg dark:text-slate-100">{s.name}</p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">ID: {s.id}</p>
+                            <p className="font-medium text-darkfg dark:text-slate-100">
+                              {s.name}
+                            </p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                              ID: {s.id}
+                            </p>
                           </div>
                         </div>
                       </td>
@@ -388,7 +427,7 @@ export default function ViewAttendancePage({ role, teacherClassId }: Props) {
                       </td>
                       <td className="px-6 py-3 text-slate-600 dark:text-slate-400">
                         <span className="inline-flex items-center px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 text-xs font-medium">
-                           {getStudentClassName(s)}
+                          {getStudentClassName(s)}
                         </span>
                       </td>
                       <td className="px-6 py-3">
@@ -408,10 +447,15 @@ export default function ViewAttendancePage({ role, teacherClassId }: Props) {
                 })
               ) : (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
+                  <td
+                    colSpan={5}
+                    className="px-6 py-12 text-center text-slate-500 dark:text-slate-400"
+                  >
                     <div className="flex flex-col items-center gap-2">
-                       <Search className="w-8 h-8 opacity-20" />
-                       <p>No attendance records found for the selected criteria.</p>
+                      <Search className="w-8 h-8 opacity-20" />
+                      <p>
+                        No attendance records found for the selected criteria.
+                      </p>
                     </div>
                   </td>
                 </tr>
@@ -435,7 +479,9 @@ export default function ViewAttendancePage({ role, teacherClassId }: Props) {
                         {s.name.charAt(0)}
                       </div>
                       <div>
-                        <p className="font-medium text-darkfg dark:text-slate-100">{s.name}</p>
+                        <p className="font-medium text-darkfg dark:text-slate-100">
+                          {s.name}
+                        </p>
                         <p className="text-xs text-slate-500 dark:text-slate-400">
                           {s.id} • {getStudentClassName(s)}
                         </p>
@@ -443,7 +489,7 @@ export default function ViewAttendancePage({ role, teacherClassId }: Props) {
                     </div>
                     <StatusBadge present={a.present} />
                   </div>
-                  
+
                   <div className="flex items-center justify-between pt-2">
                     <span className="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-2">
                       <Calendar className="w-4 h-4" />
@@ -460,9 +506,9 @@ export default function ViewAttendancePage({ role, teacherClassId }: Props) {
               );
             })
           ) : (
-             <div className="p-8 text-center text-slate-500 dark:text-slate-400 text-sm">
-               No records found.
-             </div>
+            <div className="p-8 text-center text-slate-500 dark:text-slate-400 text-sm">
+              No records found.
+            </div>
           )}
         </div>
 

@@ -17,10 +17,13 @@ export async function GET(
     const { schoolId: schoolSlug } = await params;
     const schoolId = await resolveSchoolId(schoolSlug);
 
+    console.log("School ID:", schoolSlug, "Resolved ID:", schoolId);
+
     /* -----------------------------
        2️⃣ Authenticate
     ------------------------------ */
-    const user = await fetchUserInfo(schoolId);
+    const user = await fetchUserInfo(schoolSlug);
+    console.log("Authenticated User:", user);
 
     if (!user || !user.role) {
       return NextResponse.json(

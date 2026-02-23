@@ -111,7 +111,7 @@ const StudentFeePage = async ({ params }: StudentFeePageProps) => {
 
   const db = tenantPrisma(school.id);
 
-  const { role, studentId } = await fetchUserInfo(school.id);
+  const { role, studentId } = await fetchUserInfo(slug);
 
   if (role === "student" && id !== studentId) {
     notFound();

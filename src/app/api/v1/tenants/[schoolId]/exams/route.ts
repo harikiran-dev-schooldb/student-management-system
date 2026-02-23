@@ -126,6 +126,22 @@ export async function GET(
     const { schoolId: slug } = await params;
     const schoolId = await resolveSchoolId(slug);
 
+    const { searchParams } = new URL(req.url);
+    const onlyTitles = searchParams.get("titles") === "true";
+
+    if (onlyTitles) {
+      const titles = await prisma.exam.findMany({
+        where: { schoolId },
+        select: {
+          id: true,
+          title: true,
+        },
+        orderBy: { id: "desc" },
+      });
+
+      return NextResponse.json({ titles });
+    }
+
     const exams = await prisma.exam.findMany({
       where: { schoolId },
       orderBy: { id: "desc" },
@@ -143,12 +159,15 @@ export async function GET(
     return NextResponse.json({ exams });
   } catch (error) {
     if (error instanceof SchoolNotFoundError) {
-      return NextResponse.json({ error: error.message }, { status: 404 });
+      return NextResponse.json(
+        { error: error.message },
+        { status: 404 }
+      );
     }
 
     return NextResponse.json(
       { error: "Failed to fetch exams" },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }

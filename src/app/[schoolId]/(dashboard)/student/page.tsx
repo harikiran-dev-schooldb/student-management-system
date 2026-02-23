@@ -27,7 +27,7 @@ const ProfilePage = async ({ params }: ProfilePageProps) => {
   if (!school) return notFound();
 
   // 2️⃣ Fetch user info for THIS school
-  const { userId, role } = await fetchUserInfo(school.id);
+  const { userId, role } = await fetchUserInfo(slug);
 
   if (!userId || role !== "student") {
     return notFound();

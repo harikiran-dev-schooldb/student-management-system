@@ -114,7 +114,7 @@ const PermissionSlipListPage = async ({
   const search = getSingle(resolvedSearchParams.search);
 
   // 🔹 User Info
-  const { role, userId } = await fetchUserInfo(school.id);
+  const { role, userId } = await fetchUserInfo(slug);
 
   const userClassIds = await getClassIdForRole(
     role ?? null,

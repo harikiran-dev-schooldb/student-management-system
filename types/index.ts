@@ -203,6 +203,11 @@ export type AttendanceResponse = {
   })[];
 };
 
+export type AttendanceRangeResponse = {
+  success: boolean;
+  attendance: Attendance[];
+};
+
 export type ClassList = {
   id: number;
   name: string;

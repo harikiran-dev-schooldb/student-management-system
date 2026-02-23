@@ -8,6 +8,7 @@ type PageProps = {
 export default async function Page({ params }: PageProps) {
   const { schoolId } = await params;
   const user = await fetchUserInfo(schoolId);
+  console.log("School ID:", schoolId, "User Info:", user);
 
   if (!user?.role) {
     return <div className="p-6 text-red-500">Unauthorized</div>;

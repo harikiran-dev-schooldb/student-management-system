@@ -14,6 +14,8 @@ import {
   FileText,
   GraduationCap, // Changed icon to represent Grades
 } from "lucide-react";
+import { createTenantApi } from "@/lib/api/tenantAxios";
+import { useTenantApi } from "@/hooks/useTenantApi";
 
 type GradeCSV = {
   id: string;
@@ -90,15 +92,14 @@ export default function BulkGradeUpload() {
   };
 
   const params = useParams();
-  const slug  = params.schoolId as string;
-  console.log("School ID from params:", slug );
+  const slug = params.schoolId as string;
+  console.log("School ID from params:", slug);
+  const api = useTenantApi(slug);
 
   const handleUpload = async () => {
     setLoading(true);
     try {
-      const response = await axios.post(`/${slug}/api/grades/bulk-upload`, {
-        grades,
-      });
+      const response = await api.post("/grades/bulk-upload", { grades });
 
       if (response.data.message) {
         setSuccess(true);

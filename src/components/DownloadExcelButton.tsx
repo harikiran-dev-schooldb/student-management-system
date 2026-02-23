@@ -1,19 +1,30 @@
 'use client';
 
 import { exportStudentReportToExcel } from '@/lib/utils/exportToExcel';
+import { useParams } from "next/navigation";
+import { tenantFetch } from '@/lib/tenantFetch';
 import React from 'react';
 
 const DownloadExcelButton = () => {
+  const { schoolId } = useParams<{ schoolId: string }>();
+
   const handleDownload = async () => {
-    const res = await fetch('/api/student-fees-report');
-    const data = await res.json();
-    exportStudentReportToExcel(data);
+    try {
+      const data = await tenantFetch(
+        schoolId,
+        "/students/fee-report"
+      );
+
+      exportStudentReportToExcel(data);
+    } catch (error) {
+      console.error("Download failed:", error);
+    }
   };
 
   return (
     <button
       onClick={handleDownload}
-      className="bg-LamaBlue dark:bg-LamaBLue text-white px-2 py-1 rounded-md hover:bg-green-800"
+      className="bg-LamaBlue text-white px-2 py-1 rounded-md hover:bg-green-800"
     >
       Download Excel
     </button>

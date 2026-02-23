@@ -112,7 +112,7 @@ const FeesListPage = async ({
     ? resolvedSearchParams.sortKey[0]
     : resolvedSearchParams.sortKey || "id";
 
-  const { role } = await fetchUserInfo(school.id);
+  const { role } = await fetchUserInfo(slug);
   const columns = getColumns(role);
 
   const whereClause: Prisma.GradeWhereInput = {};

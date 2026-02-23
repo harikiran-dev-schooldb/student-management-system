@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import DesktopMarksTable from "@/components/DesktopMarksTable";
 import MobileMarksCards from "@/components/MobileMarksCards";
+import { useParams } from "next/navigation";
 
 // --- Types & Interfaces ---
 type Exam = { id: number; title: string };
@@ -65,13 +66,18 @@ export default function MarksEntryForm() {
     { studentId: string; marks: { [subjectName: string]: string } }[]
   >([]);
 
+  const params = useParams();
+  const schoolId = params.schoolId as string;
+  if (!schoolId) return null;
+
   // --- Effects ---
 
   // 1. Initial Load
   useEffect(() => {
     const initFetch = async () => {
       try {
-        const userRes = await axios.get("/api/users/me");
+        
+        const userRes = await axios.get(`/api/v1/tenants/${schoolId}/users/me`);
         const { role, classId, gradeId } = userRes.data;
 
         setRole(role);
@@ -84,8 +90,8 @@ export default function MarksEntryForm() {
         }
 
         const [examRes, gradeRes] = await Promise.all([
-          axios.get("/api/exams").catch(() => ({ data: { exams: [] } })),
-          axios.get("/api/grades").catch(() => ({ data: [] })),
+          axios.get(`/api/v1/tenants/${schoolId}/exams`).catch(() => ({ data: { exams: [] } })),
+          axios.get(`/api/v1/tenants/${schoolId}/grades`).catch(() => ({ data: [] })),
         ]);
 
         setExams(examRes.data.exams || []);
@@ -94,9 +100,9 @@ export default function MarksEntryForm() {
         toast.error("Failed to load initial data");
       }
     };
-
+    if (!schoolId) return;
     initFetch();
-  }, []);
+  }, [schoolId]);
 
   // 2. Fetch Classes
   useEffect(() => {
@@ -106,7 +112,7 @@ export default function MarksEntryForm() {
       return;
     }
     axios
-      .get(`/api/classes?gradeId=${selectedGradeId}`)
+      .get(`/api/v1/tenants/${schoolId}/classes?gradeId=${selectedGradeId}`)
       .then((res) => setClasses(res.data))
       .catch(() => toast.error("Could not load sections"));
   }, [selectedGradeId]);
@@ -122,7 +128,7 @@ export default function MarksEntryForm() {
     const fetchExamData = async () => {
       setLoading(true);
       try {
-        const res = await axios.get("/api/exams/exam-data", {
+        const res = await axios.get(`/api/v1/tenants/${schoolId}/exams/exam-data`, {
           params: {
             examTitle: selectedExamTitle,
             gradeId: role === "teacher" ? teacherGradeId : selectedGradeId,
@@ -189,7 +195,7 @@ export default function MarksEntryForm() {
     };
 
     try {
-      await axios.post("/api/results/bulk-entry", payload);
+      await axios.post(`/api/v1/tenants/${schoolId}/results/bulk-entry`, payload);
       toast.success("Marks submitted successfully!");
       setHasUnsavedChanges(false);
     } catch (err) {

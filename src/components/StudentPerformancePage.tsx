@@ -2,14 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { Grade, Class, Student } from "@prisma/client";
-import {
-  Search,
-  Users,
-  Filter,
-  BarChart3,
-  AlertTriangle,
-  Loader2
-} from "lucide-react";
+import { Search, BarChart3, AlertTriangle, Loader2 } from "lucide-react";
+import { useParams } from "next/navigation";
+import { tenantFetch } from "@/lib/tenantFetch";
 
 interface SubjectPerformance {
   subject: string;
@@ -41,50 +36,65 @@ export default function StudentPerformancePage({
   const [students, setStudents] = useState<StudentPerformance[]>([]);
   const [selectedGrade, setSelectedGrade] = useState<number | null>(null);
   const [selectedClass, setSelectedClass] = useState<number | null>(
-    role === "teacher" ? teacherClassId ?? null : null
+    role === "teacher" ? teacherClassId ?? null : null,
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
+  const { schoolId } = useParams<{ schoolId: string }>();
 
   /* ---------------- Load Filters ---------------- */
   useEffect(() => {
-    if (role === "admin") {
-      fetch("/api/grades").then(r => r.json()).then(setGrades);
-    }
-  }, [role]);
+    if (!schoolId || role !== "admin") return;
+
+    tenantFetch<Grade[]>(schoolId, "/grades")
+      .then(setGrades)
+      .catch(console.error);
+  }, [role, schoolId]);
 
   useEffect(() => {
-    if (selectedGrade) {
-      fetch(`/api/classes?gradeId=${selectedGrade}`)
-        .then(r => r.json())
-        .then(setClasses);
-    }
-  }, [selectedGrade]);
+    if (!schoolId || !selectedGrade) return;
+
+    tenantFetch<Class[]>(schoolId, `/classes?gradeId=${selectedGrade}`)
+      .then(setClasses)
+      .catch(console.error);
+  }, [selectedGrade, schoolId]);
 
   /* ---------------- Fetch Performance ---------------- */
   const loadPerformance = async () => {
-    setLoading(true);
-    let url = "/api/student/analytics/student-performance";
+  if (!schoolId) return;
+
+  setLoading(true);
+
+  try {
+    let query = "";
 
     if (role === "teacher" && teacherClassId) {
-      url += `?classId=${teacherClassId}`;
+      query = `?classId=${teacherClassId}`;
     } else if (selectedClass) {
-      url += `?classId=${selectedClass}`;
+      query = `?classId=${selectedClass}`;
     }
 
-    const data = await fetch(url).then(r => r.json());
-    console.log(data);
-    setStudents(data);
+    const data = await tenantFetch<StudentPerformance[]>(
+      schoolId,
+      `/analytics/student-performance${query}`
+    );
+
+    setStudents(Array.isArray(data) ? data : []);
+  } catch (err) {
+    console.error(err);
+  } finally {
     setLoading(false);
-  };
+  }
+};
 
   /* ---------------- Search Filter ---------------- */
   const filteredStudents = useMemo(() => {
     if (!searchQuery) return students;
     const q = searchQuery.toLowerCase();
-    return students.filter(s =>
-      s.student.name.toLowerCase().includes(q) ||
-      s.student.id.toLowerCase().includes(q)
+    return students.filter(
+      (s) =>
+        s.student.name.toLowerCase().includes(q) ||
+        s.student.id.toLowerCase().includes(q),
     );
   }, [students, searchQuery]);
 
@@ -97,7 +107,6 @@ export default function StudentPerformancePage({
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-darkMode p-6 space-y-6">
-      
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2">
@@ -112,7 +121,6 @@ export default function StudentPerformancePage({
       {/* Control Panel */}
       <div className="bg-white dark:bg-darkfg p-5 rounded-xl border shadow-sm">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          
           {role === "admin" && (
             <>
               <div>
@@ -122,8 +130,10 @@ export default function StudentPerformancePage({
                   className={inputClass}
                 >
                   <option value="">Select Grade</option>
-                  {grades.map(g => (
-                    <option key={g.id} value={g.id}>{g.level}</option>
+                  {grades.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.level}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -135,8 +145,10 @@ export default function StudentPerformancePage({
                   className={inputClass}
                 >
                   <option value="">Select Class</option>
-                  {classes.map(c => (
-                    <option key={c.id} value={c.id}>{c.section}</option>
+                  {classes.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.section}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -168,51 +180,64 @@ export default function StudentPerformancePage({
 
       {/* Performance Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {filteredStudents.map(({ student, overallPercentage, attendancePercentage, grade, subjects, atRisk }) => (
-          <div
-            key={student.id}
-            className="bg-white dark:bg-darkfg p-5 rounded-xl border shadow-sm space-y-3"
-          >
-            {/* Student Header */}
-            <div className="flex justify-between items-center">
-              <div>
-                <h3 className="font-bold">{student.name}</h3>
-                <p className="text-xs text-slate-500">ID: {student.id}</p>
-              </div>
-              {atRisk && (
-                <AlertTriangle className="text-rose-500" />
-              )}
-            </div>
-
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-2 text-center">
-              <div>
-                <p className="text-xs text-slate-500">Overall</p>
-                <p className="font-bold">{overallPercentage.toFixed(1)}%</p>
-              </div>
-              <div>
-                <p className="text-xs text-slate-500">Attendance</p>
-                <p className="font-bold">{attendancePercentage.toFixed(1)}%</p>
-              </div>
-              <div>
-                <p className="text-xs text-slate-500">Grade</p>
-                <p className="font-bold">{grade}</p>
-              </div>
-            </div>
-
-            {/* Subjects */}
-            <div className="space-y-1">
-              {subjects.map(s => (
-                <div key={s.subject} className="flex justify-between text-xs">
-                  <span>{s.subject}</span>
-                  <span className={s.percentage < 50 ? "text-rose-600" : "text-emerald-600"}>
-                    {s.percentage.toFixed(0)}%
-                  </span>
+        {filteredStudents.map(
+          ({
+            student,
+            overallPercentage,
+            attendancePercentage,
+            grade,
+            subjects,
+            atRisk,
+          }) => (
+            <div
+              key={student.id}
+              className="bg-white dark:bg-darkfg p-5 rounded-xl border shadow-sm space-y-3"
+            >
+              {/* Student Header */}
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="font-bold">{student.name}</h3>
+                  <p className="text-xs text-slate-500">ID: {student.id}</p>
                 </div>
-              ))}
+                {atRisk && <AlertTriangle className="text-rose-500" />}
+              </div>
+
+              {/* Stats */}
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div>
+                  <p className="text-xs text-slate-500">Overall</p>
+                  <p className="font-bold">{overallPercentage.toFixed(1)}%</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">Attendance</p>
+                  <p className="font-bold">
+                    {attendancePercentage.toFixed(1)}%
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">Grade</p>
+                  <p className="font-bold">{grade}</p>
+                </div>
+              </div>
+
+              {/* Subjects */}
+              <div className="space-y-1">
+                {subjects.map((s) => (
+                  <div key={s.subject} className="flex justify-between text-xs">
+                    <span>{s.subject}</span>
+                    <span
+                      className={
+                        s.percentage < 50 ? "text-rose-600" : "text-emerald-600"
+                      }
+                    >
+                      {s.percentage.toFixed(0)}%
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
+          ),
+        )}
       </div>
 
       {filteredStudents.length === 0 && !loading && (

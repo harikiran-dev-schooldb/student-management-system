@@ -9,7 +9,7 @@ import {
 } from "@/lib/formValidationSchemas";
 import React, { Dispatch, SetStateAction, useEffect, useState } from "react";
 import { toast } from "react-toastify";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 
 // Custom hook for API calls
 const useApiRequest = () => {
@@ -50,10 +50,8 @@ const AnnouncementForm = ({
   setOpen: Dispatch<SetStateAction<boolean>>;
   relatedData?: any;
 }) => {
-  const [state, setState] = useState<{ success: boolean; error: boolean }>({
-    success: false,
-    error: false,
-  });
+  type FormStatus = "idle" | "loading" | "success" | "error";
+  const [status, setStatus] = useState<FormStatus>("idle");
 
   const {
     register,
@@ -70,7 +68,7 @@ const AnnouncementForm = ({
   const { makeRequest } = useApiRequest();
 
   useEffect(() => {
-    if (state.success) {
+    if (status === "success") {
       toast.success(
         `Announcement ${
           type === "create" ? "created" : "updated"
@@ -79,10 +77,15 @@ const AnnouncementForm = ({
       setOpen(false);
       router.refresh();
     }
-  }, [state.success, setOpen, router, type]);
+  }, [status, setOpen, router, type]);
+
+  const { schoolId } = useParams<{ schoolId: string }>();
+
+  const baseUrl = `/api/v1/tenants/${schoolId}/announcements`;
 
   const onSubmit = handleSubmit(async (formData) => {
     try {
+      setStatus("loading");
       const payload = {
         title: formData.title,
         description: formData.description,
@@ -90,19 +93,15 @@ const AnnouncementForm = ({
         classId: formData.classId ?? null,
       };
 
-      const url =
-        type === "create"
-          ? `/api/v1/tenants/current/announcements`
-          : `/api/v1/tenants/current/announcements/${data?.id}`;
+      const url = type === "create" ? baseUrl : `${baseUrl}/${data?.id}`;
 
       const method = type === "create" ? "POST" : "PUT";
+      await makeRequest(url, method, payload);
 
-      const result = await makeRequest(url, method, payload);
-
-      setState({ success: result.success, error: !result.success });
+      setStatus("success");
     } catch (error: any) {
       console.error("Error submitting announcement:", error);
-      setState({ success: false, error: true });
+      setStatus("error");
       toast.error(`Error: ${error.message}`);
     }
   });
@@ -152,7 +151,6 @@ const AnnouncementForm = ({
         <label className="text-sm font-medium text-gray-500">Description</label>
         <textarea
           {...register("description")}
-          defaultValue={data?.description}
           className="min-w-[700px] h-64 p-3 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
           placeholder="Enter Announcement details..."
         />
@@ -161,7 +159,7 @@ const AnnouncementForm = ({
         )}
       </div>
 
-      {state.error && (
+      {status === "error" && (
         <span className="text-red-500 text-sm">Something went wrong!</span>
       )}
 

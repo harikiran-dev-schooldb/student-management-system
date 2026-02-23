@@ -20,7 +20,7 @@ export default async function Page({ params }: PageProps) {
   if (!school) return notFound();
 
   // 3️⃣ Fetch user info scoped to this school
-  const user = await fetchUserInfo(school.id);
+  const user = await fetchUserInfo(slug);
 
   if (!user?.role) {
     return <div className="p-6 text-red-500">Unauthorized</div>;

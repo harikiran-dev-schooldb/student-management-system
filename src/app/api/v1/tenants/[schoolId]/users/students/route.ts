@@ -19,11 +19,13 @@ export async function POST(
 
     const { schoolId: schoolSlug } = await params;
     const schoolId = await resolveSchoolId(schoolSlug);
+    console.log("Resolved schoolId:", schoolId);
 
     /* -------------------------------------------------------
        2️⃣ Authorize (Admin Only)
     ------------------------------------------------------- */
-    const user = await fetchUserInfo(schoolId);
+    const user = await fetchUserInfo(schoolSlug);
+    console.log("User from fetchUserInfo:", user);
 
     if (!user || user.role !== "admin") {
       return NextResponse.json({ message: "Forbidden" }, { status: 403 });

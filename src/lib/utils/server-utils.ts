@@ -1,6 +1,7 @@
 import "server-only";
 import { auth } from "@clerk/nextjs/server";
 import prisma from "@/lib/prisma";
+import { resolveSchoolId } from "../resolveSchool";
 
 /* -------------------------------------------------------
    Types
@@ -77,29 +78,33 @@ async function getTeacherInfo(linkedUserId: string) {
    Main fetchUserInfo (cached)
 ------------------------------------------------------- */
 
-export async function fetchUserInfo(schoolId: string): Promise<UserInfo> {
+export async function fetchUserInfo(schoolSlug: string): Promise<UserInfo> {
   try {
     const { userId: clerkId } = await auth();
     if (!clerkId) {
       return { profileId: null, linkedUserId: null, role: null };
     }
 
-    /* 1️⃣ Get Profile */
+    // ✅ 1️⃣ Resolve slug → internal ID
+    const resolvedSchoolId = await resolveSchoolId(schoolSlug);
+    if (!resolvedSchoolId) {
+      return { profileId: null, linkedUserId: null, role: null };
+    }
+
+    /* 2️⃣ Get Profile */
     const profile = await prisma.profile.findUnique({
       where: { clerk_id: clerkId },
-      include: {
-        activeUser: true,
-      },
+      include: { activeUser: true },
     });
 
     if (!profile) {
       return { profileId: null, linkedUserId: null, role: null };
     }
 
-    /* 2️⃣ Validate active user belongs to this school */
     const activeUser = profile.activeUser;
 
-    if (!activeUser || activeUser.schoolId !== schoolId) {
+    // ✅ 3️⃣ Compare using internal ID
+    if (!activeUser || activeUser.schoolId !== resolvedSchoolId) {
       return {
         profileId: profile.id,
         linkedUserId: null,
@@ -112,7 +117,7 @@ export async function fetchUserInfo(schoolId: string): Promise<UserInfo> {
       const student = await prisma.student.findFirst({
         where: {
           linkedUserId: activeUser.id,
-          schoolId,
+          schoolId: resolvedSchoolId,
         },
         select: {
           id: true,
@@ -126,7 +131,7 @@ export async function fetchUserInfo(schoolId: string): Promise<UserInfo> {
         userId: activeUser.id,
         linkedUserId: activeUser.id,
         role: "student",
-        schoolId,
+        schoolId: resolvedSchoolId,
         studentId: student?.id,
         classId: student?.classId,
         gradeId: student?.Class.gradeId,
@@ -138,16 +143,12 @@ export async function fetchUserInfo(schoolId: string): Promise<UserInfo> {
       const teacher = await prisma.teacher.findFirst({
         where: {
           linkedUserId: activeUser.id,
-          schoolId,
+          schoolId: resolvedSchoolId,
         },
         select: {
           id: true,
           class: {
-            select: {
-              id: true,
-              name: true,
-              gradeId: true,
-            },
+            select: { id: true, name: true, gradeId: true },
           },
         },
       });
@@ -157,7 +158,7 @@ export async function fetchUserInfo(schoolId: string): Promise<UserInfo> {
         userId: activeUser.id,
         linkedUserId: activeUser.id,
         role: "teacher",
-        schoolId,
+        schoolId: resolvedSchoolId,
         teacherId: teacher?.id,
         classId: teacher?.class?.id,
         className: teacher?.class?.name,
@@ -171,14 +172,13 @@ export async function fetchUserInfo(schoolId: string): Promise<UserInfo> {
       userId: activeUser.id,
       linkedUserId: activeUser.id,
       role: "admin",
-      schoolId,
+      schoolId: resolvedSchoolId,
     };
   } catch (error) {
     console.error("fetchUserInfo error:", error);
     return { profileId: null, linkedUserId: null, role: null };
   }
 }
-
 export async function getClassIdForRole(
   role: string | null,
   userId: string | null,

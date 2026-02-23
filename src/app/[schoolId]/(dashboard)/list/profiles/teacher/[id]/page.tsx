@@ -37,7 +37,7 @@ const TeacherProfilePage = async ({ params }: TeacherSinglePageProps) => {
 
   if (!school) notFound();
 
-  const { role, teacherId } = await fetchUserInfo(school.id);
+  const { role, teacherId } = await fetchUserInfo(slug);
 
   const db = tenantPrisma(school.id);
 

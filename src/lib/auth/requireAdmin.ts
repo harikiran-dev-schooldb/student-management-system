@@ -1,24 +1,22 @@
 import { redirect } from "next/navigation";
+import { requireTenantAccess } from "@/lib/requireTenantAccess";
 
-export async function requireAdmin() {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/profile`, {
-    cache: "no-store",
-    credentials: "include",
-  });
+export async function requireAdmin(slug: string) {
+  try {
+    const access = await requireTenantAccess();
 
-  if (!res.ok) {
+    // 🔐 Ensure URL tenant matches active tenant
+    if (access.schoolSlug !== slug) {
+      redirect("/unauthorized");
+    }
+
+    // 🔐 Ensure role is admin
+    if (access.role !== "admin") {
+      redirect("/unauthorized");
+    }
+
+    return access; // contains schoolId (internal PK) + profileId
+  } catch {
     redirect("/unauthorized");
   }
-
-  const profile = await res.json();
-
-  const isAdmin = profile.roles?.some(
-    (r: { role: string }) => r.role === "admin"
-  );
-
-  if (!isAdmin) {
-    redirect("/unauthorized");
-  }
-
-  return profile;
 }
