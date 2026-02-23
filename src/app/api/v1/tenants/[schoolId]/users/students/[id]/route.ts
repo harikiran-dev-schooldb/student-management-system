@@ -20,7 +20,8 @@ export async function PUT(
     const schoolId = await resolveSchoolId(schoolSlug);
 
     /* ---------- Authorization ---------- */
-    const user = await fetchUserInfo(schoolId);
+    const user = await fetchUserInfo(schoolSlug);
+
     if (!user || user.role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -147,12 +148,14 @@ export async function DELETE(
 ) {
   try {
     const { schoolId: schoolSlug, id: studentId } = await params;
-    const schoolId = await resolveSchoolId(schoolSlug);
 
-    const user = await fetchUserInfo(schoolId);
+    const user = await fetchUserInfo(schoolSlug);
+
     if (!user || user.role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    const schoolId = await resolveSchoolId(schoolSlug);
 
     const student = await prisma.student.findFirst({
       where: { id: studentId, schoolId },
@@ -206,8 +209,9 @@ export async function PATCH(
 ) {
   try {
     const { schoolId: schoolSlug, id: studentId } = await params;
-    const schoolId = await resolveSchoolId(schoolSlug);
-    const user = await fetchUserInfo(schoolId);
+
+    const user = await fetchUserInfo(schoolSlug);
+
     if (!user || user.role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }

@@ -179,6 +179,7 @@ export async function fetchUserInfo(schoolSlug: string): Promise<UserInfo> {
     return { profileId: null, linkedUserId: null, role: null };
   }
 }
+
 export async function getClassIdForRole(
   role: string | null,
   userId: string | null,

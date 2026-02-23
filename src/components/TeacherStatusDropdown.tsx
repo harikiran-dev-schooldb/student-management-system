@@ -19,6 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import clsx from "clsx";
+import { useSchoolSlug } from "./hooks/getschool";
 
 // --- Premium Status Configuration ---
 const STATUS_CONFIG: Record<string, any> = {
@@ -68,6 +69,9 @@ export default function TeacherStatusDropdown({
     setStatus(currentStatus);
   }, [currentStatus]);
 
+  const schoolId = useSchoolSlug();
+  console.log("Current School:", schoolId);
+
   const updateStatus = async (newStatus: string) => {
     // 1. Optimistic Check: Don't fire if clicking the same status
     if (newStatus === status) return;
@@ -77,11 +81,14 @@ export default function TeacherStatusDropdown({
     setStatus(newStatus); // ⚡ Update UI Immediately
 
     try {
-      const res = await fetch(`/api/users/teachers/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
-      });
+      const res = await fetch(
+        `/api/v1/tenants/${schoolId}/users/teachers/${id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: newStatus }),
+        },
+      );
 
       if (res.ok) {
         router.refresh();
@@ -99,7 +106,6 @@ export default function TeacherStatusDropdown({
 
   return (
     <div className="flex justify-end">
-
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
@@ -144,7 +150,7 @@ export default function TeacherStatusDropdown({
                   "relative flex cursor-pointer select-none items-center gap-3 rounded-lg px-2 py-2 text-sm font-medium outline-none transition-all",
                   isActive
                     ? `${config.bgColor} ${config.color}` // Active Style
-                    : "text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
+                    : "text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800",
                 )}
               >
                 {/* Icon Box */}
@@ -153,7 +159,7 @@ export default function TeacherStatusDropdown({
                     "flex h-8 w-8 items-center justify-center rounded-md",
                     isActive
                       ? "bg-white/50 dark:bg-black/20"
-                      : "bg-gray-100 dark:bg-gray-800"
+                      : "bg-gray-100 dark:bg-gray-800",
                   )}
                 >
                   <Icon className={clsx("h-4 w-4", config.color)} />

@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: Promise<{ schoolId: string; }> }
+  { params }: { params: Promise<{ schoolId: string }> }
 ) {
   try {
     /* =====================================================
@@ -18,192 +18,189 @@ export async function POST(
     const { schoolId: schoolSlug } = await params;
     const schoolId = await resolveSchoolId(schoolSlug);
 
-    const currentUser = await fetchUserInfo(schoolId);
+    const currentUser = await fetchUserInfo(schoolSlug);
     if (!currentUser || currentUser.role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     /* =====================================================
-       2️⃣ Validate Input
+       2️⃣ Parse Input
     ===================================================== */
-    const body = await req.json();
-    const parsed = teacherschema.safeParse(body);
+    const { teachers } = await req.json();
 
-    if (!parsed.success) {
+    if (!Array.isArray(teachers) || teachers.length === 0) {
       return NextResponse.json(
-        { errors: parsed.error.flatten().fieldErrors },
+        { error: "Invalid teachers array" },
         { status: 400 }
       );
     }
 
-    const {
-      id: requestedId,
-      username,
-      password,
-      name,
-      phone,
-      parentName,
-      address,
-      dob,
-      email,
-      gender,
-      bloodType,
-      img,
-      subjects,
-    } = parsed.data;
-
-    const teacherId = requestedId ?? username;
-    const phoneNumber = `+91${phone}`;
-    const finalPassword = password && password !== "" ? password : phone;
+    if (teachers.length > 2000) {
+      return NextResponse.json(
+        { error: "Upload limit exceeded (max 2000)" },
+        { status: 400 }
+      );
+    }
 
     const client = await clerkClient();
 
+    let created = 0;
+    let skipped = 0;
+    const errors: string[] = [];
+
     /* =====================================================
-       3️⃣ Prevent Duplicate Username (Tenant Safe)
+       3️⃣ Preload Valid Classes
     ===================================================== */
-    const duplicateTeacher = await prisma.teacher.findUnique({
-      where: {
-        username_schoolId: {
-          username,
-          schoolId,
-        },
-      },
+    const classes = await prisma.class.findMany({
+      where: { schoolId },
+      select: { id: true },
     });
 
-    if (duplicateTeacher) {
-      return NextResponse.json(
-        { error: `Teacher "${username}" already exists.` },
-        { status: 409 }
-      );
-    }
+    const validClassSet = new Set(classes.map((c) => c.id));
 
     /* =====================================================
-       4️⃣ Clerk User (Global)
+       4️⃣ Process Teachers
     ===================================================== */
-    const existingUsers = await client.users.getUserList({
-      phoneNumber: [phoneNumber],
-    });
+    for (let i = 0; i < teachers.length; i++) {
+      const t = teachers[i];
 
-    let clerkUser;
+      try {
+        if (
+          !t.id ||
+          !t.username ||
+          !t.name ||
+          !t.phone ||
+          !t.address ||
+          !t.gender
+        ) {
+          errors.push(`Row ${i + 1}: Missing required fields`);
+          skipped++;
+          continue;
+        }
 
-    if (existingUsers.data.length > 0) {
-      clerkUser = existingUsers.data[0];
-    } else {
-      clerkUser = await client.users.createUser({
-        username,
-        password: finalPassword,
-        firstName: name,
-        phoneNumber: [phoneNumber],
-      });
+        const teacherId = t.id ?? t.username;
+        const phoneNumber = `+91${t.phone}`;
+        const finalPassword = t.password && t.password !== "" ? t.password : t.phone;
 
-      await client.users.updateUser(clerkUser.id, {
-        publicMetadata: { role: "teacher" },
-      });
-    }
-
-    /* =====================================================
-       5️⃣ Transaction (Profile + LinkedUser + Teacher)
-    ===================================================== */
-    const teacher = await prisma.$transaction(async (tx) => {
-      /* ----- Profile ----- */
-      const profile = await tx.profile.upsert({
-        where: { clerk_id: clerkUser.id },
-        update: {},
-        create: {
-          clerk_id: clerkUser.id,
-          phone,
-        },
-      });
-
-      /* ----- LinkedUser (Tenant Scoped) ----- */
-      const linkedUser = await tx.linkedUser.create({
-        data: {
-          username,
-          role: "teacher",
-          profileId: profile.id,
-          schoolId,
-        },
-      });
-
-      if (!profile.activeUserId) {
-        await tx.profile.update({
-          where: { id: profile.id },
-          data: { activeUserId: linkedUser.id },
-        });
-      }
-
-      /* ----- Teacher ----- */
-      const newTeacher = await tx.teacher.create({
-        data: {
-          id: teacherId,
-          username,
-          name,
-          parentName: parentName ?? null,
-          dob: dob ? new Date(dob) : null,
-          email: email ?? null,
-          phone,
-          address,
-          gender,
-          bloodType: bloodType ?? null,
-          img: img ?? null,
-          clerk_id: clerkUser.id,
-          profileId: profile.id,
-          linkedUserId: linkedUser.id,
-          schoolId,
-        },
-      });
-
-      /* ----- Subject Assignment (Tenant Safe) ----- */
-      if (subjects && Array.isArray(subjects)) {
-        const validSubjects = subjects.filter(
-          (s: any) => s.subjectId && s.classId
-        );
-
-        if (validSubjects.length > 0) {
-          /* Validate subjects belong to this school */
-          const subjectIds = validSubjects.map((s: any) => s.subjectId);
-
-          const validSubjectRecords = await tx.subject.findMany({
-            where: {
-              id: { in: subjectIds },
+        /* -----------------------------
+           Prevent duplicate inside tenant
+        ------------------------------ */
+        const existingTeacher = await prisma.teacher.findUnique({
+          where: {
+            username_schoolId: {
+              username: t.username.trim(),
               schoolId,
             },
-            select: { id: true },
+          },
+        });
+
+        if (existingTeacher) {
+          errors.push(`Duplicate skipped: ${t.username}`);
+          skipped++;
+          continue;
+        }
+
+        /* -----------------------------
+           Clerk User
+        ------------------------------ */
+        const existingUsers = await client.users.getUserList({
+          phoneNumber: [phoneNumber],
+        });
+
+        let clerkUser;
+
+        if (existingUsers.data.length > 0) {
+          clerkUser = existingUsers.data[0];
+        } else {
+          clerkUser = await client.users.createUser({
+            username: t.username.trim(),
+            password: finalPassword,
+            firstName: t.name,
+            phoneNumber: [phoneNumber],
           });
 
-          if (validSubjectRecords.length !== subjectIds.length) {
-            throw new Error("Invalid subject assignment detected.");
-          }
-
-          await tx.subjectTeacher.createMany({
-            data: validSubjects.map((s: any) => ({
-              subjectId: s.subjectId,
-              classId: s.classId,
-              teacherId: teacherId,
-              schoolId,
-            })),
-            skipDuplicates: true,
+          await client.users.updateUser(clerkUser.id, {
+            publicMetadata: { role: "teacher" },
           });
         }
-      }
 
-      return newTeacher;
+        /* -----------------------------
+           Transaction
+        ------------------------------ */
+        await prisma.$transaction(async (tx) => {
+          /* Profile */
+          const profile = await tx.profile.upsert({
+            where: { clerk_id: clerkUser.id },
+            update: {},
+            create: {
+              clerk_id: clerkUser.id,
+              phone: t.phone,
+            },
+          });
+
+          /* LinkedUser */
+          const linkedUser = await tx.linkedUser.create({
+            data: {
+              username: t.username.trim(),
+              role: "teacher",
+              profileId: profile.id,
+              schoolId,
+            },
+          });
+
+          if (!profile.activeUserId) {
+            await tx.profile.update({
+              where: { id: profile.id },
+              data: { activeUserId: linkedUser.id },
+            });
+          }
+
+          /* Teacher */
+          await tx.teacher.create({
+            data: {
+              id: teacherId,
+              username: t.username.trim(),
+              name: t.name,
+              parentName: t.parentName ?? null,
+              dob: t.dob ? new Date(t.dob) : null,
+              email: t.email ?? null,
+              phone: t.phone,
+              address: t.address,
+              gender: t.gender,
+              bloodType: t.bloodType ?? null,
+              img: t.img ?? null,
+              clerk_id: clerkUser.id,
+              profileId: profile.id,
+              linkedUserId: linkedUser.id,
+              classId:
+                t.classId && validClassSet.has(Number(t.classId))
+                  ? Number(t.classId)
+                  : null,
+              schoolId,
+            },
+          });
+        });
+
+        created++;
+      } catch (err: any) {
+        errors.push(`Row ${i + 1}: ${err.message}`);
+        skipped++;
+      }
+    }
+
+    /* =====================================================
+       5️⃣ Response
+    ===================================================== */
+    return NextResponse.json({
+      message: "Bulk teacher upload completed",
+      created,
+      skipped,
+      total: teachers.length,
+      errors,
     });
 
-    return NextResponse.json(
-      { success: true, data: teacher },
-      { status: 201 }
-    );
-
-  } catch (error: any) {
-    console.error("Teacher creation error:", error);
-
-    if (error.code === "P2002") {
-      return NextResponse.json(
-        { error: "Duplicate record detected." },
-        { status: 409 }
-      );
-    }
+  } catch (error) {
+    console.error("Bulk Teacher Upload Error:", error);
 
     return NextResponse.json(
       { error: "Internal server error" },

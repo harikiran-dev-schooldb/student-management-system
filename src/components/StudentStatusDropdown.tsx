@@ -17,7 +17,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import clsx from "clsx";
 
 // --- Premium Status Configuration ---
@@ -62,6 +62,8 @@ export default function StudentStatusDropdown({
   const [status, setStatus] = useState(currentStatus);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const { schoolId } = useParams<{ schoolId: string }>();
+  console.log("Current School:", schoolId);
 
   // Keep local state in sync if parent updates props
   useEffect(() => {
@@ -77,7 +79,7 @@ export default function StudentStatusDropdown({
     setStatus(newStatus); // ⚡ Update UI Immediately
 
     try {
-      const res = await fetch(`/api/users/students/${id}`, {
+      const res = await fetch(`/api/v1/tenants/${schoolId}/users/students/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),

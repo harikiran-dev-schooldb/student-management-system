@@ -1,6 +1,11 @@
 import { useParams } from "next/navigation";
 
-export const useSchoolSlug = () => {
-  const params = useParams();
-  return params.schoolId as string;
+export const useSchoolSlug = (): string => {
+  const { schoolId } = useParams<{ schoolId: string }>();
+
+  if (!schoolId) {
+    throw new Error("Missing schoolId param");
+  }
+
+  return schoolId;
 };

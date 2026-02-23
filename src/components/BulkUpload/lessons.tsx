@@ -14,6 +14,8 @@ import {
   FileText,
   BookOpen // Changed icon to represent Lessons
 } from "lucide-react";
+import { useSchoolSlug } from "../hooks/getschool";
+import { useTenantApi } from "@/hooks/useTenantApi";
 
 type LessonCSV = {
   gradeId: string;
@@ -97,10 +99,13 @@ export default function BulkLessonsUpload() {
     }
   };
 
+  const schoolId = useSchoolSlug();
+  const api = useTenantApi(schoolId);
+
   const handleUpload = async () => {
     setLoading(true);
     try {
-      const response = await axios.post("/api/lessons/bulk", {
+      const response = await api.post("/lessons/bulk", {
         lessons,
       });
 

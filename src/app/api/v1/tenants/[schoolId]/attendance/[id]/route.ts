@@ -1,6 +1,7 @@
 import prisma from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { requireTenantAccess } from "@/lib/requireTenantAccess";
+import { resolveSchoolId } from "@/lib/resolveSchool";
 
 /* =======================================================
    PUT  /attendance/{id}
@@ -8,14 +9,17 @@ import { requireTenantAccess } from "@/lib/requireTenantAccess";
 
 export async function PUT(
   req: NextRequest,
-  { params }: { params: Promise<{ schoolId: string; id: string }> }
+  { params }: { params: Promise<{ schoolId: string; id: string }> },
 ) {
   try {
     const { schoolId: slug, id } = await params;
 
     const access = await requireTenantAccess();
 
-    if (access.schoolId !== slug) {
+    // Resolve slug to internal ID
+    const resolvedSchoolId = await resolveSchoolId(slug);
+
+    if (access.schoolId !== resolvedSchoolId) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -30,29 +34,17 @@ export async function PUT(
 
     const { present } = await req.json();
 
-    const existing = await prisma.attendance.findFirst({
-      where: { id: parsedId, schoolId: access.schoolId },
-    });
-
-    if (!existing) {
-      return NextResponse.json(
-        { error: "Attendance not found" },
-        { status: 404 }
-      );
-    }
-
     const updated = await prisma.attendance.update({
-      where: { id: parsedId },
+      where: { id: parsedId, schoolId: resolvedSchoolId },
       data: { present },
     });
 
     return NextResponse.json({ success: true, attendance: updated });
-
   } catch (error) {
     console.error("Attendance PUT error:", error);
     return NextResponse.json(
       { error: "Failed to update attendance" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

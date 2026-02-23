@@ -5,7 +5,7 @@ REM =============================
 REM PostgreSQL connection strings
 REM =============================
 
-set LOCAL_DB=postgresql://postgres:Hari%%40123@localhost:5432/schooldb
+set LOCAL_DB=postgresql://postgres:Hari%%40123@localhost:5432/multi_schooldb
 
 set REMOTE_DB=postgresql://neondb_owner:npg_q6wX5yLHiSOM@ep-dark-band-ahyu0exg-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
 

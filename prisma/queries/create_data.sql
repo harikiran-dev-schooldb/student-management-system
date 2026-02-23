@@ -50,6 +50,9 @@ SELECT * FROM "Admin";
 SELECT * FROM "Announcement";
 SELECT * FROM "Student";
 SELECT * FROM "Teacher";
+SELECT id, name, 'schoolId'
+FROM "Teacher"
+WHERE schoolId = 'cmju1hey9000104l54r6cmpsu';
 SELECT * FROM "class";
 SELECT * FROM "Grade";
 SELECT * FROM "FeeStructure";

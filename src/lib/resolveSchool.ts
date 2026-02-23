@@ -22,7 +22,7 @@ export async function resolveSchoolId(slug: string): Promise<string> {
 
   const school = await prisma.schoolInfo.findUnique({
     where: { schoolId: slug },
-    select: { id: true },
+    select: { id: true, schoolId: true },
   });
 
   if (!school) {

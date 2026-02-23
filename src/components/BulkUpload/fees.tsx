@@ -14,6 +14,7 @@ import {
   FileText,
   Banknote // Changed icon to represent Fees
 } from "lucide-react";
+import { useSchoolSlug } from "../hooks/getschool";
 
 type FeeCSV = {
   studentId: string;
@@ -35,6 +36,7 @@ export default function BulkFeeUpload() {
   const [fileName, setFileName] = useState("");
   const [dragActive, setDragActive] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const schoolId = useSchoolSlug();
 
   const resetForm = () => {
     setRecords([]);
@@ -109,7 +111,7 @@ export default function BulkFeeUpload() {
         paymentMode: r.paymentMode?.toUpperCase() || "CASH",
       }));
 
-      const res = await axios.post("/api/fees/bulk", formattedData);
+      const res = await axios.post(`/api/v1/tenants/${schoolId}/fees/bulk`, formattedData);
 
       if (res.status === 200) {
         const failed = res.data.results?.filter((r: any) => r.status === "error") || [];

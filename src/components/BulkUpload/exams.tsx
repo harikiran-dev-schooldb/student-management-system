@@ -14,6 +14,7 @@ import {
   FileText,
   FileQuestion // Changed icon to represent Exams
 } from "lucide-react";
+import { useSchoolSlug } from "../hooks/getschool";
 
 type ExamCSV = {
   exam_title: string;
@@ -32,6 +33,7 @@ export default function BulkExamUpload() {
   const [fileName, setFileName] = useState("");
   const [dragActive, setDragActive] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const schoolId = useSchoolSlug();
 
   const resetForm = () => {
     setRows([]);
@@ -107,7 +109,7 @@ export default function BulkExamUpload() {
         new File([csv], "bulk_exams.csv", { type: "text/csv" })
       );
 
-      const res = await axios.post("/api/exams/bulk", formData);
+      const res = await axios.post(`/api/v1/tenants/${schoolId}/exams/bulk`, formData);
 
       // Handle backend error format
       if (res.data.errors && res.data.errors.length > 0) {

@@ -19,7 +19,7 @@ export async function POST(
     /* -----------------------------
        2️⃣ Authorize (Admin Only)
     ------------------------------ */
-    const user = await fetchUserInfo(schoolId);
+    const user = await fetchUserInfo(schoolSlug);
 
     if (!user || user.role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });

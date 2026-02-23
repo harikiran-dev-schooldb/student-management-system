@@ -10,6 +10,7 @@ import {
 } from "./ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Check } from "lucide-react";
+import { useSchoolSlug } from "./hooks/getschool";
 
 type Role = {
   id: string;
@@ -38,10 +39,11 @@ function getInitials(name?: string) {
 
 export default function SwitchUser({ roles, activeUsername }: Props) {
   const [isPending, startTransition] = useTransition();
+  const schoolId = useSchoolSlug();
 
   async function handleSwitch(username: string) {
     startTransition(async () => {
-      await fetch("/api/switch-role", {
+      await fetch(`/api/v1/tenants/${schoolId}/switch-user`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username }),

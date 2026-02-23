@@ -14,6 +14,7 @@ import {
   FileText,
   LayoutTemplate
 } from "lucide-react";
+import { useSchoolSlug } from "../hooks/getschool";
 
 type ClassCSV = {
   id: string;
@@ -30,6 +31,7 @@ export default function BulkClassUpload() {
   const [fileName, setFileName] = useState("");
   const [dragActive, setDragActive] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const schoolId = useSchoolSlug();
 
   const resetForm = () => {
     setClasses([]);
@@ -95,7 +97,7 @@ export default function BulkClassUpload() {
   const handleUpload = async () => {
     setLoading(true);
     try {
-      const response = await axios.post("/api/classes/bulk", {
+      const response = await axios.post(`/api/v1/tenants/${schoolId}/classes/bulk`, {
         classes,
       });
 

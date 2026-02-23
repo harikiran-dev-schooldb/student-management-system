@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useClerk } from "@clerk/nextjs";
+import { useSchoolSlug } from "./hooks/getschool";
 
 type Role = { id: string; role: string };
 type Props = { roles: Role[]; activeRoleId?: string };
@@ -11,6 +12,8 @@ export default function SwitchMenu({ roles, activeRoleId }: Props) {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { session } = useClerk();
+  const schoolId = useSchoolSlug();
+  console.log("Current School:", schoolId);
 
   // ✅ Ensure unique roles by `role`
   const uniqueRoles = useMemo(() => {
@@ -27,7 +30,7 @@ export default function SwitchMenu({ roles, activeRoleId }: Props) {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/switch-role", {
+      const res = await fetch(`/api/v1/tenants/${schoolId}/switch-role`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ roleId }),

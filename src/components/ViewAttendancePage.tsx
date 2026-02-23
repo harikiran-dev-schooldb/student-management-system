@@ -18,6 +18,7 @@ import {
 import { AttendanceRangeResponse, AttendanceResponse } from "../../types";
 import { useParams } from "next/navigation";
 import { tenantFetch } from "@/lib/tenantFetch";
+import { useSchoolSlug } from "./hooks/getschool";
 
 interface Props {
   role: "admin" | "teacher";
@@ -46,6 +47,7 @@ const StatusBadge = ({ present }: { present: boolean }) => (
 
 export default function ViewAttendancePage({ role, teacherClassId }: Props) {
   const today = new Date().toISOString().split("T")[0];
+  const schoolId = useSchoolSlug();
 
   const [from, setFrom] = useState(today);
   const [to, setTo] = useState(today);
@@ -70,7 +72,6 @@ export default function ViewAttendancePage({ role, teacherClassId }: Props) {
 
   const [currentPage, setCurrentPage] = useState(1);
   const recordsPerPage = 30;
-  const { schoolId } = useParams<{ schoolId: string }>();
 
   /* -------------------- Data Fetching -------------------- */
   const fetchAttendance = async () => {
@@ -106,47 +107,58 @@ export default function ViewAttendancePage({ role, teacherClassId }: Props) {
   };
 
   useEffect(() => {
-    const load = async () => {
-      if (role === "admin") {
-        const g = tenantFetch<Grade[]>(schoolId, "/grades").then(setGrades);
+    if (!schoolId) return;
 
-        if (selectedGrade) {
-          const c = await tenantFetch<Class[]>(
+    const load = async () => {
+      try {
+        if (role === "admin") {
+          const grades = await tenantFetch<Grade[]>(schoolId, "/grades");
+          setGrades(grades);
+
+          if (selectedGrade) {
+            const classes = await tenantFetch<Class[]>(
+              schoolId,
+              `/classes?gradeId=${selectedGrade}`,
+            );
+            setClasses(classes);
+          } else {
+            setClasses([]);
+          }
+        } else if (teacherClassId) {
+          const classes = await tenantFetch<Class[]>(
             schoolId,
-            `/classes?gradeId=${selectedGrade}`,
-          ).then(setClasses);
-        } else {
-          setClasses([]);
+            `/classes?id=${teacherClassId}`,
+          );
+          setClasses(Array.isArray(classes) ? classes : [classes]);
         }
-      } else if (teacherClassId) {
-        const c = await fetch(`/api/classes?id=${teacherClassId}`).then((r) =>
-          r.json(),
-        );
-        setClasses(Array.isArray(c) ? c : [c]);
+      } catch (err) {
+        console.error(err);
       }
     };
 
     load();
-  }, [role, selectedGrade, teacherClassId]);
-
-  useEffect(() => {
-    fetchAttendance();
-  }, [from, to, selectedGrade, selectedClass, role, teacherClassId]);
+  }, [role, schoolId, selectedGrade, teacherClassId]);
 
   /* -------------------- Logic -------------------- */
   const updateAttendance = async (id: number, present: boolean) => {
-    const res = await tenantFetch(schoolId, "/attendance", {
-      method: "PUT",
-      body: JSON.stringify({ attendanceId: id, present: !present }),
-    });
+    try {
+      const updated = await tenantFetch<{ attendance: any }>(
+        schoolId,
+        `/attendance/${id}`,
+        {
+          method: "PUT",
+          body: JSON.stringify({ present: !present }),
+        },
+      );
 
-    if (res.ok) {
       setRecords((prev) => ({
         ...prev,
         attendance: prev.attendance.map((a) =>
-          a.id === id ? { ...a, present: !present } : a,
+          a.id === id ? updated.attendance : a,
         ),
       }));
+    } catch (error) {
+      console.error("Failed to update attendance:", error);
     }
   };
 

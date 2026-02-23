@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { resolveSchoolId } from "@/lib/resolveSchool";
 
 function parseDDMMYYYY(dob: string): Date | null {
   const [dd, mm, yyyy] = dob.split("-");
@@ -13,7 +14,8 @@ export async function POST(
   { params }: { params: Promise<{ schoolId: string }> },
 ) {
   try {
-    const { schoolId } = await params;
+    const { schoolId: schoolSlug } = await params;
+    const schoolId = await resolveSchoolId(schoolSlug); 
     const { students } = await req.json();
 
     if (!Array.isArray(students)) {

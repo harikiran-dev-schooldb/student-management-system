@@ -3,17 +3,19 @@
 import { useState, useRef, DragEvent } from "react";
 import Papa from "papaparse";
 import axios from "axios";
-import { 
-  UploadCloud, 
-  FileSpreadsheet, 
-  AlertCircle, 
-  CheckCircle2, 
-  X, 
-  Loader2, 
+import {
+  UploadCloud,
+  FileSpreadsheet,
+  AlertCircle,
+  CheckCircle2,
+  X,
+  Loader2,
   Trash2,
   FileText,
-  UserPlus // Changed icon to represent Student Upload
+  UserPlus, // Changed icon to represent Student Upload
 } from "lucide-react";
+import { useTenantApi } from "@/hooks/useTenantApi";
+import { useSchoolSlug } from "../hooks/getschool";
 
 type StudentCSV = {
   id: string;
@@ -108,19 +110,21 @@ export default function BulkStudentUpload() {
     }
   };
 
+  const schoolId = useSchoolSlug();
+  const api = useTenantApi(schoolId);
+
   const handleUpload = async () => {
     setLoading(true);
     try {
-      const response = await axios.post("/api/students/bulk-upload", {
-        students,
-      });
+      const { data } = await api.post("/students/bulk-upload", { students });
 
-      if (!response.data.errors?.length) {
-        setSuccess(true);
-        setTimeout(() => resetForm(), 3000); 
-      } else {
-        setErrors(response.data.errors);
+      if (data.errors?.length) {
+        setErrors(data.errors);
+        return;
       }
+
+      setSuccess(true);
+      setTimeout(resetForm, 3000);
     } catch (error) {
       console.error(error);
       setErrors(["Network error: Failed to upload data to the server."]);
@@ -131,7 +135,6 @@ export default function BulkStudentUpload() {
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-darkMode text-zinc-900 dark:text-zinc-100 font-sans transition-colors">
-      
       {/* 1. Header Section */}
       <header className="px-6 py-8 md:px-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
@@ -145,13 +148,13 @@ export default function BulkStudentUpload() {
             Onboard new students efficiently by uploading a CSV file.
           </p>
         </div>
-        
-        <button 
-          onClick={() => window.open('/sample/student-bulk-template.csv')} 
+
+        <button
+          onClick={() => window.open("/sample/student-bulk-template.csv")}
           className="group flex items-center gap-3 px-5 py-3 rounded-xl bg-white dark:bg-darkMode border border-zinc-200 dark:border-zinc-800 hover:border-indigo-300 dark:hover:border-indigo-700 shadow-sm hover:shadow-md transition-all active:scale-95"
         >
           <div className="p-1.5 bg-indigo-50 dark:bg-darkMode rounded-lg text-indigo-600 dark:text-indigo-400 group-hover:text-indigo-700">
-             <FileText className="w-4 h-4" />
+            <FileText className="w-4 h-4" />
           </div>
           <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">
             Download Template
@@ -162,15 +165,15 @@ export default function BulkStudentUpload() {
       {/* 2. Main Content - Expanded Width */}
       <main className="flex-1 px-4 md:px-10 pb-10">
         <div className="bg-white dark:bg-darkMode rounded-3xl shadow-xl shadow-zinc-200/50 dark:shadow-black/50 border border-zinc-200 dark:border-zinc-800 overflow-hidden flex flex-col min-h-[600px]">
-          
           {/* A. Empty State / Drop Zone */}
           {!students.length && (
             <div className="flex-1 flex flex-col items-center justify-center p-8 md:p-16">
               <div
                 className={`relative group cursor-pointer flex flex-col items-center justify-center w-full max-w-3xl h-80 rounded-3xl border-3 border-dashed transition-all duration-300 ease-out
-                  ${dragActive 
-                    ? "border-indigo-500 bg-indigo-50/50 dark:bg-darkMode scale-[1.02] shadow-2xl shadow-indigo-500/10" 
-                    : "border-zinc-200 dark:border-zinc-800 hover:border-indigo-400 dark:hover:border-indigo-500 hover:bg-zinc-50 dark:hover:bg-zinc-900"
+                  ${
+                    dragActive
+                      ? "border-indigo-500 bg-indigo-50/50 dark:bg-darkMode scale-[1.02] shadow-2xl shadow-indigo-500/10"
+                      : "border-zinc-200 dark:border-zinc-800 hover:border-indigo-400 dark:hover:border-indigo-500 hover:bg-zinc-50 dark:hover:bg-zinc-900"
                   }`}
                 onDragEnter={handleDrag}
                 onDragLeave={handleDrag}
@@ -185,14 +188,20 @@ export default function BulkStudentUpload() {
                   className="hidden"
                   onChange={handleFileChange}
                 />
-                
+
                 {/* Decorative Icon Background */}
                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
-                   <div className="w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl"></div>
+                  <div className="w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl"></div>
                 </div>
 
                 <div className="relative z-10 flex flex-col items-center gap-6 text-center p-6">
-                  <div className={`p-5 rounded-2xl shadow-sm transition-all duration-300 ${dragActive ? 'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600' : 'bg-white dark:bg-darkMode text-zinc-400 group-hover:text-indigo-500 group-hover:scale-110'}`}>
+                  <div
+                    className={`p-5 rounded-2xl shadow-sm transition-all duration-300 ${
+                      dragActive
+                        ? "bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600"
+                        : "bg-white dark:bg-darkMode text-zinc-400 group-hover:text-indigo-500 group-hover:scale-110"
+                    }`}
+                  >
                     <UploadCloud className="w-10 h-10" />
                   </div>
                   <div className="space-y-2">
@@ -200,7 +209,8 @@ export default function BulkStudentUpload() {
                       Upload your CSV File
                     </h3>
                     <p className="text-zinc-500 dark:text-zinc-400 max-w-sm mx-auto">
-                      Drag and drop your file here, or click to browse. Supports standard .csv formatting.
+                      Drag and drop your file here, or click to browse. Supports
+                      standard .csv formatting.
                     </p>
                   </div>
                 </div>
@@ -227,9 +237,9 @@ export default function BulkStudentUpload() {
                     </p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-3">
-                  <button 
+                  <button
                     onClick={resetForm}
                     className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-zinc-600 dark:text-zinc-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                   >
@@ -245,24 +255,39 @@ export default function BulkStudentUpload() {
                   <div className="p-4 rounded-xl bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/50 flex items-start gap-3">
                     <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5" />
                     <div className="flex-1">
-                      <h3 className="text-sm font-bold text-red-800 dark:text-red-300">Import Validation Failed</h3>
-                      <p className="text-sm text-red-600 dark:text-red-400 mt-1 mb-2">Please fix the following issues in your CSV file:</p>
+                      <h3 className="text-sm font-bold text-red-800 dark:text-red-300">
+                        Import Validation Failed
+                      </h3>
+                      <p className="text-sm text-red-600 dark:text-red-400 mt-1 mb-2">
+                        Please fix the following issues in your CSV file:
+                      </p>
                       <ul className="text-xs text-red-700 dark:text-red-400 list-disc list-inside space-y-1 max-h-32 overflow-y-auto custom-scrollbar">
-                        {errors.map((err, i) => <li key={i}>{err}</li>)}
+                        {errors.map((err, i) => (
+                          <li key={i}>{err}</li>
+                        ))}
                       </ul>
                     </div>
-                    <button onClick={() => setErrors([])} className="text-red-400 hover:text-red-600"><X className="w-4 h-4"/></button>
+                    <button
+                      onClick={() => setErrors([])}
+                      className="text-red-400 hover:text-red-600"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
                   </div>
                 )}
 
                 {success && (
                   <div className="p-4 rounded-xl bg-emerald-50 dark:bg-darkMode border border-emerald-200 dark:border-emerald-800/50 flex items-center gap-4 animate-in slide-in-from-top-2">
                     <div className="p-2 bg-emerald-100 dark:bg-darkMode rounded-full text-emerald-600 dark:text-emerald-400">
-                       <CheckCircle2 className="w-6 h-6" />
+                      <CheckCircle2 className="w-6 h-6" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold text-emerald-800 dark:text-emerald-300">Import Successful</h3>
-                      <p className="text-sm text-emerald-600 dark:text-emerald-400">All students have been successfully enrolled.</p>
+                      <h3 className="text-sm font-bold text-emerald-800 dark:text-emerald-300">
+                        Import Successful
+                      </h3>
+                      <p className="text-sm text-emerald-600 dark:text-emerald-400">
+                        All students have been successfully enrolled.
+                      </p>
                     </div>
                   </div>
                 )}
@@ -284,14 +309,24 @@ export default function BulkStudentUpload() {
                     </thead>
                     <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800 bg-white dark:bg-darkMode">
                       {students.map((student, i) => (
-                        <tr key={i} className="group hover:bg-indigo-50/30 dark:hover:bg-indigo-500/5 transition-colors">
-                          <td className="px-6 py-3 text-center text-zinc-400 font-mono text-xs border-r border-transparent group-hover:border-indigo-100 dark:group-hover:border-zinc-800">{i + 1}</td>
+                        <tr
+                          key={i}
+                          className="group hover:bg-indigo-50/30 dark:hover:bg-indigo-500/5 transition-colors"
+                        >
+                          <td className="px-6 py-3 text-center text-zinc-400 font-mono text-xs border-r border-transparent group-hover:border-indigo-100 dark:group-hover:border-zinc-800">
+                            {i + 1}
+                          </td>
                           {Object.values(student).map((val, j) => (
-                            <td key={j} className="px-6 py-3 font-medium text-zinc-700 dark:text-zinc-300 whitespace-nowrap">
+                            <td
+                              key={j}
+                              className="px-6 py-3 font-medium text-zinc-700 dark:text-zinc-300 whitespace-nowrap"
+                            >
                               {val ? (
                                 <span>{val}</span>
                               ) : (
-                                <span className="text-zinc-300 dark:text-zinc-600 italic text-xs">Empty</span>
+                                <span className="text-zinc-300 dark:text-zinc-600 italic text-xs">
+                                  Empty
+                                </span>
                               )}
                             </td>
                           ))}
@@ -301,7 +336,7 @@ export default function BulkStudentUpload() {
                   </table>
                 </div>
               </div>
-              
+
               {/* Sticky Footer */}
               <div className="p-6 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-darkMode flex justify-end gap-3 sticky bottom-0 z-20">
                 <button

@@ -10,6 +10,7 @@ export async function POST(
   try {
     const { schoolId: schoolSlug } = await params;
     const schoolId = await resolveSchoolId(schoolSlug);
+    console.log("Bulk fee structure upload for school:", schoolId);
 
     const { feeStructures } = await req.json();
 
@@ -90,9 +91,10 @@ export async function POST(
         { status: 400 }
       );
     }
-
+    
     /* ---------------- Transaction ---------------- */
 
+    
     await prisma.$transaction(async (tx) => {
       for (const record of validRecords) {
         /* Validate grade belongs to school */
@@ -107,6 +109,7 @@ export async function POST(
           errors.push(
             `Grade ${record.gradeId} does not belong to this school`
           );
+          console.log("Grade NOT found:", record.gradeId);
           continue;
         }
 
