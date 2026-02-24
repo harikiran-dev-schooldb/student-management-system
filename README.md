@@ -12,7 +12,7 @@
 
 **A production-ready, multi-tenant School ERP solution for institutions — deployed on Vercel with Neon PostgreSQL and Clerk authentication.**
 
-This repository contains the web platform used to manage academic and administrative operations across multiple schools (tenants) from a single secure deployment. ([GitHub][1])
+This repository contains the web platform used to manage academic and administrative operations across multiple schools (tenants) from a single secure deployment.
 
 ---
 
@@ -33,7 +33,7 @@ Each institution (tenant) operates in an isolated workspace under a single globa
 * efficient resource usage
 * secure per-tenant data isolation
 
-> Multi-tenant SaaS provides resource sharing and secure data partitioning for many customers from one deployed instance. ([Rishabh Software][2])
+> Multi-tenant SaaS provides resource sharing and secure data partitioning for many customers from one deployed instance.
 
 ---
 
@@ -182,7 +182,7 @@ npx prisma migrate deploy
 * Clerk provides secure authentication flows per institution.
 * Because this is a production platform, all sensitive client secrets must remain server-side and protected.
 
-Multi-tenant SaaS architecture improves resource usage and reduces operational overhead while serving multiple paying customers from one codebase and infrastructure. ([Rishabh Software][2])
+Multi-tenant SaaS architecture improves resource usage and reduces operational overhead while serving multiple paying customers from one codebase and infrastructure.
 
 ---
 
