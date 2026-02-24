@@ -32,7 +32,7 @@ export const bottomNavItems: BottomNavItem[] = [
     label: "Users",
     icon: Users,
     visible: ["admin"],
-    children: [
+    dropdown: [
       {
         label: "Students",
         href: "/list/users/students",
@@ -58,7 +58,7 @@ export const bottomNavItems: BottomNavItem[] = [
     label: "Attendance",
     icon: CalendarCheck,
     visible: ["admin", "teacher"],
-    children: [
+    dropdown: [
       {
         label: "Mark Attendance",
         href: "/list/attendance/mark_attendance",
@@ -92,7 +92,7 @@ export const bottomNavItems: BottomNavItem[] = [
     label: "Fees",
     icon: IndianRupee,
     visible: ["admin", "teacher"],
-    children: [
+    dropdown: [
       {
         label: "Collect Fees",
         href: "/list/fees/collect",
@@ -124,7 +124,7 @@ export const bottomNavItems: BottomNavItem[] = [
     label: "More",
     icon: Menu,
     visible: ["admin", "teacher", "student"],
-    children: [
+    dropdown: [
       {
         label: "Messages",
         icon: MessageSquareText,

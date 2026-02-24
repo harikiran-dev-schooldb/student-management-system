@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import type { ElementType } from "react";
 
 import { bottomNavItems } from "./BottomNav.config";
-import type { Role, BottomNavChild } from "./BottomNav.types";
+import type { Role } from "./BottomNav.types";
 import MobileSheet from "./MobileSheet";
 
 type SheetItem = {
@@ -21,7 +21,6 @@ type SheetState = {
   anchor: { x: number; y: number };
 };
 
-
 /**
  * Resolves role-based hrefs into concrete URLs.
  * <Link> must always receive a string.
@@ -29,7 +28,7 @@ type SheetState = {
 
 function resolveHref(
   href: string | ((role: Role) => string),
-  role: Role
+  role: Role,
 ): string {
   return typeof href === "function" ? href(role) : href;
 }
@@ -56,16 +55,15 @@ export default function BottomNav({ role }: { role: Role }) {
               const Icon = item.icon;
 
               /* ================= CHILD MENU ITEMS ================= */
-              if (item.children) {
-                const visibleChildren: SheetItem[] = item.children
-                  .filter((child: BottomNavChild) =>
-                    child.visible.includes(role)
-                  )
-                  .map((child) => ({
-                    label: child.label,
-                    icon: child.icon,
-                    href: resolveHref(child.href, role),
-                  }));
+              if (item.dropdown) {
+                const visibleChildren: SheetItem[] =
+                  item.dropdown
+                    ?.filter((child) => child.visible.includes(role))
+                    .map((child) => ({
+                      label: child.label,
+                      icon: child.icon,
+                      href: resolveHref(child.href!, role),
+                    })) || [];
 
                 // Do not render parent if nothing is visible
                 if (visibleChildren.length === 0) return null;

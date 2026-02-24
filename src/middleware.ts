@@ -8,6 +8,8 @@ const PUBLIC_ROUTES = [
   "/",
   "/features",
   "/demo",
+  "/platform",
+  "/pricing",
   "/unauthorized",
 ];
 
