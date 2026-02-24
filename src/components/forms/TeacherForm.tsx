@@ -8,6 +8,8 @@ import { teacherschema, Teacherschema } from "@/lib/formValidationSchemas";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import { CldUploadWidget } from "next-cloudinary";
+import { useSchoolSlug } from "../hooks/getschool";
+import { useTenantApi } from "@/hooks/useTenantApi";
 
 const TeacherForm = ({
   type,
@@ -35,33 +37,21 @@ const TeacherForm = ({
   });
 
   const router = useRouter();
+  const schoolId = useSchoolSlug();
+  const api = useTenantApi(schoolId);
 
   const formAction = async (formData: any) => {
     try {
-      const currentState = { success: false, error: false }; // Define an initial state
+      if (!schoolId) return;
 
-      const apiUrl =
-        type === "create"
-          ? "/api/users/teachers"
-          : `/api/users/teachers/${data?.id}`;
-      const response = await fetch(apiUrl, {
-        method: type === "create" ? "POST" : "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ ...formData, img: img?.secure_url }),
-      });
+      const payload = { ...formData, img: img?.secure_url };
 
-      const responseData = await response.json();
-      if (response.ok) {
-        currentState.success = true;
-      } else {
-        currentState.error = true;
-      }
+      await (type === "create"
+        ? api.post("/users/teachers", payload)
+        : api.put(`/users/teachers/${data?.id}`, payload));
 
-      setState({ success: currentState.success, error: currentState.error });
-    } catch (err) {
-      console.error("Error in form submission:", err);
+      setState({ success: true, error: false });
+    } catch (error: any) {
       setState({ success: false, error: true });
     }
   };
@@ -83,7 +73,6 @@ const TeacherForm = ({
 
   return (
     <form className="flex flex-col gap-8 pb-24 md:pb-8" onSubmit={onSubmit}>
-
       <span className="text-xs font-medium text-gray-400">
         Authentication Information
       </span>

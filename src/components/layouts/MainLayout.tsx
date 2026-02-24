@@ -1,34 +1,38 @@
 // src/components/layouts/MainLayout.tsx
 
-import React from 'react';
-import Head from 'next/head';
+import React from "react";
 
-// Define the props interface for the MainLayout component
 interface MainLayoutProps {
-    title?: string; // Optional title prop
-    children: React.ReactNode; // Required children prop
+  children: React.ReactNode;
 }
 
-const MainLayout: React.FC<MainLayoutProps> = ({ title, children }) => {
-    return (
-        <div>
-            <Head>
-                <title>{title || 'Kotak Salesian School'}</title>
-                <meta name="description" content="A description of your app" />
-            </Head>
-            <header>
-                <nav>
-                    <h1>Kotak Salesian School</h1>
-                </nav>
-            </header>
-            <main>
-                {children}
-            </main>
-            <footer>
-                <p>© {new Date().getFullYear()} My Application. All rights reserved.</p>
-            </footer>
+const MainLayout = ({ children }: MainLayoutProps) => {
+  return (
+    <div className="min-h-screen flex flex-col bg-slate-50 text-gray-900">
+      
+      {/* Header */}
+      <header className="bg-white shadow-sm">
+        <div className="max-w-6xl mx-auto px-6 py-4">
+          <h1 className="text-xl font-semibold">
+            School DB
+          </h1>
         </div>
-    );
+      </header>
+
+      {/* Main Content */}
+      <main className="flex-1">
+        {children}
+      </main>
+
+      {/* Footer */}
+      <footer className="bg-white border-t mt-10">
+        <div className="max-w-6xl mx-auto px-6 py-6 text-sm text-gray-600 text-center">
+          © {new Date().getFullYear()} School DB. All rights reserved.
+        </div>
+      </footer>
+
+    </div>
+  );
 };
 
 export default MainLayout;

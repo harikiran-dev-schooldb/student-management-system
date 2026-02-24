@@ -43,7 +43,7 @@ export default function SwitchUser({ roles, activeUsername }: Props) {
 
   async function handleSwitch(username: string) {
     startTransition(async () => {
-      await fetch(`/api/v1/tenants/${schoolId}/switch-user`, {
+      await fetch(`/api/v1/tenants/${schoolId}/switch-role`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username }),

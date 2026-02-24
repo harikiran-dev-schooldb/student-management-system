@@ -13,7 +13,7 @@ import SortButton from "@/components/SortButton";
 import ResetFiltersButton from "@/components/ResetFiltersButton";
 import { GenderFilter, TeacherStatusFilter } from "@/components/FilterDropdown";
 import TeacherStatusDropdown from "@/components/TeacherStatusDropdown";
-import { Eye, Filter, FilterX } from "lucide-react";
+import { Eye, Filter } from "lucide-react";
 import Avatar from "@/components/Avatar";
 import IconButton from "@/components/IconButton";
 import { notFound } from "next/navigation";

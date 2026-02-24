@@ -92,6 +92,7 @@ export async function POST(
 
     const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
     const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    
 
     /* -------- Logo (Safe Load) -------- */
     const logoPath = path.join(process.cwd(), "public", "logo.png");

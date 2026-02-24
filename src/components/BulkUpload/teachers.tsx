@@ -2,7 +2,6 @@
 
 import { useState, useRef, DragEvent } from "react";
 import Papa from "papaparse";
-import axios from "axios";
 import {
   UploadCloud,
   FileSpreadsheet,

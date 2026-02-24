@@ -181,6 +181,12 @@ const menuSections: MenuSection[] = [
         visible: ["admin", "teacher"],
       },
       {
+        label: "Assignments",
+        href: "/list/assignments",
+        icon: FileText,
+        visible: ["admin", "teacher", "student"],
+      },
+      {
         label: "Exams",
         href: "/list/exams",
         icon: FileText,

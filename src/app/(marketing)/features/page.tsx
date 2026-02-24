@@ -1,11 +1,11 @@
 export const metadata = {
-  title: "Features | Schooldb – Smart School Management System",
+  title: "Features | School DB – Leadership Operating System for Schools",
   description:
-    "Explore Schooldb features designed for school principals and management to gain visibility, control, and confident decision-making across academics, operations, and finance.",
+    "Explore School DB features built for principals and leadership teams to gain real-time visibility, structured control, and confident decision-making across academics and finance.",
   openGraph: {
-    title: "Schooldb Features",
+    title: "School DB Features",
     description:
-      "A complete school management system built for principals, administrators, and leadership teams.",
+      "A centralized, leadership-focused ERP platform for modern schools.",
     images: ["/og/features.png"],
     type: "website",
   },
@@ -13,123 +13,126 @@ export const metadata = {
 
 export default function Features() {
   return (
-    <main className="bg-slate-50 text-gray-900">
-      {/* PAGE INTRO */}
-      <section className="pt-24 pb-16 bg-white">
+    <main className="bg-white text-gray-900">
+
+      {/* ================= HERO ================= */}
+      <section className="py-32 bg-gradient-to-b from-white to-slate-100">
         <div className="max-w-6xl mx-auto px-6">
-          <h1 className="text-4xl md:text-5xl font-bold max-w-4xl">
-            Features Built for School Leadership
+          <h1 className="text-5xl font-bold max-w-4xl leading-tight">
+            Powerful Capabilities Built for
+            <br /> School Leadership
           </h1>
 
-          <p className="mt-6 text-lg max-w-3xl text-gray-700">
-            Schooldb is designed to support principals and management teams with
-            complete visibility, structured control, and reliable data across
-            academics, staff operations, and financial management.
+          <p className="mt-8 text-xl text-gray-600 max-w-3xl">
+            School DB is engineered to provide principals and management teams
+            with complete operational clarity, structured oversight, and
+            reliable real-time data across academics, staff operations,
+            and financial management.
           </p>
         </div>
       </section>
 
-      {/* FEATURES GRID */}
-      <section className="py-20">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="grid gap-8 md:grid-cols-2">
-            <Feature
-              title="Leadership Dashboard"
-              text="A centralized, real-time dashboard that gives management a clear overview of students, teachers, attendance trends, and financial status—without waiting for reports."
-            />
+      {/* ================= FEATURE GRID ================= */}
+      <section className="py-28 bg-white">
+        <div className="max-w-6xl mx-auto px-6 grid gap-10 md:grid-cols-2">
 
-            <Feature
-              title="Role-Based Access Control"
-              text="Clearly defined roles for administrators and teachers ensure accountability while allowing both to manage attendance and academic records without dependency."
-            />
+          <Feature
+            title="Executive Leadership Dashboard"
+            text="A real-time command center that provides management with instant visibility into attendance trends, academic performance, teacher activity, and financial status."
+          />
 
-            <Feature
-              title="Student Information Management"
-              text="Comprehensive student profiles that combine attendance history, academic performance, class details, and fee status in one secure system."
-            />
+          <Feature
+            title="Role-Based Governance & Access Control"
+            text="Clearly structured roles ensure accountability while allowing administrators and teachers to manage their responsibilities without operational bottlenecks."
+          />
 
-            <Feature
-              title="Teacher & Staff Management"
-              text="Transparent visibility into teacher assignments, subject responsibilities, and workload distribution to support planning and performance oversight."
-            />
+          <Feature
+            title="Comprehensive Student Profiles"
+            text="Centralized student records combining attendance history, academic progress, class assignments, and fee status in one secure system."
+          />
 
-            <Feature
-              title="Attendance Management"
-              text="Attendance can be recorded by both teachers and administrators, ensuring continuity, accuracy, and uninterrupted daily operations."
-            />
+          <Feature
+            title="Teacher & Workforce Oversight"
+            text="Transparent tracking of teacher allocations, subject assignments, and workload distribution to support planning and institutional performance."
+          />
 
-            <Feature
-              title="Attendance Analytics & Reports"
-              text="Class-wise and date-wise attendance reports help leadership identify patterns early and take corrective action before issues escalate."
-            />
+          <Feature
+            title="Structured Attendance Management"
+            text="Accurate daily attendance marking by both teachers and administrators ensures continuity and operational reliability."
+          />
 
-            <Feature
-              title="Marks, Exams & Results"
-              text="Structured marks entry by teachers and administrators enables timely result preparation, academic analysis, and informed interventions."
-            />
+          <Feature
+            title="Attendance Intelligence & Pattern Analysis"
+            text="Class-wise and date-wise analytics help leadership detect trends early and intervene before performance issues escalate."
+          />
 
-            <Feature
-              title="Homework & Academic Coordination"
-              text="Digital homework assignment improves academic consistency and strengthens communication between teachers and students."
-            />
+          <Feature
+            title="Exams, Marks & Academic Analytics"
+            text="Streamlined marks entry with structured result processing enables timely academic insights and data-driven interventions."
+          />
 
-            <Feature
-              title="Fees & Financial Oversight"
-              text="Clear visibility into paid and pending fees with student-wise and term-wise tracking for transparent financial management."
-            />
+          <Feature
+            title="Digital Homework & Academic Coordination"
+            text="Centralized homework management enhances instructional consistency and improves coordination across classes."
+          />
 
-            <Feature
-              title="Reports & Data Exports"
-              text="Export-ready reports support audits, inspections, and management reviews with reliable, well-organized, and accurate data."
-            />
-          </div>
+          <Feature
+            title="Financial Oversight & Fee Tracking"
+            text="Transparent fee monitoring with student-wise and term-wise tracking ensures accurate revenue visibility and accountability."
+          />
+
+          <Feature
+            title="Audit-Ready Reports & Data Exports"
+            text="Generate inspection-ready and management-ready reports instantly without manual compilation or spreadsheet dependency."
+          />
+
         </div>
       </section>
 
-      {/* MANAGEMENT POSITIONING */}
-      <section className="py-20 bg-white">
-        <div className="max-w-6xl mx-auto px-6">
-          <h2 className="text-3xl font-semibold max-w-3xl">
-            Designed for Decisions, Not Just Data Entry
+      {/* ================= POSITIONING SECTION ================= */}
+      <section className="py-28 bg-slate-50">
+        <div className="max-w-5xl mx-auto px-6 text-center">
+          <h2 className="text-4xl font-bold">
+            Designed for Decisions — Not Just Data Entry
           </h2>
 
-          <p className="mt-6 max-w-3xl text-gray-700">
-            Schooldb goes beyond basic record keeping. By connecting academic,
-            operational, and financial data into a single source of truth, it
-            enables school leadership to identify issues early, monitor progress
-            clearly, and make confident decisions without manual effort or
-            dependency.
+          <p className="mt-8 text-lg text-gray-600 max-w-3xl mx-auto">
+            School DB integrates academic, operational, and financial
+            intelligence into a single source of truth. Leadership teams
+            gain early visibility into potential risks, track institutional
+            performance clearly, and act with confidence.
           </p>
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="py-24 bg-indigo-600 text-center text-white">
-        <h2 className="text-3xl font-bold">
-          See These Features in Action
+      {/* ================= PREMIUM CTA ================= */}
+      <section className="py-32 bg-indigo-600 text-white text-center">
+        <h2 className="text-4xl font-bold">
+          Experience These Capabilities Firsthand
         </h2>
 
-        <p className="mt-3 text-indigo-100">
-          Get a personalized demo tailored to your school’s structure and
-          management needs
+        <p className="mt-6 text-indigo-100 text-lg max-w-2xl mx-auto">
+          Book a personalized leadership demo and see how School DB
+          transforms operational clarity within your institution.
         </p>
 
         <a
           href="/demo"
-          className="mt-8 inline-block bg-white text-indigo-600 px-8 py-3 rounded-md font-semibold hover:bg-gray-100 transition"
+          className="mt-10 inline-block bg-white text-indigo-600 px-10 py-4 rounded-2xl font-semibold text-lg shadow-xl hover:bg-gray-100 transition"
         >
-          Request a Demo
+          Schedule Leadership Demo
         </a>
       </section>
+
     </main>
   );
 }
 
 function Feature({ title, text }: { title: string; text: string }) {
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-sm transition">
+    <div className="bg-white p-8 rounded-2xl shadow-lg hover:shadow-2xl transition duration-300 border border-gray-100">
       <h3 className="text-xl font-semibold text-gray-900">{title}</h3>
-      <p className="mt-3 text-gray-700 leading-relaxed">{text}</p>
+      <p className="mt-4 text-gray-600 leading-relaxed">{text}</p>
     </div>
   );
 }

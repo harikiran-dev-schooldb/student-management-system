@@ -4,10 +4,17 @@ import prisma from "@/lib/prisma";
 
 export const runtime = "nodejs";
 
+const PUBLIC_ROUTES = [
+  "/",
+  "/features",
+  "/demo",
+  "/unauthorized",
+];
+
 export default clerkMiddleware(async (auth, req) => {
   const { pathname } = req.nextUrl;
 
-  // Skip Next internals
+  // Skip static & next internals
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/static") ||
@@ -19,10 +26,26 @@ export default clerkMiddleware(async (auth, req) => {
   const segments = pathname.split("/").filter(Boolean);
 
   /**
-   * ---------------------------------------
-   * 1️⃣ Handle Tenant APIs
+   * 1️⃣ Public marketing routes
+   */
+  if (PUBLIC_ROUTES.includes(pathname)) {
+    return NextResponse.next();
+  }
+
+  /**
+   * 2️⃣ Public APIs
+   */
+  if (
+    segments[0] === "api" &&
+    segments[1] === "v1" &&
+    segments[2] === "public"
+  ) {
+    return NextResponse.next();
+  }
+
+  /**
+   * 3️⃣ Tenant APIs
    * /api/v1/tenants/{schoolId}/*
-   * ---------------------------------------
    */
   if (
     segments[0] === "api" &&
@@ -30,12 +53,10 @@ export default clerkMiddleware(async (auth, req) => {
     segments[2] === "tenants"
   ) {
     const { userId } = await auth();
-    console.log("Authenticated userId:", userId);
 
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    // 🔐 enforce authentication
 
     const schoolId = segments[3];
 
@@ -56,31 +77,13 @@ export default clerkMiddleware(async (auth, req) => {
   }
 
   /**
-   * ---------------------------------------
-   * 2️⃣ Public APIs
-   * /api/v1/public/*
-   * ---------------------------------------
-   */
-  if (
-    segments[0] === "api" &&
-    segments[1] === "v1" &&
-    segments[2] === "public"
-  ) {
-    return NextResponse.next();
-  }
-
-  /**
-   * ---------------------------------------
-   * 3️⃣ Frontend Pages (if still using slug routes)
-   * ---------------------------------------
+   * 4️⃣ Tenant Frontend Routes
+   * /{schoolId}/...
    */
 
   const schoolSlug = segments[0];
 
-  if (!schoolSlug || schoolSlug === "api") {
-    return NextResponse.next();
-  }
-
+  // If route is not public and not API, treat it as tenant
   const schoolExists = await prisma.schoolInfo.findUnique({
     where: { schoolId: schoolSlug },
     select: { id: true },
@@ -88,6 +91,12 @@ export default clerkMiddleware(async (auth, req) => {
 
   if (!schoolExists) {
     return NextResponse.redirect(new URL("/unauthorized", req.url));
+  }
+
+  const { userId } = await auth();
+
+  if (!userId) {
+    return NextResponse.redirect(new URL("/", req.url));
   }
 
   const response = NextResponse.next();
@@ -98,6 +107,6 @@ export default clerkMiddleware(async (auth, req) => {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|logo.png|.*\\.(?:png|jpg|jpeg|gif|webp|svg)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|gif|webp|svg)$).*)",
   ],
 };

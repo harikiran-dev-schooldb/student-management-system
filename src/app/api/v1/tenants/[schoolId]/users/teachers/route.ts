@@ -1,7 +1,6 @@
 import prisma from "@/lib/prisma";
 import { clerkClient } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
-import { teacherschema } from "@/lib/formValidationSchemas";
 import { resolveSchoolId } from "@/lib/resolveSchool";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
 
@@ -9,7 +8,7 @@ export const runtime = "nodejs";
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: Promise<{ schoolId: string }> }
+  { params }: { params: Promise<{ schoolId: string }> },
 ) {
   try {
     /* =====================================================
@@ -18,189 +17,158 @@ export async function POST(
     const { schoolId: schoolSlug } = await params;
     const schoolId = await resolveSchoolId(schoolSlug);
 
-    const currentUser = await fetchUserInfo(schoolSlug);
-    if (!currentUser || currentUser.role !== "admin") {
+    const user = await fetchUserInfo(schoolSlug);
+    
+    if (!user || user.role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     /* =====================================================
        2️⃣ Parse Input
     ===================================================== */
-    const { teachers } = await req.json();
+    const body = await req.json();
 
-    if (!Array.isArray(teachers) || teachers.length === 0) {
+    const {
+      id,
+      username,
+      name,
+      parentName,
+      dob,
+      email,
+      phone,
+      address,
+      gender,
+      bloodType,
+      img,
+      classId,
+      password,
+    } = body;
+
+    if (!username || !name || !phone || !address || !gender) {
       return NextResponse.json(
-        { error: "Invalid teachers array" },
+        { error: "Missing required fields" },
         { status: 400 }
       );
     }
 
-    if (teachers.length > 2000) {
+    /* =====================================================
+       3️⃣ Prevent Duplicate Inside Tenant
+    ===================================================== */
+    const existingTeacher = await prisma.teacher.findUnique({
+      where: {
+        username_schoolId: {
+          username: username.trim(),
+          schoolId,
+        },
+      },
+    });
+
+    if (existingTeacher) {
       return NextResponse.json(
-        { error: "Upload limit exceeded (max 2000)" },
+        { error: "Teacher already exists in this school" },
         { status: 400 }
       );
     }
 
     const client = await clerkClient();
-
-    let created = 0;
-    let skipped = 0;
-    const errors: string[] = [];
+    const phoneNumber = `+91${phone}`;
+    const finalPassword =
+      password && password !== "" ? password : phone;
 
     /* =====================================================
-       3️⃣ Preload Valid Classes
+       4️⃣ Clerk User Handling
     ===================================================== */
-    const classes = await prisma.class.findMany({
-      where: { schoolId },
-      select: { id: true },
+    const existingUsers = await client.users.getUserList({
+      phoneNumber: [phoneNumber],
     });
 
-    const validClassSet = new Set(classes.map((c) => c.id));
+    let clerkUser;
 
-    /* =====================================================
-       4️⃣ Process Teachers
-    ===================================================== */
-    for (let i = 0; i < teachers.length; i++) {
-      const t = teachers[i];
+    if (existingUsers.data.length > 0) {
+      clerkUser = existingUsers.data[0];
+    } else {
+      clerkUser = await client.users.createUser({
+        username: username.trim(),
+        password: finalPassword,
+        firstName: name,
+        phoneNumber: [phoneNumber],
+      });
 
-      try {
-        if (
-          !t.id ||
-          !t.username ||
-          !t.name ||
-          !t.phone ||
-          !t.address ||
-          !t.gender
-        ) {
-          errors.push(`Row ${i + 1}: Missing required fields`);
-          skipped++;
-          continue;
-        }
-
-        const teacherId = t.id ?? t.username;
-        const phoneNumber = `+91${t.phone}`;
-        const finalPassword = t.password && t.password !== "" ? t.password : t.phone;
-
-        /* -----------------------------
-           Prevent duplicate inside tenant
-        ------------------------------ */
-        const existingTeacher = await prisma.teacher.findUnique({
-          where: {
-            username_schoolId: {
-              username: t.username.trim(),
-              schoolId,
-            },
-          },
-        });
-
-        if (existingTeacher) {
-          errors.push(`Duplicate skipped: ${t.username}`);
-          skipped++;
-          continue;
-        }
-
-        /* -----------------------------
-           Clerk User
-        ------------------------------ */
-        const existingUsers = await client.users.getUserList({
-          phoneNumber: [phoneNumber],
-        });
-
-        let clerkUser;
-
-        if (existingUsers.data.length > 0) {
-          clerkUser = existingUsers.data[0];
-        } else {
-          clerkUser = await client.users.createUser({
-            username: t.username.trim(),
-            password: finalPassword,
-            firstName: t.name,
-            phoneNumber: [phoneNumber],
-          });
-
-          await client.users.updateUser(clerkUser.id, {
-            publicMetadata: { role: "teacher" },
-          });
-        }
-
-        /* -----------------------------
-           Transaction
-        ------------------------------ */
-        await prisma.$transaction(async (tx) => {
-          /* Profile */
-          const profile = await tx.profile.upsert({
-            where: { clerk_id: clerkUser.id },
-            update: {},
-            create: {
-              clerk_id: clerkUser.id,
-              phone: t.phone,
-            },
-          });
-
-          /* LinkedUser */
-          const linkedUser = await tx.linkedUser.create({
-            data: {
-              username: t.username.trim(),
-              role: "teacher",
-              profileId: profile.id,
-              schoolId,
-            },
-          });
-
-          if (!profile.activeUserId) {
-            await tx.profile.update({
-              where: { id: profile.id },
-              data: { activeUserId: linkedUser.id },
-            });
-          }
-
-          /* Teacher */
-          await tx.teacher.create({
-            data: {
-              id: teacherId,
-              username: t.username.trim(),
-              name: t.name,
-              parentName: t.parentName ?? null,
-              dob: t.dob ? new Date(t.dob) : null,
-              email: t.email ?? null,
-              phone: t.phone,
-              address: t.address,
-              gender: t.gender,
-              bloodType: t.bloodType ?? null,
-              img: t.img ?? null,
-              clerk_id: clerkUser.id,
-              profileId: profile.id,
-              linkedUserId: linkedUser.id,
-              classId:
-                t.classId && validClassSet.has(Number(t.classId))
-                  ? Number(t.classId)
-                  : null,
-              schoolId,
-            },
-          });
-        });
-
-        created++;
-      } catch (err: any) {
-        errors.push(`Row ${i + 1}: ${err.message}`);
-        skipped++;
-      }
+      await client.users.updateUser(clerkUser.id, {
+        publicMetadata: { role: "teacher" },
+      });
     }
 
     /* =====================================================
-       5️⃣ Response
+       5️⃣ Transaction
     ===================================================== */
-    return NextResponse.json({
-      message: "Bulk teacher upload completed",
-      created,
-      skipped,
-      total: teachers.length,
-      errors,
+    const result = await prisma.$transaction(async (tx) => {
+      // Profile
+      const profile = await tx.profile.upsert({
+        where: { clerk_id: clerkUser.id },
+        update: {},
+        create: {
+          clerk_id: clerkUser.id,
+          phone,
+        },
+      });
+
+      // LinkedUser
+      const linkedUser = await tx.linkedUser.create({
+        data: {
+          username: username.trim(),
+          role: "teacher",
+          profileId: profile.id,
+          schoolId,
+        },
+      });
+
+      if (!profile.activeUserId) {
+        await tx.profile.update({
+          where: { id: profile.id },
+          data: { activeUserId: linkedUser.id },
+        });
+      }
+
+      // Teacher
+      const teacher = await tx.teacher.create({
+        data: {
+          id: id ?? username,
+          username: username.trim(),
+          name,
+          parentName: parentName ?? null,
+          dob: dob ? new Date(dob) : null,
+          email: email ?? null,
+          phone,
+          address,
+          gender,
+          bloodType: bloodType ?? null,
+          img: img ?? null,
+          clerk_id: clerkUser.id,
+          profileId: profile.id,
+          linkedUserId: linkedUser.id,
+          classId: classId ? Number(classId) : null,
+          schoolId,
+        },
+      });
+
+      return teacher;
     });
 
+    /* =====================================================
+       6️⃣ Response
+    ===================================================== */
+    return NextResponse.json(
+      {
+        success: true,
+        message: "Teacher created successfully",
+        teacher: result,
+      },
+      { status: 201 }
+    );
+
   } catch (error) {
-    console.error("Bulk Teacher Upload Error:", error);
+    console.error("Create Teacher Error:", error);
 
     return NextResponse.json(
       { error: "Internal server error" },
