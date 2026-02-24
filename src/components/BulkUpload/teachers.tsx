@@ -112,7 +112,7 @@ export default function BulkTeacherUpload() {
   const handleUpload = async () => {
     setLoading(true);
     try {
-      const response = await api.post("/teachers/bulk-upload", {
+      const response = await api.post("/users/teachers/bulk-upload", {
         teachers,
       });
 

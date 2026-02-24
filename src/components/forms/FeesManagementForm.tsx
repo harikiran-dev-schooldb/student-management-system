@@ -7,6 +7,8 @@ import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 import { feesSchema, FeesSchema } from "@/lib/formValidationSchemas";
 import InputField from "../InputField";
+import { useSchoolSlug } from "../hooks/getschool";
+import { useTenantApi } from "@/hooks/useTenantApi";
 
 const FeesManagementForm = ({
   type,
@@ -32,36 +34,34 @@ const FeesManagementForm = ({
   });
 
   const { grades = [] } = relatedData || {};
+  
+  const schoolId = useSchoolSlug();
+  const api = useTenantApi(schoolId);
 
   // ✅ Submit handler (uses fetch → API routes)
   const onSubmit = handleSubmit(async (formData) => {
     try {
       setLoading(true);
+
+
       const endpoint =
-        type === "create"
-          ? "/api/fees/create"
-          : `/api/fees/update?id=${formData.id}`;
+        type === "create" ? "/fees/create" : `/fees/update?id=${formData.id}`;
 
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-
-      const result = await res.json();
-
-      if (!res.ok) {
-        throw new Error(result.error || "Failed to submit form");
-      }
+      await api.post(endpoint, formData);
 
       toast.success(
-        `Fees has been ${type === "create" ? "created" : "updated"} successfully!`
+        `Fees has been ${
+          type === "create" ? "created" : "updated"
+        } successfully!`,
       );
+
       setOpen(false);
       router.refresh();
     } catch (err: any) {
       console.error("❌ Error submitting form:", err);
-      toast.error(err.message || "Something went wrong!");
+      toast.error(
+        err?.response?.data?.error || err.message || "Something went wrong!",
+      );
     } finally {
       setLoading(false);
     }
@@ -81,7 +81,9 @@ const FeesManagementForm = ({
           </label>
           <select
             className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
-            {...register("academicYear", { required: "Academic Year is required" })}
+            {...register("academicYear", {
+              required: "Academic Year is required",
+            })}
             defaultValue={data?.academicYear}
           >
             <option value="">Select Academic Year</option>
@@ -156,7 +158,9 @@ const FeesManagementForm = ({
           />
 
           {/* Start Date */}
-          <label className="text-sm font-medium text-gray-500">Start Date</label>
+          <label className="text-sm font-medium text-gray-500">
+            Start Date
+          </label>
           <input
             type="date"
             {...register("startDate", { required: "Start Date is required" })}
@@ -194,11 +198,7 @@ const FeesManagementForm = ({
         type="submit"
         disabled={loading}
       >
-        {loading
-          ? "Processing..."
-          : type === "create"
-          ? "Create"
-          : "Update"}
+        {loading ? "Processing..." : type === "create" ? "Create" : "Update"}
       </button>
     </form>
   );

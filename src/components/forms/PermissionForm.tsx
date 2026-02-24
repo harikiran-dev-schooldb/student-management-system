@@ -6,6 +6,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 import { SlipSchema, slipSchema } from "@/lib/formValidationSchemas";
+import { useSchoolSlug } from "../hooks/getschool";
+import { useTenantApi } from "@/hooks/useTenantApi";
 
 const PermissionForm = ({
   type,
@@ -24,8 +26,12 @@ const PermissionForm = ({
 }) => {
   const router = useRouter();
 
-  const [selectedGrade, setSelectedGrade] = useState<number | null>(data?.gradeId ?? null);
-  const [selectedClass, setSelectedClass] = useState<number | null>(data?.classId ?? null);
+  const [selectedGrade, setSelectedGrade] = useState<number | null>(
+    data?.gradeId ?? null,
+  );
+  const [selectedClass, setSelectedClass] = useState<number | null>(
+    data?.classId ?? null,
+  );
 
   const {
     register,
@@ -83,37 +89,30 @@ const PermissionForm = ({
     ? students.filter((stu) => stu.classId === selectedClass)
     : [];
 
+  const schoolId = useSchoolSlug();
+  const api = useTenantApi(schoolId);
   const onSubmit = async (formData: SlipSchema) => {
     try {
-      const res = await fetch("/api/permission-slip/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
+      if (!schoolId) return;
 
-      const result = await res.json();
-
-      if (!res.ok) {
-        toast.error(result?.error || "Something went wrong.");
-        return;
-      }
+      const { data } = await api.post("/permission-slip/create", formData);
 
       toast.success("Permission slip created successfully!");
       setOpen(false);
       router.refresh();
 
       // ✅ Download PDF if available
-      if (result.gateSlipPdf) {
+      if (data?.gateSlipPdf) {
         const link = document.createElement("a");
-        link.href = result.gateSlipPdf;
+        link.href = data.gateSlipPdf;
         link.download = `GateSlip-${formData.studentId}.pdf`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Client error:", error);
-      toast.error("Something went wrong. Please try again.");
+      toast.error(error.message || "Something went wrong. Please try again.");
     }
   };
 
@@ -208,7 +207,9 @@ const PermissionForm = ({
         {/* Sub Reason */}
         {leaveType === "SICK" && (
           <div className="flex flex-col w-full gap-2 md:w-1/3">
-            <label className="text-xs text-gray-500">Sub Reason (optional)</label>
+            <label className="text-xs text-gray-500">
+              Sub Reason (optional)
+            </label>
             <input
               type="text"
               placeholder="e.g., Fever, Headache"
@@ -245,7 +246,9 @@ const PermissionForm = ({
 
         {/* Description */}
         <div className="flex flex-col w-full gap-2 md:w-1/2">
-          <label className="text-xs text-gray-500">Description (optional)</label>
+          <label className="text-xs text-gray-500">
+            Description (optional)
+          </label>
           <textarea
             {...register("description")}
             placeholder="Write reason or details..."
@@ -259,7 +262,11 @@ const PermissionForm = ({
         disabled={isSubmitting}
         className="p-2 text-white bg-blue-500 rounded-md hover:bg-blue-600 disabled:opacity-50"
       >
-        {isSubmitting ? "Submitting..." : type === "create" ? "Submit Slip" : "Update Slip"}
+        {isSubmitting
+          ? "Submitting..."
+          : type === "create"
+          ? "Submit Slip"
+          : "Update Slip"}
       </button>
     </form>
   );

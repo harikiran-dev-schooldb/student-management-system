@@ -24,7 +24,7 @@ export async function PUT(
       );
     }
 
-    const user = await fetchUserInfo(schoolId);
+    const user = await fetchUserInfo(slug);
     if (!user || user.role !== "admin") {
       return NextResponse.json(
         { error: "Forbidden" },
@@ -149,7 +149,7 @@ export async function DELETE(
       );
     }
 
-    const user = await fetchUserInfo(schoolId);
+    const user = await fetchUserInfo(schoolSlug);
     if (!user || user.role !== "admin") {
       return NextResponse.json(
         { error: "Forbidden" },

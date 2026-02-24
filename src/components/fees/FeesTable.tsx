@@ -26,6 +26,8 @@ import {
   CreditCard,
 } from "lucide-react";
 import { StudentFee } from "../../../types";
+import { useSchoolSlug } from "../hooks/getschool";
+import { useTenantApi } from "@/hooks/useTenantApi";
 
 // --- Types ---
 interface FeesTableProps {
@@ -291,33 +293,34 @@ const FeesTable: React.FC<FeesTableProps> = ({
   }
 
   // --- Razorpay Logic ---
+  const schoolId = useSchoolSlug();
+  const api = useTenantApi(schoolId);
+
   const initiateOnlinePayment = async (
     feesToPay: StudentFee[],
-    totalAmount: number
+    totalAmount: number,
   ) => {
     setIsProcessing(true);
+
     try {
-      // 1. Create Order
-      const res = await fetch("/api/razorpay/order", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: totalAmount }),
+      // 1. Create Order (Tenant-aware)
+      const { data } = await api.post("/razorpay/order", {
+        amount: totalAmount,
       });
-      const orderData = await res.json();
 
-      if (!orderData.orderId) throw new Error("Failed to create order");
+      if (!data.orderId) throw new Error("Failed to create order");
 
-      // 2. Initialize Options
+      // 2. Razorpay Options
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        amount: totalAmount * 100, // Amount in paise
+        amount: totalAmount * 100,
         currency: "INR",
         name: "School Fees",
         description:
           feesToPay.length > 1
             ? `Bulk Payment (${feesToPay.length} terms)`
             : `Fee Payment: ${feesToPay[0].term}`,
-        order_id: orderData.orderId,
+        order_id: data.orderId,
         prefill: {
           name: studentName,
           email: studentEmail,
@@ -325,13 +328,12 @@ const FeesTable: React.FC<FeesTableProps> = ({
         },
         theme: { color: "#4F46E5" },
         handler: async function (response: any) {
-          // 3. On Success
           await processSuccessfulPayment(
             feesToPay,
             totalAmount,
             response.razorpay_payment_id,
             response.razorpay_order_id,
-            response.razorpay_signature
+            response.razorpay_signature,
           );
         },
         modal: {
@@ -355,30 +357,20 @@ const FeesTable: React.FC<FeesTableProps> = ({
     totalAmountPaid: number,
     transactionId: string,
     orderId: string,
-    signature: string
+    signature: string,
   ) => {
     try {
       const studentId = feesToPay[0]?.studentId;
       if (!studentId) throw new Error("No student ID found in selection");
 
       // --- STEP 1: Verify and Record Main Transaction ---
-      const paymentRecordResponse = await fetch("/api/razorpay/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          orderCreationId: orderId, // Backend expects: orderCreationId
-          razorpayPaymentId: transactionId, // Backend expects: razorpayPaymentId
-          razorpaySignature: signature, // Backend expects: razorpaySignature
-          studentId: studentId,
-          amount: totalAmountPaid,
-        }),
+      await api.post("/razorpay/verify", {
+        orderCreationId: orderId,
+        razorpayPaymentId: transactionId,
+        razorpaySignature: signature,
+        studentId: studentId,
+        amount: totalAmountPaid,
       });
-
-      if (!paymentRecordResponse.ok) {
-        const errorData = await paymentRecordResponse.json();
-        console.error("Payment Record API Error:", errorData);
-        throw new Error(errorData.error || "Failed to create payment record");
-      }
 
       // --- STEP 2: Update Individual Fee Terms ---
       for (const fee of feesToPay) {
@@ -397,22 +389,11 @@ const FeesTable: React.FC<FeesTableProps> = ({
           remarks: `Online Payment: ${transactionId}`,
           academicYear: fee.academicYear,
           paymentMode: "ONLINE",
-          transactionId: transactionId,
-          orderId: orderId,
+          transactionId,
+          orderId,
         };
 
-        const updateResponse = await fetch("/api/fees/update", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-
-        // FIX: Check if the update actually succeeded
-        if (!updateResponse.ok) {
-          const updateError = await updateResponse.json();
-          console.error(`Failed to update term ${fee.term}:`, updateError);
-          throw new Error(`Failed to update fee for term: ${fee.term}`);
-        }
+        await api.post("/fees/transactions", payload);
       }
 
       // --- STEP 3: Optimistic UI Update ---
@@ -426,11 +407,10 @@ const FeesTable: React.FC<FeesTableProps> = ({
               ...f,
               paidAmount: (f.paidAmount ?? 0) + paidNow,
               receiptNo: `ONL-${transactionId.slice(-6)}`,
-              // Update status badge logic will handle the rest based on amounts
             };
           }
           return f;
-        })
+        }),
       );
 
       toast.success("Payment Successful!");
@@ -442,7 +422,7 @@ const FeesTable: React.FC<FeesTableProps> = ({
       // Show the actual error message from the backend if available
       toast.error(
         error.message ||
-          "Payment verified but database update failed. Contact Admin."
+          "Payment verified but database update failed. Contact Admin.",
       );
     } finally {
       setIsProcessing(false);
@@ -462,7 +442,7 @@ const FeesTable: React.FC<FeesTableProps> = ({
 
     const totalDue = payables.reduce(
       (sum, f) => sum + calculateDueAmount(f),
-      0
+      0,
     );
 
     // Defaults
@@ -519,11 +499,7 @@ const FeesTable: React.FC<FeesTableProps> = ({
           paymentMode: selectedPaymentMode,
         };
 
-        await fetch("/api/fees/update", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
+        await api.post("/fees/update", payload);
       }
 
       // Optimistic Update
@@ -547,7 +523,7 @@ const FeesTable: React.FC<FeesTableProps> = ({
             };
           }
           return f;
-        })
+        }),
       );
 
       toast.success("Payment collected successfully!");
@@ -597,7 +573,7 @@ const FeesTable: React.FC<FeesTableProps> = ({
     link.setAttribute("href", encodedUri);
     link.setAttribute(
       "download",
-      `fees_report_${new Date().toISOString().split("T")[0]}.csv`
+      `fees_report_${new Date().toISOString().split("T")[0]}.csv`,
     );
     document.body.appendChild(link);
     link.click();
@@ -609,21 +585,16 @@ const FeesTable: React.FC<FeesTableProps> = ({
     async (fee: StudentFee) => {
       if (
         !window.confirm(
-          `Are you sure you want to cancel fees for ${fee.term}? This cannot be undone.`
+          `Are you sure you want to cancel fees for ${fee.term}? This cannot be undone.`,
         )
       )
         return;
       try {
-        const res = await fetch("/api/fees/cancel-transactions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            studentId: fee.studentId,
-            term: fee.term,
-            academicYear: fee.academicYear,
-          }),
+        await api.post("/fees/transactions/cancel", {
+          studentId: fee.studentId,
+          term: fee.term,
+          academicYear: fee.academicYear,
         });
-        if (!res.ok) throw new Error("Failed");
 
         setRowData((prev) =>
           prev.map((f) =>
@@ -635,8 +606,8 @@ const FeesTable: React.FC<FeesTableProps> = ({
                   fineAmount: 0,
                   remarks: "Cancelled",
                 }
-              : f
-          )
+              : f,
+          ),
         );
         toast.success("Transaction cancelled.");
         router.refresh();
@@ -644,7 +615,7 @@ const FeesTable: React.FC<FeesTableProps> = ({
         toast.error("Failed to cancel");
       }
     },
-    [router]
+    [router],
   );
 
   // --- Table Configuration ---
@@ -760,7 +731,7 @@ const FeesTable: React.FC<FeesTableProps> = ({
         cell: ({ row }) => (
           <StatusBadge status={getFeeStatus(row.original).status} />
         ),
-      }
+      },
     );
 
     // 3. Actions Column
@@ -888,7 +859,7 @@ const FeesTable: React.FC<FeesTableProps> = ({
           due: acc.due + (due > 0 ? due : 0),
         };
       },
-      { total: 0, paid: 0, discount: 0, due: 0 }
+      { total: 0, paid: 0, discount: 0, due: 0 },
     );
   }, [filteredData]);
 
@@ -1003,7 +974,7 @@ const FeesTable: React.FC<FeesTableProps> = ({
                   >
                     {flexRender(
                       header.column.columnDef.header,
-                      header.getContext()
+                      header.getContext(),
                     )}
                   </th>
                 ))}
@@ -1037,7 +1008,7 @@ const FeesTable: React.FC<FeesTableProps> = ({
                       >
                         {flexRender(
                           cell.column.columnDef.cell,
-                          cell.getContext()
+                          cell.getContext(),
                         )}
                       </td>
                     ))}

@@ -169,6 +169,12 @@ const menuSections: MenuSection[] = [
         visible: ["admin"],
       },
       {
+        label: "Permissions",
+        href: "/list/permissions",
+        icon: School,
+        visible: ["admin"],
+      },
+      {
         label: "Time Table",
         href: "/list/lessons",
         icon: Clock,

@@ -5,8 +5,9 @@ import { useForm } from "react-hook-form";
 import { classSchema, ClassSchema } from "@/lib/formValidationSchemas";
 import React, { Dispatch, SetStateAction } from "react";
 import { toast } from "react-toastify";
-import { useParams, useRouter } from "next/navigation";
-import { tenantFetch } from "@/lib/api/tenantFetch";
+import { useRouter } from "next/navigation";
+import { useSchoolSlug } from "../hooks/getschool";
+import { useTenantApi } from "@/hooks/useTenantApi";
 
 const ClassForm = ({
   type,
@@ -36,7 +37,8 @@ const ClassForm = ({
   const router = useRouter();
   const { teachers = [], grades = [] } = relatedData || {};
 
-  const { schoolId } = useParams<{ schoolId: string }>();
+  const schoolId = useSchoolSlug();
+  const api = useTenantApi(schoolId);
 
   const onSubmit = async (formData: ClassSchema) => {
     if (!schoolId) return;
@@ -44,19 +46,11 @@ const ClassForm = ({
     try {
       if (type === "create") {
         // 🔹 CREATE
-        await tenantFetch(schoolId, "/classes", {
-          method: "POST",
-          body: JSON.stringify(formData),
-        });
-
+        await api.post("/classes", formData);
         toast.success("Class created successfully!");
       } else {
         // 🔹 UPDATE
-        await tenantFetch(schoolId, `/classes/${data?.id}`, {
-          method: "PUT",
-          body: JSON.stringify(formData),
-        });
-
+        await api.put(`/classes/${data?.id}`, formData);
         toast.success("Class updated successfully!");
       }
 
@@ -64,7 +58,11 @@ const ClassForm = ({
       router.refresh();
     } catch (error: any) {
       console.error("API error:", error);
-      toast.error(error.message || "Something went wrong.");
+      toast.error(
+        error?.response?.data?.error ||
+          error.message ||
+          "Something went wrong.",
+      );
     }
   };
 

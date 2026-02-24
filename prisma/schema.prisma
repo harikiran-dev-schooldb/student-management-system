@@ -49,6 +49,7 @@ model SchoolInfo {
   subjectTeachers    SubjectTeacher[]
   linkedUser         LinkedUser[]
   bulkUpload         BulkUploadJob[]
+  smsTemplate        SmsTemplate[]
 }
 
 model Admin {
@@ -609,14 +610,17 @@ model FeePayment {
 
   status        PaymentStatus @default(PENDING)
 
-  transactionId String?  @unique  // Razorpay Payment ID
-  orderId       String   @unique  // Razorpay Order ID (must be unique)
+  transactionId String?  @unique
+  orderId       String   @unique
 
   studentId     String
   student       Student    @relation(fields: [studentId], references: [id])
 
   schoolId      String
   school        SchoolInfo @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  // 👇 ADD THIS
+  metadata      Json?
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -657,6 +661,21 @@ model BulkUploadJob {
 
   school     SchoolInfo @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
+  @@index([schoolId])
+}
+
+model SmsTemplate {
+  id         Int         @id @default(autoincrement())
+  type       MessageType
+  content    String      @db.Text
+
+  schoolId   String
+  school     SchoolInfo  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  @@unique([type, schoolId])
   @@index([schoolId])
 }
 

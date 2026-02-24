@@ -15,6 +15,7 @@ import IconButton from "@/components/IconButton";
 import { Homeworks, SearchParams } from "../../../../../../types";
 import { HomeworkSelect } from "../../../../../../types/query-types";
 import { tenantPrisma } from "@/lib/tenant-prisma";
+import { resolveSchoolId } from "@/lib/resolveSchool";
 
 // Render a single table row
 const renderRow = (item: Homeworks, role: string | null) => (
@@ -71,14 +72,17 @@ const HomeworkListPage = async ({
   searchParams: Promise<SearchParams>;
   params: Promise<{ schoolId: string }>;
 }) => {
-  const { schoolId } = await params;
+  const { schoolId: schoolSlug } = await params;
+
+  const schoolId = await resolveSchoolId(schoolSlug);
+  
   const resolvedParams = await searchParams;
 
   const { page, gradeId, date, classId, ...queryParams } = resolvedParams;
   const p = page ? (Array.isArray(page) ? page[0] : page) : "1";
 
   // ✅ Pass schoolId
-  const { role, userId } = await fetchUserInfo(schoolId);
+  const { role, userId } = await fetchUserInfo(schoolSlug);
   const columns = getColumns(role);
 
   const db = tenantPrisma(schoolId);

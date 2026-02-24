@@ -15,7 +15,7 @@ export async function PUT(
     const { schoolId: slug, id: homeworkIdStr } = await params;
     const schoolId = await resolveSchoolId(slug);
 
-    const user = await fetchUserInfo(schoolId);
+    const user = await fetchUserInfo(slug);
     if (!user.userId || !["admin", "teacher"].includes(user.role!)) {
       return NextResponse.json(
         { error: "Unauthorized" },
