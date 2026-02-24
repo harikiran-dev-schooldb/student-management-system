@@ -1,6 +1,6 @@
 
 
-# 🎓 Student Management System
+# 🎓 Student Management System — Multi-Tenant SaaS Platform
 
 ![Status](https://img.shields.io/badge/Status-Active-brightgreen)
 ![License](https://img.shields.io/github/license/harikiran-dev-schooldb/student-management-system)
@@ -10,223 +10,191 @@
 ![Forks](https://img.shields.io/github/forks/harikiran-dev-schooldb/student-management-system)
 ![Stars](https://img.shields.io/github/stars/harikiran-dev-schooldb/student-management-system)
 
-## 📌 Overview
+**A production-ready, multi-tenant School ERP solution for institutions — deployed on Vercel with Neon PostgreSQL and Clerk authentication.**
 
-The **Student Management System** is a full-stack web platform designed for educational institutions to manage student records and academic workflows.
-Built with **Next.js**, **Prisma**, and **PostgreSQL**, it centralizes core operations such as student registration, fee management, attendance, marks entry, and reporting.
-
-Ideal for **schools, colleges, coaching centers**, and **training institutions** looking to modernize their administrative processes.
+This repository contains the web platform used to manage academic and administrative operations across multiple schools (tenants) from a single secure deployment. ([GitHub][1])
 
 ---
 
-## 🚀 Key Features
+## 🌐 Product Overview
 
-### 👨‍💼 Admin
+The **Student Management System** is a **multi-tenant, browser-based SaaS platform** designed to help schools and educational institutions manage:
 
-* Manage students, teachers, classes, and fee structures
+* student records
+* fee billing and payments
+* attendance tracking
+* exam entries and performance
+* role-based access and reporting
+
+Each institution (tenant) operates in an isolated workspace under a single global deployment. Multi-tenant architecture allows:
+
+* cost-effective scaling
+* centralized updates
+* efficient resource usage
+* secure per-tenant data isolation
+
+> Multi-tenant SaaS provides resource sharing and secure data partitioning for many customers from one deployed instance. ([Rishabh Software][2])
+
+---
+
+## 🚀 Core Product Highlights
+
+### 🌟 Why This is SaaS-Ready
+
+* **Tenant routing:** `yourdomain.com/[schoolId]`
+* **Versioned API:** `/api/v1/tenants/[schoolId]/*`
+* **Role-based access control**
+* **Secure authentication with Clerk**
+* **Serverless deployment model**
+* **Designed for production deployments**
+
+**Use cases:**
+School districts, coaching hubs, training institutes, chain schools, centralized academic services.
+
+---
+
+## 🧠 Key Features
+
+### 🏫 Multi-Tenant Organization Support
+
+* Isolated tenant data scopes
+* Admin dashboards per tenant
+* Secure API boundaries per school
+
+### 👨‍💼 Admin Capabilities
+
+* Manage students, teachers, classes
+* Define fee structures and ledgers
 * Assign roles and permissions
-* Access complete reporting dashboards
+* Access rich analytics & reports
 
-### 👩‍🏫 Teacher
+### 👩‍🏫 Teacher Efficiency Tools
 
-* Record daily attendance
-* Enter marks and view student performance
-* Track fee status and student profiles
+* Daily attendance
+* Marks entry and performance dashboards
+* Class & subject-wise workflows
 
-### 👨‍🎓 Student
+### 👨‍🎓 Student Experience
 
-* View academic profile
-* Access marks, fee details, and attendance records
-* Download reports and invoices
-
-### Core Modules
-
-* 📋 **Student Enrollment & Profiles**
-* 💰 **Fee Tracking & Ledgers**
-* 📊 **Attendance Management**
-* 📝 **Exam & Marks Entry**
-* 📈 **Comprehensive Reports**
-* 🔐 **Secure Authentication (Role Based)**
-* 📊 **Central Admin Dashboard**
+* Personal academic dashboard
+* Attendance and marks tracking
+* Downloadable reports and invoices
 
 ---
 
 ## 🛠 Tech Stack
 
-| Layer         | Technology                               |
-| ------------- | ---------------------------------------- |
-| UI / Frontend | Next.js, React, TypeScript, Tailwind CSS |
-| API / Backend | Next.js API Routes + Prisma ORM          |
-| Database      | PostgreSQL                               |
-| Auth          | Clerk, NextAuth, or custom               |
-| Deployment    | Vercel |
+| Layer               | Technology                                          |
+| ------------------- | --------------------------------------------------- |
+| Frontend            | Next.js App Router, React, TypeScript, Tailwind CSS |
+| Backend             | Next.js Server Functions                            |
+| ORM                 | Prisma                                              |
+| Database            | Neon PostgreSQL                                     |
+| Authentication      | Clerk                                               |
+| Hosting             | Vercel                                              |
+| Payments (optional) | Razorpay (server only)                              |
 
 ---
 
-## 📀 Installation & Setup
+## 📁 Project Structure
 
-### 1️⃣ Prerequisites
-
-* Node.js **18+**
-* PostgreSQL **14+**
-* Git
-* VS Code or preferred editor
-
----
-
-### 2️⃣ Clone Repository
-
-```bash
-git clone https://github.com/harikiranadangi/student-management-system.git
-cd student-management-system
+```
+src/
+├── app/
+│   ├── [schoolId]/             # Tenant scoped UI pages
+│   │   └── (dashboard)/
+│   └── api/v1/tenants/
+│       └── [schoolId]/         # SaaS APIs
+├── components/
+├── lib/                       # Tenant helpers & security
+├── prisma/
+│   └── schema.prisma
+└── middleware.ts              # Tenant extraction logic
 ```
 
 ---
 
-### 3️⃣ Install Packages
+## ⚙️ Getting Started (Local Development)
+
+### 1️⃣ Install
 
 ```bash
 npm install
 ```
 
----
+### 2️⃣ Environment Variables
 
-### 4️⃣ Configure Environment
-
-Create `.env` in project root:
+Create a `.env` file with:
 
 ```env
-DATABASE_URL="postgresql://user:password@localhost:5432/student_db"
+DATABASE_URL="your_neon_connection_string"
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="your_clerk_publishable_key"
+CLERK_SECRET_KEY="your_clerk_secret_key"
 NEXT_PUBLIC_API_BASE_URL="http://localhost:3000/api"
 ```
 
-> Update username, password, and database name as needed.
-> Create database manually or run: `createdb student_db`
+Optional (server-only, not exposed to client):
 
----
-
-### 5️⃣ Run Database Migrations
-
-```bash
-npx prisma migrate dev --name init
 ```
-
-(Optional) Seed or inspect database using:
-
-```bash
-npx prisma studio
+RAZORPAY_KEY_ID="your_server_key_id"
+RAZORPAY_KEY_SECRET="your_server_key_secret"
 ```
 
 ---
 
-### 6️⃣ Launch Dev Server
+### 3️⃣ Migrations
+
+```bash
+npx prisma migrate dev
+```
+
+### 4️⃣ Start Dev
 
 ```bash
 npm run dev
 ```
 
-Application runs at:
-[http://localhost:3000](http://localhost:3000)
-
----
-
-## 📂 Project Structure
+Visit:
 
 ```
-student-management-system/
-├── .env
-├── package.json
-├── prisma/
-│   ├── schema.prisma
-│   └── migrations/
-├── src/
-│   ├── api/
-│   ├── app/
-│   │   ├── students/
-│   │   ├── fees/
-│   │   │   ├── fee_ledger/
-│   │   │   └── [id]/
-│   │   ├── teachers/
-│   │   ├── reports/
-│   ├── components/
-│   ├── config/
-│   ├── lib/
-│   ├── styles/
+http://localhost:3000
 ```
 
 ---
 
-## 📈 Modules & Screens
+## 📦 Deployment (Production)
 
-* **🧾 Fee Ledger** — `/fees/fee_ledger`
-* **💳 Student Fees** — `/fees/[id]`
-* **📝 Reports Dashboard** — `/reports`
-* **🎓 Students** — `/students`
-* **👩‍🏫 Teachers** — `/teachers`
-
----
-
-## ❗ Troubleshooting
-
-### Missing Node or npm
+1. **Provision Neon PostgreSQL** and set `DATABASE_URL` in Vercel
+2. **Add Clerk API keys** in Vercel environment
+3. **Add Razorpay keys (optional)** for payments
+4. **Deploy via Vercel** — automatic build + serverless creation
+5. Run production migrations:
 
 ```bash
-node -v
-npm -v
-```
-
-Reinstall Node if required.
-
-### Database Connection Errors
-
-* PostgreSQL services must be running
-* Check `.env` configuration
-* Use:
-
-```bash
-pg_isready
+npx prisma migrate deploy
 ```
 
 ---
 
-## 🤝 Contributing
+## 📊 SaaS Considerations
 
-```bash
-git checkout -b feature/my-feature
-git commit -m "Add: New feature"
-git push origin feature/my-feature
-```
+* Tenant routing and middleware ensure each tenant’s data is isolated at the API and database level.
+* Clerk provides secure authentication flows per institution.
+* Because this is a production platform, all sensitive client secrets must remain server-side and protected.
 
-Submit a pull request anytime.
+Multi-tenant SaaS architecture improves resource usage and reduces operational overhead while serving multiple paying customers from one codebase and infrastructure. ([Rishabh Software][2])
 
 ---
 
-## 📜 License
+## ⚠️ License & Source Policy
 
-Released under the **MIT License**.
-See `LICENSE` for terms.
-
----
-
-## 📧 Contact
-
-* GitHub: **@harikiran-dev-schooldb**
-* Organization: **Kotak Salesian School**
-* Email (optional): *harikiran-dev-schooldb@gmail.com*
+This repository is now **proprietary and non-open source** — it is no longer licensed under MIT in open-source mode and is restricted for internal or authorized deployment.
 
 ---
 
-## 🚀 Deployment Options
+## 📬 Contact
 
-* **Vercel** (Recommended)
-* **Railway**
-* **DigitalOcean**
-* **Self-hosted VPS**
-
-> Use a hosted PostgreSQL instance + production `.env` secrets.
+Maintained by **Harikiran** — for feature access or enterprise onboarding, reach out via the internal maintainer channels (Clerk admin console + private support).
 
 ---
 
-### 🏁 Built & Maintained By
-
-**Harikiran**
