@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { ElementType } from "react";
 import { X } from "lucide-react";
+import { useSchoolSlug } from "../hooks/getschool";
+
 
 type Item = {
   label: string;
@@ -28,6 +30,7 @@ export default function MobileSheet({
   onClose: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const schoolId = useSchoolSlug();
 
   useEffect(() => {
     requestAnimationFrame(() => setOpen(true));
@@ -125,7 +128,7 @@ export default function MobileSheet({
             return (
               <li key={item.label}>
                 <Link
-                  href={item.href}
+                  href={`/${schoolId}${item.href}`}
                   onClick={close}
                   className="
                     flex items-center gap-2

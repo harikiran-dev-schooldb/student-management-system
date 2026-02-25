@@ -6,10 +6,11 @@ import InputField from "../InputField";
 import { examSchema, ExamSchema } from "@/lib/formValidationSchemas";
 import React, { Dispatch, SetStateAction, useState, useEffect } from "react";
 import { toast } from "react-toastify";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { tenantFetch } from "@/lib/tenantFetch";
 import { Exams } from "../../../types";
 import { Subject } from "@prisma/client";
+import { useSchoolSlug } from "../hooks/getschool";
 
 const ExamForm = ({
   type,
@@ -45,7 +46,7 @@ const ExamForm = ({
     },
   });
 
-  const { schoolId } = useParams<{ schoolId: string }>();
+  const schoolId = useSchoolSlug(); 
 
   useEffect(() => {
     if (type === "update" && data) {

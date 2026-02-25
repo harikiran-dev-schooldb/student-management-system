@@ -4,7 +4,6 @@ import FormContainer from "@/components/FormContainer";
 import Pagination from "@/components/Pagination";
 import Table from "@/components/Table";
 import TableSearch from "@/components/TableSearch";
-import prisma from "@/lib/prisma";
 import { ITEM_PER_PAGE } from "@/lib/settings";
 import { Prisma } from "@prisma/client";
 import SortButton from "@/components/SortButton";
@@ -164,11 +163,11 @@ const HomeworkListPage = async ({
   const Path = `/${schoolId}/list/homeworks`;
 
   return (
-    <div className="flex-1 p-4 bg-white dark:bg-gray-900 text-black dark:text-white">
+    <div className="flex-1 p-4 bg-white dark:bg-darkbg text-black dark:text-white">
       {/* Top Controls */}
       <div className="flex items-center justify-between mb-3">
         <h1 className="hidden text-lg font-semibold md:block">
-          Homeworks ({count})
+          Homeworks
         </h1>
 
         <div className="flex flex-col items-center w-full gap-4 md:flex-row md:w-auto">

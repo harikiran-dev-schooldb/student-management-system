@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { resolveSchoolId } from "@/lib/resolveSchool";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
+import { calculateDueAmount, getAssignedFee } from "@/lib/fees/fees";
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: Promise<{ schoolId: string;}> },
+  { params }: { params: Promise<{ schoolId: string }> },
 ) {
   try {
     const { schoolId: schoolSlug } = await params;
@@ -30,7 +31,6 @@ export async function POST(
     }
 
     await prisma.$transaction(async (tx) => {
-      /* 1️⃣ Fetch original transaction */
       const txn = await tx.feeTransaction.findFirst({
         where: {
           id: transactionId,
@@ -43,7 +43,7 @@ export async function POST(
         throw new Error("Transaction not found or already cancelled");
       }
 
-      /* 2️⃣ Mark original as cancelled */
+      // Mark transaction cancelled
       await tx.feeTransaction.update({
         where: { id: txn.id },
         data: {
@@ -52,8 +52,18 @@ export async function POST(
         },
       });
 
-      /* 3️⃣ Reverse StudentFees */
-      await tx.studentFees.update({
+      // Fetch student fee with structure
+      const studentFee = await tx.studentFees.findUnique({
+        where: { id: txn.studentFeesId },
+        include: { feeStructure: true },
+      });
+
+      if (!studentFee) {
+        throw new Error("Student fee record not found");
+      }
+
+      // Reverse StudentFees safely
+      const updatedFee = await tx.studentFees.update({
         where: { id: txn.studentFeesId },
         data: {
           paidAmount: { decrement: txn.amount },
@@ -62,7 +72,17 @@ export async function POST(
         },
       });
 
-      /* 4️⃣ Reverse StudentTotalFees */
+      // Recalculate due
+      const assigned = getAssignedFee(studentFee);
+
+      const newDue = calculateDueAmount({
+        ...studentFee,
+        paidAmount: studentFee.paidAmount - txn.amount,
+        discountAmount: studentFee.discountAmount - txn.discountAmount,
+        fineAmount: studentFee.fineAmount - txn.fineAmount,
+      });
+
+      // Reverse totals
       await tx.studentTotalFees.update({
         where: {
           studentId_schoolId: {
@@ -74,13 +94,17 @@ export async function POST(
           totalPaidAmount: { decrement: txn.amount },
           totalDiscountAmount: { decrement: txn.discountAmount },
           totalFineAmount: { decrement: txn.fineAmount },
-          totalFeeAmount: {
-            decrement: txn.amount + txn.discountAmount + txn.fineAmount,
-          },
+          dueAmount: newDue,
+          status:
+            newDue === 0
+              ? "Paid"
+              : newDue < assigned
+              ? "Partially Paid"
+              : "Not Paid",
         },
       });
 
-      /* 5️⃣ Log Cancelled Receipt */
+      // Log cancelled receipt
       await tx.cancelledReceipt.create({
         data: {
           studentId: txn.studentId,
@@ -102,6 +126,7 @@ export async function POST(
     });
   } catch (error: any) {
     console.error("Cancel transaction error:", error);
+    
 
     return NextResponse.json(
       { error: error.message || "Cancel failed" },

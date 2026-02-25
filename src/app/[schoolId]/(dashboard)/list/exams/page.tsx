@@ -86,7 +86,7 @@ const ExamsList = async ({
   }
 
   const userInfo = await fetchUserInfo(slug);
-  const { role, studentId, gradeId, teacherId } = userInfo;
+  const { role, gradeId, teacherId } = userInfo;
   const {
     page,
     date,
@@ -227,7 +227,7 @@ const ExamsList = async ({
 
   const classes = await db.class.findMany();
   const grades = await db.grade.findMany();
-  const Path = `${school.id}/list/exams`;
+  const Path = `/${slug}/list/exams`;
 
   return (
     <div className="flex-1 p-4 bg-white dark:bg-darkbg">
@@ -246,15 +246,13 @@ const ExamsList = async ({
               showClassFilter={false}
             />
           )}
-          <div className="flex flex-col items-center w-full gap-4 md:flex-row md:w-auto">
-            <div className="flex items-center self-end gap-4">
-              <ResetFiltersButton basePath={Path} />
-              <IconButton icon={Filter} />
-              <SortButton sortKey="id" />
-              {(role === "admin" || role === "teacher") && (
-                <FormContainer table="exam" type="create" />
-              )}
-            </div>
+          <div className="flex items-center self-end gap-4">
+            <ResetFiltersButton basePath={Path} />
+            <IconButton icon={Filter} />
+            <SortButton sortKey="id" />
+            {(role === "admin" || role === "teacher") && (
+              <FormContainer table="exam" type="create" />
+            )}
           </div>
         </div>
       </div>

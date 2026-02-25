@@ -61,7 +61,7 @@ export const bottomNavItems: BottomNavItem[] = [
     dropdown: [
       {
         label: "Mark Attendance",
-        href: "/list/attendance/mark_attendance",
+        href: "/list/attendance/mark",
         icon: Edit,
         visible: ["admin", "teacher"],
       },

@@ -3,12 +3,12 @@ import prisma from "@/lib/prisma";
 import { resolveSchoolId } from "@/lib/resolveSchool";
 import { PaymentMode } from "@prisma/client";
 import { currentUser } from "@clerk/nextjs/server";
-import { calculateDueAmount } from "@/lib/fees/fees";
+import { calculateDueAmount, getAssignedFee } from "@/lib/fees/fees";
 import { getMessageContent } from "@/lib/utils/messageUtils";
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: Promise<{ schoolId: string; }> },
+  { params }: { params: Promise<{ schoolId: string }> },
 ) {
   try {
     const { schoolId: schoolSlug } = await params;
@@ -54,18 +54,27 @@ export async function POST(
             schoolId,
           },
         },
+        include: {
+          feeStructure: true,
+        },
       });
 
       if (!studentFee) {
         throw new Error("Student fee record not found");
       }
 
-      const dueAmount = calculateDueAmount(studentFee);
-      const incomingTotal = amount + discountAmount + fineAmount;
+      const currentDue = calculateDueAmount(studentFee);
 
-      if (incomingTotal > dueAmount) {
+      if (amount > currentDue) {
         throw new Error("Overpayment not allowed");
       }
+
+      console.log({
+        currentDue,
+        amount,
+        discountAmount,
+        fineAmount,
+      });
 
       const parsedReceiptDate =
         receiptDate && !isNaN(Date.parse(receiptDate))
@@ -85,6 +94,15 @@ export async function POST(
         },
       });
 
+      const assignedFee = getAssignedFee(studentFee);
+
+      const newDue = calculateDueAmount({
+        ...studentFee,
+        paidAmount: studentFee.paidAmount + amount,
+        discountAmount: studentFee.discountAmount + discountAmount,
+        fineAmount: studentFee.fineAmount + fineAmount,
+      });
+
       const updatedTotal = await tx.studentTotalFees.upsert({
         where: {
           studentId_schoolId: { studentId, schoolId },
@@ -93,7 +111,13 @@ export async function POST(
           totalPaidAmount: { increment: amount },
           totalDiscountAmount: { increment: discountAmount },
           totalFineAmount: { increment: fineAmount },
-          totalFeeAmount: { increment: incomingTotal },
+          dueAmount: newDue,
+          status:
+            newDue === 0
+              ? "Paid"
+              : newDue < assignedFee
+              ? "Partially Paid"
+              : "Not Paid",
         },
         create: {
           studentId,
@@ -101,8 +125,10 @@ export async function POST(
           totalPaidAmount: amount,
           totalDiscountAmount: discountAmount,
           totalFineAmount: fineAmount,
-          totalFeeAmount: incomingTotal,
           totalAbacusAmount: 0,
+          totalFeeAmount: assignedFee,
+          dueAmount: newDue,
+          status: newDue === 0 ? "Paid" : "Partially Paid",
         },
       });
 
@@ -146,7 +172,7 @@ export async function POST(
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: Promise<{ schoolId: string; }> },
+  { params }: { params: Promise<{ schoolId: string }> },
 ) {
   try {
     const { schoolId: schoolSlug } = await params;

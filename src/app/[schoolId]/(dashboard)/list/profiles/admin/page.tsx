@@ -24,6 +24,7 @@ const AdminProfilePage = async ({
   params: Promise<{ schoolId: string }>;
 }) => {
   const { schoolId: slug } = await params;
+  if (!slug) return null;
 
   // 2️⃣ Resolve internal school ID
   const school = await prisma.schoolInfo.findUnique({
@@ -187,25 +188,25 @@ const AdminProfilePage = async ({
             </h3>
             <div className="grid grid-cols-1 gap-3">
               <ShortcutButton
-                href="/list/users/students"
+                href={`/${slug}/list/users/students`}
                 icon={<GraduationCap size={20} />}
                 label="Manage Students"
                 colorClass="bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:hover:bg-blue-900/30"
               />
               <ShortcutButton
-                href="/list/users/teachers"
+                href={`/${slug}/list/users/teachers`}
                 icon={<Users size={20} />}
                 label="Manage Teachers"
                 colorClass="bg-purple-50 text-purple-700 hover:bg-purple-100 dark:bg-purple-900/20 dark:text-purple-300 dark:hover:bg-purple-900/30"
               />
               <ShortcutButton
-                href="/list/classes"
+                href={`/${slug}/list/classes`}
                 icon={<BookOpen size={20} />}
                 label="Manage Classes"
                 colorClass="bg-pink-50 text-pink-700 hover:bg-pink-100 dark:bg-pink-900/20 dark:text-pink-300 dark:hover:bg-pink-900/30"
               />
               <ShortcutButton
-                href="/list/exams"
+                href={`/${slug}/list/exams`}
                 icon={<FileText size={20} />}
                 label="View Exams"
                 colorClass="bg-sky-50 text-sky-700 hover:bg-sky-100 dark:bg-sky-900/20 dark:text-sky-300 dark:hover:bg-sky-900/30"

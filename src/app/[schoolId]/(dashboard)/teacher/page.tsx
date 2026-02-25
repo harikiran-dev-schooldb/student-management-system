@@ -60,7 +60,7 @@ const TeacherPage = async ({ params }: PageProps) => {
   }
 
   return (
-    <div className="flex flex-col gap-6 p-6 min-h-screen bg-gray-50/50 dark:bg-[#0d1117]">
+    <div className="flex flex-col gap-6 p-6 min-h-screen bg-gray-50/50 dark:bg-darkbg">
       {/* ================= HEADER ================= */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">

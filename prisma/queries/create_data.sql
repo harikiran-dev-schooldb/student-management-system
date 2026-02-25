@@ -80,6 +80,10 @@ SELECT * FROM "Subject";
 SELECT * FROM "Profile";
 SELECT * FROM "LinkedUser";
 
+SELECT * 
+FROM "StudentFees"
+WHERE "paidAmount" > 0;
+
 INSERT INTO "SchoolInfo" (
   "id","name","address","phone","email","website","logo",
   "taxId","receiptHeader","receiptFooter","createdAt","updatedAt","schoolId"

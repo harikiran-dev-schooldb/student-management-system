@@ -34,6 +34,15 @@ export default clerkMiddleware(async (auth, req) => {
     return NextResponse.next();
   }
 
+  if (
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/auth") ||
+    (segments.length >= 2 &&
+      (segments[1] === "login" || segments[1] === "auth"))
+  ) {
+    return NextResponse.next();
+  }
+
   /**
    * 2️⃣ Public APIs
    */
@@ -79,32 +88,46 @@ export default clerkMiddleware(async (auth, req) => {
   }
 
   /**
-   * 4️⃣ Tenant Frontend Routes
-   * /{schoolId}/...
-   */
+ * 4️⃣ Tenant Frontend Routes
+ * /{schoolId}/...
+ */
 
-  const schoolSlug = segments[0];
+// Must have at least 1 segment
+if (segments.length === 0) {
+  return NextResponse.next();
+}
 
-  // If route is not public and not API, treat it as tenant
-  const schoolExists = await prisma.schoolInfo.findUnique({
-    where: { schoolId: schoolSlug },
-    select: { id: true },
-  });
+const schoolSlug = segments[0];
 
-  if (!schoolExists) {
-    return NextResponse.redirect(new URL("/unauthorized", req.url));
-  }
+// Prevent system routes from being treated as tenant
+const SYSTEM_ROUTES = ["login", "auth", "features", "demo", "platform", "pricing", "unauthorized"];
 
-  const { userId } = await auth();
+if (SYSTEM_ROUTES.includes(schoolSlug)) {
+  return NextResponse.next();
+}
 
-  if (!userId) {
-    return NextResponse.redirect(new URL("/", req.url));
-  }
+// Validate tenant
+const schoolExists = await prisma.schoolInfo.findUnique({
+  where: { schoolId: schoolSlug },
+  select: { id: true },
+});
 
-  const response = NextResponse.next();
-  response.headers.set("x-school-id", schoolSlug);
+if (!schoolExists) {
+  return NextResponse.redirect(new URL("/unauthorized", req.url));
+}
 
-  return response;
+const { userId } = await auth();
+
+if (!userId) {
+  return NextResponse.redirect(
+    new URL(`/${schoolSlug}/login`, req.url)
+  );
+}
+
+const response = NextResponse.next();
+response.headers.set("x-school-id", schoolSlug);
+
+return response;
 });
 
 export const config = {

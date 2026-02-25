@@ -1,7 +1,4 @@
-/* -------------------------------------------------
-   Helpers
---------------------------------------------------*/
-export function getTotalFees(fee: any) {
+export function getAssignedFee(fee: any) {
   return (
     (fee.feeStructure?.termFees ?? 0) +
     (fee.feeStructure?.abacusFees ?? 0)
@@ -9,10 +6,13 @@ export function getTotalFees(fee: any) {
 }
 
 export function calculateDueAmount(fee: any) {
-  return (
-    getTotalFees(fee) -
+  const assigned = getAssignedFee(fee);
+
+  const due =
+    assigned -
     (fee.paidAmount ?? 0) -
     (fee.discountAmount ?? 0) +
-    (fee.fineAmount ?? 0)
-  );
+    (fee.fineAmount ?? 0);
+
+  return Math.max(due, 0); // never negative
 }

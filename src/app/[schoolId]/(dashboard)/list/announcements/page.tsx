@@ -133,6 +133,8 @@ const AnnouncementsList = async ({
     db.announcement.count({ where: query }),
   ]);
 
+  const Path = `/${slug}/list/announcements`
+
   return (
     <div className="flex flex-col gap-6 p-6 ">
       {/* --- HEADER SECTION --- */}
@@ -152,7 +154,7 @@ const AnnouncementsList = async ({
 
           <div className="flex items-center gap-2 self-end sm:self-auto">
             {/* Modernized Filter Buttons */}
-            <ResetFiltersButton basePath="/list/announcements" />
+            <ResetFiltersButton basePath={Path} />
 
             {/* Reusable Buttons */}
             <IconButton icon={Filter} />
@@ -168,7 +170,7 @@ const AnnouncementsList = async ({
       </div>
 
       {/* --- CONTENT SECTION --- */}
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:bg-zinc-950 dark:border-gray-800 overflow-hidden ">
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:bg-darkbg dark:border-gray-800 overflow-hidden ">
         {data.length > 0 ? (
           <>
             <Table
@@ -184,7 +186,7 @@ const AnnouncementsList = async ({
         ) : (
           /* Empty State */
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-full mb-3">
+            <div className="bg-gray-100 dark:bg-darkbg p-4 rounded-full mb-3">
               <Filter className="w-8 h-8 text-gray-400" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -195,7 +197,7 @@ const AnnouncementsList = async ({
               Try adjusting your search.
             </p>
             <div className="mt-6">
-              <ResetFiltersButton basePath="/list/announcements" />
+              <ResetFiltersButton basePath={Path} />
             </div>
           </div>
         )}
