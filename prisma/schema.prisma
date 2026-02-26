@@ -782,6 +782,7 @@ enum MessageType {
   HOMEWORK
   EXAM_RESULT
   EVENT
+  PERMISSION_SLIP
 }
 
 enum LeaveType {

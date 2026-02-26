@@ -1,15 +1,8 @@
 import prisma from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
+import { TenantAccess } from "../../types/tenant";
 
-export type TenantAccess = {
-  schoolId: string;          // Internal DB PK
-  schoolSlug: string;        // URL slug
-  role: "admin" | "teacher" | "student";
-  userId: string;
-  profileId: string;
-  classId?: number;
-  studentId?: string;
-};
+
 
 export async function requireTenantAccess(): Promise<TenantAccess> {
   const { userId } = await auth();

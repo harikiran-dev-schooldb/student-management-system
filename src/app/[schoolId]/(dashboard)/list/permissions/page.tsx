@@ -5,7 +5,7 @@ import SortButton from "@/components/SortButton";
 import Table from "@/components/Table";
 import TableSearch from "@/components/TableSearch";
 import prisma from "@/lib/prisma";
-import { ITEM_PER_PAGE } from "@/lib/settings";
+import { getISTRange, ITEM_PER_PAGE } from "@/lib/settings";
 import { fetchUserInfo, getClassIdForRole } from "@/lib/utils/server-utils";
 import { Prisma } from "@prisma/client";
 import ResetFiltersButton from "@/components/ResetFiltersButton";
@@ -13,6 +13,9 @@ import ExportButton from "@/components/ExportButton";
 import { PermissionWithRelations, SearchParams } from "../../../../../../types";
 import { PermissionSlipSelect } from "../../../../../../types/query-types";
 import { tenantPrisma } from "@/lib/tenant-prisma";
+import IconButton from "@/components/IconButton";
+import { Filter } from "lucide-react";
+import Avatar from "@/components/Avatar";
 
 // 🔹 Render Table Row
 const renderRow = (item: PermissionWithRelations, role: string | null) => {
@@ -28,8 +31,19 @@ const renderRow = (item: PermissionWithRelations, role: string | null) => {
       key={item.id}
       className="text-sm border-b border-gray-200 dark:border-gray-700 even:bg-slate-50 dark:even:bg-gray-800 hover:bg-LamaPurpleLight dark:hover:bg-gray-700"
     >
-      <td className="px-2 py-1">{localTime}</td>
-      <td className="px-2 py-1">{item.student.name}</td>
+      {/* Student Profile */}
+      <td className="flex items-center gap-2 p-2">
+        {/* Avatar Ring Effect */}
+        <Avatar className="rounded-full object-cover" />
+        <div className="flex flex-col">
+          <h3 className="font-semibold text-darkMode dark:text-gray-100">
+            {item.student.name}
+          </h3>
+          <p className="text-xs text-darkMode dark:text-gray-300">
+            {item.studentId}
+          </p>
+        </div>
+      </td>
       <td className="px-2 py-1">
         {item.student.Class?.Grade?.level
           ? `${item.student.Class.Grade.level} - ${
@@ -43,6 +57,7 @@ const renderRow = (item: PermissionWithRelations, role: string | null) => {
       </td>
       <td className="px-2 py-1 hidden md:table-cell">{item.withWhom}</td>
       <td className="px-2 py-1 hidden md:table-cell">{item.relation}</td>
+      <td className="px-2 py-1">{localTime}</td>
       {(role === "admin" || role === "teacher") && (
         <td className="px-2 py-1">
           <div className="flex items-center gap-2">
@@ -57,7 +72,6 @@ const renderRow = (item: PermissionWithRelations, role: string | null) => {
 
 // 🔹 Table Columns
 const getColumns = (role: string | null) => [
-  { header: "Issued Time", accessor: "timeIssued" },
   { header: "Student", accessor: "student" },
   { header: "Class", accessor: "class" },
   {
@@ -80,6 +94,7 @@ const getColumns = (role: string | null) => [
     accessor: "relation",
     className: "hidden md:table-cell",
   },
+  { header: "Issued Time", accessor: "timeIssued" },
   ...(role === "admin" || role === "teacher"
     ? [{ header: "Actions", accessor: "action" }]
     : []),
@@ -126,48 +141,56 @@ const PermissionSlipListPage = async ({
 
   // 🔹 Sorting
   const sortOrder = resolvedSearchParams.sort === "asc" ? "asc" : "desc";
-  const sortKey = Array.isArray(resolvedSearchParams.sortKey)
-    ? resolvedSearchParams.sortKey[0]
-    : resolvedSearchParams.sortKey || "id";
+  const allowedSortKeys = ["id", "timeIssued", "leaveType", "date"];
+  const sortKey = allowedSortKeys.includes(String(resolvedSearchParams.sortKey))
+    ? String(resolvedSearchParams.sortKey)
+    : "id";
 
   // 🔹 Query Builder
   const query: Prisma.PermissionSlipWhereInput = {};
 
-  // Date filter — default to today if no date selected
-  let startDate: Date;
-  let endDate: Date;
+  const { start, end } = getISTRange(date as string | undefined);
+  query.date = { gte: start, lte: end };
 
-  if (date) {
-    // If user selected a date
-    const rawDate = Array.isArray(date) ? date[0] : date;
-    const selectedDate = new Date(rawDate);
-    startDate = new Date(selectedDate.setHours(0, 0, 0, 0));
-    endDate = new Date(selectedDate.setHours(23, 59, 59, 999));
-  } else {
-    // Default: today's date
-    const today = new Date();
-    startDate = new Date(today.setHours(0, 0, 0, 0));
-    endDate = new Date(today.setHours(23, 59, 59, 999));
-  }
-
-  query.date = { gte: startDate, lte: endDate };
-
-  // Student/Class/Grade filters
+  // Student/Class/Grade/Search filters
   query.student = {
     ...(classId ? { classId: Number(classId) } : {}),
-    ...(gradeId ? { Class: { gradeId: Number(gradeId) } } : {}),
+    ...(gradeId
+      ? {
+          Class: {
+            gradeId: Number(gradeId),
+          },
+        }
+      : {}),
     ...(search
-      ? { name: { contains: String(search), mode: "insensitive" } }
+      ? {
+          OR: [
+            {
+              name: {
+                contains: String(search),
+                mode: "insensitive",
+              },
+            },
+            {
+              id: {
+                contains: String(search),
+                mode: "insensitive",
+              },
+            },
+          ],
+        }
       : {}),
   };
 
-  // 🔹 Restrict by role (teacher/student)
   if (userClassIds.length > 0) {
     query.student = {
       ...(query.student || {}),
-      classId: { in: userClassIds },
+      classId: classId ? Number(classId) : { in: userClassIds },
     };
   }
+
+  console.log("Start:", start.toISOString());
+  console.log("End:", end.toISOString());
 
   const [data, count] = await db.$transaction([
     db.permissionSlip.findMany({
@@ -181,8 +204,13 @@ const PermissionSlipListPage = async ({
   ]);
 
   // 🔹 For filters
-  const grades = await db.grade.findMany();
-  const classes = await db.class.findMany();
+  const grades = await db.grade.findMany({
+    select: { id: true, level: true },
+  });
+
+  const classes = await db.class.findMany({
+    select: { id: true, section: true, gradeId: true },
+  });
 
   const Path = `/${slug}/list/permissions`;
 
@@ -205,9 +233,7 @@ const PermissionSlipListPage = async ({
           )}
           <div className="flex items-center gap-4">
             <ResetFiltersButton basePath={Path} />
-            <button className="flex items-center justify-center w-8 h-8 rounded-full bg-LamaYellow dark:bg-LamaYellow">
-              <img src="/filter.png" alt="Filter" width={14} height={14} />
-            </button>
+            <IconButton icon={Filter} />
             <SortButton sortKey="id" />
             {(role === "admin" || role === "teacher") && (
               <FormContainer table="permissions" type="create" />

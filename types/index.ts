@@ -55,7 +55,36 @@ export type MessageType =
   | "HOMEWORK"
   | "EXAM_RESULT"
   | "EVENT"
+  | "PERMISSION_SLIP"
   | "FEE_COLLECTION";
+
+export type MessageContext = {
+  studentName: string;
+  className?: string | null;
+  schoolName: string;
+
+  amount?: number;
+  term?: string;
+  date?: Date;
+
+  additionalInfo?: string;
+
+  // Permission
+  leaveType?: string;
+  withWhom?: string;
+  relation?: string;
+
+  // Exam
+  marks?: string;
+  examName?: string;
+
+  // Homework
+  subject?: string;
+  dueDate?: Date;
+
+  // Event
+  eventName?: string;
+};
 
 export type CurrentState = { success: boolean; error: boolean };
 

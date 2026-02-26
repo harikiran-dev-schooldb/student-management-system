@@ -1,36 +1,6 @@
-import { MessageType } from "../../../types";
-
-type MessageContext = {
-  studentName: string;
-  className?: string | null;
-  schoolName: string;
-
-  amount?: number;
-  term?: string;
-  date?: Date;
-
-  additionalInfo?: string;
-};
-
-function formatCurrency(amount?: number): string {
-  if (typeof amount !== "number") return "";
-
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
-
-function formatDate(date?: Date): string {
-  if (!date) return "";
-
-  return new Intl.DateTimeFormat("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  }).format(date);
-}
+import { MessageContext, MessageType } from "../../../types";
+import { formatDate } from "../FeeUtils";
+import { formatCurrency } from "../settings";
 
 export function getMessageContent(
   type: MessageType,
@@ -44,10 +14,19 @@ export function getMessageContent(
     term,
     date,
     additionalInfo,
+    leaveType,
+    withWhom,
+    relation,
+    marks,
+    examName,
+    subject,
+    dueDate,
+    eventName,
   } = ctx;
 
   const formattedAmount = formatCurrency(amount);
   const formattedDate = formatDate(date);
+  const formattedDueDate = formatDate(dueDate);
 
   const classLabel = className ? ` (${className})` : "";
   const footer = ` - ${schoolName}`;
@@ -57,7 +36,7 @@ export function getMessageContent(
     case "ABSENT":
       return `Dear Parent, ${studentName}${classLabel} was marked absent on ${
         formattedDate || "today"
-      }. Kindly ensure regular attendance to support academic progress.${footer}`;
+      }. Kindly ensure regular attendance.${footer}`;
 
     /* ---------------- FEE DUE ---------------- */
     case "FEE_RELATED":
@@ -69,9 +48,9 @@ export function getMessageContent(
 
     /* ---------------- FEE RECEIVED ---------------- */
     case "FEE_COLLECTION":
-      return `Dear Parent, we have successfully received the fee payment for ${
+      return `Dear Parent, fee payment for ${
         term ?? "the current term"
-      } for ${studentName}${classLabel}.${
+      } has been received for ${studentName}${classLabel}.${
         formattedAmount ? ` Amount received: ${formattedAmount}.` : ""
       } Receipt date: ${
         formattedDate || "today"
@@ -79,15 +58,53 @@ export function getMessageContent(
 
     /* ---------------- ANNOUNCEMENT ---------------- */
     case "ANNOUNCEMENT":
-      return `Dear Parent, please note the following announcement regarding ${studentName}${classLabel}.${
+      return `Dear Parent, an announcement has been issued for ${studentName}${classLabel}.${
         additionalInfo ? ` ${additionalInfo}` : ""
       }${footer}`;
 
     /* ---------------- GENERAL ---------------- */
     case "GENERAL":
-      return `Dear Parent, an important update has been issued for ${studentName}${classLabel}.${
+      return `Dear Parent, an important update has been shared regarding ${studentName}${classLabel}.${
         additionalInfo ? ` ${additionalInfo}` : ""
       }${footer}`;
+
+    /* ---------------- HOMEWORK ---------------- */
+    case "HOMEWORK":
+      return `Dear Parent, homework has been assigned to ${studentName}${classLabel}${
+        subject ? ` for ${subject}` : ""
+      }.${
+        formattedDueDate ? ` Due date: ${formattedDueDate}.` : ""
+      } Kindly ensure timely completion.${footer}`;
+
+    /* ---------------- EXAM RESULT ---------------- */
+    case "EXAM_RESULT":
+      return `Dear Parent, exam results for ${
+        examName ?? "the recent examination"
+      } have been published for ${studentName}${classLabel}.${
+        marks ? ` Marks/Grade: ${marks}.` : ""
+      } Kindly review the performance.${footer}`;
+
+    /* ---------------- EVENT ---------------- */
+    case "EVENT":
+      return `Dear Parent, ${
+        eventName ?? "an upcoming school event"
+      } is scheduled${
+        formattedDate ? ` on ${formattedDate}` : ""
+      }.${
+        additionalInfo ? ` ${additionalInfo}` : ""
+      } Kindly take note.${footer}`;
+
+    /* ---------------- PERMISSION SLIP ---------------- */
+    case "PERMISSION_SLIP":
+      return `Dear Parent, a gate pass has been issued for ${studentName}${classLabel} on ${
+        formattedDate || "today"
+      } for ${leaveType ?? "personal reasons"}.${
+        withWhom
+          ? ` The student will leave with ${withWhom}${
+              relation ? ` (${relation})` : ""
+            }.`
+          : ""
+      } Kindly ensure safe return if applicable.${footer}`;
 
     /* ---------------- DEFAULT SAFETY ---------------- */
     default:

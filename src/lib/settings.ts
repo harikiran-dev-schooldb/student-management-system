@@ -1,5 +1,3 @@
-
-
 export const ITEM_PER_PAGE = 25;
 
 type RouteAccessMap = {
@@ -145,10 +143,43 @@ export const routeAccessMap: RouteAccessMap = {
    PUBLIC ROUTES
 ========================== */
 
-"/": ["admin", "teacher", "student"], // tenant root
-"/login(.*)": ["admin", "teacher", "student"],
-"/auth(.*)": ["admin", "teacher", "student"],
+  "/": ["admin", "teacher", "student"], // tenant root
+  "/login(.*)": ["admin", "teacher", "student"],
+  "/auth(.*)": ["admin", "teacher", "student"],
 };
 
-  
-  
+export const getISTRange = (inputDate?: string) => {
+  const now = inputDate ? new Date(inputDate) : new Date();
+
+  const istOffset = 5.5 * 60; // IST offset in minutes
+  const utc = now.getTime() + now.getTimezoneOffset() * 60000;
+  const istTime = new Date(utc + istOffset * 60000);
+
+  const start = new Date(istTime);
+  start.setHours(0, 0, 0, 0);
+
+  const end = new Date(istTime);
+  end.setHours(23, 59, 59, 999);
+
+  return { start, end };
+};
+
+export function formatCurrency(amount?: number): string {
+  if (typeof amount !== "number") return "";
+
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+export function formatDate(date?: Date): string {
+  if (!date) return "";
+
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(date);
+}

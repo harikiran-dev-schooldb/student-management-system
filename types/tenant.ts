@@ -20,3 +20,13 @@ export type TenantPageProps = {
 export type TenantRouteContext = {
   params: Promise<TenantParams>;
 };
+
+export type TenantAccess = {
+  schoolId: string;          // Internal DB PK
+  schoolSlug: string;        // URL slug
+  role: "admin" | "teacher" | "student";
+  userId: string;
+  profileId: string;
+  classId?: number;
+  studentId?: string;
+};

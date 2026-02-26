@@ -95,7 +95,7 @@ const PermissionForm = ({
     try {
       if (!schoolId) return;
 
-      const { data } = await api.post("/permission-slip/create", formData);
+      const { data } = await api.post("/permissions", formData);
 
       toast.success("Permission slip created successfully!");
       setOpen(false);
