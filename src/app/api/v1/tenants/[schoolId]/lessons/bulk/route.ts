@@ -1,8 +1,9 @@
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { lessonsSchema } from "@/lib/formValidationSchemas";
 import { PERIOD_TIMINGS } from "@/lib/utils/periods";
-import { z } from "zod";
 import { resolveSchoolId } from "@/lib/resolveSchool";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
 

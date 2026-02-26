@@ -1,6 +1,8 @@
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { resolveSchoolId, SchoolNotFoundError } from "@/lib/resolveSchool";
+import { resolveSchoolId } from "@/lib/resolveSchool";
 
 
 export async function POST(

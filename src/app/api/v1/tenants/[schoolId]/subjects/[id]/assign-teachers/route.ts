@@ -1,9 +1,9 @@
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 import prisma from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { resolveSchoolId } from "@/lib/resolveSchool";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
-
-export const runtime = "nodejs";
 
 export async function POST(
   req: NextRequest,

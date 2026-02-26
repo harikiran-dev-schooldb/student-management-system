@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { resolveSchoolId } from "@/lib/resolveSchool";
 import { getFullStudentFeesReport } from "@/lib/fees/getFullStudentFeesReport";
 
+export const runtime = "nodejs";
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ schoolId: string; }> }

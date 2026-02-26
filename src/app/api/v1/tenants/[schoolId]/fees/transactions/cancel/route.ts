@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { resolveSchoolId } from "@/lib/resolveSchool";
@@ -21,99 +23,105 @@ export async function POST(
       );
     }
 
-    const { transactionId, reason } = await req.json();
+    const { studentId, academicYear, term, reason } = await req.json();
 
-    if (!transactionId) {
+    if (!studentId || !academicYear || !term) {
       return NextResponse.json(
-        { error: "transactionId is required" },
+        { error: "studentId, academicYear, term required" },
         { status: 400 },
       );
     }
 
     await prisma.$transaction(async (tx) => {
-      const txn = await tx.feeTransaction.findFirst({
+      // 1️⃣ Get all active transactions for this term
+      const transactions = await tx.feeTransaction.findMany({
         where: {
-          id: transactionId,
+          studentId,
+          academicYear,
+          term,
           schoolId,
           deletedAt: null,
         },
       });
 
-      if (!txn) {
-        throw new Error("Transaction not found or already cancelled");
+      if (!transactions.length) {
+        throw new Error("No active transactions found for this term");
       }
 
-      // Mark transaction cancelled
-      await tx.feeTransaction.update({
-        where: { id: txn.id },
+      // 2️⃣ Soft cancel all transactions
+      await tx.feeTransaction.updateMany({
+        where: {
+          studentId,
+          academicYear,
+          term,
+          schoolId,
+          deletedAt: null,
+        },
         data: {
           deletedAt: new Date(),
           transactionType: "CANCELLED",
         },
       });
 
-      // Fetch student fee with structure
-      const studentFee = await tx.studentFees.findUnique({
-        where: { id: txn.studentFeesId },
-        include: { feeStructure: true },
-      });
+      // 3️⃣ Calculate total reversal amounts
+      const totalPaid = transactions.reduce((s, t) => s + t.amount, 0);
+      const totalDiscount = transactions.reduce(
+        (s, t) => s + t.discountAmount,
+        0,
+      );
+      const totalFine = transactions.reduce((s, t) => s + t.fineAmount, 0);
 
-      if (!studentFee) {
-        throw new Error("Student fee record not found");
-      }
-
-      // Reverse StudentFees safely
-      const updatedFee = await tx.studentFees.update({
-        where: { id: txn.studentFeesId },
-        data: {
-          paidAmount: { decrement: txn.amount },
-          discountAmount: { decrement: txn.discountAmount },
-          fineAmount: { decrement: txn.fineAmount },
-        },
-      });
-
-      // Recalculate due
-      const assigned = getAssignedFee(studentFee);
-
-      const newDue = calculateDueAmount({
-        ...studentFee,
-        paidAmount: studentFee.paidAmount - txn.amount,
-        discountAmount: studentFee.discountAmount - txn.discountAmount,
-        fineAmount: studentFee.fineAmount - txn.fineAmount,
-      });
-
-      // Reverse totals
-      await tx.studentTotalFees.update({
+      // 4️⃣ Reset studentFees for that term
+      await tx.studentFees.update({
         where: {
-          studentId_schoolId: {
-            studentId: txn.studentId,
+          studentId_academicYear_term: {
+            studentId,
+            academicYear,
+            term,
             schoolId,
           },
         },
         data: {
-          totalPaidAmount: { decrement: txn.amount },
-          totalDiscountAmount: { decrement: txn.discountAmount },
-          totalFineAmount: { decrement: txn.fineAmount },
-          dueAmount: newDue,
-          status:
-            newDue === 0
-              ? "Paid"
-              : newDue < assigned
-              ? "Partially Paid"
-              : "Not Paid",
+          paidAmount: 0,
+          discountAmount: 0,
+          fineAmount: 0,
+          receiptNo: null,
+          remarks: "Term Cancelled",
         },
       });
 
-      // Log cancelled receipt
+      // 5️⃣ Update studentTotalFees
+      const totalRecord = await tx.studentTotalFees.findUnique({
+        where: {
+          studentId_schoolId: { studentId, schoolId },
+        },
+      });
+
+      if (totalRecord) {
+        await tx.studentTotalFees.update({
+          where: {
+            studentId_schoolId: { studentId, schoolId },
+          },
+          data: {
+            totalPaidAmount: { decrement: totalPaid },
+            totalDiscountAmount: { decrement: totalDiscount },
+            totalFineAmount: { decrement: totalFine },
+            dueAmount: totalRecord.dueAmount + totalPaid,
+            status: "Not Paid",
+          },
+        });
+      }
+
+      // 6️⃣ Log cancellation entry
       await tx.cancelledReceipt.create({
         data: {
-          studentId: txn.studentId,
-          term: txn.term,
-          originalReceiptNo: txn.receiptNo,
-          cancelledAmount: txn.amount,
-          cancelledDiscount: txn.discountAmount,
-          cancelledFine: txn.fineAmount,
-          cancelledTotal: txn.amount + txn.discountAmount + txn.fineAmount,
+          studentId,
+          term,
+          originalReceiptNo: transactions[0]?.receiptNo ?? null,
+          cancelledAmount: totalPaid,
+          cancelledDiscount: totalDiscount,
+          cancelledFine: totalFine,
+          cancelledTotal: totalPaid + totalDiscount + totalFine,
           cancelledBy: user.userId,
           reason,
           schoolId,
@@ -126,7 +134,6 @@ export async function POST(
     });
   } catch (error: any) {
     console.error("Cancel transaction error:", error);
-    
 
     return NextResponse.json(
       { error: error.message || "Cancel failed" },

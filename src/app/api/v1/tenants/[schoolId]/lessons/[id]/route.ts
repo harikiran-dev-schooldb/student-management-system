@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 import { lessonsSchema } from "@/lib/formValidationSchemas";
 import prisma from "@/lib/prisma";
 import { PERIOD_TIMINGS } from "@/lib/utils/periods";

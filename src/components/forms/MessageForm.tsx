@@ -71,6 +71,7 @@ const MessageForm = ({
   const selectedClassId = watch("classId");
   const selectedStudentId = watch("studentId");
   const selectedType = watch("type");
+  const [schoolName, setSchoolName] = useState<string>("School");
 
   const router = useRouter();
   const { makeRequest } = useApiRequest();
@@ -112,6 +113,22 @@ const MessageForm = ({
   }, [state.success, setOpen, router, type]);
 
   useEffect(() => {
+    const fetchSchool = async () => {
+      try {
+        const res = await fetch(`/api/v1/public/school/${schoolId}`);
+        if (!res.ok) return;
+
+        const data = await res.json();
+        setSchoolName(data.name);
+      } catch (err) {
+        console.error("Failed to fetch school", err);
+      }
+    };
+
+    if (schoolId) fetchSchool();
+  }, [schoolId]);
+
+  useEffect(() => {
     if (!selectedType) return;
 
     const student = students.find(
@@ -123,8 +140,9 @@ const MessageForm = ({
     );
 
     const generatedMessage = getMessageContent(selectedType, {
-      name: student?.name || "",
-      className: cls?.section || "",
+      studentName: student?.name || "",
+      className: cls?.name || "",
+      schoolName,
     });
 
     setValue("message", generatedMessage);
@@ -134,6 +152,7 @@ const MessageForm = ({
     selectedClassId,
     students,
     classes,
+    schoolName, // ✅ added
     setValue,
   ]);
 
@@ -146,14 +165,20 @@ const MessageForm = ({
     }
 
     try {
-      const payload = {
+      let payload: any = {
         message: formData.message,
         type: formData.type,
-        studentId: formData.studentId || null,
         date: formData.date,
-        classId: formData.classId || null,
-        gradeId: formData.gradeId || null,
       };
+
+      // Priority: student > class > grade
+      if (formData.studentId) {
+        payload.studentId = formData.studentId;
+      } else if (formData.classId) {
+        payload.classId = formData.classId;
+      } else if (formData.gradeId) {
+        payload.gradeId = formData.gradeId;
+      }
 
       console.log("Created Message:", payload);
 

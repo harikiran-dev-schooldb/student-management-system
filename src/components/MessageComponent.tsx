@@ -17,6 +17,7 @@ const MessageComponent = () => {
   const [students, setStudents] = useState<{ id: string; name: string }[]>([]);
   const [messageContent, setMessageContent] = useState<string>("");
   const { schoolId } = useParams<{ schoolId: string }>();
+  const [schoolName, setSchoolName] = useState<string>("School");
   console.log("School ID param:", schoolId);
 
   useEffect(() => {
@@ -70,15 +71,32 @@ const MessageComponent = () => {
   }, [selectedStudentId, students]);
 
   useEffect(() => {
-    if (!selectedStudentId && !selectedClassId) return;
+    const fetchSchool = async () => {
+      try {
+        const res = await fetch(`/api/v1/public/school/${schoolId}`);
+        if (!res.ok) return;
+
+        const data = await res.json();
+        setSchoolName(data.name);
+      } catch (err) {
+        console.error("Failed to fetch school", err);
+      }
+    };
+
+    if (schoolId) fetchSchool();
+  }, [schoolId]);
+
+  useEffect(() => {
+    if (!studentName && !className) return;
 
     setMessageContent(
       getMessageContent(announcementType, {
-        name: studentName,
+        studentName,
         className,
+        schoolName,
       }),
     );
-  }, [announcementType, selectedStudentId, selectedClassId]);
+  }, [announcementType, studentName, className, schoolName]);
 
   // Handle form submission for creating a message (this will be connected to your backend API)
   const handleSubmit = async () => {

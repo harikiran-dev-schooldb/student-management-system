@@ -24,6 +24,7 @@ import {
   FileSpreadsheet,
   ChevronUp,
   CreditCard,
+  Trash2,
 } from "lucide-react";
 import { StudentFee } from "../../../types";
 import { useSchoolSlug } from "../hooks/getschool";
@@ -499,7 +500,7 @@ const FeesTable: React.FC<FeesTableProps> = ({
           paymentMode: selectedPaymentMode,
         };
 
-        await api.post("/fees/update", payload);
+        await api.post("/fees/transactions", payload);
       }
 
       // Optimistic Update
@@ -583,36 +584,18 @@ const FeesTable: React.FC<FeesTableProps> = ({
   // --- Cancellation ---
   const handleCancel = useCallback(
     async (fee: StudentFee) => {
-      if (
-        !window.confirm(
-          `Are you sure you want to cancel fees for ${fee.term}? This cannot be undone.`,
-        )
-      )
-        return;
       try {
         await api.post("/fees/transactions/cancel", {
           studentId: fee.studentId,
           term: fee.term,
           academicYear: fee.academicYear,
+          reason: "Admin cancelled term",
         });
 
-        setRowData((prev) =>
-          prev.map((f) =>
-            f.id === fee.id
-              ? {
-                  ...f,
-                  paidAmount: 0,
-                  discountAmount: 0,
-                  fineAmount: 0,
-                  remarks: "Cancelled",
-                }
-              : f,
-          ),
-        );
-        toast.success("Transaction cancelled.");
+        toast.success("Term cancelled successfully");
         router.refresh();
-      } catch (e) {
-        toast.error("Failed to cancel");
+      } catch (e: any) {
+        toast.error(e.message || "Failed to cancel");
       }
     },
     [router],
@@ -786,10 +769,9 @@ const FeesTable: React.FC<FeesTableProps> = ({
               {mode === "cancel" && role === "admin" && !isZero && (
                 <button
                   onClick={() => handleCancel(row.original)}
-                  className="p-1.5 text-rose-500 hover:bg-rose-50 rounded transition"
-                  title="Cancel Transaction"
+                  className="w-9 h-9 rounded-full bg-rose-100 hover:bg-rose-200 text-rose-600 dark:bg-rose-900/50 dark:text-rose-400 dark:hover:bg-rose-900 transition-colors flex items-center justify-center"
                 >
-                  <X size={16} />
+                  <Trash2 size={16} />
                 </button>
               )}
             </div>

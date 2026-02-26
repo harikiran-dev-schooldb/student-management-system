@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 import prisma from "@/lib/prisma";
 import { resolveSchoolId, SchoolNotFoundError } from "@/lib/resolveSchool";
 import { NextRequest, NextResponse } from "next/server";

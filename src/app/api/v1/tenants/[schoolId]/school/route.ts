@@ -4,6 +4,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { resolveSchoolId, SchoolNotFoundError } from "@/lib/resolveSchool";
 import { revalidatePath } from "next/cache";
 
+export const runtime = "nodejs";
+
 /* ======================================================
    GET → Fetch School Info (Tenant Safe)
 ====================================================== */

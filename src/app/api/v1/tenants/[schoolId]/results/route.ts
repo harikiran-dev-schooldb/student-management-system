@@ -1,5 +1,6 @@
 import prisma from "@/lib/prisma";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
+export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { resolveSchoolId, SchoolNotFoundError } from "@/lib/resolveSchool";
 import { requireTenantAccess } from "@/lib/requireTenantAccess";

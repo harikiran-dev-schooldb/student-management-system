@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { useParams } from "next/navigation";
 import { tenantFetch } from "@/lib/tenantFetch";
+import { useSchoolSlug } from "./hooks/getschool";
 
 interface Props {
   role: "admin" | "teacher";
@@ -55,7 +56,7 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
 
   const selectedDate = watch("date");
 
-  const { schoolId } = useParams<{ schoolId: string }>();
+  const schoolId = useSchoolSlug();
   console.log("School ID param:", schoolId);
 
   /* -------------------- Custom Ctrl+F Logic -------------------- */
@@ -230,6 +231,8 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
     setAttendance((prev) => ({ ...prev, ...updated }));
     setAllAbsent(!present);
   };
+
+  console.log("Frontend schoolId:", schoolId);
 
   const onSubmit = async (data: any) => {
     if (!students.length) return;

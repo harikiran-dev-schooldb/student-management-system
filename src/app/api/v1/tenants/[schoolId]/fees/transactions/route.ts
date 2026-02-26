@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { resolveSchoolId } from "@/lib/resolveSchool";
@@ -149,6 +151,42 @@ export async function POST(
           schoolId,
         },
       });
+
+      // 🔹 Fetch student + class info
+      const student = await tx.student.findUnique({
+        where: { id: studentId },
+        select: {
+          name: true,
+          classId: true,
+          Class: { select: { name: true } },
+        },
+      });
+
+      // 🔹 Fetch school name once
+      const school = await tx.schoolInfo.findUnique({
+        where: { id: schoolId },
+        select: { name: true },
+      });
+
+      if (student && school) {
+        await tx.messages.create({
+          data: {
+            type: "FEE_COLLECTION",
+            message: getMessageContent("FEE_COLLECTION", {
+              studentName: student.name,
+              className: student.Class?.name ?? null,
+              schoolName: school.name,
+              amount,
+              term,
+              date: parsedReceiptDate,
+            }),
+            studentId,
+            classId: student.classId ?? undefined,
+            schoolId,
+            date: parsedReceiptDate,
+          },
+        });
+      }
 
       return { updatedFee, updatedTotal, transaction };
     });

@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 import prisma from "@/lib/prisma";
 import { getMessageContent } from "@/lib/utils/messageUtils";
 import { NextRequest, NextResponse } from "next/server";
@@ -19,9 +21,10 @@ export async function POST(
     const resolvedSchoolId = await resolveSchoolId(slug);
     const access = await requireTenantAccess();
 
-    console.log("Slug param:", slug);
-    console.log("Access schoolId:", access.schoolId);
-    console.log("Access role:", access.role);
+    console.log("Slug:", slug);
+    console.log("ResolvedSchoolId:", resolvedSchoolId, typeof resolvedSchoolId);
+    console.log("SessionSchoolId:", access.schoolId, typeof access.schoolId);
+    console.log("Role:", access.role);
 
     const schoolId = access.schoolId;
     /* 🔐 Tenant + RBAC */
@@ -105,7 +108,16 @@ export async function POST(
     /* ---------------- TRANSACTION ---------------- */
 
     await prisma.$transaction(async (tx) => {
+      // 🔹 Fetch school once for tenant-safe messaging
+      const school = await tx.schoolInfo.findUnique({
+        where: { id: schoolId },
+        select: { name: true },
+      });
+
+      const schoolName = school?.name ?? "School";
+
       for (const entry of payload) {
+        /* --------- UPSERT ATTENDANCE --------- */
         await tx.attendance.upsert({
           where: {
             studentId_date_schoolId: {
@@ -127,6 +139,7 @@ export async function POST(
         const student = studentMap.get(entry.studentId);
         if (!student) continue;
 
+        /* --------- HANDLE ABSENT MESSAGE --------- */
         if (entry.present === false) {
           const existingMessage = await tx.messages.findFirst({
             where: {
@@ -141,19 +154,22 @@ export async function POST(
           if (!existingMessage) {
             await tx.messages.create({
               data: {
-                message: getMessageContent("ABSENT" as MessageType, {
-                  name: student.name,
-                  className: student.Class?.name ?? "Unknown",
+                message: getMessageContent("ABSENT", {
+                  studentName: student.name,
+                  className: student.Class?.name ?? null,
+                  schoolName,
+                  date: dateOnly,
                 }),
                 type: "ABSENT",
                 date: dateOnly,
                 studentId: entry.studentId,
-                classId: entry.classId,
+                classId: entry.classId ?? undefined,
                 schoolId,
               },
             });
           }
         } else {
+          /* --------- REMOVE MESSAGE IF MARKED PRESENT --------- */
           await tx.messages.deleteMany({
             where: {
               studentId: entry.studentId,
