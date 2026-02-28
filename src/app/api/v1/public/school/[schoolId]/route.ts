@@ -10,7 +10,8 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ schoolId: string }> },
 ) {
-    const { schoolId } = await params;
+  const { schoolId } = await params;
+  console.log("School ID:", schoolId);
 
   const school = await prisma.schoolInfo.findUnique({
     where: { schoolId },
@@ -21,10 +22,7 @@ export async function GET(
   });
 
   if (!school) {
-    return NextResponse.json(
-      { error: "Invalid school" },
-      { status: 404 }
-    );
+    return NextResponse.json({ error: "Invalid school" }, { status: 404 });
   }
 
   return NextResponse.json(school);

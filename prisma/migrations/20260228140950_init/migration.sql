@@ -14,7 +14,7 @@ CREATE TYPE "PaymentMode" AS ENUM ('CASH', 'ONLINE', 'UPI', 'BANK_TRANSFER');
 CREATE TYPE "AcademicYear" AS ENUM ('Y2024_2025', 'Y2025_2026');
 
 -- CreateEnum
-CREATE TYPE "MessageType" AS ENUM ('ABSENT', 'FEE_RELATED', 'ANNOUNCEMENT', 'GENERAL', 'FEE_COLLECTION');
+CREATE TYPE "MessageType" AS ENUM ('ABSENT', 'FEE_RELATED', 'ANNOUNCEMENT', 'GENERAL', 'FEE_COLLECTION', 'HOMEWORK', 'EXAM_RESULT', 'EVENT', 'PERMISSION_SLIP');
 
 -- CreateEnum
 CREATE TYPE "LeaveType" AS ENUM ('SICK', 'PERSONAL', 'HALFDAY', 'DAILY_PERMISSION');
@@ -27,6 +27,34 @@ CREATE TYPE "Period" AS ENUM ('PERIOD1', 'PERIOD2', 'PERIOD3', 'PERIOD4', 'PERIO
 
 -- CreateEnum
 CREATE TYPE "BloodType" AS ENUM ('A_POS', 'A_NEG', 'B_POS', 'B_NEG', 'AB_POS', 'AB_NEG', 'O_POS', 'O_NEG');
+
+-- CreateEnum
+CREATE TYPE "UserStatus" AS ENUM ('ACTIVE', 'INACTIVE', 'ON_LEAVE', 'SUSPENDED');
+
+-- CreateEnum
+CREATE TYPE "EnrollmentStatus" AS ENUM ('ACTIVE', 'PROMOTED', 'REPEATED', 'TRANSFERRED');
+
+-- CreateEnum
+CREATE TYPE "PaymentStatus" AS ENUM ('PENDING', 'SUCCESS', 'FAILED');
+
+-- CreateTable
+CREATE TABLE "SchoolInfo" (
+    "id" TEXT NOT NULL,
+    "schoolId" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "address" TEXT NOT NULL,
+    "phone" TEXT,
+    "email" TEXT,
+    "website" TEXT,
+    "logo" TEXT,
+    "taxId" TEXT,
+    "receiptHeader" TEXT,
+    "receiptFooter" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "SchoolInfo_pkey" PRIMARY KEY ("id")
+);
 
 -- CreateTable
 CREATE TABLE "Admin" (
@@ -46,6 +74,7 @@ CREATE TABLE "Admin" (
     "clerk_id" TEXT,
     "profileId" TEXT,
     "linkedUserId" TEXT,
+    "schoolId" TEXT NOT NULL,
 
     CONSTRAINT "Admin_pkey" PRIMARY KEY ("id")
 );
@@ -54,6 +83,7 @@ CREATE TABLE "Admin" (
 CREATE TABLE "Grade" (
     "id" SERIAL NOT NULL,
     "level" TEXT NOT NULL,
+    "schoolId" TEXT NOT NULL,
 
     CONSTRAINT "Grade_pkey" PRIMARY KEY ("id")
 );
@@ -65,6 +95,7 @@ CREATE TABLE "class" (
     "section" TEXT NOT NULL,
     "supervisorId" TEXT,
     "gradeId" INTEGER NOT NULL,
+    "schoolId" TEXT NOT NULL,
 
     CONSTRAINT "class_pkey" PRIMARY KEY ("id")
 );
@@ -80,6 +111,7 @@ CREATE TABLE "Lesson" (
     "subjectId" INTEGER NOT NULL,
     "classId" INTEGER NOT NULL,
     "teacherId" TEXT NOT NULL,
+    "schoolId" TEXT NOT NULL,
 
     CONSTRAINT "Lesson_pkey" PRIMARY KEY ("id")
 );
@@ -91,6 +123,7 @@ CREATE TABLE "Announcement" (
     "description" TEXT NOT NULL,
     "date" TIMESTAMP(3) NOT NULL,
     "classId" INTEGER,
+    "schoolId" TEXT NOT NULL,
 
     CONSTRAINT "Announcement_pkey" PRIMARY KEY ("id")
 );
@@ -101,8 +134,9 @@ CREATE TABLE "Messages" (
     "message" TEXT NOT NULL,
     "type" "MessageType" NOT NULL,
     "studentId" TEXT,
-    "date" TIMESTAMP(3) NOT NULL,
+    "date" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "classId" INTEGER,
+    "schoolId" TEXT NOT NULL,
 
     CONSTRAINT "Messages_pkey" PRIMARY KEY ("id")
 );
@@ -115,6 +149,7 @@ CREATE TABLE "Event" (
     "startTime" TIMESTAMP(3) NOT NULL,
     "endTime" TIMESTAMP(3) NOT NULL,
     "classId" INTEGER,
+    "schoolId" TEXT NOT NULL,
 
     CONSTRAINT "Event_pkey" PRIMARY KEY ("id")
 );
@@ -123,6 +158,7 @@ CREATE TABLE "Event" (
 CREATE TABLE "Exam" (
     "id" SERIAL NOT NULL,
     "title" TEXT NOT NULL,
+    "schoolId" TEXT NOT NULL,
 
     CONSTRAINT "Exam_pkey" PRIMARY KEY ("id")
 );
@@ -136,8 +172,59 @@ CREATE TABLE "ExamGradeSubject" (
     "date" TIMESTAMP(3) NOT NULL,
     "startTime" TEXT NOT NULL,
     "maxMarks" INTEGER NOT NULL,
+    "schoolId" TEXT NOT NULL,
 
     CONSTRAINT "ExamGradeSubject_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Result" (
+    "id" SERIAL NOT NULL,
+    "marks" DOUBLE PRECISION NOT NULL,
+    "studentId" TEXT NOT NULL,
+    "examId" INTEGER NOT NULL,
+    "subjectId" INTEGER NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "schoolId" TEXT NOT NULL,
+
+    CONSTRAINT "Result_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Assignment" (
+    "id" SERIAL NOT NULL,
+    "title" TEXT NOT NULL,
+    "description" TEXT,
+    "schoolId" TEXT NOT NULL,
+
+    CONSTRAINT "Assignment_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "AssignmentGradeSubject" (
+    "id" SERIAL NOT NULL,
+    "assignmentId" INTEGER NOT NULL,
+    "gradeId" INTEGER NOT NULL,
+    "classId" INTEGER NOT NULL,
+    "subjectId" INTEGER NOT NULL,
+    "dueDate" TIMESTAMP(3) NOT NULL,
+    "maxMarks" INTEGER NOT NULL,
+    "schoolId" TEXT NOT NULL,
+
+    CONSTRAINT "AssignmentGradeSubject_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "AssignmentSubmission" (
+    "id" SERIAL NOT NULL,
+    "assignmentId" INTEGER NOT NULL,
+    "studentId" TEXT NOT NULL,
+    "marks" DOUBLE PRECISION,
+    "submittedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "remarks" TEXT,
+    "schoolId" TEXT NOT NULL,
+
+    CONSTRAINT "AssignmentSubmission_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -148,20 +235,9 @@ CREATE TABLE "Homework" (
     "date" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "classId" INTEGER NOT NULL,
     "gradeId" INTEGER NOT NULL,
+    "schoolId" TEXT NOT NULL,
 
     CONSTRAINT "Homework_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "Result" (
-    "id" SERIAL NOT NULL,
-    "marks" INTEGER NOT NULL,
-    "studentId" TEXT NOT NULL,
-    "examId" INTEGER NOT NULL,
-    "subjectId" INTEGER NOT NULL,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "Result_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -189,6 +265,7 @@ CREATE TABLE "Student" (
     "classId" INTEGER NOT NULL,
     "profileId" TEXT,
     "linkedUserId" TEXT,
+    "schoolId" TEXT NOT NULL,
 
     CONSTRAINT "Student_pkey" PRIMARY KEY ("id")
 );
@@ -198,6 +275,7 @@ CREATE TABLE "Subject" (
     "id" SERIAL NOT NULL,
     "name" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "schoolId" TEXT NOT NULL,
 
     CONSTRAINT "Subject_pkey" PRIMARY KEY ("id")
 );
@@ -214,14 +292,16 @@ CREATE TABLE "Teacher" (
     "img" TEXT,
     "bloodType" TEXT,
     "gender" "Gender" NOT NULL,
+    "dob" TIMESTAMP(3),
+    "status" "UserStatus" NOT NULL DEFAULT 'ACTIVE',
+    "supervisor" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "deletedAt" TIMESTAMP(3),
-    "supervisor" BOOLEAN NOT NULL DEFAULT false,
-    "dob" TIMESTAMP(3),
+    "clerk_id" TEXT,
     "profileId" TEXT,
     "classId" INTEGER,
-    "clerk_id" TEXT,
     "linkedUserId" TEXT,
+    "schoolId" TEXT NOT NULL,
 
     CONSTRAINT "Teacher_pkey" PRIMARY KEY ("id")
 );
@@ -231,8 +311,9 @@ CREATE TABLE "SubjectTeacher" (
     "subjectId" INTEGER NOT NULL,
     "teacherId" TEXT NOT NULL,
     "classId" INTEGER NOT NULL,
+    "schoolId" TEXT NOT NULL,
 
-    CONSTRAINT "SubjectTeacher_pkey" PRIMARY KEY ("subjectId","teacherId","classId")
+    CONSTRAINT "SubjectTeacher_pkey" PRIMARY KEY ("subjectId","teacherId","classId","schoolId")
 );
 
 -- CreateTable
@@ -245,6 +326,7 @@ CREATE TABLE "FeeStructure" (
     "abacusFees" INTEGER,
     "term" "Term" NOT NULL,
     "academicYear" "AcademicYear" NOT NULL DEFAULT 'Y2024_2025',
+    "schoolId" TEXT NOT NULL,
 
     CONSTRAINT "FeeStructure_pkey" PRIMARY KEY ("id")
 );
@@ -269,6 +351,7 @@ CREATE TABLE "FeeTransaction" (
     "transactionType" TEXT NOT NULL DEFAULT 'PAYMENT',
     "updatedByName" TEXT,
     "deletedAt" TIMESTAMP(3),
+    "schoolId" TEXT NOT NULL,
 
     CONSTRAINT "FeeTransaction_pkey" PRIMARY KEY ("id")
 );
@@ -290,6 +373,7 @@ CREATE TABLE "StudentFees" (
     "receiptNo" TEXT,
     "remarks" TEXT DEFAULT '',
     "updatedByName" TEXT,
+    "schoolId" TEXT NOT NULL,
 
     CONSTRAINT "StudentFees_pkey" PRIMARY KEY ("id")
 );
@@ -298,6 +382,7 @@ CREATE TABLE "StudentFees" (
 CREATE TABLE "StudentTotalFees" (
     "id" SERIAL NOT NULL,
     "studentId" TEXT NOT NULL,
+    "schoolId" TEXT NOT NULL,
     "totalPaidAmount" DOUBLE PRECISION NOT NULL DEFAULT 0,
     "totalDiscountAmount" DOUBLE PRECISION NOT NULL DEFAULT 0,
     "totalFineAmount" DOUBLE PRECISION NOT NULL DEFAULT 0,
@@ -316,6 +401,7 @@ CREATE TABLE "Attendance" (
     "present" BOOLEAN NOT NULL DEFAULT true,
     "studentId" TEXT NOT NULL,
     "classId" INTEGER NOT NULL,
+    "schoolId" TEXT NOT NULL,
 
     CONSTRAINT "Attendance_pkey" PRIMARY KEY ("id")
 );
@@ -333,6 +419,7 @@ CREATE TABLE "CancelledReceipt" (
     "cancelledDiscount" DECIMAL(65,30) NOT NULL DEFAULT 0,
     "cancelledFine" DECIMAL(65,30) NOT NULL DEFAULT 0,
     "cancelledTotal" DECIMAL(65,30) NOT NULL DEFAULT 0,
+    "schoolId" TEXT NOT NULL,
 
     CONSTRAINT "CancelledReceipt_pkey" PRIMARY KEY ("id")
 );
@@ -348,6 +435,7 @@ CREATE TABLE "PermissionSlip" (
     "timeIssued" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "withWhom" TEXT,
     "relation" TEXT,
+    "schoolId" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -370,8 +458,68 @@ CREATE TABLE "LinkedUser" (
     "username" TEXT NOT NULL,
     "role" TEXT NOT NULL,
     "profileId" TEXT NOT NULL,
+    "schoolId" TEXT NOT NULL,
 
     CONSTRAINT "LinkedUser_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "FeePayment" (
+    "id" SERIAL NOT NULL,
+    "amount" DOUBLE PRECISION NOT NULL,
+    "currency" TEXT NOT NULL DEFAULT 'INR',
+    "paymentDate" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "status" "PaymentStatus" NOT NULL DEFAULT 'PENDING',
+    "transactionId" TEXT,
+    "orderId" TEXT NOT NULL,
+    "studentId" TEXT NOT NULL,
+    "schoolId" TEXT NOT NULL,
+    "metadata" JSONB,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "FeePayment_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "StudentEnrollment" (
+    "id" SERIAL NOT NULL,
+    "studentId" TEXT NOT NULL,
+    "classId" INTEGER NOT NULL,
+    "academicYear" "AcademicYear" NOT NULL,
+    "status" "EnrollmentStatus" NOT NULL DEFAULT 'ACTIVE',
+    "promotedFromId" INTEGER,
+    "schoolId" TEXT NOT NULL,
+
+    CONSTRAINT "StudentEnrollment_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "BulkUploadJob" (
+    "id" TEXT NOT NULL,
+    "schoolId" TEXT NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'PENDING',
+    "total" INTEGER NOT NULL,
+    "processed" INTEGER NOT NULL DEFAULT 0,
+    "created" INTEGER NOT NULL DEFAULT 0,
+    "updated" INTEGER NOT NULL DEFAULT 0,
+    "errors" JSONB,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "BulkUploadJob_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "SmsTemplate" (
+    "id" SERIAL NOT NULL,
+    "type" "MessageType" NOT NULL,
+    "content" TEXT NOT NULL,
+    "schoolId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "SmsTemplate_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -383,16 +531,7 @@ CREATE TABLE "_SubjectGrades" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Admin_username_key" ON "Admin"("username");
-
--- CreateIndex
-CREATE UNIQUE INDEX "Admin_email_key" ON "Admin"("email");
-
--- CreateIndex
-CREATE UNIQUE INDEX "Admin_phone_key" ON "Admin"("phone");
-
--- CreateIndex
-CREATE UNIQUE INDEX "Admin_clerk_id_key" ON "Admin"("clerk_id");
+CREATE UNIQUE INDEX "SchoolInfo_schoolId_key" ON "SchoolInfo"("schoolId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Admin_linkedUserId_key" ON "Admin"("linkedUserId");
@@ -401,10 +540,31 @@ CREATE UNIQUE INDEX "Admin_linkedUserId_key" ON "Admin"("linkedUserId");
 CREATE INDEX "Admin_username_email_phone_idx" ON "Admin"("username", "email", "phone");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Grade_level_key" ON "Grade"("level");
+CREATE INDEX "Admin_schoolId_idx" ON "Admin"("schoolId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Admin_id_schoolId_key" ON "Admin"("id", "schoolId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Admin_clerk_id_schoolId_key" ON "Admin"("clerk_id", "schoolId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Admin_username_schoolId_key" ON "Admin"("username", "schoolId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Admin_email_schoolId_key" ON "Admin"("email", "schoolId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Admin_phone_schoolId_key" ON "Admin"("phone", "schoolId");
 
 -- CreateIndex
 CREATE INDEX "Grade_level_idx" ON "Grade"("level");
+
+-- CreateIndex
+CREATE INDEX "Grade_schoolId_idx" ON "Grade"("schoolId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Grade_level_schoolId_key" ON "Grade"("level", "schoolId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "class_supervisorId_key" ON "class"("supervisorId");
@@ -416,7 +576,13 @@ CREATE INDEX "Class_gradeId_idx" ON "class"("gradeId");
 CREATE INDEX "Class_supervisorId_idx" ON "class"("supervisorId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Class_gradeId_section_key" ON "class"("gradeId", "section");
+CREATE INDEX "class_schoolId_idx" ON "class"("schoolId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Class_gradeId_section_key" ON "class"("gradeId", "section", "schoolId");
+
+-- CreateIndex
+CREATE INDEX "Lesson_schoolId_idx" ON "Lesson"("schoolId");
 
 -- CreateIndex
 CREATE INDEX "Lesson_classId_idx" ON "Lesson"("classId");
@@ -434,10 +600,25 @@ CREATE INDEX "Lesson_day_period_idx" ON "Lesson"("day", "period");
 CREATE INDEX "Announcement_classId_idx" ON "Announcement"("classId");
 
 -- CreateIndex
+CREATE INDEX "Announcement_schoolId_idx" ON "Announcement"("schoolId");
+
+-- CreateIndex
+CREATE INDEX "Messages_schoolId_idx" ON "Messages"("schoolId");
+
+-- CreateIndex
 CREATE INDEX "Event_classId_idx" ON "Event"("classId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Exam_title_key" ON "Exam"("title");
+CREATE INDEX "Event_schoolId_idx" ON "Event"("schoolId");
+
+-- CreateIndex
+CREATE INDEX "Exam_schoolId_idx" ON "Exam"("schoolId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Exam_title_schoolId_key" ON "Exam"("title", "schoolId");
+
+-- CreateIndex
+CREATE INDEX "ExamGradeSubject_schoolId_idx" ON "ExamGradeSubject"("schoolId");
 
 -- CreateIndex
 CREATE INDEX "ExamGradeSubject_examId_idx" ON "ExamGradeSubject"("examId");
@@ -446,7 +627,31 @@ CREATE INDEX "ExamGradeSubject_examId_idx" ON "ExamGradeSubject"("examId");
 CREATE INDEX "ExamGradeSubject_gradeId_idx" ON "ExamGradeSubject"("gradeId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "ExamGradeSubject_examId_gradeId_subjectId_key" ON "ExamGradeSubject"("examId", "gradeId", "subjectId");
+CREATE UNIQUE INDEX "ExamGradeSubject_examId_gradeId_subjectId_schoolId_key" ON "ExamGradeSubject"("examId", "gradeId", "subjectId", "schoolId");
+
+-- CreateIndex
+CREATE INDEX "Result_schoolId_idx" ON "Result"("schoolId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Result_studentId_examId_subjectId_schoolId_key" ON "Result"("studentId", "examId", "subjectId", "schoolId");
+
+-- CreateIndex
+CREATE INDEX "Assignment_schoolId_idx" ON "Assignment"("schoolId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Assignment_title_schoolId_key" ON "Assignment"("title", "schoolId");
+
+-- CreateIndex
+CREATE INDEX "AssignmentGradeSubject_schoolId_idx" ON "AssignmentGradeSubject"("schoolId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "AssignmentGradeSubject_assignmentId_gradeId_classId_subject_key" ON "AssignmentGradeSubject"("assignmentId", "gradeId", "classId", "subjectId", "schoolId");
+
+-- CreateIndex
+CREATE INDEX "AssignmentSubmission_schoolId_idx" ON "AssignmentSubmission"("schoolId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "AssignmentSubmission_assignmentId_studentId_schoolId_key" ON "AssignmentSubmission"("assignmentId", "studentId", "schoolId");
 
 -- CreateIndex
 CREATE INDEX "Homework_classId_idx" ON "Homework"("classId");
@@ -461,13 +666,13 @@ CREATE INDEX "Homework_groupId_idx" ON "Homework"("groupId");
 CREATE INDEX "Homework_date_idx" ON "Homework"("date");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Result_studentId_examId_subjectId_key" ON "Result"("studentId", "examId", "subjectId");
-
--- CreateIndex
-CREATE UNIQUE INDEX "Student_username_key" ON "Student"("username");
+CREATE INDEX "Homework_schoolId_idx" ON "Homework"("schoolId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Student_linkedUserId_key" ON "Student"("linkedUserId");
+
+-- CreateIndex
+CREATE INDEX "Student_schoolId_idx" ON "Student"("schoolId");
 
 -- CreateIndex
 CREATE INDEX "Student_classId_gender_status_idx" ON "Student"("classId", "gender", "status");
@@ -476,28 +681,52 @@ CREATE INDEX "Student_classId_gender_status_idx" ON "Student"("classId", "gender
 CREATE INDEX "Student_academicYear_classId_gender_status_idx" ON "Student"("academicYear", "classId", "gender", "status");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Subject_name_key" ON "Subject"("name");
+CREATE UNIQUE INDEX "Student_username_schoolId_key" ON "Student"("username", "schoolId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Teacher_username_key" ON "Teacher"("username");
+CREATE INDEX "Subject_schoolId_idx" ON "Subject"("schoolId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Teacher_classId_key" ON "Teacher"("classId");
-
--- CreateIndex
-CREATE UNIQUE INDEX "Teacher_clerk_id_key" ON "Teacher"("clerk_id");
+CREATE UNIQUE INDEX "Subject_name_schoolId_key" ON "Subject"("name", "schoolId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Teacher_linkedUserId_key" ON "Teacher"("linkedUserId");
 
 -- CreateIndex
+CREATE INDEX "Teacher_schoolId_idx" ON "Teacher"("schoolId");
+
+-- CreateIndex
+CREATE INDEX "Teacher_name_idx" ON "Teacher"("name");
+
+-- CreateIndex
+CREATE INDEX "Teacher_phone_idx" ON "Teacher"("phone");
+
+-- CreateIndex
 CREATE INDEX "Teacher_clerk_id_idx" ON "Teacher"("clerk_id");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "FeeStructure_gradeId_term_academicYear_key" ON "FeeStructure"("gradeId", "term", "academicYear");
+CREATE UNIQUE INDEX "Teacher_username_schoolId_key" ON "Teacher"("username", "schoolId");
 
 -- CreateIndex
-CREATE INDEX "FeeTransaction_receiptDate_idx" ON "FeeTransaction"("receiptDate");
+CREATE UNIQUE INDEX "Teacher_clerk_id_schoolId_key" ON "Teacher"("clerk_id", "schoolId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Teacher_classId_schoolId_key" ON "Teacher"("classId", "schoolId");
+
+-- CreateIndex
+CREATE INDEX "SubjectTeacher_schoolId_idx" ON "SubjectTeacher"("schoolId");
+
+-- CreateIndex
+CREATE INDEX "FeeStructure_schoolId_idx" ON "FeeStructure"("schoolId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "FeeStructure_gradeId_term_academicYear_schoolId_key" ON "FeeStructure"("gradeId", "term", "academicYear", "schoolId");
+
+-- CreateIndex
+CREATE INDEX "FeeTransaction_schoolId_idx" ON "FeeTransaction"("schoolId");
+
+-- CreateIndex
+CREATE INDEX "FeeTransaction_schoolId_receiptDate_idx" ON "FeeTransaction"("schoolId", "receiptDate");
 
 -- CreateIndex
 CREATE INDEX "FeeTransaction_academicYear_receiptDate_idx" ON "FeeTransaction"("academicYear", "receiptDate");
@@ -506,10 +735,16 @@ CREATE INDEX "FeeTransaction_academicYear_receiptDate_idx" ON "FeeTransaction"("
 CREATE INDEX "FeeTransaction_studentId_academicYear_idx" ON "FeeTransaction"("studentId", "academicYear");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "StudentFees_studentId_academicYear_term_key" ON "StudentFees"("studentId", "academicYear", "term");
+CREATE INDEX "StudentFees_schoolId_idx" ON "StudentFees"("schoolId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "StudentTotalFees_studentId_key" ON "StudentTotalFees"("studentId");
+CREATE UNIQUE INDEX "StudentFees_studentId_academicYear_term_schoolId_key" ON "StudentFees"("studentId", "academicYear", "term", "schoolId");
+
+-- CreateIndex
+CREATE INDEX "StudentTotalFees_schoolId_idx" ON "StudentTotalFees"("schoolId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "StudentTotalFees_studentId_schoolId_key" ON "StudentTotalFees"("studentId", "schoolId");
 
 -- CreateIndex
 CREATE INDEX "Attendance_classId_date_idx" ON "Attendance"("classId", "date");
@@ -518,7 +753,13 @@ CREATE INDEX "Attendance_classId_date_idx" ON "Attendance"("classId", "date");
 CREATE INDEX "Attendance_studentId_classId_idx" ON "Attendance"("studentId", "classId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Attendance_studentId_date_key" ON "Attendance"("studentId", "date");
+CREATE INDEX "Attendance_schoolId_idx" ON "Attendance"("schoolId");
+
+-- CreateIndex
+CREATE INDEX "Attendance_schoolId_date_idx" ON "Attendance"("schoolId", "date");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Attendance_studentId_date_schoolId_key" ON "Attendance"("studentId", "date", "schoolId");
 
 -- CreateIndex
 CREATE INDEX "CancelledReceipt_studentId_idx" ON "CancelledReceipt"("studentId");
@@ -528,6 +769,12 @@ CREATE INDEX "CancelledReceipt_term_idx" ON "CancelledReceipt"("term");
 
 -- CreateIndex
 CREATE INDEX "CancelledReceipt_originalReceiptNo_idx" ON "CancelledReceipt"("originalReceiptNo");
+
+-- CreateIndex
+CREATE INDEX "CancelledReceipt_schoolId_idx" ON "CancelledReceipt"("schoolId");
+
+-- CreateIndex
+CREATE INDEX "PermissionSlip_schoolId_idx" ON "PermissionSlip"("schoolId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Profile_clerk_id_key" ON "Profile"("clerk_id");
@@ -542,6 +789,42 @@ CREATE INDEX "Profile_clerk_id_idx" ON "Profile"("clerk_id");
 CREATE INDEX "Profile_phone_idx" ON "Profile"("phone");
 
 -- CreateIndex
+CREATE INDEX "LinkedUser_profileId_schoolId_idx" ON "LinkedUser"("profileId", "schoolId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "LinkedUser_username_schoolId_key" ON "LinkedUser"("username", "schoolId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "FeePayment_transactionId_key" ON "FeePayment"("transactionId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "FeePayment_orderId_key" ON "FeePayment"("orderId");
+
+-- CreateIndex
+CREATE INDEX "FeePayment_schoolId_idx" ON "FeePayment"("schoolId");
+
+-- CreateIndex
+CREATE INDEX "FeePayment_studentId_idx" ON "FeePayment"("studentId");
+
+-- CreateIndex
+CREATE INDEX "StudentEnrollment_academicYear_classId_idx" ON "StudentEnrollment"("academicYear", "classId");
+
+-- CreateIndex
+CREATE INDEX "StudentEnrollment_schoolId_idx" ON "StudentEnrollment"("schoolId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "StudentEnrollment_studentId_academicYear_schoolId_key" ON "StudentEnrollment"("studentId", "academicYear", "schoolId");
+
+-- CreateIndex
+CREATE INDEX "BulkUploadJob_schoolId_idx" ON "BulkUploadJob"("schoolId");
+
+-- CreateIndex
+CREATE INDEX "SmsTemplate_schoolId_idx" ON "SmsTemplate"("schoolId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "SmsTemplate_type_schoolId_key" ON "SmsTemplate"("type", "schoolId");
+
+-- CreateIndex
 CREATE INDEX "_SubjectGrades_B_index" ON "_SubjectGrades"("B");
 
 -- AddForeignKey
@@ -551,10 +834,19 @@ ALTER TABLE "Admin" ADD CONSTRAINT "Admin_profileId_fkey" FOREIGN KEY ("profileI
 ALTER TABLE "Admin" ADD CONSTRAINT "Admin_linkedUserId_fkey" FOREIGN KEY ("linkedUserId") REFERENCES "LinkedUser"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "Admin" ADD CONSTRAINT "Admin_schoolId_fkey" FOREIGN KEY ("schoolId") REFERENCES "SchoolInfo"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Grade" ADD CONSTRAINT "Grade_schoolId_fkey" FOREIGN KEY ("schoolId") REFERENCES "SchoolInfo"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "class" ADD CONSTRAINT "class_gradeId_fkey" FOREIGN KEY ("gradeId") REFERENCES "Grade"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "class" ADD CONSTRAINT "class_supervisorId_fkey" FOREIGN KEY ("supervisorId") REFERENCES "Teacher"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "class" ADD CONSTRAINT "class_schoolId_fkey" FOREIGN KEY ("schoolId") REFERENCES "SchoolInfo"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Lesson" ADD CONSTRAINT "Lesson_classId_fkey" FOREIGN KEY ("classId") REFERENCES "class"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -566,7 +858,13 @@ ALTER TABLE "Lesson" ADD CONSTRAINT "Lesson_subjectId_fkey" FOREIGN KEY ("subjec
 ALTER TABLE "Lesson" ADD CONSTRAINT "Lesson_teacherId_fkey" FOREIGN KEY ("teacherId") REFERENCES "Teacher"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "Lesson" ADD CONSTRAINT "Lesson_schoolId_fkey" FOREIGN KEY ("schoolId") REFERENCES "SchoolInfo"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "Announcement" ADD CONSTRAINT "Announcement_classId_fkey" FOREIGN KEY ("classId") REFERENCES "class"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Announcement" ADD CONSTRAINT "Announcement_schoolId_fkey" FOREIGN KEY ("schoolId") REFERENCES "SchoolInfo"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Messages" ADD CONSTRAINT "Messages_classId_fkey" FOREIGN KEY ("classId") REFERENCES "class"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -575,7 +873,16 @@ ALTER TABLE "Messages" ADD CONSTRAINT "Messages_classId_fkey" FOREIGN KEY ("clas
 ALTER TABLE "Messages" ADD CONSTRAINT "Messages_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "Student"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "Messages" ADD CONSTRAINT "Messages_schoolId_fkey" FOREIGN KEY ("schoolId") REFERENCES "SchoolInfo"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "Event" ADD CONSTRAINT "Event_classId_fkey" FOREIGN KEY ("classId") REFERENCES "class"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Event" ADD CONSTRAINT "Event_schoolId_fkey" FOREIGN KEY ("schoolId") REFERENCES "SchoolInfo"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Exam" ADD CONSTRAINT "Exam_schoolId_fkey" FOREIGN KEY ("schoolId") REFERENCES "SchoolInfo"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "ExamGradeSubject" ADD CONSTRAINT "ExamGradeSubject_examId_fkey" FOREIGN KEY ("examId") REFERENCES "Exam"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -587,10 +894,7 @@ ALTER TABLE "ExamGradeSubject" ADD CONSTRAINT "ExamGradeSubject_gradeId_fkey" FO
 ALTER TABLE "ExamGradeSubject" ADD CONSTRAINT "ExamGradeSubject_subjectId_fkey" FOREIGN KEY ("subjectId") REFERENCES "Subject"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Homework" ADD CONSTRAINT "Homework_classId_fkey" FOREIGN KEY ("classId") REFERENCES "class"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "Homework" ADD CONSTRAINT "Homework_gradeId_fkey" FOREIGN KEY ("gradeId") REFERENCES "Grade"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "ExamGradeSubject" ADD CONSTRAINT "ExamGradeSubject_schoolId_fkey" FOREIGN KEY ("schoolId") REFERENCES "SchoolInfo"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Result" ADD CONSTRAINT "Result_examId_fkey" FOREIGN KEY ("examId") REFERENCES "Exam"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -602,6 +906,45 @@ ALTER TABLE "Result" ADD CONSTRAINT "Result_studentId_fkey" FOREIGN KEY ("studen
 ALTER TABLE "Result" ADD CONSTRAINT "Result_subjectId_fkey" FOREIGN KEY ("subjectId") REFERENCES "Subject"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "Result" ADD CONSTRAINT "Result_schoolId_fkey" FOREIGN KEY ("schoolId") REFERENCES "SchoolInfo"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Assignment" ADD CONSTRAINT "Assignment_schoolId_fkey" FOREIGN KEY ("schoolId") REFERENCES "SchoolInfo"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "AssignmentGradeSubject" ADD CONSTRAINT "AssignmentGradeSubject_assignmentId_fkey" FOREIGN KEY ("assignmentId") REFERENCES "Assignment"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "AssignmentGradeSubject" ADD CONSTRAINT "AssignmentGradeSubject_gradeId_fkey" FOREIGN KEY ("gradeId") REFERENCES "Grade"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "AssignmentGradeSubject" ADD CONSTRAINT "AssignmentGradeSubject_classId_fkey" FOREIGN KEY ("classId") REFERENCES "class"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "AssignmentGradeSubject" ADD CONSTRAINT "AssignmentGradeSubject_subjectId_fkey" FOREIGN KEY ("subjectId") REFERENCES "Subject"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "AssignmentGradeSubject" ADD CONSTRAINT "AssignmentGradeSubject_schoolId_fkey" FOREIGN KEY ("schoolId") REFERENCES "SchoolInfo"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "AssignmentSubmission" ADD CONSTRAINT "AssignmentSubmission_assignmentId_fkey" FOREIGN KEY ("assignmentId") REFERENCES "Assignment"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "AssignmentSubmission" ADD CONSTRAINT "AssignmentSubmission_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "Student"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "AssignmentSubmission" ADD CONSTRAINT "AssignmentSubmission_schoolId_fkey" FOREIGN KEY ("schoolId") REFERENCES "SchoolInfo"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Homework" ADD CONSTRAINT "Homework_classId_fkey" FOREIGN KEY ("classId") REFERENCES "class"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Homework" ADD CONSTRAINT "Homework_gradeId_fkey" FOREIGN KEY ("gradeId") REFERENCES "Grade"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Homework" ADD CONSTRAINT "Homework_schoolId_fkey" FOREIGN KEY ("schoolId") REFERENCES "SchoolInfo"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "Student" ADD CONSTRAINT "Student_classId_fkey" FOREIGN KEY ("classId") REFERENCES "class"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -611,10 +954,19 @@ ALTER TABLE "Student" ADD CONSTRAINT "Student_profileId_fkey" FOREIGN KEY ("prof
 ALTER TABLE "Student" ADD CONSTRAINT "Student_linkedUserId_fkey" FOREIGN KEY ("linkedUserId") REFERENCES "LinkedUser"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "Student" ADD CONSTRAINT "Student_schoolId_fkey" FOREIGN KEY ("schoolId") REFERENCES "SchoolInfo"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Subject" ADD CONSTRAINT "Subject_schoolId_fkey" FOREIGN KEY ("schoolId") REFERENCES "SchoolInfo"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "Teacher" ADD CONSTRAINT "Teacher_profileId_fkey" FOREIGN KEY ("profileId") REFERENCES "Profile"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Teacher" ADD CONSTRAINT "Teacher_linkedUserId_fkey" FOREIGN KEY ("linkedUserId") REFERENCES "LinkedUser"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Teacher" ADD CONSTRAINT "Teacher_schoolId_fkey" FOREIGN KEY ("schoolId") REFERENCES "SchoolInfo"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "SubjectTeacher" ADD CONSTRAINT "SubjectTeacher_classId_fkey" FOREIGN KEY ("classId") REFERENCES "class"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -626,7 +978,13 @@ ALTER TABLE "SubjectTeacher" ADD CONSTRAINT "SubjectTeacher_subjectId_fkey" FORE
 ALTER TABLE "SubjectTeacher" ADD CONSTRAINT "SubjectTeacher_teacherId_fkey" FOREIGN KEY ("teacherId") REFERENCES "Teacher"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "SubjectTeacher" ADD CONSTRAINT "SubjectTeacher_schoolId_fkey" FOREIGN KEY ("schoolId") REFERENCES "SchoolInfo"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "FeeStructure" ADD CONSTRAINT "FeeStructure_gradeId_fkey" FOREIGN KEY ("gradeId") REFERENCES "Grade"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "FeeStructure" ADD CONSTRAINT "FeeStructure_schoolId_fkey" FOREIGN KEY ("schoolId") REFERENCES "SchoolInfo"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "FeeTransaction" ADD CONSTRAINT "FeeTransaction_studentFeesId_fkey" FOREIGN KEY ("studentFeesId") REFERENCES "StudentFees"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -635,13 +993,22 @@ ALTER TABLE "FeeTransaction" ADD CONSTRAINT "FeeTransaction_studentFeesId_fkey" 
 ALTER TABLE "FeeTransaction" ADD CONSTRAINT "FeeTransaction_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "Student"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "FeeTransaction" ADD CONSTRAINT "FeeTransaction_schoolId_fkey" FOREIGN KEY ("schoolId") REFERENCES "SchoolInfo"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "StudentFees" ADD CONSTRAINT "StudentFees_feeStructureId_fkey" FOREIGN KEY ("feeStructureId") REFERENCES "FeeStructure"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "StudentFees" ADD CONSTRAINT "StudentFees_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "Student"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "StudentTotalFees" ADD CONSTRAINT "StudentTotalFees_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "Student"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "StudentFees" ADD CONSTRAINT "StudentFees_schoolId_fkey" FOREIGN KEY ("schoolId") REFERENCES "SchoolInfo"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "StudentTotalFees" ADD CONSTRAINT "StudentTotalFees_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "Student"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "StudentTotalFees" ADD CONSTRAINT "StudentTotalFees_schoolId_fkey" FOREIGN KEY ("schoolId") REFERENCES "SchoolInfo"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Attendance" ADD CONSTRAINT "Attendance_classId_fkey" FOREIGN KEY ("classId") REFERENCES "class"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -650,16 +1017,49 @@ ALTER TABLE "Attendance" ADD CONSTRAINT "Attendance_classId_fkey" FOREIGN KEY ("
 ALTER TABLE "Attendance" ADD CONSTRAINT "Attendance_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "Student"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "Attendance" ADD CONSTRAINT "Attendance_schoolId_fkey" FOREIGN KEY ("schoolId") REFERENCES "SchoolInfo"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "CancelledReceipt" ADD CONSTRAINT "CancelledReceipt_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "Student"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "CancelledReceipt" ADD CONSTRAINT "CancelledReceipt_schoolId_fkey" FOREIGN KEY ("schoolId") REFERENCES "SchoolInfo"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "PermissionSlip" ADD CONSTRAINT "PermissionSlip_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "Student"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PermissionSlip" ADD CONSTRAINT "PermissionSlip_schoolId_fkey" FOREIGN KEY ("schoolId") REFERENCES "SchoolInfo"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Profile" ADD CONSTRAINT "Profile_activeUserId_fkey" FOREIGN KEY ("activeUserId") REFERENCES "LinkedUser"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "LinkedUser" ADD CONSTRAINT "LinkedUser_profileId_fkey" FOREIGN KEY ("profileId") REFERENCES "Profile"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "LinkedUser" ADD CONSTRAINT "LinkedUser_schoolId_fkey" FOREIGN KEY ("schoolId") REFERENCES "SchoolInfo"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "FeePayment" ADD CONSTRAINT "FeePayment_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "Student"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "FeePayment" ADD CONSTRAINT "FeePayment_schoolId_fkey" FOREIGN KEY ("schoolId") REFERENCES "SchoolInfo"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "StudentEnrollment" ADD CONSTRAINT "StudentEnrollment_studentId_fkey" FOREIGN KEY ("studentId") REFERENCES "Student"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "StudentEnrollment" ADD CONSTRAINT "StudentEnrollment_classId_fkey" FOREIGN KEY ("classId") REFERENCES "class"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "StudentEnrollment" ADD CONSTRAINT "StudentEnrollment_schoolId_fkey" FOREIGN KEY ("schoolId") REFERENCES "SchoolInfo"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "BulkUploadJob" ADD CONSTRAINT "BulkUploadJob_schoolId_fkey" FOREIGN KEY ("schoolId") REFERENCES "SchoolInfo"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SmsTemplate" ADD CONSTRAINT "SmsTemplate_schoolId_fkey" FOREIGN KEY ("schoolId") REFERENCES "SchoolInfo"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "_SubjectGrades" ADD CONSTRAINT "_SubjectGrades_A_fkey" FOREIGN KEY ("A") REFERENCES "Grade"("id") ON DELETE CASCADE ON UPDATE CASCADE;

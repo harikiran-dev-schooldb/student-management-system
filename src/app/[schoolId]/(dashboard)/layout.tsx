@@ -13,6 +13,7 @@ export default async function DashboardLayout({
   params: Promise<{ schoolId: string }>;
 }) {
   const { schoolId } = await params;
+  console.log("Dashboard Layout - School ID:", schoolId);
   return (
     <>
       <PageNavbar schoolId={schoolId} />
