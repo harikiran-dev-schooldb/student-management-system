@@ -9,7 +9,7 @@ export type FormContainerProps = {
     | "subject"
     | "class"
     | "lesson"
-    | "exam"
+    | "exams"
     | "assignment"
     | "attendance"
     | "event"
@@ -102,7 +102,7 @@ const FormContainer = async ({ table, type, data, id, }: FormContainerProps) => 
                 break;
 
 
-            case "exam":
+            case "exams":
 
                 const examGrades = await prisma.grade.findMany({
                     select: { id: true, level: true },

@@ -46,7 +46,7 @@ const ExamForm = ({
     },
   });
 
-  const schoolId = useSchoolSlug(); 
+  const schoolId = useSchoolSlug();
 
   useEffect(() => {
     if (type === "update" && data) {
@@ -64,16 +64,16 @@ const ExamForm = ({
   }, [type, data, reset]);
 
   useEffect(() => {
+    const handleClickOutside = () => setTitleOpen(false);
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
     if (!selectedGradeId || !schoolId) {
       setFilteredSubjects([]);
       return;
     }
-
-    useEffect(() => {
-      const handleClickOutside = () => setTitleOpen(false);
-      document.addEventListener("click", handleClickOutside);
-      return () => document.removeEventListener("click", handleClickOutside);
-    }, []);
 
     const fetchSubjects = async () => {
       try {
@@ -100,13 +100,16 @@ const ExamForm = ({
 
     const fetchExamsForDate = async () => {
       try {
+        const query = new URLSearchParams({
+          date:
+            typeof selectedDate === "string"
+              ? selectedDate
+              : selectedDate.toISOString().split("T")[0],
+        }).toString();
+
         const data = await tenantFetch<{
-          success: boolean;
           exams: Exams[];
-        }>(schoolId, "/exams/by-date", {
-          method: "POST",
-          body: JSON.stringify({ date: selectedDate }),
-        });
+        }>(schoolId, `/exams/by-date?${query}`, { method: "GET" });
 
         setExamsForDate(data.exams ?? []);
       } catch (err) {

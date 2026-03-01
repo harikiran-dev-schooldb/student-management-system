@@ -26,7 +26,7 @@ export async function GET(
     /* -----------------------------
        2️⃣ Authenticate
     ------------------------------ */
-    const user = await fetchUserInfo(schoolId);
+    const user = await fetchUserInfo(slug);
 
     if (!user || !user.role) {
       return NextResponse.json(

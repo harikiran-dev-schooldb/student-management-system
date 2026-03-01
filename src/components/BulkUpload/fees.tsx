@@ -2,7 +2,6 @@
 
 import { useState, useRef, DragEvent } from "react";
 import Papa from "papaparse";
-import axios from "axios";
 import {
   UploadCloud,
   FileSpreadsheet,
@@ -12,14 +11,16 @@ import {
   Loader2,
   Trash2,
   FileText,
-  Banknote // Changed icon to represent Fees
+  Banknote, // Changed icon to represent Fees
 } from "lucide-react";
 import { useSchoolSlug } from "../hooks/getschool";
+import { useTenantApi } from "@/hooks/useTenantApi";
 
 type FeeCSV = {
   studentId: string;
   term: string;
   amount: string;
+  academicYear: string;
   discountAmount: string;
   fineAmount: string;
   receiptDate: string;
@@ -56,17 +57,21 @@ export default function BulkFeeUpload() {
       skipEmptyLines: true,
       complete: (results) => {
         const cleaned = results.data.filter(
-          (row) => row.studentId && row.term && !isNaN(parseFloat(row.amount))
+          (row) => row.studentId && row.term && !isNaN(parseFloat(row.amount)),
         );
 
         if (cleaned.length === 0) {
-          setErrors(["No valid records found in file. Please check the CSV format."]);
+          setErrors([
+            "No valid records found in file. Please check the CSV format.",
+          ]);
         }
         setRecords(cleaned);
       },
       error: (err) => {
         console.error(err);
-        setErrors(["Failed to parse file. Invalid CSV format or corrupt file."]);
+        setErrors([
+          "Failed to parse file. Invalid CSV format or corrupt file.",
+        ]);
       },
     });
   };
@@ -95,26 +100,46 @@ export default function BulkFeeUpload() {
     }
   };
 
+  const api = useTenantApi(schoolId);
+
   const handleUpload = async () => {
     setLoading(true);
     setErrors([]);
     try {
-      const formattedData = records.map((r) => ({
-        studentId: r.studentId.trim(),
-        term: r.term.trim(),
-        amount: parseFloat(r.amount),
-        discountAmount: parseFloat(r.discountAmount) || 0,
-        fineAmount: parseFloat(r.fineAmount) || 0,
-        receiptDate: r.receiptDate ? new Date(r.receiptDate).toISOString() : null,
-        receiptNo: r.receiptNo?.trim() || null,
-        remarks: r.remarks?.trim() || null,
-        paymentMode: r.paymentMode?.toUpperCase() || "CASH",
-      }));
+      const formattedData = records.map((r) => {
+        const amount = parseFloat(r.amount);
+        const academicYear = r.academicYear.trim();
+        const discountAmount = parseFloat(r.discountAmount) || 0;
+        const fineAmount = parseFloat(r.fineAmount) || 0;
 
-      const res = await axios.post(`/api/v1/tenants/${schoolId}/fees/bulk`, formattedData);
+        let parsedDate: string | null = null;
+
+        if (r.receiptDate) {
+          const d = new Date(r.receiptDate);
+          if (!isNaN(d.getTime())) {
+            parsedDate = d.toISOString();
+          }
+        }
+
+        return {
+          studentId: r.studentId.trim(),
+          term: r.term.trim(),
+          amount,
+          academicYear,
+          discountAmount,
+          fineAmount,
+          receiptDate: parsedDate,
+          receiptNo: r.receiptNo?.trim() || null,
+          remarks: r.remarks?.trim() || null,
+          paymentMode: r.paymentMode?.toUpperCase() || "CASH",
+        };
+      });
+
+      const res = await api.post(`/fees/bulk`, formattedData);
 
       if (res.status === 200) {
-        const failed = res.data.results?.filter((r: any) => r.status === "error") || [];
+        const failed =
+          res.data.results?.filter((r: any) => r.status === "error") || [];
 
         if (failed.length > 0) {
           setErrors(failed.map((r: any) => `ID ${r.studentId}: ${r.message}`));
@@ -125,7 +150,9 @@ export default function BulkFeeUpload() {
       }
     } catch (err: any) {
       console.error("Upload error:", err);
-      setErrors([err.response?.data?.message || "Network error: Upload failed."]);
+      setErrors([
+        err.response?.data?.message || "Network error: Upload failed.",
+      ]);
     } finally {
       setLoading(false);
     }
@@ -133,7 +160,6 @@ export default function BulkFeeUpload() {
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-darkMode text-zinc-900 dark:text-zinc-100 font-sans transition-colors">
-
       {/* 1. Header Section */}
       <header className="px-6 py-8 md:px-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
@@ -149,7 +175,7 @@ export default function BulkFeeUpload() {
         </div>
 
         <button
-          onClick={() => window.open('/sample/fees-bulk-template.csv')}
+          onClick={() => window.open("/sample/fees-bulk-template.csv")}
           className="group flex items-center gap-3 px-5 py-3 rounded-xl bg-white dark:bg-darkMode border border-zinc-200 dark:border-zinc-800 hover:border-indigo-300 dark:hover:border-indigo-700 shadow-sm hover:shadow-md transition-all active:scale-95"
         >
           <div className="p-1.5 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg text-indigo-600 dark:text-indigo-400 group-hover:text-indigo-700">
@@ -164,15 +190,15 @@ export default function BulkFeeUpload() {
       {/* 2. Main Content - Expanded Width */}
       <main className="flex-1 px-4 md:px-10 pb-10">
         <div className="bg-white dark:bg-darkMode rounded-3xl shadow-xl shadow-zinc-200/50 dark:shadow-black/50 border border-zinc-200 dark:border-zinc-800 overflow-hidden flex flex-col min-h-[600px]">
-
           {/* A. Empty State / Drop Zone */}
           {!records.length && (
             <div className="flex-1 flex flex-col items-center justify-center p-8 md:p-16">
               <div
                 className={`relative group cursor-pointer flex flex-col items-center justify-center w-full max-w-3xl h-80 rounded-3xl border-3 border-dashed transition-all duration-300 ease-out
-                  ${dragActive
-                    ? "border-indigo-500 bg-indigo-50/50 dark:bg-indigo-500/10 scale-[1.02] shadow-2xl shadow-indigo-500/10"
-                    : "border-zinc-200 dark:border-zinc-800 hover:border-indigo-400 dark:hover:border-indigo-500 hover:bg-zinc-50 dark:hover:bg-zinc-900"
+                  ${
+                    dragActive
+                      ? "border-indigo-500 bg-indigo-50/50 dark:bg-indigo-500/10 scale-[1.02] shadow-2xl shadow-indigo-500/10"
+                      : "border-zinc-200 dark:border-zinc-800 hover:border-indigo-400 dark:hover:border-indigo-500 hover:bg-zinc-50 dark:hover:bg-zinc-900"
                   }`}
                 onDragEnter={handleDrag}
                 onDragLeave={handleDrag}
@@ -194,7 +220,13 @@ export default function BulkFeeUpload() {
                 </div>
 
                 <div className="relative z-10 flex flex-col items-center gap-6 text-center p-6">
-                  <div className={`p-5 rounded-2xl shadow-sm transition-all duration-300 ${dragActive ? 'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600' : 'bg-white dark:bg-darkMode text-zinc-400 group-hover:text-indigo-500 group-hover:scale-110'}`}>
+                  <div
+                    className={`p-5 rounded-2xl shadow-sm transition-all duration-300 ${
+                      dragActive
+                        ? "bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600"
+                        : "bg-white dark:bg-darkMode text-zinc-400 group-hover:text-indigo-500 group-hover:scale-110"
+                    }`}
+                  >
                     <UploadCloud className="w-10 h-10" />
                   </div>
                   <div className="space-y-2">
@@ -202,7 +234,8 @@ export default function BulkFeeUpload() {
                       Upload Fee Records
                     </h3>
                     <p className="text-zinc-500 dark:text-zinc-400 max-w-sm mx-auto">
-                      Drag and drop your file here, or click to browse. Supports standard .csv formatting.
+                      Drag and drop your file here, or click to browse. Supports
+                      standard .csv formatting.
                     </p>
                   </div>
                 </div>
@@ -247,13 +280,24 @@ export default function BulkFeeUpload() {
                   <div className="p-4 rounded-xl bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/50 flex items-start gap-3">
                     <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5" />
                     <div className="flex-1">
-                      <h3 className="text-sm font-bold text-red-800 dark:text-red-300">Upload Completed with Errors</h3>
-                      <p className="text-sm text-red-600 dark:text-red-400 mt-1 mb-2">Some records failed to process:</p>
+                      <h3 className="text-sm font-bold text-red-800 dark:text-red-300">
+                        Upload Completed with Errors
+                      </h3>
+                      <p className="text-sm text-red-600 dark:text-red-400 mt-1 mb-2">
+                        Some records failed to process:
+                      </p>
                       <ul className="text-xs text-red-700 dark:text-red-400 list-disc list-inside space-y-1 max-h-32 overflow-y-auto custom-scrollbar">
-                        {errors.map((err, i) => <li key={i}>{err}</li>)}
+                        {errors.map((err, i) => (
+                          <li key={i}>{err}</li>
+                        ))}
                       </ul>
                     </div>
-                    <button onClick={() => setErrors([])} className="text-red-400 hover:text-red-600"><X className="w-4 h-4" /></button>
+                    <button
+                      onClick={() => setErrors([])}
+                      className="text-red-400 hover:text-red-600"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
                   </div>
                 )}
 
@@ -263,8 +307,12 @@ export default function BulkFeeUpload() {
                       <CheckCircle2 className="w-6 h-6" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold text-emerald-800 dark:text-emerald-300">Import Successful</h3>
-                      <p className="text-sm text-emerald-600 dark:text-emerald-400">All fee records have been successfully processed.</p>
+                      <h3 className="text-sm font-bold text-emerald-800 dark:text-emerald-300">
+                        Import Successful
+                      </h3>
+                      <p className="text-sm text-emerald-600 dark:text-emerald-400">
+                        All fee records have been successfully processed.
+                      </p>
                     </div>
                   </div>
                 )}
@@ -286,14 +334,24 @@ export default function BulkFeeUpload() {
                     </thead>
                     <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800 bg-white dark:bg-darkMode">
                       {records.map((row, i) => (
-                        <tr key={i} className="group hover:bg-indigo-50/30 dark:hover:bg-indigo-500/5 transition-colors">
-                          <td className="px-6 py-3 text-center text-zinc-400 font-mono text-xs border-r border-transparent group-hover:border-indigo-100 dark:group-hover:border-zinc-800">{i + 1}</td>
+                        <tr
+                          key={i}
+                          className="group hover:bg-indigo-50/30 dark:hover:bg-indigo-500/5 transition-colors"
+                        >
+                          <td className="px-6 py-3 text-center text-zinc-400 font-mono text-xs border-r border-transparent group-hover:border-indigo-100 dark:group-hover:border-zinc-800">
+                            {i + 1}
+                          </td>
                           {Object.values(row).map((val, j) => (
-                            <td key={j} className="px-6 py-3 font-medium text-zinc-700 dark:text-zinc-300 whitespace-nowrap">
+                            <td
+                              key={j}
+                              className="px-6 py-3 font-medium text-zinc-700 dark:text-zinc-300 whitespace-nowrap"
+                            >
                               {val ? (
                                 <span>{val}</span>
                               ) : (
-                                <span className="text-zinc-300 dark:text-zinc-600 italic text-xs">Empty</span>
+                                <span className="text-zinc-300 dark:text-zinc-600 italic text-xs">
+                                  Empty
+                                </span>
                               )}
                             </td>
                           ))}

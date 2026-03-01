@@ -4,14 +4,16 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { resolveSchoolId } from "@/lib/resolveSchool";
 
-export async function POST(
+export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ schoolId: string; }> }
 ) {
   try {
     const { schoolId: schoolSlug } = await params;
     const schoolId = await resolveSchoolId(schoolSlug);
-    const { date } = await req.json();
+
+    const { searchParams } = new URL(req.url);
+    const date = searchParams.get("date");
 
     if (!date) {
       return NextResponse.json(
@@ -40,10 +42,7 @@ export async function POST(
         examGradeSubjects: {
           some: {
             schoolId,
-            date: {
-              gte: start,
-              lte: end,
-            },
+            date: { gte: start, lte: end },
           },
         },
       },
@@ -69,7 +68,6 @@ export async function POST(
     }
 
     return NextResponse.json({ exams });
-
   } catch (error) {
     console.error("by-date error:", error);
     return NextResponse.json(

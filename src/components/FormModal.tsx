@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import React, { Dispatch, SetStateAction, useState } from "react";
+import React, {  useState } from "react";
 import { toast } from "react-toastify";
 import { FormContainerProps } from "./FormContainer";
 import {
@@ -22,7 +22,7 @@ const deleteActionMap: Record<string, string> = {
   class: "classes",
   teacher: "teacher",
   student: "student",
-  exam: "exam",
+  exams: "exams",
   lesson: "lessons",
   assignment: "assignment",
   attendance: "attendance",
@@ -113,7 +113,7 @@ const forms: Record<string, any> = {
       relatedData={relatedData}
     />
   ),
-  exam: (setOpen: any, type: any, data: any, relatedData: any) => (
+  exams: (setOpen: any, type: any, data: any, relatedData: any) => (
     <ExamForm
       type={type}
       data={data}

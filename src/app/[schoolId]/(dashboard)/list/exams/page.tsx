@@ -46,8 +46,8 @@ const renderRow = (item: Exams, role: string | null) =>
         <div className="flex items-center gap-2">
           {(role === "admin" || role === "teacher") && (
             <>
-              <FormContainer table="exam" type="update" data={item} />
-              <FormContainer table="exam" type="delete" id={item.id} />
+              <FormContainer table="exams" type="update" data={item} />
+              <FormContainer table="exams" type="delete" id={item.id} />
             </>
           )}
         </div>
@@ -251,7 +251,7 @@ const ExamsList = async ({
             <IconButton icon={Filter} />
             <SortButton sortKey="id" />
             {(role === "admin" || role === "teacher") && (
-              <FormContainer table="exam" type="create" />
+              <FormContainer table="exams" type="create" />
             )}
           </div>
         </div>

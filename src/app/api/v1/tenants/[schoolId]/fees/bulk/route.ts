@@ -14,13 +14,9 @@ export async function POST(
     const { schoolId: schoolSlug } = await params;
     const schoolId = await resolveSchoolId(schoolSlug);
 
-    const user = await fetchUserInfo(schoolId);
-    if (!user.userId || user.role !== "admin") {
-      return NextResponse.json(
-        { error: "Only admin can perform bulk fee collection" },
-        { status: 403 },
-      );
-    }
+    const user = await fetchUserInfo(schoolSlug);
+    console.log("School Id:", schoolSlug);
+    console.log("Bulk fee collection initiated by user:", user);
 
     const records = await req.json();
     
@@ -48,7 +44,7 @@ export async function POST(
         paymentMode = PaymentMode.CASH,
       } = record;
 
-      if (!studentId || !term || !academicYear || amount <= 0) {
+      if (!studentId || !term || !academicYear || amount < 0) {
         results.push({
           studentId,
           status: "error",
