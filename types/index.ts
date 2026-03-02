@@ -14,6 +14,25 @@ import {
   Student,
 } from "@prisma/client";
 
+export type CurrentEnrollment = {
+  academicYearId: string;
+  class: {
+    id: number;
+    name: string;
+    section: string | null;
+    gradeId: number;
+    Grade: {
+      id: number;
+      level: string;
+      branch?: {
+        id: number;
+        name: string;
+        type: string;
+      };
+    };
+  };
+};
+
 export type FeeStructure = {
   id: number;
   gradeId: number;
@@ -148,7 +167,7 @@ export interface StudentFee {
   receiptNo?: string;
   remarks?: string;
   paymentMode: PaymentMode;
-  academicYear: AcademicYear; // ✅ add this line
+  academicYearId: string; // ✅ add this line
   feeStructure?: {
     id: number;
     termFees?: number;
@@ -174,16 +193,7 @@ export type PermissionWithRelations = {
   student: {
     id: string;
     name: string;
-    classId: number;
-    Class: {
-      id: number;
-      section: string | null;
-      gradeId: number;
-      Grade: {
-        id: number;
-        level: string;
-      };
-    };
+    enrollments: CurrentEnrollment[];
   };
 };
 
@@ -199,16 +209,7 @@ export type Props = {
     student: {
       id: string;
       name: string;
-      classId: number;
-      Class: {
-        id: number;
-        section: string | null;
-        gradeId: number;
-        Grade: {
-          id: number;
-          level: string;
-        };
-      };
+      enrollments: CurrentEnrollment[];
     };
   }[];
   fileName: string;
@@ -223,12 +224,7 @@ export type AnnouncementList = Announcement & {
 export type AttendanceResponse = {
   attendance: Attendance[];
   students: (Student & {
-    Class: {
-      section: string | null;
-      Grade: {
-        level: string;
-      };
-    } | null;
+    enrollments: CurrentEnrollment[];
   })[];
 };
 
@@ -240,10 +236,14 @@ export type AttendanceRangeResponse = {
 export type ClassList = {
   id: number;
   name: string;
-  supervisorId: string | null;
-  Teacher: {
-    name: string;
-  } | null;
+  section: string;
+  assignments?: {
+    academicYearId: string;
+    teacher: {
+      id: string;
+      name: string;
+    };
+  }[];
 };
 
 export type Events = Event & {
@@ -273,14 +273,9 @@ export type StudentList = {
   fatherName: string | null;
   phone: string;
   img?: string | null;
-  Class: {
-    id: number;
-    section: string | null;
-    gradeId: number;
-    Grade: {
-      level: string;
-    };
-  };
+
+  enrollments: CurrentEnrollment[];
+
   totalFees?: { totalDiscountAmount: number | null } | null;
 };
 
@@ -289,6 +284,16 @@ export type StudentList = {
 //   subjects: { Subject: Subject }[];
 //   class?: (Class & { students: Student[] }) | null;
 // };
+
+export type TeacherClassAssignment = {
+  academicYearId: string;
+  class: {
+    id: number;
+    name: string;
+    section: string | null;
+    gradeId: number;
+  };
+};
 
 export type TeachersList = {
   id: string;
@@ -299,12 +304,12 @@ export type TeachersList = {
   dob: Date | string;
   address: string | null;
   status: string;
-  class: {
-    id: number;
-    name: string;
-    supervisorId: string | null;
-  };
-  subjects: { Subject: { id: number; name: string } }[];
+
+  assignments: TeacherClassAssignment[];
+
+  subjects: {
+    Subject: { id: number; name: string };
+  }[];
 };
 
 export type StudentsList = {
@@ -316,15 +321,8 @@ export type StudentsList = {
   dob: Date | string;
   phone: string | null;
   status: string;
-  Class: {
-    id: number;
-    section: string | null;
-    gradeId: number;
-    name: string;
-    Grade: {
-      level: string;
-    };
-  };
+
+  enrollments: CurrentEnrollment[];
 };
 
 export type FeesList = Grade & {
@@ -341,15 +339,11 @@ export type StudentsFeeReportList = {
   dob: string;
   phone: string | null;
   gender: string | null;
+
   studentFees?: (StudentFees & { feeStructure?: FeeStructure })[];
   studentTotalFees?: StudentTotalFees | null;
-  Class?: {
-    name: string;
-    Grade?: {
-      name: string;
-      feestructure?: FeeStructure[];
-    };
-  };
+
+  enrollments?: CurrentEnrollment[];
 };
 
 export type Homeworks = {
@@ -372,12 +366,14 @@ export type MessageList = Messages & {
   Student: {
     id: string;
     name: string;
-    classId: number;
+    enrollments: CurrentEnrollment[];
   } | null;
+
   Class: {
     id: number;
     section: string | null;
     gradeId: number;
+    name: string;
     Grade: {
       id: number;
       level: string;
@@ -393,23 +389,31 @@ export type FeeColectList = Prisma.StudentGetPayload<{
     fatherName: true;
     phone: true;
     img: true;
-    Class: {
+
+    enrollments: {
       select: {
-        section: true;
-        Grade: {
+        class: {
           select: {
-            id: true;
-            level: true;
+            section: true;
+            name: true;
+            Grade: {
+              select: {
+                id: true;
+                level: true;
+              };
+            };
           };
         };
       };
     };
+
     feeTransactions: {
       select: {
         id: true;
         receiptNo: true;
       };
     };
+
     totalFees: {
       select: {
         totalDiscountAmount: true;

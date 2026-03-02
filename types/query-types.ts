@@ -8,19 +8,30 @@ export const StudentSelect = {
   name: true,
   gender: true,
   status: true,
-  classId: true,
   fatherName: true,
   phone: true,
   dob: true,
   img: true,
-  Class: {
+
+  /* ---------------- CURRENT ENROLLMENT ---------------- */
+  enrollments: {
+    where: {
+      status: "ACTIVE",
+      academicYear: { isActive: true },
+    },
     select: {
-      id: true,
-      section: true,
-      gradeId: true,
-      Grade: {
+      class: {
         select: {
-          level: true,
+          id: true,
+          section: true,
+          gradeId: true,
+          name: true,
+
+          Grade: {
+            select: {
+              level: true,
+            },
+          },
         },
       },
     },
@@ -45,20 +56,67 @@ export const SingleStudentSelect = {
   phone: true,
   img: true,
   bloodType: true,
-  classId: true,
   status: true,
+
+  /* ---------------- ATTENDANCE ---------------- */
   attendances: {
-    select: { date: true, present: true },
-  },
-  Class: {
     select: {
-      id: true,
-      section: true,
-      gradeId: true,
-      name: true,
-      Grade: { select: { id: true, level: true } },
-      Teacher: { select: { id: true, name: true } },
-      _count: { select: { lessons: true } },
+      date: true,
+      present: true,
+    },
+  },
+
+  /* ---------------- CURRENT ENROLLMENT ---------------- */
+  enrollments: {
+    where: {
+      status: "ACTIVE",
+      academicYear: { isActive: true },
+    },
+    select: {
+      class: {
+        select: {
+          id: true,
+          section: true,
+          gradeId: true,
+          name: true,
+
+          /* -------- GRADE -------- */
+          Grade: {
+            select: {
+              id: true,
+              level: true,
+              branch: {
+                select: {
+                  id: true,
+                  name: true,
+                  type: true,
+                },
+              },
+            },
+          },
+
+          /* ✅ CLASS SUPERVISOR (via assignment) */
+          teacherClassAssignments: {
+            where: {
+              academicYear: { isActive: true },
+              role: "SUPERVISOR",
+            },
+            select: {
+              teacher: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+          },
+
+          /* -------- LESSON COUNT -------- */
+          _count: {
+            select: { lessons: true },
+          },
+        },
+      },
     },
   },
 } satisfies Prisma.StudentSelect;
@@ -105,27 +163,48 @@ export const SingleStudentFeeSelect = {
   email: true,
   phone: true,
   fatherName: true,
-  classId: true,
-  Class: {
+
+  enrollments: {
+    where: {
+      status: "ACTIVE",
+      academicYear: { isActive: true },
+    },
     select: {
-      id: true,
-      section: true,
-      gradeId: true,
-      Grade: {
+      class: {
         select: {
           id: true,
-          level: true,
-        },
-      },
-      Teacher: {
-        select: {
-          id: true,
+          section: true,
+          gradeId: true,
           name: true,
-        },
-      },
-      _count: {
-        select: {
-          lessons: true,
+
+          Grade: {
+            select: {
+              id: true,
+              level: true,
+            },
+          },
+
+          /* ✅ CLASS SUPERVISOR (via assignment) */
+          teacherClassAssignments: {
+            where: {
+              academicYear: { isActive: true },
+              role: "SUPERVISOR",
+            },
+            select: {
+              teacher: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+          },
+
+          _count: {
+            select: {
+              lessons: true,
+            },
+          },
         },
       },
     },
@@ -165,13 +244,35 @@ export type AnnouncementList = Prisma.AnnouncementGetPayload<{
 export const ClassSelect = {
   id: true,
   name: true,
-  supervisorId: true,
-  Teacher: {
+  section: true,
+  gradeId: true,
+
+  Grade: {
     select: {
-      name: true,
+      id: true,
+      level: true,
+    },
+  },
+
+  teacherClassAssignments: {
+    where: {
+      academicYear: { isActive: true },
+      role: "SUPERVISOR", // if you added role enum
+    },
+    select: {
+      teacher: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
     },
   },
 } satisfies Prisma.ClassSelect;
+
+export type ClassSelectType = Prisma.ClassGetPayload<{
+  select: typeof ClassSelect;
+}>;
 
 export type ClassSelect = Prisma.ClassGetPayload<{
   select: typeof AnnouncementSelect;
@@ -216,18 +317,38 @@ export const MessagesSelect = {
   message: true,
   studentId: true,
   classId: true,
+
+  /* ---------------- STUDENT ---------------- */
   Student: {
     select: {
       id: true,
       name: true,
-      classId: true,
+
+      enrollments: {
+        where: {
+          status: "ACTIVE",
+          academicYear: { isActive: true },
+        },
+        select: {
+          class: {
+            select: {
+              id: true,
+              name: true,
+              gradeId: true,
+            },
+          },
+        },
+      },
     },
   },
+
+  /* ---------------- CLASS ---------------- */
   Class: {
     select: {
       id: true,
       section: true,
       gradeId: true,
+      name: true,
       Grade: {
         select: {
           id: true,
@@ -254,35 +375,52 @@ export const StudentFeeSelect = {
   phone: true,
   img: true,
 
-  // 👇 Class + Grade
-  Class: {
+  /* ---------------- CURRENT ENROLLMENT ---------------- */
+  enrollments: {
+    where: {
+      status: "ACTIVE",
+      academicYear: { isActive: true },
+    },
     select: {
-      section: true,
-      Grade: {
+      class: {
         select: {
           id: true,
-          level: true,
+          section: true,
+          name: true,
+          gradeId: true,
+          Grade: {
+            select: {
+              id: true,
+              level: true,
+            },
+          },
         },
       },
     },
   },
+
+  /* ---------------- FEE TRANSACTIONS ---------------- */
   feeTransactions: {
     select: {
       id: true,
       receiptNo: true,
     },
   },
+
+  /* ---------------- TOTAL FEES ---------------- */
   totalFees: {
+    where: {
+      academicYear: { isActive: true }, // very important
+    },
     select: {
       totalDiscountAmount: true,
     },
   },
 } satisfies Prisma.StudentSelect;
 
-export type StudentFeeList =
-  Prisma.StudentGetPayload<{
-    select: typeof StudentFeeSelect;
-  }>;
+export type StudentFeeList = Prisma.StudentGetPayload<{
+  select: typeof StudentFeeSelect;
+}>;
 
 // -------------------------------
 // 🔹 Exam List Page
@@ -314,10 +452,9 @@ export const ExamListSelect = {
   },
 } satisfies Prisma.ExamSelect;
 
-export type ExamsList =
-  Prisma.ExamGetPayload<{
-    select: typeof ExamListSelect;
-  }>;
+export type ExamsList = Prisma.ExamGetPayload<{
+  select: typeof ExamListSelect;
+}>;
 
 // -------------------------------
 // 🔹 Profile With User
@@ -335,6 +472,7 @@ export const ProfileWithUsersSelect = {
       username: true,
       role: true,
 
+      /* ---------------- ADMIN ---------------- */
       admin: {
         select: {
           name: true,
@@ -342,20 +480,58 @@ export const ProfileWithUsersSelect = {
         },
       },
 
+      /* ---------------- TEACHER ---------------- */
       teacher: {
         select: {
           name: true,
           img: true,
+          teacherClassAssignments: {
+            where: {
+              academicYear: { isActive: true },
+              role: "SUPERVISOR",
+            },
+            select: {
+              class: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+          },
         },
       },
 
+      /* ---------------- STUDENT ---------------- */
       student: {
         select: {
+          id: true,
           name: true,
           img: true,
-          Class: {
+          enrollments: {
+            where: {
+              status: "ACTIVE",
+              academicYear: { isActive: true },
+            },
             select: {
-              name: true,
+              class: {
+                select: {
+                  id: true,
+                  name: true,
+                  gradeId: true,
+                  Grade: {
+                    select: {
+                      branch: {
+                        select: {
+                          id: true,
+                          name: true,
+                          type: true,
+                        },
+                      },
+                    },
+                  },
+                },
+              },
             },
           },
         },
@@ -382,22 +558,33 @@ export const PermissionSlipSelect = {
   relation: true,
   studentId: true,
 
+  /* ---------------- STUDENT ---------------- */
   student: {
     select: {
       id: true,
       name: true,
-      classId: true,
 
-      Class: {
+      /* -------- CURRENT ENROLLMENT -------- */
+      enrollments: {
+        where: {
+          status: "ACTIVE",
+          academicYear: { isActive: true },
+        },
         select: {
-          id: true,
-          section: true,
-          gradeId: true,
-
-          Grade: {
+          class: {
             select: {
               id: true,
-              level: true,
+              section: true,
+              name: true,
+              gradeId: true,
+
+              /* -------- GRADE -------- */
+              Grade: {
+                select: {
+                  id: true,
+                  level: true,
+                },
+              },
             },
           },
         },
@@ -406,11 +593,9 @@ export const PermissionSlipSelect = {
   },
 } satisfies Prisma.PermissionSlipSelect;
 
-
-export type PermissionSlipWithStudent =
-  Prisma.PermissionSlipGetPayload<{
-    select: typeof PermissionSlipSelect;
-  }>;
+export type PermissionSlipWithStudent = Prisma.PermissionSlipGetPayload<{
+  select: typeof PermissionSlipSelect;
+}>;
 
 // -------------------------------
 // 🔹 Teachers List Page
@@ -425,17 +610,21 @@ export const TeachersSelect = {
   address: true,
   status: true,
 
+  teacherClassAssignments: {
+    where: {
+      academicYear: { isActive: true },
+    },
+    select: {
       class: {
         select: {
           id: true,
           name: true,
           gradeId: true,
-
+          section: true,
           Grade: {
             select: {
               id: true,
               level: true,
-
               subjects: {
                 select: {
                   id: true,
@@ -446,10 +635,10 @@ export const TeachersSelect = {
           },
         },
       },
-    } satisfies Prisma.TeacherSelect;
+    },
+  },
+} satisfies Prisma.TeacherSelect;
 
-
-export type TeachersWithSelect =
-  Prisma.TeacherGetPayload<{
-    select: typeof TeachersSelect;
-  }>;
+export type TeachersWithSelect = Prisma.TeacherGetPayload<{
+  select: typeof TeachersSelect;
+}>;

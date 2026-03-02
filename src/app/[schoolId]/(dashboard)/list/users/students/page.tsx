@@ -23,7 +23,11 @@ import { StudentSelect } from "../../../../../../../types/query-types";
 import { tenantPrisma } from "@/lib/tenant-prisma";
 
 // --- 1. Render Row (Ultimate UI) ---
-const renderRow = (item: StudentsList, role: string | null, schoolId: string) => (
+const renderRow = (
+  item: StudentsList,
+  role: string | null,
+  schoolId: string,
+) => (
   <tr
     key={item.id}
     className="text-sm border-b border-gray-200 even:bg-gray-50 hover:bg-LamaPurpleLight dark:border-gray-700 dark:even:bg-gray-800 dark:hover:bg-gray-700"
@@ -50,7 +54,8 @@ const renderRow = (item: StudentsList, role: string | null, schoolId: string) =>
       <td className="py-4 px-6 align-middle">
         <div className="inline-flex items-center gap-1.5 rounded-full border border-indigo-100 bg-indigo-50/50 px-2.5 py-0.5 text-xs font-medium text-indigo-700 dark:border-indigo-900/30 dark:bg-indigo-900/10 dark:text-indigo-300">
           <span className="h-1.5 w-1.5 rounded-full bg-indigo-500"></span>
-          {item.Class.Grade.level} - {item.Class.section}
+          {item.enrollments[0]?.class.Grade.level} -{" "}
+          {item.enrollments[0]?.class.section}
         </div>
       </td>
     )}
@@ -128,14 +133,14 @@ const StudentListPage = async ({
     page,
     gradeId,
     classId,
-    teacherId,
+    teacherId: teacherFilterId,
     studentStatus,
     gender,
     ...queryParams
   } = resolvedSearchParams;
   const p = page ? (Array.isArray(page) ? page[0] : page) : "1";
 
-  const { role, classId: teacherClassId } = await fetchUserInfo(slug);
+  const { role, teacherId: activeTeacherId } = await fetchUserInfo(slug);
   const columns = getColumns(role);
 
   // Sorting
@@ -147,19 +152,15 @@ const StudentListPage = async ({
   const search = Array.isArray(queryParams.search)
     ? queryParams.search[0]
     : queryParams.search;
-  const teacher = Array.isArray(teacherId) ? teacherId[0] : teacherId;
+  const teacher = Array.isArray(teacherFilterId)
+    ? teacherFilterId[0]
+    : teacherFilterId;
   const grade = Array.isArray(gradeId) ? gradeId[0] : gradeId;
   const classIdNum = Array.isArray(classId)
     ? Number(classId[0])
     : classId
     ? Number(classId)
     : undefined;
-
-  const classFilter: Prisma.ClassWhereInput = {
-    schoolId: school.id,
-    ...(teacher && { supervisorId: teacher }),
-    ...(grade && { gradeId: Number(grade) }),
-  };
 
   if (role === "student") {
     return notFound();
@@ -169,8 +170,38 @@ const StudentListPage = async ({
 
   let finalClassId = classIdNum;
 
-  if (role === "teacher" && teacherClassId) {
-    finalClassId = teacherClassId;
+  const enrollmentFilter: Prisma.StudentEnrollmentWhereInput = {
+    ...(finalClassId && { classId: finalClassId }),
+
+    ...(grade && {
+      class: {
+        gradeId: Number(grade),
+      },
+    }),
+
+    ...(teacher && {
+      class: {
+        teacherClassAssignments: {
+          some: {
+            teacherId: teacher,
+            academicYear: { isActive: true },
+            schoolId: school.id,
+          },
+        },
+      },
+    }),
+  };
+
+  if (role === "teacher" && activeTeacherId) {
+    enrollmentFilter.class = {
+      teacherClassAssignments: {
+        some: {
+          teacherId: activeTeacherId,
+          academicYear: { isActive: true },
+          schoolId: school.id,
+        },
+      },
+    };
   }
 
   const hasClassFilter = teacher || grade;
@@ -180,8 +211,14 @@ const StudentListPage = async ({
     status: {
       equals: (studentStatus as $Enums.StudentStatus) || "ACTIVE",
     },
-    ...(finalClassId && { classId: finalClassId }),
-    ...(hasClassFilter && { Class: classFilter }),
+
+    enrollments: {
+      some: {
+        ...enrollmentFilter,
+        academicYear: { isActive: true },
+      },
+    },
+
     ...(search && {
       OR: [
         { name: { contains: search, mode: "insensitive" } },
@@ -189,6 +226,7 @@ const StudentListPage = async ({
         { phone: { contains: search } },
       ],
     }),
+
     ...(gender ? { gender: gender as $Enums.Gender } : {}),
   };
 
@@ -198,14 +236,13 @@ const StudentListPage = async ({
 
   const grades = await db.grade.findMany();
 
-  const allowedSortKeys = ["id", "name", "classId", "gender"];
-  const safeSortKey = allowedSortKeys.includes(sortKey) ? sortKey : "classId";
+  const allowedSortKeys = ["id", "name", "gender"];
+  const safeSortKey = allowedSortKeys.includes(sortKey) ? sortKey : "name";
 
   const [data, count] = await db.$transaction([
     db.student.findMany({
       orderBy: [
         { [safeSortKey]: sortOrder },
-        { classId: "asc" },
         { gender: "desc" },
         { name: "asc" },
       ],

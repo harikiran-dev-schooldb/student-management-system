@@ -53,6 +53,9 @@ model SchoolInfo {
   assignments             Assignment[]
   assignmentGradeSubjects AssignmentGradeSubject[]
   assignmentSubmissions   AssignmentSubmission[]
+  academicYear            AcademicYear[]
+  branches                Branch[]
+  teacherClassAssignments TeacherClassAssignment[]
 }
 
 model Admin {
@@ -90,6 +93,21 @@ model Admin {
   @@index([schoolId])
 }
 
+model Branch {
+  id    Int        @id @default(autoincrement())
+  name  String // "Kindergarten", "Primary", "Higher"
+  type  BranchType
+  order Int // display order
+
+  schoolId String
+  school   SchoolInfo @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  grades Grade[]
+
+  @@unique([name, schoolId])
+  @@index([schoolId])
+}
+
 model Grade {
   id                      Int                      @id @default(autoincrement())
   level                   String
@@ -102,16 +120,19 @@ model Grade {
   schoolId                String
   school                  SchoolInfo               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
+  branchId Int
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
   @@unique([level, schoolId])
   @@index([level])
   @@index([schoolId])
+  @@index([branchId])
 }
 
 model Class {
   id                      Int                      @id @default(autoincrement())
   name                    String?
   section                 String // e.g., "A", "B"
-  supervisorId            String?                  @unique
   gradeId                 Int
   Announcement            Announcement[]
   attendances             Attendance[]
@@ -119,19 +140,17 @@ model Class {
   homeworks               Homework[]
   lessons                 Lesson[]
   messages                Messages[]
-  students                Student[]
   subjectTeachers         SubjectTeacher[]
   Grade                   Grade                    @relation(fields: [gradeId], references: [id], onDelete: Cascade)
-  Teacher                 Teacher?                 @relation("ClassToTeacher", fields: [supervisorId], references: [id])
   studentEnrollments      StudentEnrollment[]
   assignmentGradeSubjects AssignmentGradeSubject[]
+  teacherClassAssignments TeacherClassAssignment[]
 
   schoolId String
   school   SchoolInfo @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@unique([gradeId, section, schoolId], map: "Class_gradeId_section_key") // enforce uniqueness within grade
   @@index([gradeId], map: "Class_gradeId_idx")
-  @@index([supervisorId], map: "Class_supervisorId_idx")
   @@index([schoolId])
   @@map("class")
 }
@@ -238,19 +257,22 @@ model ExamGradeSubject {
 }
 
 model Result {
-  id        Int        @id @default(autoincrement())
-  marks     Float
-  studentId String
-  examId    Int
-  subjectId Int
-  createdAt DateTime   @default(now())
-  Exam      Exam       @relation(fields: [examId], references: [id], onDelete: Cascade)
-  Student   Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  Subject   Subject    @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  schoolId  String
-  school    SchoolInfo @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  id             Int          @id @default(autoincrement())
+  marks          Float
+  studentId      String
+  examId         Int
+  subjectId      Int
+  createdAt      DateTime     @default(now())
+  Exam           Exam         @relation(fields: [examId], references: [id], onDelete: Cascade)
+  Student        Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  Subject        Subject      @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  schoolId       String
+  school         SchoolInfo   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  academicYearId String
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id])
 
-  @@unique([studentId, examId, subjectId, schoolId])
+  @@unique([studentId, examId, subjectId, academicYearId, schoolId])
+  @@index([academicYearId, studentId])
   @@index([schoolId])
 }
 
@@ -327,56 +349,52 @@ model Homework {
 }
 
 model Student {
-  id                    String                 @id
-  username              String
-  name                  String
-  motherName            String?
-  fatherName            String?
-  penNo                 String?
-  studentAadhar         String?
-  fatherAadhar          String?
-  motherAadhar          String?
-  email                 String?
-  phone                 String
-  address               String
-  img                   String?
-  bloodType             String?
-  gender                Gender
-  dob                   DateTime
-  createdAt             DateTime               @default(now())
-  status                StudentStatus          @default(ACTIVE) // 👈 replaces deletedAt
-  clerk_id              String? // parent’s Clerk ID (not unique now)
-  academicYear          AcademicYear           @default(Y2024_2025)
-  classId               Int
+  id            String        @id
+  username      String
+  name          String
+  motherName    String?
+  fatherName    String?
+  penNo         String?
+  studentAadhar String?
+  fatherAadhar  String?
+  motherAadhar  String?
+  email         String?
+  phone         String
+  address       String
+  img           String?
+  bloodType     String?
+  gender        Gender
+  dob           DateTime
+  createdAt     DateTime      @default(now())
+  status        StudentStatus @default(ACTIVE)
+  clerk_id      String?
+  leftAt        DateTime?
+  leftReason    String?
+
   attendances           Attendance[]
   feeTransactions       FeeTransaction[]
   messages              Messages[]
-  results               Result[]
-  Class                 Class                  @relation(fields: [classId], references: [id], onDelete: Cascade)
   studentFees           StudentFees[]
   totalFees             StudentTotalFees[]
   cancelledReceipts     CancelledReceipt[]
   permissionSlips       PermissionSlip[]
   assignmentSubmissions AssignmentSubmission[]
+  payments              FeePayment[]
+  enrollments           StudentEnrollment[]
 
-  // 👇 Add these lines
   profileId String?
   profile   Profile? @relation(fields: [profileId], references: [id])
 
   linkedUserId String?     @unique
   linkedUser   LinkedUser? @relation(fields: [linkedUserId], references: [id])
 
-  payments FeePayment[]
-
-  enrollments StudentEnrollment[]
-
   schoolId String
   school   SchoolInfo @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  results  Result[]
 
   @@unique([username, schoolId])
   @@index([schoolId])
-  @@index([classId, gender, status])
-  @@index([academicYear, classId, gender, status])
+  @@index([gender, status])
 }
 
 model Subject {
@@ -410,19 +428,14 @@ model Teacher {
   dob        DateTime?
   status     UserStatus @default(ACTIVE) // 👈 replaces deletedAt
 
-  supervisor Boolean @default(false)
-
-  createdAt DateTime  @default(now())
-  deletedAt DateTime?
+  createdAt  DateTime  @default(now())
+  leftAt     DateTime?
+  leftReason String?
 
   // Auth / profile
   clerk_id  String?
   profileId String?
   profile   Profile? @relation(fields: [profileId], references: [id])
-
-  // Class ownership
-  classId Int?
-  class   Class? @relation("ClassToTeacher")
 
   // Relations
   lessons  Lesson[]
@@ -431,6 +444,8 @@ model Teacher {
   // Cross-user mapping
   linkedUserId String?     @unique
   linkedUser   LinkedUser? @relation(fields: [linkedUserId], references: [id])
+
+  teacherClassAssignments TeacherClassAssignment[]
 
   schoolId String
   school   SchoolInfo @relation(fields: [schoolId], references: [id], onDelete: Cascade)
@@ -442,11 +457,29 @@ model Teacher {
    */
   @@unique([username, schoolId])
   @@unique([clerk_id, schoolId])
-  @@unique([classId, schoolId])
   @@index([schoolId])
   @@index([name]) // teacher search
   @@index([phone]) // quick lookup
   @@index([clerk_id])
+}
+
+model TeacherClassAssignment {
+  id             Int    @id @default(autoincrement())
+  teacherId      String
+  classId        Int
+  academicYearId String
+  schoolId       String
+
+  role ClassTeacherRole @default(SUBJECT)
+
+  teacher      Teacher      @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  class        Class        @relation(fields: [classId], references: [id], onDelete: Cascade)
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
+  school       SchoolInfo   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherId, classId, academicYearId, schoolId])
+  @@index([classId, academicYearId])
+  @@index([schoolId])
 }
 
 model SubjectTeacher {
@@ -464,20 +497,21 @@ model SubjectTeacher {
 }
 
 model FeeStructure {
-  id           Int           @id @default(autoincrement())
-  gradeId      Int
-  startDate    DateTime
-  dueDate      DateTime
-  termFees     Int
-  abacusFees   Int?
-  term         Term
-  academicYear AcademicYear  @default(Y2024_2025)
-  grade        Grade         @relation("GradeToFeesStructure", fields: [gradeId], references: [id])
-  studentFees  StudentFees[]
-  schoolId     String
-  school       SchoolInfo    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  id             Int           @id @default(autoincrement())
+  gradeId        Int
+  startDate      DateTime
+  dueDate        DateTime
+  termFees       Int
+  abacusFees     Int?
+  term           Term
+  academicYearId String
+  academicYear   AcademicYear  @relation(fields: [academicYearId], references: [id])
+  grade          Grade         @relation("GradeToFeesStructure", fields: [gradeId], references: [id])
+  studentFees    StudentFees[]
+  schoolId       String
+  school         SchoolInfo    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
-  @@unique([gradeId, term, academicYear, schoolId])
+  @@unique([gradeId, term, academicYearId, schoolId])
   @@index([schoolId])
 }
 
@@ -486,9 +520,9 @@ model FeeTransaction {
   studentId       String
   studentFeesId   Int
   term            Term
-  amount          Float        @default(0)
-  discountAmount  Float        @default(0)
-  fineAmount      Float        @default(0)
+  amount          Decimal      @default(0)
+  discountAmount  Decimal      @default(0)
+  fineAmount      Decimal      @default(0)
   receiptDate     DateTime
   receivedDate    DateTime?    @default(now())
   receiptNo       String
@@ -496,7 +530,8 @@ model FeeTransaction {
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
   remarks         String?
-  academicYear    AcademicYear @default(Y2024_2025) // 🎯 Added field
+  academicYearId  String
+  academicYear    AcademicYear @relation(fields: [academicYearId], references: [id])
   transactionType String       @default("PAYMENT") // or "CANCELLED"
   updatedByName   String?
   deletedAt       DateTime?
@@ -508,15 +543,16 @@ model FeeTransaction {
 
   @@index([schoolId])
   @@index([schoolId, receiptDate])
-  @@index([academicYear, receiptDate])
-  @@index([studentId, academicYear])
+  @@index([academicYearId, receiptDate])
+  @@index([studentId, academicYearId])
 }
 
 model StudentFees {
   id               Int          @id @default(autoincrement())
   studentId        String
   feeStructureId   Int
-  academicYear     AcademicYear @default(Y2024_2025)
+  academicYearId   String
+  academicYear     AcademicYear @relation(fields: [academicYearId], references: [id])
   term             Term
   paidAmount       Int          @default(0)
   abacusPaidAmount Int?
@@ -535,7 +571,7 @@ model StudentFees {
   schoolId        String
   school          SchoolInfo       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
-  @@unique([studentId, academicYear, term, schoolId], name: "studentId_academicYear_term")
+  @@unique([studentId, academicYearId, term, schoolId], name: "studentId_academicYear_term")
   @@index([schoolId])
 }
 
@@ -544,37 +580,42 @@ model StudentTotalFees {
   studentId String
   schoolId  String
 
-  totalPaidAmount     Float  @default(0)
-  totalDiscountAmount Float  @default(0)
-  totalFineAmount     Float  @default(0)
-  totalAbacusAmount   Float  @default(0)
-  totalFeeAmount      Float  @default(0)
-  dueAmount           Float  @default(0)
-  status              String @default("Not Paid")
+  totalPaidAmount     Decimal @default(0)
+  totalDiscountAmount Decimal @default(0)
+  totalFineAmount     Decimal @default(0)
+  totalAbacusAmount   Decimal @default(0)
+  totalFeeAmount      Decimal @default(0)
+  dueAmount           Decimal @default(0)
 
   student Student    @relation(fields: [studentId], references: [id])
   school  SchoolInfo @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
-  @@unique([studentId, schoolId]) // ✅ Composite unique
+  academicYearId String
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id])
+
+  @@unique([studentId, academicYearId, schoolId])
   @@index([schoolId])
 }
 
 model Attendance {
-  id        Int        @id @default(autoincrement())
-  date      DateTime
-  present   Boolean    @default(true)
-  studentId String
-  classId   Int
-  class     Class      @relation(fields: [classId], references: [id], onDelete: Cascade)
-  Student   Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  schoolId  String
-  school    SchoolInfo @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  id             Int          @id @default(autoincrement())
+  date           DateTime
+  present        Boolean      @default(true)
+  studentId      String
+  classId        Int
+  class          Class        @relation(fields: [classId], references: [id], onDelete: Cascade)
+  Student        Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  schoolId       String
+  school         SchoolInfo   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  academicYearId String
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id])
 
-  @@unique([studentId, date, schoolId])
+  @@unique([studentId, date, academicYearId, schoolId])
   @@index([classId, date])
   @@index([studentId, classId])
   @@index([schoolId])
   @@index([schoolId, date])
+  @@index([academicYearId, studentId])
 }
 
 model CancelledReceipt {
@@ -663,8 +704,8 @@ model LinkedUser {
 model FeePayment {
   id Int @id @default(autoincrement())
 
-  amount   Float
-  currency String @default("INR")
+  amount   Decimal
+  currency String  @default("INR")
 
   paymentDate DateTime @default(now())
 
@@ -693,7 +734,8 @@ model StudentEnrollment {
   id             Int              @id @default(autoincrement())
   studentId      String
   classId        Int
-  academicYear   AcademicYear
+  academicYearId String
+  academicYear   AcademicYear     @relation(fields: [academicYearId], references: [id])
   status         EnrollmentStatus @default(ACTIVE)
   promotedFromId Int?
 
@@ -702,8 +744,8 @@ model StudentEnrollment {
   schoolId String
   school   SchoolInfo @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
-  @@unique([studentId, academicYear, schoolId])
-  @@index([academicYear, classId])
+  @@unique([studentId, academicYearId, schoolId])
+  @@index([academicYearId, classId])
   @@index([schoolId])
 }
 
@@ -739,6 +781,29 @@ model SmsTemplate {
   @@index([schoolId])
 }
 
+model AcademicYear {
+  id        String   @id @default(cuid())
+  name      String // "2025-2026"
+  startDate DateTime
+  endDate   DateTime
+  isActive  Boolean  @default(false)
+
+  schoolId String
+  school   SchoolInfo @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  feeStructures           FeeStructure[]
+  studentFees             StudentFees[]
+  feeTransactions         FeeTransaction[]
+  enrollments             StudentEnrollment[]
+  results                 Result[]
+  attendance              Attendance[]
+  studentTotalFees        StudentTotalFees[]
+  teacherClassAssignments TeacherClassAssignment[]
+
+  @@unique([name, schoolId])
+  @@index([schoolId])
+}
+
 enum LessonDay {
   MONDAY
   TUESDAY
@@ -766,11 +831,6 @@ enum PaymentMode {
   ONLINE
   UPI
   BANK_TRANSFER
-}
-
-enum AcademicYear {
-  Y2024_2025
-  Y2025_2026
 }
 
 enum MessageType {
@@ -829,6 +889,8 @@ enum UserStatus {
   INACTIVE
   ON_LEAVE
   SUSPENDED
+  RESIGNED
+  TERMINATED
 }
 
 enum EnrollmentStatus {
@@ -842,4 +904,17 @@ enum PaymentStatus {
   PENDING
   SUCCESS
   FAILED
+}
+
+enum BranchType {
+  KINDERGARTEN
+  PRIMARY
+  HIGHER
+  COLLEGE
+  INSTITUTION
+}
+
+enum ClassTeacherRole {
+  SUPERVISOR
+  SUBJECT
 }

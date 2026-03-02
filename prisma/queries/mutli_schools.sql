@@ -49,8 +49,9 @@ ALTER SEQUENCE "class_id_seq" RESTART WITH 1;
 SELECT * FROM "Admin";
 SELECT * FROM "Student";
 SELECT * FROM "Teacher";
-SELECT * FROM "class";
+SELECT * FROM "Branch";
 SELECT * FROM "Grade";
+SELECT * FROM "class";
 SELECT * FROM "FeeStructure";
 SELECT * FROM "FeesCollection";
 SELECT * FROM "StudentTotalFees" WHERE "totalDiscountAmount" > 0 ORDER BY "studentId";
@@ -224,18 +225,18 @@ INSERT INTO "SchoolInfo" (
   "taxId","receiptHeader","receiptFooter","createdAt","updatedAt","schoolId"
 ) VALUES (
   'cmju1hey9000104l54r6cmpsu',
-  'KOTAK SALESIAN SCHOOL',
+  'SCHOOL FOR TESTING',
   '17-309, Golla Veedhi, Old Gopalapatnam',
-  '9949523412',
-  'kotakschoolvsp@gmail.com',
-  'https://kotaksalesianschool-vizag.com/',
+  '7801049830',
+  'schoolfortesting@gmail.com',
+  'https://www.schooldb.co.in/',
   NULL,
-  'AP050',
-  '(Affiliated to the Council for the I.S.C. Examination, New Delhi) Affiliation No. AP/050 - Dt. 04-11-1987',
+  'test001',
+  '(Affiliated to the Council for the I.S.C. Examination, New Delhi) Affiliation No. test/001 - Dt. 01-11-2024',
   'Fees once paid are not refundable.',
   NOW(),
   NOW(),
-  'kss_vizag'
+  'test'
 );
 
 
@@ -248,6 +249,14 @@ INSERT INTO "Profile" (
   '7801049830',
   NULL
 );
+
+SELECT query,
+       calls,
+       total_exec_time,
+       mean_exec_time
+FROM pg_stat_statements
+ORDER BY total_exec_time DESC
+LIMIT 10;
 
 
 -- 3️⃣ LinkedUser (ONLY ONCE)

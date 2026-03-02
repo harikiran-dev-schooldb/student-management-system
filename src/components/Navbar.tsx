@@ -47,14 +47,22 @@ export async function NavbarServer({
     );
   }
 
-  const roles = profile.users.map((u) => ({
-    id: u.id,
-    username: u.username,
-    name: u.admin?.name ?? u.teacher?.name ?? u.student?.name ?? u.username,
-    className: u.student?.Class?.name ?? undefined,
-    role: u.role,
-    img: u.admin?.img ?? u.teacher?.img ?? u.student?.img ?? null,
-  }));
+  const roles = profile.users.map((u) => {
+    const enrollment = u.student?.enrollments?.[0];
+    const studentClass = enrollment?.class;
+
+    return {
+      id: u.id,
+      username: u.username,
+      name: u.admin?.name ?? u.teacher?.name ?? u.student?.name ?? u.username,
+
+      className: studentClass?.name ?? undefined,
+
+      role: u.role,
+
+      img: u.admin?.img ?? u.teacher?.img ?? u.student?.img ?? null,
+    };
+  });
 
   return (
     <NavbarClient
