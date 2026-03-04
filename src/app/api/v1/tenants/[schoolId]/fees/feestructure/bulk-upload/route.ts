@@ -3,11 +3,11 @@ export const runtime = "nodejs";
 import prisma from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { resolveSchoolId } from "@/lib/resolveSchool";
-import { AcademicYear, Term } from "@prisma/client";
+import { Term } from "@prisma/client";
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: Promise<{ schoolId: string;}> }
+  { params }: { params: Promise<{ schoolId: string; }> }
 ) {
   try {
     const { schoolId: schoolSlug } = await params;
@@ -57,12 +57,15 @@ export async function POST(
         continue;
       }
 
-      if (
-        !Object.values(AcademicYear).includes(
-          row.academicYear
-        )
-      ) {
-        errors.push(`Row ${rowNo}: Invalid academicYear`);
+      const academicYear = await prisma.academicYear.findFirst({
+        where: {
+          name: row.academicYear,
+          schoolId,
+        },
+      });
+
+      if (!academicYear) {
+        errors.push(`Row ${rowNo}: Invalid academic year`);
         continue;
       }
 
@@ -77,7 +80,7 @@ export async function POST(
       validRecords.push({
         gradeId: Number(row.gradeId),
         term: row.term,
-        academicYear: row.academicYear,
+        academicYear: academicYear.id,
         termFees: Number(row.termFees),
         abacusFees: row.abacusFees
           ? Number(row.abacusFees)
@@ -93,10 +96,10 @@ export async function POST(
         { status: 400 }
       );
     }
-    
+
     /* ---------------- Transaction ---------------- */
 
-    
+
     await prisma.$transaction(async (tx) => {
       for (const record of validRecords) {
         /* Validate grade belongs to school */
@@ -117,10 +120,10 @@ export async function POST(
 
         await tx.feeStructure.upsert({
           where: {
-            gradeId_term_academicYear_schoolId: {
+            gradeId_term_academicYearId_schoolId: {
               gradeId: record.gradeId,
               term: record.term,
-              academicYear: record.academicYear,
+              academicYearId: record.academicYearId,
               schoolId,
             },
           },

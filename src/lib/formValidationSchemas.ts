@@ -70,76 +70,42 @@ export const teacherschema = z.object({
     .optional(),
 });
 
-
 // Infer the form data type from schema
 export type Teacherschema = z.infer<typeof teacherschema>;
 
 // Student Schema
 export const studentschema = z.object({
-  id: z.string().optional(),
-  username: z
-    .string()
-    .min(5, { message: "Username must be at least 5 characters long!" })
-    .optional(),
-  password: z
-    .string()
-    .min(5, { message: "Password must be at least 5 characters long!" })
-    .optional()
-    .or(z.literal("")),
-  name: z.string().min(1, { message: "Name is required!" }),
-  fatherName: z.string().min(1, { message: "Father Name is required!" }),
-  motherName: z.string().min(1, { message: "Mother Name is required!" }),
-  penNo: z
-    .string()
-    .min(1, { message: "Pen Number is required!" })
-    .optional()
-    .or(z.literal("")),
-  motherAadhar: z
-    .string()
-    .min(1, { message: "Mother Aadhar is required!" })
-    .optional()
-    .or(z.literal("")),
-  fatherAadhar: z
-    .string()
-    .min(1, { message: "Father Aadhar is required!" })
-    .optional()
-    .or(z.literal("")),
-  studentAadhar: z
-    .string()
-    .min(1, { message: "Student Aadhar is required!" })
-    .optional()
-    .or(z.literal("")),
-  phone: z
-    .string()
-    .regex(/^\d{10}$/, { message: "Phone number must be exactly 10 digits!" }),
-  address: z.string().min(1, { message: "Address is required!" }),
+  admissionNo: z.string().min(1, "Admission No is required"),
+
+  name: z.string().min(1, "Name is required"),
+  fatherName: z.string().min(1, "Father Name is required"),
+  motherName: z.string().min(1, "Mother Name is required"),
+
+  phone: z.string().regex(/^\d{10}$/, "Phone must be 10 digits"),
+  address: z.string().min(1, "Address is required"),
+
+  gender: z.enum(["Male", "Female"], {
+    required_error: "Gender is required",
+  }),
+
+  classId: z.coerce.number().min(1, "Class is required"),
+
+  dob: z.coerce.date({
+    required_error: "Date of birth is required",
+  }),
+
+  email: z.string().email().optional().nullable(),
+  img: z.string().optional().nullable(),
+  penNo: z.string().optional(),
+  motherAadhar: z.string().optional(),
+  fatherAadhar: z.string().optional(),
+  studentAadhar: z.string().optional(),
+
   bloodType: z
     .enum([
-      "A+",
-      "A-",
-      "B+",
-      "B-",
-      "AB+",
-      "AB-",
-      "O+",
-      "O-",
-      "Under Investigation",
+      "A+","A-","B+","B-","AB+","AB-","O+","O-","Under Investigation",
     ])
     .default("Under Investigation"),
-  dob: z.union([z.coerce.date(), z.literal(""), z.null()]).optional(),
-
-  img: z.string().optional().nullable(),
-  email: z
-    .string()
-    .email({ message: "Invalid email address!" })
-    .optional()
-    .nullable(),
-  gender: z.enum(["Male", "Female"], { message: "Gender is required!" }),
-  gradeId: z.coerce.number().min(1, { message: "Grade is required!" }),
-  classId: z.coerce.number().min(1, { message: "Class is required!" }),
-  academicYear: z.nativeEnum(AcademicYear, {
-    message: "Academic year is required!",
-  }),
 });
 
 // Infer the form data type from schema
@@ -195,6 +161,57 @@ export const slipSchema = z.object({
 
 export type SlipSchema = z.infer<typeof slipSchema>;
 
+
+export const gradeSchema = z.object({
+  level: z
+    .string()
+    .trim()
+    .min(1, "Grade level is required")
+    .max(50, "Grade level too long"),
+
+  schoolId: z
+    .string()
+    .min(1, "School is required"),
+
+  branchId: z
+    .number({
+      required_error: "Branch is required",
+      invalid_type_error: "Branch must be a number",
+    })
+    .int("Branch must be an integer")
+    .positive("Invalid branch"),
+});
+
+export type GradeSchema = z.infer<typeof gradeSchema>;
+
+/* ---------------------------------- */
+/* Bulk Grade Upload */
+/* ---------------------------------- */
+
+export const bulkGradeSchema = z.object({
+  grades: z
+    .array(
+      z.object({
+        level: z
+          .string()
+          .trim()
+          .min(1, "Grade level is required")
+          .transform((val) => val.toUpperCase()),
+
+        branchId: z.coerce
+          .number({
+            required_error: "Branch is required",
+          })
+          .int()
+          .positive(),
+      })
+    )
+    .min(1, "At least one grade is required"),
+});
+
+export type BulkGradeSchema = z.infer<typeof bulkGradeSchema>;
+
+
 export const resultschema = z.object({
   id: z.number().optional(), // Optional for updates, needed for identifying the result
   studentId: z.string().min(1, "Student ID is required"), // Student ID is required
@@ -224,9 +241,9 @@ export type ResultSchema = z.infer<typeof resultschema>;
 export const messageSchema = z.object({
   message: z.string().min(1, "Message cannot be empty"),
   type: z.enum([
-    "ABSENT", "FEE_RELATED", "ANNOUNCEMENT", "GENERAL", 
+    "ABSENT", "FEE_RELATED", "ANNOUNCEMENT", "GENERAL",
     "HOMEWORK", "EXAM_RESULT", "EVENT", "FEE_COLLECTION"
-  ]), 
+  ]),
   studentId: z.string().optional(),
   classId: z.number().optional(),
   gradeId: z.number().optional(), // Used for UI filtering only

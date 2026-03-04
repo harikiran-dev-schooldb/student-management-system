@@ -1,14 +1,14 @@
-id,level
-1,Pre KG
-2,LKG
-3,UKG
-4,I
-5,II
-6,III
-7,IV
-8,V
-9,VI
-10,VII
-11,VIII
-12,IX
-13,X
+id,level,branchId
+1,Pre KG,1
+2,LKG,1
+3,UKG,1
+4,I,2
+5,II,2
+6,III,2
+7,IV,2
+8,V,2
+9,VI,3
+10,VII,3
+11,VIII,3
+12,IX,3
+13,X,3

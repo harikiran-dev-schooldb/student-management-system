@@ -11,6 +11,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Check } from "lucide-react";
 import { useSchoolSlug } from "./hooks/getschool";
+import { useRouter } from "next/navigation";
 
 type Role = {
   id: string;
@@ -40,15 +41,23 @@ function getInitials(name?: string) {
 export default function SwitchUser({ roles, activeUsername }: Props) {
   const [isPending, startTransition] = useTransition();
   const schoolId = useSchoolSlug();
+  const router = useRouter(); 
 
   async function handleSwitch(username: string) {
     startTransition(async () => {
-      await fetch(`/api/v1/tenants/${schoolId}/switch-role`, {
+      const res = await fetch(`/api/v1/tenants/${schoolId}/switch-role`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username }),
       });
-      window.location.reload();
+
+      if (!res.ok) return;
+
+      const data = await res.json();
+
+      // 🔥 Redirect based on new role
+      router.replace(`/${schoolId}`);
+      router.refresh();
     });
   }
 
@@ -92,10 +101,9 @@ export default function SwitchUser({ roles, activeUsername }: Props) {
               onClick={() => handleSwitch(r.username)}
               disabled={isPending}
               className={`flex items-center gap-3 rounded-xl px-3 py-2 cursor-pointer 
-                transition-colors ${
-                  isActive
-                    ? "bg-blue-50 text-blue-600 font-semibold"
-                    : "hover:bg-gray-50"
+                transition-colors ${isActive
+                  ? "bg-blue-50 text-blue-600 font-semibold"
+                  : "hover:bg-gray-50"
                 }`}
             >
               <Avatar className="w-8 h-8 border">

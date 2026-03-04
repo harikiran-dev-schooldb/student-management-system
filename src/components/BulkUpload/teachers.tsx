@@ -13,7 +13,6 @@ import {
   FileText,
   UserCog, // Changed icon to represent Teachers
 } from "lucide-react";
-import { useSchoolSlug } from "../hooks/getschool";
 import { useTenantApi } from "@/hooks/useTenantApi";
 
 type TeacherCSV = {
@@ -30,6 +29,13 @@ type TeacherCSV = {
   dob?: string;
   classId?: string;
   clerk_id?: string;
+};
+
+type BulkUploadResponse = {
+  message: string;
+  inserted: number;
+  updated: number;
+  total: number;
 };
 
 export default function BulkTeacherUpload() {
@@ -105,25 +111,28 @@ export default function BulkTeacherUpload() {
     }
   };
 
-  const schoolId = useSchoolSlug();
-  const api = useTenantApi(schoolId);
+  const api = useTenantApi();
 
   const handleUpload = async () => {
     setLoading(true);
-    try {
-      const response = await api.post("/users/teachers/bulk-upload", {
-        teachers,
-      });
+    setErrors([]);
 
-      if (!response.data.errors?.length) {
+    try {
+      const response = await api.post<BulkUploadResponse>(
+        "/users/teachers/bulk-upload",
+        { teachers }
+      );
+
+      const { inserted, updated } = response.data;
+
+      if (inserted > 0 || updated > 0) {
         setSuccess(true);
-        setTimeout(() => resetForm(), 3000);
       } else {
-        setErrors(response.data.errors);
+        setErrors(["No records were inserted or updated."]);
       }
-    } catch (error) {
-      console.error(error);
-      setErrors(["Network error: Failed to upload data to the server."]);
+    } catch (err) {
+      console.error(err);
+      setErrors(["Upload failed. Please try again."]);
     } finally {
       setLoading(false);
     }
@@ -166,10 +175,9 @@ export default function BulkTeacherUpload() {
             <div className="flex-1 flex flex-col items-center justify-center p-8 md:p-16">
               <div
                 className={`relative group cursor-pointer flex flex-col items-center justify-center w-full max-w-3xl h-80 rounded-3xl border-3 border-dashed transition-all duration-300 ease-out
-                  ${
-                    dragActive
-                      ? "border-indigo-500 bg-indigo-50/50 dark:bg-darkMode scale-[1.02] shadow-2xl shadow-indigo-500/10"
-                      : "border-zinc-200 dark:border-zinc-800 hover:border-indigo-400 dark:hover:border-indigo-500 hover:bg-zinc-50 dark:hover:bg-zinc-900"
+                  ${dragActive
+                    ? "border-indigo-500 bg-indigo-50/50 dark:bg-darkMode scale-[1.02] shadow-2xl shadow-indigo-500/10"
+                    : "border-zinc-200 dark:border-zinc-800 hover:border-indigo-400 dark:hover:border-indigo-500 hover:bg-zinc-50 dark:hover:bg-zinc-900"
                   }`}
                 onDragEnter={handleDrag}
                 onDragLeave={handleDrag}
@@ -192,11 +200,10 @@ export default function BulkTeacherUpload() {
 
                 <div className="relative z-10 flex flex-col items-center gap-6 text-center p-6">
                   <div
-                    className={`p-5 rounded-2xl shadow-sm transition-all duration-300 ${
-                      dragActive
-                        ? "bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600"
-                        : "bg-white dark:bg-darkMode text-zinc-400 group-hover:text-indigo-500 group-hover:scale-110"
-                    }`}
+                    className={`p-5 rounded-2xl shadow-sm transition-all duration-300 ${dragActive
+                      ? "bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600"
+                      : "bg-white dark:bg-darkMode text-zinc-400 group-hover:text-indigo-500 group-hover:scale-110"
+                      }`}
                   >
                     <UploadCloud className="w-10 h-10" />
                   </div>

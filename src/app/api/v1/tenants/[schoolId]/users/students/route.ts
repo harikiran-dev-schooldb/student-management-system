@@ -1,11 +1,10 @@
 export const dynamic = "force-dynamic";
 import prisma from "@/lib/prisma";
-import { clerkClient } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { resolveSchoolId } from "@/lib/resolveSchool";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
 import { studentschema } from "@/lib/formValidationSchemas";
-import { AcademicYear } from "@prisma/client";
+import { provisionIdentity } from "@/lib/services/identity.service";
 
 export const runtime = "nodejs";
 
@@ -17,17 +16,13 @@ export async function POST(
     /* -------------------------------------------------------
        1️⃣ Resolve Tenant
     ------------------------------------------------------- */
-
     const { schoolId: schoolSlug } = await params;
     const schoolId = await resolveSchoolId(schoolSlug);
-    console.log("Resolved schoolId:", schoolId);
 
     /* -------------------------------------------------------
-       2️⃣ Authorize (Admin Only)
+       2️⃣ Authorize
     ------------------------------------------------------- */
     const user = await fetchUserInfo(schoolSlug);
-    console.log("User from fetchUserInfo:", user);
-
     if (!user || user.role !== "admin") {
       return NextResponse.json({ message: "Forbidden" }, { status: 403 });
     }
@@ -48,197 +43,121 @@ export async function POST(
       );
     }
 
-    const {
-      id,
-      name,
-      phone,
-      classId,
-      academicYear,
-      dob,
-      email,
-      gender,
-      fatherName,
-      motherName,
-      penNo,
-      motherAadhar,
-      fatherAadhar,
-      studentAadhar,
-      bloodType,
-      address,
-      img,
-    } = parsed.data;
+    const data = parsed.data;
 
-    /* -------------------------------------------------------
-       4️⃣ Admission Number Required
-    ------------------------------------------------------- */
-    if (!id || typeof id !== "string") {
-      return NextResponse.json(
-        { message: "Admission number is required." },
-        { status: 400 },
-      );
-    }
-
-    const admissionNo = id.trim();
+    const admissionNo = data.admissionNo.trim();
     const username = `s${admissionNo}`;
-    const phoneNumber = `+91${phone}`;
-    const password = phone;
 
     /* -------------------------------------------------------
-       5️⃣ Validate Academic Year
+       4️⃣ Prevent Duplicate
     ------------------------------------------------------- */
-    const normalizedYear = academicYear
-      ?.trim()
-      .toUpperCase() as keyof typeof AcademicYear;
-
-    if (!AcademicYear[normalizedYear]) {
-      return NextResponse.json(
-        { message: `Invalid academic year: ${academicYear}` },
-        { status: 400 },
-      );
-    }
-
-    /* -------------------------------------------------------
-       6️⃣ Prevent Duplicate Admission Number (Tenant Safe)
-    ------------------------------------------------------- */
-    const existingStudent = await prisma.student.findFirst({
-      where: {
-        id: admissionNo,
-        schoolId,
-      },
+    const existing = await prisma.student.findFirst({
+      where: { admissionNo, schoolId },
     });
 
-    if (existingStudent) {
+    if (existing) {
       return NextResponse.json(
-        { message: `Admission number "${admissionNo}" already exists.` },
-        { status: 409 },
+        { message: "Admission number already exists." },
+        { status: 409 }
       );
     }
 
     /* -------------------------------------------------------
-       7️⃣ Prevent Duplicate Username (Tenant Safe)
-    ------------------------------------------------------- */
-    const existingLinked = await prisma.linkedUser.findUnique({
-      where: {
-        username_schoolId: {
-          username,
-          schoolId,
-        },
-      },
-    });
-
-    if (existingLinked) {
-      return NextResponse.json(
-        { message: `Username "${username}" already exists.` },
-        { status: 409 },
-      );
-    }
-
-    /* -------------------------------------------------------
-       8️⃣ Validate Class (Tenant Safe)
+       5️⃣ Validate Class
     ------------------------------------------------------- */
     const classData = await prisma.class.findFirst({
-      where: {
-        id: classId,
-        schoolId,
-      },
+      where: { id: data.classId, schoolId },
       select: { gradeId: true },
     });
 
     if (!classData) {
       return NextResponse.json(
         { message: "Invalid class for this school." },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
     /* -------------------------------------------------------
-       9️⃣ Create / Get Clerk Parent User
+       6️⃣ Get Active Academic Year (REAL ID)
     ------------------------------------------------------- */
-    const client = await clerkClient();
-
-    const existingClerk = await client.users.getUserList({
-      phoneNumber: [phoneNumber],
+    const academicYear = await prisma.academicYear.findFirst({
+      where: { schoolId, isActive: true },
     });
 
-    const parentUser =
-      existingClerk.data[0] ??
-      (await client.users.createUser({
-        username,
-        password,
-        firstName: name,
-        phoneNumber: [phoneNumber],
-        publicMetadata: { role: "student" },
-      }));
+    if (!academicYear) {
+      return NextResponse.json(
+        { message: "No active academic year found." },
+        { status: 400 }
+      );
+    }
 
-    /* -------------------------------------------------------
-       🔟 Profile (Global)
-    ------------------------------------------------------- */
-    const profile = await prisma.profile.upsert({
-      where: { clerk_id: parentUser.id },
-      update: {},
-      create: {
-        clerk_id: parentUser.id,
-        phone,
-      },
+    if (!data.dob) {
+      return NextResponse.json(
+        { message: "Date of birth is required." },
+        { status: 400 }
+      );
+    }
+
+
+    const dob = new Date(data.dob);
+
+    const identity = await provisionIdentity({
+      username,
+      phone: data.phone,
+      name: data.name,
+      role: "student",
+      schoolId,
     });
 
+    const normalize = (val?: string | null) =>
+      val && val.trim() !== "" ? val : null;
+
     /* -------------------------------------------------------
-       1️⃣1️⃣ Atomic Transaction
+       7️⃣ Atomic Transaction
     ------------------------------------------------------- */
     const student = await prisma.$transaction(async (tx) => {
-      // LinkedUser
-      const linkedUser = await tx.linkedUser.create({
-        data: {
-          username,
-          role: "student",
-          profileId: profile.id,
-          schoolId,
-        },
-      });
 
-      // Activate Role
-      await tx.profile.update({
-        where: { id: profile.id },
-        data: { activeUserId: linkedUser.id },
-      });
-
-      if (!dob) {
-        throw new Error("Date of birth is required");
-      }
-
-      // Student Create
+      /* ---- Create Student ---- */
       const newStudent = await tx.student.create({
         data: {
-          id: admissionNo,
+          admissionNo,
           username,
-          name,
-          fatherName,
-          motherName,
-          email: email ?? null,
-          phone,
-          penNo: penNo ?? null,
-          motherAadhar: motherAadhar ?? null,
-          fatherAadhar: fatherAadhar ?? null,
-          studentAadhar: studentAadhar ?? null,
-          address,
-          gender,
-          img: img ?? null,
-          bloodType: bloodType ?? null,
-          classId,
-          academicYear: normalizedYear as AcademicYear,
-          clerk_id: parentUser.id,
-          profileId: profile.id,
-          linkedUserId: linkedUser.id,
+          name: data.name,
+          fatherName: data.fatherName ?? null,
+          motherName: data.motherName ?? null,
+          email: data.email ?? null,
+          phone: data.phone,
+          penNo: normalize(data.penNo),
+          motherAadhar: normalize(data.motherAadhar),
+          fatherAadhar: normalize(data.fatherAadhar),
+          studentAadhar: normalize(data.studentAadhar),
+          address: data.address,
+          gender: data.gender,
+          img: data.img ?? null,
+          bloodType: data.bloodType ?? null,
+          clerk_id: identity.clerkId,
+          profileId: identity.profileId,
+          linkedUserId: identity.linkedUserId,
           schoolId,
-          dob: new Date(dob),
+          dob,
         },
       });
 
-      // Assign Fee Structures
+      /* ---- Enrollment ---- */
+      await tx.studentEnrollment.create({
+        data: {
+          studentId: newStudent.id,
+          classId: data.classId,
+          academicYearId: academicYear.id,
+          schoolId,
+        },
+      });
+
+      /* ---- Fee Structures ---- */
       const feeStructures = await tx.feeStructure.findMany({
         where: {
           gradeId: classData.gradeId,
-          academicYear: normalizedYear as AcademicYear,
+          academicYearId: academicYear.id,
           schoolId,
         },
       });
@@ -248,7 +167,7 @@ export async function POST(
           data: feeStructures.map((f) => ({
             studentId: newStudent.id,
             feeStructureId: f.id,
-            academicYear: f.academicYear,
+            academicYearId: academicYear.id,
             term: f.term,
             paidAmount: 0,
             discountAmount: 0,
@@ -260,35 +179,38 @@ export async function POST(
         });
       }
 
+      /* ---- StudentTotalFees Row ---- */
+      await tx.studentTotalFees.create({
+        data: {
+          studentId: newStudent.id,
+          academicYearId: academicYear.id,
+          schoolId,
+        },
+      });
+
+      console.log("Student created: ", newStudent);
+
       return newStudent;
     });
 
-    /* -------------------------------------------------------
-       ✅ Success
-    ------------------------------------------------------- */
     return NextResponse.json(
-      {
-        message: "Student created successfully",
-        student,
-      },
-      { status: 201 },
+      { message: "Student created successfully", student },
+      { status: 201 }
     );
+
   } catch (error: any) {
     console.error("Student creation error:", error);
 
     if (error.code === "P2002") {
       return NextResponse.json(
         { message: "Duplicate record detected." },
-        { status: 409 },
+        { status: 409 }
       );
     }
 
     return NextResponse.json(
-      {
-        message: "Internal server error",
-        error: error.message,
-      },
-      { status: 500 },
+      { message: "Internal server error", error: error.message },
+      { status: 500 }
     );
   }
 }

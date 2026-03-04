@@ -121,7 +121,7 @@ model Grade {
   school                  SchoolInfo               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   branchId Int
-  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  branch   Branch @relation(fields: [branchId], references: [id])
 
   @@unique([level, schoolId])
   @@index([level])
@@ -349,7 +349,8 @@ model Homework {
 }
 
 model Student {
-  id            String        @id
+  id String @id @default(cuid()) 
+  admissionNo String?
   username      String
   name          String
   motherName    String?
@@ -393,6 +394,7 @@ model Student {
   results  Result[]
 
   @@unique([username, schoolId])
+  @@unique([admissionNo, schoolId])
   @@index([schoolId])
   @@index([gender, status])
 }
@@ -520,9 +522,9 @@ model FeeTransaction {
   studentId       String
   studentFeesId   Int
   term            Term
-  amount          Decimal      @default(0)
-  discountAmount  Decimal      @default(0)
-  fineAmount      Decimal      @default(0)
+  amount          Decimal @db.Decimal(12,2)      @default(0)
+  discountAmount  Decimal @db.Decimal(12,2)      @default(0)
+  fineAmount      Decimal @db.Decimal(12,2)      @default(0)
   receiptDate     DateTime
   receivedDate    DateTime?    @default(now())
   receiptNo       String
@@ -580,12 +582,12 @@ model StudentTotalFees {
   studentId String
   schoolId  String
 
-  totalPaidAmount     Decimal @default(0)
-  totalDiscountAmount Decimal @default(0)
-  totalFineAmount     Decimal @default(0)
-  totalAbacusAmount   Decimal @default(0)
-  totalFeeAmount      Decimal @default(0)
-  dueAmount           Decimal @default(0)
+  totalPaidAmount     Decimal @db.Decimal(12,2) @default(0)
+  totalDiscountAmount Decimal @db.Decimal(12,2) @default(0)
+  totalFineAmount     Decimal @db.Decimal(12,2) @default(0)
+  totalAbacusAmount   Decimal @db.Decimal(12,2) @default(0)
+  totalFeeAmount      Decimal @db.Decimal(12,2) @default(0)
+  dueAmount           Decimal @db.Decimal(12,2) @default(0)
 
   student Student    @relation(fields: [studentId], references: [id])
   school  SchoolInfo @relation(fields: [schoolId], references: [id], onDelete: Cascade)
@@ -628,10 +630,10 @@ model CancelledReceipt {
   cancelledBy       String? // Optional: name or user ID of admin who cancelled
   reason            String? // Optional: why it was cancelled
 
-  cancelledAmount   Decimal    @default(0)
-  cancelledDiscount Decimal    @default(0)
-  cancelledFine     Decimal    @default(0)
-  cancelledTotal    Decimal    @default(0) // can also be computed as sum of above
+  cancelledAmount   Decimal @db.Decimal(12,2)    @default(0)
+  cancelledDiscount Decimal @db.Decimal(12,2)    @default(0)
+  cancelledFine     Decimal @db.Decimal(12,2)    @default(0)
+  cancelledTotal    Decimal @db.Decimal(12,2)    @default(0) // can also be computed as sum of above
   schoolId          String
   school            SchoolInfo @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
@@ -704,7 +706,7 @@ model LinkedUser {
 model FeePayment {
   id Int @id @default(autoincrement())
 
-  amount   Decimal
+  amount   Decimal @db.Decimal(12,2)
   currency String  @default("INR")
 
   paymentDate DateTime @default(now())
@@ -882,6 +884,7 @@ enum BloodType {
   AB_NEG
   O_POS
   O_NEG
+  NA
 }
 
 enum UserStatus {
@@ -898,6 +901,7 @@ enum EnrollmentStatus {
   PROMOTED
   REPEATED
   TRANSFERRED
+  NOT_COMING
 }
 
 enum PaymentStatus {

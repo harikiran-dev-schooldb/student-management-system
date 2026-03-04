@@ -35,22 +35,28 @@ export async function requireTenantAccess(): Promise<TenantAccess> {
   };
 
   /* ---------------- STUDENT ---------------- */
+  /* ---------------- STUDENT ---------------- */
   if (activeUser.role === "student") {
     const student = await prisma.student.findFirst({
       where: {
         linkedUserId: activeUser.id,
         schoolId: activeUser.schoolId,
       },
-      select: {
-        id: true,
-        classId: true,
+      include: {
+        enrollments: {
+          where: {
+            academicYear: { isActive: true },
+          },
+          select: { classId: true },
+          take: 1,
+        },
       },
     });
 
     return {
       ...baseAccess,
       studentId: student?.id,
-      classId: student?.classId ?? undefined,
+      classId: student?.enrollments[0]?.classId,
     };
   }
 
@@ -61,12 +67,20 @@ export async function requireTenantAccess(): Promise<TenantAccess> {
         linkedUserId: activeUser.id,
         schoolId: activeUser.schoolId,
       },
-      select: { classId: true },
+      include: {
+        teacherClassAssignments: {
+          where: {
+            academicYear: { isActive: true },
+          },
+          select: { classId: true },
+          take: 1,
+        },
+      },
     });
 
     return {
       ...baseAccess,
-      classId: teacher?.classId ?? undefined,
+      classId: teacher?.teacherClassAssignments[0].classId ?? undefined,
     };
   }
 

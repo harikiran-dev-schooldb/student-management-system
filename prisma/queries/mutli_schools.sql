@@ -49,12 +49,10 @@ ALTER SEQUENCE "class_id_seq" RESTART WITH 1;
 SELECT * FROM "Admin";
 SELECT * FROM "Student";
 SELECT * FROM "Teacher";
-SELECT * FROM "Branch";
-SELECT * FROM "Grade";
 SELECT * FROM "class";
+SELECT * FROM "Grade";
 SELECT * FROM "FeeStructure";
 SELECT * FROM "FeesCollection";
-SELECT * FROM "StudentTotalFees" WHERE "totalDiscountAmount" > 0 ORDER BY "studentId";
 SELECT * FROM "StudentFees";
 SELECT * FROM "FeeTransaction";
 SELECT * FROM "Exam";
@@ -67,8 +65,9 @@ SELECT * FROM "Attendance";
 SELECT * FROM "Messages";
 SELECT * FROM "Profile" WHERE clerk_id is not null;
 SELECT * FROM "LinkedUser";
-
-SELECT SUM("totalDiscountAmount") FROM "StudentTotalFees";
+SELECT * FROM "StudentEnrollment";
+UPDATE "Student"
+SET "admissionNo" = "id";
 
 ALTER TABLE "FeeStructure"
 ALTER COLUMN id
@@ -199,25 +198,25 @@ SELECT * FROM "Result";
 SELECT * FROM "Subject";
 SELECT * FROM "Profile";
 SELECT * FROM "LinkedUser";
-SELECT * FROM "AcademicYear";
 
-
-INSERT INTO "AcademicYear" (
-  id,
-  name,
-  "startDate",
-  "endDate",
-  "isActive",
-  "schoolId"
-)
-SELECT
-  gen_random_uuid(),
-  '2024-2025',
-  '2024-04-01',
-  '2025-03-31',
-  true,
-  id
-FROM "SchoolInfo";
+INSERT INTO "SchoolInfo" (
+  "id","name","address","phone","email","website","logo",
+  "taxId","receiptHeader","receiptFooter","createdAt","updatedAt","schoolId"
+) VALUES (
+  'cmkz9t8ab000304l5xyz987pq',
+  'ST. MARY''S ENGLISH MEDIUM SCHOOL',
+  '12-45-7, Seethammadhara, Visakhapatnam',
+  '9876543210',
+  'stmarysvizag@gmail.com',
+  'https://stmarysvizag.edu.in/',
+  NULL,
+  'AP112',
+  '(Recognized by Government of Andhra Pradesh) Affiliation No. AP/112 - Dt. 15-08-1995',
+  'All fees are subject to school policies.',
+  NOW(),
+  NOW(),
+  'smes_vizag'
+);
 
 -- 1️⃣ SchoolInfo
 INSERT INTO "SchoolInfo" (
@@ -225,18 +224,18 @@ INSERT INTO "SchoolInfo" (
   "taxId","receiptHeader","receiptFooter","createdAt","updatedAt","schoolId"
 ) VALUES (
   'cmju1hey9000104l54r6cmpsu',
-  'SCHOOL FOR TESTING',
+  'KOTAK SALESIAN SCHOOL',
   '17-309, Golla Veedhi, Old Gopalapatnam',
-  '7801049830',
-  'schoolfortesting@gmail.com',
-  'https://www.schooldb.co.in/',
+  '9949523412',
+  'kotakschoolvsp@gmail.com',
+  'https://kotaksalesianschool-vizag.com/',
   NULL,
-  'test001',
-  '(Affiliated to the Council for the I.S.C. Examination, New Delhi) Affiliation No. test/001 - Dt. 01-11-2024',
+  'AP050',
+  '(Affiliated to the Council for the I.S.C. Examination, New Delhi) Affiliation No. AP/050 - Dt. 04-11-1987',
   'Fees once paid are not refundable.',
   NOW(),
   NOW(),
-  'test'
+  'kss_vizag'
 );
 
 
@@ -249,14 +248,6 @@ INSERT INTO "Profile" (
   '7801049830',
   NULL
 );
-
-SELECT query,
-       calls,
-       total_exec_time,
-       mean_exec_time
-FROM pg_stat_statements
-ORDER BY total_exec_time DESC
-LIMIT 10;
 
 
 -- 3️⃣ LinkedUser (ONLY ONCE)

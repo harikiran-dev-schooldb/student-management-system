@@ -24,7 +24,7 @@ const renderRow = (item: ClassList, role: string | null) => (
       {item.name}
     </td>
     <td className="hidden md:table-cell text-black dark:text-white">
-      {item.Teacher ? item.Teacher.name : "No Class Teacher"}
+      {item.teacherClassAssignments?.[0]?.teacher?.name ?? "No Supervisor"}
     </td>
     <td>
       <div className="flex items-center gap-2">
@@ -86,20 +86,30 @@ const ClassesList = async ({
 
   const query: Prisma.ClassWhereInput = { schoolId: school.id };
 
-  for (const [key, value] of Object.entries(resolvedSearchParams)) {
-    const val = Array.isArray(value) ? value[0] : value;
-    if (!val) continue;
+  const supervisorIdRaw = resolvedSearchParams.supervisorId;
+  const searchRaw = resolvedSearchParams.search;
 
-    switch (key) {
-      case "supervisorId":
-        query.supervisorId = val;
-        break;
-      case "search":
-        query.name = { contains: val, mode: "insensitive" };
-        break;
-      default:
-        break;
-    }
+  const supervisorId =
+    Array.isArray(supervisorIdRaw) ? supervisorIdRaw[0] : supervisorIdRaw;
+
+  const search =
+    Array.isArray(searchRaw) ? searchRaw[0] : searchRaw;
+
+  if (supervisorId) {
+    query.teacherClassAssignments = {
+      some: {
+        teacherId: supervisorId,
+        role: "SUPERVISOR",
+        academicYear: { isActive: true },
+      },
+    };
+  }
+
+  if (search) {
+    query.name = {
+      contains: search,
+      mode: "insensitive",
+    };
   }
 
   const [data, count] = await db.$transaction([

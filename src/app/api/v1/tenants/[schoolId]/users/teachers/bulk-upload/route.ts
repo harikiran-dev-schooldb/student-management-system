@@ -93,10 +93,11 @@ export async function POST(
         bloodType: t.bloodType || undefined,
         gender: t.gender,
         dob: t.dob ? new Date(t.dob) : undefined,
-        classId,
         clerk_id: t.clerk_id || undefined,
         schoolId,
       });
+
+
     }
 
     if (!prepared.length) {
@@ -112,6 +113,19 @@ export async function POST(
     const usernames = prepared.map((t) => t.username);
     const ids = prepared.map((t) => t.id);
     const clerkIds = prepared.map((t) => t.clerk_id).filter(Boolean);
+
+    const academicYear = await prisma.academicYear.findFirst({
+      where: { schoolId, isActive: true },
+      select: { id: true },
+    });
+
+    if (!academicYear) {
+      return NextResponse.json(
+        { error: "No active academic year found" },
+        { status: 400 }
+      );
+    }
+
 
     const existingTeachers = await prisma.teacher.findMany({
       where: {
@@ -129,41 +143,58 @@ export async function POST(
       },
     });
 
-    const existingUsernameSet = new Set(
-      existingTeachers.map((t) => t.username),
-    );
-    const existingIdSet = new Set(existingTeachers.map((t) => t.id));
-    const existingClerkSet = new Set(
-      existingTeachers.map((t) => t.clerk_id).filter(Boolean),
-    );
-
-    const toInsert = prepared.filter((t) => {
-      if (
-        existingUsernameSet.has(t.username) ||
-        existingIdSet.has(t.id) ||
-        (t.clerk_id && existingClerkSet.has(t.clerk_id))
-      ) {
-        errors.push(`Duplicate skipped: ${t.username}`);
-        return false;
-      }
-      return true;
-    });
-
     /* -----------------------------
-       7️⃣ Bulk Insert
-    ------------------------------ */
-    if (toInsert.length) {
-      await prisma.teacher.createMany({
-        data: toInsert,
-        skipDuplicates: true,
-      });
-    }
+   7️⃣ Insert OR Update (UPSERT)
+------------------------------ */
+
+    let inserted = 0;
+    let updated = 0;
+
+    // Build quick lookup set
+    const existingUsernameSet = new Set(
+      existingTeachers.map((t) => t.username)
+    );
+
+    await prisma.$transaction(
+      prepared.map((t) => {
+        const isExisting = existingUsernameSet.has(t.username);
+
+        if (isExisting) updated++;
+        else inserted++;
+
+        return prisma.teacher.upsert({
+          where: {
+            username_schoolId: {
+              username: t.username,
+              schoolId,
+            },
+          },
+          update: {
+            name: t.name,
+            parentName: t.parentName,
+            email: t.email,
+            phone: t.phone,
+            address: t.address,
+            img: t.img,
+            bloodType: t.bloodType,
+            gender: t.gender,
+            dob: t.dob,
+            clerk_id: t.clerk_id,
+            status: "ACTIVE",
+          },
+          create: {
+            ...t,
+          },
+        });
+      })
+    );
+
 
     return NextResponse.json({
       message: "Bulk upload completed",
-      inserted: toInsert.length,
-      skipped: prepared.length - toInsert.length,
-      errors,
+      inserted,
+      updated,
+      total: prepared.length,
     });
   } catch (error) {
     console.error("Bulk Teacher Upload Error:", error);

@@ -1,6 +1,6 @@
 import axios, { AxiosInstance } from "axios";
 
-export const createTenantApi = (schoolId: string): AxiosInstance => {
+export const createTenantApi = (schoolId: string) => {
   const api = axios.create({
     baseURL: `/api/v1/tenants/${schoolId}`,
     headers: {
@@ -9,9 +9,8 @@ export const createTenantApi = (schoolId: string): AxiosInstance => {
     withCredentials: true,
   });
 
-  // 🔥 Global error normalization
   api.interceptors.response.use(
-    (response) => response,
+    (response) => response.data, // 🔥 return only data
     (error) => {
       const message =
         error.response?.data?.error ||
@@ -23,5 +22,13 @@ export const createTenantApi = (schoolId: string): AxiosInstance => {
     }
   );
 
-  return api;
+  return {
+    get: <T>(url: string, config?: any) => api.get<T>(url, config),
+    post: <T>(url: string, data?: any, config?: any) =>
+      api.post<T>(url, data, config),
+    put: <T>(url: string, data?: any, config?: any) =>
+      api.put<T>(url, data, config),
+    delete: <T>(url: string, config?: any) =>
+      api.delete<T>(url, config),
+  };
 };

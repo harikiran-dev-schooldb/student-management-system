@@ -1,26 +1,26 @@
-export const dynamic = "force-dynamic";
-export const runtime = "nodejs";
 import prisma from "@/lib/prisma";
+import { bulkGradeSchema } from "@/lib/formValidationSchemas";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: Promise<{ schoolId: string; }> },
+  { params }: { params: Promise<{ schoolId: string }> }
 ) {
   try {
-    const slug = (await params).schoolId;
+    const { schoolId: slug } = await params;
 
-    const body = await req.json();
-    const grades = body?.grades;
+    const parsed = bulkGradeSchema.safeParse(await req.json());
 
-    if (!Array.isArray(grades) || grades.length === 0) {
+    if (!parsed.success) {
+      console.log("Zod errors:", parsed.error.flatten());
       return NextResponse.json(
-        { message: "Invalid grades array" },
+        { errors: parsed.error.flatten() },
         { status: 400 }
       );
     }
 
-    // 🔹 Find school by slug
+    const { grades } = parsed.data;
+
     const school = await prisma.schoolInfo.findUnique({
       where: { schoolId: slug },
       select: { id: true },
@@ -33,15 +33,29 @@ export async function POST(
       );
     }
 
-    // 🔹 Format data
-    const formattedGrades = grades.map((g: any) => ({
-      level: String(g.level).trim(),
-      schoolId: school.id, // FK (primary key)
-    }));
+    const branchIds = [...new Set(grades.map((g) => g.branchId))];
 
-    // 🔹 Insert
+    const branches = await prisma.branch.findMany({
+      where: {
+        id: { in: branchIds },
+        schoolId: school.id,
+      },
+      select: { id: true },
+    });
+
+    if (branches.length !== branchIds.length) {
+      return NextResponse.json(
+        { message: "One or more branchIds are invalid for this school" },
+        { status: 400 }
+      );
+    }
+
     await prisma.grade.createMany({
-      data: formattedGrades,
+      data: grades.map((g) => ({
+        level: g.level,
+        schoolId: school.id,
+        branchId: g.branchId,
+      })),
       skipDuplicates: true,
     });
 

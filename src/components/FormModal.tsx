@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import React, {  useState } from "react";
+import React, { useState } from "react";
 import { toast } from "react-toastify";
 import { FormContainerProps } from "./FormContainer";
 import {
@@ -15,13 +15,15 @@ import {
   Loader2,
 } from "lucide-react";
 import { useSchoolSlug } from "./hooks/getschool";
+import { useTenantApi } from "@/hooks/useTenantApi";
 
 // Mapping logical table names to API routes
 const deleteActionMap: Record<string, string> = {
   subject: "subject",
   class: "classes",
-  teacher: "teacher",
-  student: "student",
+  admin: "users/admin",
+  student: "users/student",
+  teacher: "users/teacher",
   exams: "exams",
   lesson: "lessons",
   assignment: "assignment",
@@ -31,7 +33,6 @@ const deleteActionMap: Record<string, string> = {
   fees: "fees",
   fees_structure: "fees",
   homework: "homework",
-  admin: "admin",
   messages: "messages",
   permissions: "permissions",
 };
@@ -255,34 +256,29 @@ const FormModal = ({
 
   const selectedConfig = buttonConfig[type];
 
-  const schoolId = useSchoolSlug();
+  const api = useTenantApi();
 
   // --- Delete Handler ---
   const handleDelete = async () => {
+    if (!id) return;
+  
     setLoading(true);
+  
     try {
-      const endpoint = deleteActionMap[table];
-      if (!endpoint) return toast.error("Invalid delete target.");
-
-      const url = ["student", "teacher", "admin"].includes(endpoint)
-        ? `/api/v1/tenants/${schoolId}/users/${endpoint}/${id}`
-        : `/api/v1/tenants/${schoolId}/${endpoint}/${id}`;
-
-      console.log("Delete URL:", url);
-
-      const res = await fetch(url, { method: "DELETE" });
-      const result = await res.json();
-
-      if (!res.ok || result.error) {
-        toast.error(result.error || "Failed to delete.");
-      } else {
-        toast.success(`${capitalizeFirstLetter(table)} deleted successfully.`);
-        setOpen(false);
-        router.refresh();
+      const path = deleteActionMap[table];
+  
+      if (!path) {
+        toast.error("Invalid delete target.");
+        return;
       }
-    } catch (err) {
-      console.error("Delete error:", err);
-      toast.error("An unexpected error occurred.");
+  
+      await api.delete(`${path}/${id}`);
+  
+      toast.success(`${capitalizeFirstLetter(table)} deleted successfully.`);
+      setOpen(false);
+      router.refresh();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete.");
     } finally {
       setLoading(false);
     }

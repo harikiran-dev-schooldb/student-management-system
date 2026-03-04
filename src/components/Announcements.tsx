@@ -1,6 +1,5 @@
 import prisma from "@/lib/prisma";
 import { requireTenantAccess } from "@/lib/requireTenantAccess";
-import { fetchUserInfo } from "@/lib/utils/server-utils";
 import { Prisma } from "@prisma/client";
 import clsx from "clsx";
 import { CalendarDays, Megaphone, ArrowRight, AlertCircle } from "lucide-react";
@@ -140,7 +139,7 @@ const Messages = async ({
 /* --- Helper Components for UI Polish --- */
 
 const EmptyState = () => (
-  <div className="flex h-full min-h-[200px] flex-col items-center justify-center gap-3 rounded-2xl border border-gray-100 bg-white p-6 text-center shadow-sm dark:border-gray-800 dark:bg-black">
+  <div className="flex h-full min-h-[200px] flex-col items-center justify-center gap-3 rounded-2xl border border-gray-100 bg-white p-6 text-center shadow-sm dark:border-gray-800 dark:bg-darkMode">
     <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-50 dark:bg-darkMode">
       <Megaphone className="h-6 w-6 text-gray-300 dark:text-gray-600" />
     </div>

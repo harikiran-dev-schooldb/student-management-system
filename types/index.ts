@@ -1,7 +1,6 @@
 // types/index.ts
 
 import {
-  AcademicYear,
   Announcement,
   Attendance,
   Event,
@@ -13,6 +12,7 @@ import {
   Prisma,
   Student,
 } from "@prisma/client";
+import { ClassSelect } from "./query-types";
 
 export type CurrentEnrollment = {
   academicYearId: string;
@@ -116,6 +116,10 @@ export type PageProps = {
   params: Promise<{ schoolId: string }>;
   searchParams?: Promise<SearchParams>;
 };
+
+export interface StudentAttendancePageProps {
+  params: Promise<{ id: string }>;
+}
 
 export interface StudentFeesTable {
   id: number;
@@ -233,24 +237,19 @@ export type AttendanceRangeResponse = {
   attendance: Attendance[];
 };
 
-export type ClassList = {
-  id: number;
-  name: string;
-  section: string;
-  assignments?: {
-    academicYearId: string;
-    teacher: {
-      id: string;
-      name: string;
-    };
-  }[];
-};
+export type ClassList = Prisma.ClassGetPayload<{
+  select: typeof ClassSelect;
+}>;
 
-export type Events = Event & {
-  class?: {
-    section: string | null;
-    grade?: {
-      id: number;
+export type Events = {
+  id: number;
+  title: string;
+  startTime: Date;
+  endTime: Date;
+  Class: {
+    name: string;
+    section: string;
+    Grade: {
       level: string;
     } | null;
   } | null;

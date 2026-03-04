@@ -9,6 +9,7 @@ import { fetchUserInfo } from "@/lib/utils/server-utils";
 import { Prisma } from "@prisma/client";
 import ResetFiltersButton from "@/components/ResetFiltersButton";
 import { Events, SearchParams } from "../../../../../../types";
+import { tenantPrisma } from "@/lib/tenant-prisma";
 
 const renderRow = (item: Events, role: string | null) => (
   <tr
@@ -17,8 +18,8 @@ const renderRow = (item: Events, role: string | null) => (
   >
     <td className="flex items-center gap-4 p-4">{item.title}</td>
     <td>
-      {item.class
-        ? `${item.class.grade?.level ?? ""}${item.class.section ?? ""}`
+      {item.Class
+        ? `${item.Class.name ?? ""}`
         : "-"}
     </td>
     <td className="hidden md:table-cell">
@@ -80,11 +81,11 @@ const getColumns = (role: string | null) => [
   },
   ...(role === "admin"
     ? [
-        {
-          header: "Actions",
-          accessor: "action",
-        },
-      ]
+      {
+        header: "Actions",
+        accessor: "action",
+      },
+    ]
     : []),
 ];
 
@@ -109,8 +110,10 @@ const EventsList = async ({
   }
   // Fetch user info and role
   const { userId, role } = await fetchUserInfo(slug);
+  const db = tenantPrisma(school.id);
 
   const columns = getColumns(role); // Get dynamic columns
+
   // Fixing the 'page' parameter issue
   const pageParam = resolvedSearchParams.page;
   const currentPage = Array.isArray(pageParam)
@@ -121,7 +124,8 @@ const EventsList = async ({
   const p = currentPage;
 
   // Initialize Prisma query object
-  const query: Prisma.EventWhereInput = {};
+  const query: Prisma.EventWhereInput = { schoolId: school.id };
+
 
   // Dynamically add filters based on query parameters
   for (const [key, value] of Object.entries(queryParams)) {
@@ -138,21 +142,39 @@ const EventsList = async ({
   }
 
   // ROLE CONDITIONS
-  const roleConditions = {
-    teacher: { lessons: { some: { teacherId: userId! } } },
-    student: { students: { some: { id: userId! } } },
-  };
-
-  query.OR = [
-    { classId: null },
-    {
-      Class: roleConditions[role as keyof typeof roleConditions] || {},
-    },
-  ];
+  if (role === "teacher") {
+    query.OR = [
+      { classId: null },
+      {
+        Class: {
+          lessons: {
+            some: {
+              teacherId: userId!,
+            },
+          },
+        },
+      },
+    ];
+  } else if (role === "student") {
+    query.OR = [
+      { classId: null },
+      {
+        Class: {
+          studentEnrollments: {
+            some: {
+              studentId: userId!,   // ✅ correct field
+            },
+          },
+        },
+      },
+    ];
+  } else {
+    query.OR = [{ classId: null }];
+  }
 
   // Fetch events and count
-  const [data, count] = await prisma.$transaction([
-    prisma.event.findMany({
+  const [data, count] = await db.$transaction([
+    db.event.findMany({
       where: query,
       select: {
         Class: {
@@ -169,7 +191,7 @@ const EventsList = async ({
       take: ITEM_PER_PAGE,
       skip: ITEM_PER_PAGE * (p - 1),
     }),
-    prisma.event.count({ where: query }),
+    db.event.count({ where: query }),
   ]);
 
   return (

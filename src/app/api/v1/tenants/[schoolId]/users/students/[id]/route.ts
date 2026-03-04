@@ -20,9 +20,7 @@ export async function PUT(
     const { schoolId: schoolSlug, id: studentId } = await params;
     const schoolId = await resolveSchoolId(schoolSlug);
 
-    /* ---------- Authorization ---------- */
     const user = await fetchUserInfo(schoolSlug);
-
     if (!user || user.role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -39,103 +37,92 @@ export async function PUT(
 
     const data = parsed.data;
 
-    /* ---------- Ensure Student Belongs To School ---------- */
+    /* ---- Validate student belongs to school ---- */
     const existingStudent = await prisma.student.findFirst({
-      where: {
-        id: studentId,
-        schoolId,
-      },
-      include: { linkedUser: true },
+      where: { id: studentId, schoolId },
+      include: { enrollments: true },
     });
 
     if (!existingStudent) {
       return NextResponse.json({ error: "Student not found" }, { status: 404 });
     }
 
-    const client = await clerkClient();
-
-    /* ---------- Clerk Update (Phone + Name) ---------- */
-    if (existingStudent.clerk_id) {
-      const formattedPhone = `+91${data.phone}`;
-      const clerkUser = await client.users.getUser(existingStudent.clerk_id);
-
-      const currentPhone =
-        clerkUser.phoneNumbers.find(
-          (ph) => ph.id === clerkUser.primaryPhoneNumberId,
-        )?.phoneNumber ?? null;
-
-      if (formattedPhone !== currentPhone) {
-        try {
-          const newPhone = await client.phoneNumbers.createPhoneNumber({
-            userId: existingStudent.clerk_id,
-            phoneNumber: formattedPhone,
-          });
-
-          await client.phoneNumbers.updatePhoneNumber(newPhone.id, {
-            verified: true,
-          });
-
-          await client.users.updateUser(existingStudent.clerk_id, {
-            primaryPhoneNumberID: newPhone.id,
-          });
-        } catch (err: any) {
-          if (err.errors?.[0]?.code === "form_identifier_exists") {
-            return NextResponse.json(
-              { error: "Phone number already exists" },
-              { status: 400 },
-            );
-          }
-          throw err;
-        }
-      }
-
-      await client.users.updateUser(existingStudent.clerk_id, {
-        firstName: data.name,
-      });
-    }
-
-    /* ---------- Prisma Update ---------- */
-    const updatedStudent = await prisma.student.update({
-      where: { id: studentId },
-      data: {
-        name: data.name,
-        fatherName: data.fatherName,
-        motherName: data.motherName,
-        email: data.email,
-        phone: data.phone,
-        address: data.address,
-        gender: data.gender,
-        bloodType: data.bloodType,
-        penNo: data.penNo,
-        motherAadhar: data.motherAadhar,
-        fatherAadhar: data.fatherAadhar,
-        studentAadhar: data.studentAadhar,
-        ...(data.dob ? { dob: new Date(data.dob) } : {}),
-        ...(data.classId ? { classId: Number(data.classId) } : {}),
-      },
-      include: {
-        Class: { include: { Grade: true } },
-      },
+    /* ---- Get Active Academic Year ---- */
+    const academicYear = await prisma.academicYear.findFirst({
+      where: { schoolId, isActive: true },
     });
 
-    /* ---------- Sync LinkedUser ---------- */
-    if (existingStudent.linkedUser) {
-      await prisma.linkedUser.update({
-        where: { id: existingStudent.linkedUser.id },
+    if (!academicYear) {
+      return NextResponse.json(
+        { error: "No active academic year found" },
+        { status: 400 },
+      );
+    }
+
+    if (!data.dob) {
+      return NextResponse.json(
+        { error: "Date of birth is required" },
+        { status: 400 },
+      );
+    }
+
+    const dob = new Date(data.dob);
+
+    /* =========================================================
+       TRANSACTION
+    ========================================================= */
+    const updatedStudent = await prisma.$transaction(async (tx) => {
+
+      /* ---- Update Student Core Fields ---- */
+      const student = await tx.student.update({
+        where: { id: studentId },
         data: {
-          username: `s${studentId}`,
+          name: data.name,
+          fatherName: data.fatherName ?? null,
+          motherName: data.motherName ?? null,
+          email: data.email ?? null,
+          phone: data.phone,
+          address: data.address,
+          gender: data.gender,
+          bloodType: data.bloodType ?? null,
+          penNo: data.penNo ?? null,
+          motherAadhar: data.motherAadhar ?? null,
+          fatherAadhar: data.fatherAadhar ?? null,
+          studentAadhar: data.studentAadhar ?? null,
+          img: data.img ?? null,
+          dob,
         },
       });
-    }
+
+      /* ---- Update Enrollment (Class Change) ---- */
+      const currentEnrollment = existingStudent.enrollments.find(
+        (e) => e.academicYearId === academicYear.id
+      );
+
+      if (!currentEnrollment) {
+        throw new Error("Enrollment record not found for active year");
+      }
+
+      if (data.classId && data.classId !== currentEnrollment.classId) {
+        await tx.studentEnrollment.update({
+          where: { id: currentEnrollment.id },
+          data: { classId: data.classId },
+        });
+      }
+
+      return student;
+    });
 
     revalidatePath(`/${schoolSlug}/list/users/students`);
 
-    return NextResponse.json(
-      { success: true, data: updatedStudent },
-      { status: 200 },
-    );
+    return NextResponse.json({
+      success: true,
+      data: updatedStudent,
+    });
+
   } catch (error: any) {
     console.error("Student PUT error:", error);
+
     return NextResponse.json(
       { error: "Failed to update student" },
       { status: 500 },

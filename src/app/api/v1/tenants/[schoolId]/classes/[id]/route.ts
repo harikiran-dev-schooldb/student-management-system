@@ -13,10 +13,21 @@ export async function GET(
   const classId = Number(classIdString);
 
   const cls = await prisma.class.findFirst({
-    where: { id: classId, schoolId },
+    where: {
+      id: classId,
+      schoolId,
+    },
     include: {
       Grade: true,
-      Teacher: true,
+      teacherClassAssignments: {
+        where: {
+          role: "SUPERVISOR",
+          academicYear: { isActive: true },
+        },
+        include: {
+          teacher: true,
+        },
+      },
     },
   });
 
@@ -31,6 +42,8 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ schoolId: string; id: string }> },
 ) {
+
+
   try {
     const { schoolId: schoolSlug, id: classIdString } = await params;
     const schoolId = await resolveSchoolId(schoolSlug);
@@ -50,38 +63,46 @@ export async function PUT(
       );
     }
 
-    // 🔹 Get existing class with grade
     const existingClass = await prisma.class.findFirst({
-      where: {
-        id: classId,
-        schoolId,
-      },
-      include: {
-        Grade: true,
-      },
+      where: { id: classId, schoolId },
+      include: { Grade: true },
     });
 
     if (!existingClass) {
       return NextResponse.json({ error: "Class not found" }, { status: 404 });
     }
 
-    // 🔹 Regenerate name from grade + section
-    const name = `${existingClass.Grade.level} - ${existingClass.section}`;
-
-    const updated = await prisma.class.updateMany({
-      where: {
-        id: classId,
-        schoolId,
-      },
-      data: {
-        supervisorId,
-        name,
-      },
+    const activeAcademicYear = await prisma.academicYear.findFirst({
+      where: { schoolId, isActive: true },
+      select: { id: true },
     });
 
-    if (updated.count === 0) {
-      return NextResponse.json({ error: "Update failed" }, { status: 500 });
+    if (!activeAcademicYear) {
+      return NextResponse.json(
+        { error: "No active academic year found" },
+        { status: 400 },
+      );
     }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.teacherClassAssignment.deleteMany({
+        where: {
+          classId,
+          role: "SUPERVISOR",
+          academicYearId: activeAcademicYear.id,
+        },
+      });
+
+      await tx.teacherClassAssignment.create({
+        data: {
+          classId,
+          teacherId: supervisorId,
+          role: "SUPERVISOR",
+          academicYearId: activeAcademicYear.id,
+          schoolId,
+        },
+      });
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -110,17 +131,28 @@ export async function DELETE(
   }
 
   const studentCount = await prisma.student.count({
-    where: { classId, schoolId },
+    where: {
+      schoolId,
+      enrollments: {
+        some: {
+          classId,
+          status: "ACTIVE",
+          academicYear: { isActive: true },
+        },
+      },
+    },
   });
 
   if (studentCount > 0) {
     return NextResponse.json(
-      { error: "Cannot delete class with students" },
+      { error: "Cannot delete class with active students" },
       { status: 400 },
     );
   }
 
-  await prisma.class.delete({ where: { id: classId } });
+  await prisma.class.delete({
+    where: { id: classId },
+  });
 
   return NextResponse.json({ message: "Class deleted successfully" });
 }

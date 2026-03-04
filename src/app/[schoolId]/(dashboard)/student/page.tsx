@@ -43,6 +43,9 @@ const ProfilePage = async ({ params }: ProfilePageProps) => {
 
   if (!student) return notFound();
 
+  const className = student.enrollments[0]?.class.name || "N/A";
+  const classId = student.enrollments[0]?.class.id || "N/A";
+
   return (
     <div className="flex flex-col flex-1 gap-6 p-6 xl:flex-row bg-gray-50/50 dark:bg-darkMode min-h-screen">
       {/* ================= LEFT COLUMN (Profile, Metrics, Schedule) ================= */}
@@ -52,10 +55,10 @@ const ProfilePage = async ({ params }: ProfilePageProps) => {
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
               <Calendar className="text-indigo-600" size={20} />
-              Weekly Schedule (Class {student.Class.name})
+              Weekly Schedule (Class {className})
             </h3>
           </div>
-          <ClassTimetableContainer classId={student.Class.id} />
+          <ClassTimetableContainer classId={Number(classId)} />
         </div>
       </div>
 

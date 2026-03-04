@@ -38,7 +38,7 @@ const ClassForm = ({
   const { teachers = [], grades = [] } = relatedData || {};
 
   const schoolId = useSchoolSlug();
-  const api = useTenantApi(schoolId);
+  const api = useTenantApi();
 
   const onSubmit = async (formData: ClassSchema) => {
     if (!schoolId) return;
