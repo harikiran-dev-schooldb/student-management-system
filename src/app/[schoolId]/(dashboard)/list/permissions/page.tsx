@@ -10,15 +10,15 @@ import { fetchUserInfo, getClassIdForRole } from "@/lib/utils/server-utils";
 import { Prisma } from "@prisma/client";
 import ResetFiltersButton from "@/components/ResetFiltersButton";
 import ExportButton from "@/components/ExportButton";
-import { PermissionWithRelations, SearchParams } from "../../../../../../types";
-import { PermissionSlipSelect } from "../../../../../../types/query-types";
+import { SearchParams } from "../../../../../../types";
+import { PermissionSlipSelect, PermissionSlipWithStudent } from "../../../../../../types/query-types";
 import { tenantPrisma } from "@/lib/tenant-prisma";
 import IconButton from "@/components/IconButton";
 import { Filter } from "lucide-react";
 import Avatar from "@/components/Avatar";
 
 // 🔹 Render Table Row
-const renderRow = (item: PermissionWithRelations, role: string | null) => {
+const renderRow = (item: PermissionSlipWithStudent, role: string | null) => {
   const localTime = new Date(item.timeIssued).toLocaleTimeString("en-GB", {
     hour: "2-digit",
     minute: "2-digit",
@@ -26,6 +26,9 @@ const renderRow = (item: PermissionWithRelations, role: string | null) => {
     timeZone: "Asia/Kolkata",
   });
 
+  const className =
+    item.student.enrollments?.[0]?.class?.name ?? "N/A";
+    
   return (
     <tr
       key={item.id}
@@ -45,11 +48,7 @@ const renderRow = (item: PermissionWithRelations, role: string | null) => {
         </div>
       </td>
       <td className="px-2 py-1">
-        {item.student.Class?.Grade?.level
-          ? `${item.student.Class.Grade.level} - ${
-              item.student.Class.section ?? "N/A"
-            }`
-          : "N/A"}
+        {className}
       </td>
       <td className="px-2 py-1 hidden md:table-cell">{item.leaveType}</td>
       <td className="px-2 py-1 hidden md:table-cell">
@@ -157,35 +156,39 @@ const PermissionSlipListPage = async ({
     ...(classId ? { classId: Number(classId) } : {}),
     ...(gradeId
       ? {
-          Class: {
-            gradeId: Number(gradeId),
-          },
-        }
+        Class: {
+          gradeId: Number(gradeId),
+        },
+      }
       : {}),
     ...(search
       ? {
-          OR: [
-            {
-              name: {
-                contains: String(search),
-                mode: "insensitive",
-              },
+        OR: [
+          {
+            name: {
+              contains: String(search),
+              mode: "insensitive",
             },
-            {
-              id: {
-                contains: String(search),
-                mode: "insensitive",
-              },
+          },
+          {
+            id: {
+              contains: String(search),
+              mode: "insensitive",
             },
-          ],
-        }
+          },
+        ],
+      }
       : {}),
   };
 
   if (userClassIds.length > 0) {
     query.student = {
       ...(query.student || {}),
-      classId: classId ? Number(classId) : { in: userClassIds },
+      enrollments: {
+        some: {
+          classId: classId ? Number(classId) : { in: userClassIds },
+        },
+      },
     };
   }
 

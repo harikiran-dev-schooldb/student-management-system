@@ -18,17 +18,13 @@ export type CurrentEnrollment = {
   academicYearId: string;
   class: {
     id: number;
-    name: string;
-    section: string | null;
+    name: string | null;
+    section: string;
     gradeId: number;
+
     Grade: {
       id: number;
       level: string;
-      branch?: {
-        id: number;
-        name: string;
-        type: string;
-      };
     };
   };
 };
@@ -56,13 +52,15 @@ export type StudentFees = {
 export type StudentTotalFees = {
   id: number;
   studentId: string;
+  schoolId: string;
+  academicYearId: string;
+
   totalPaidAmount: number;
   totalDiscountAmount: number;
   totalFineAmount: number;
   totalAbacusAmount: number;
   totalFeeAmount: number;
   dueAmount: number;
-  status: string; // like "Paid", "Partial", "Not Paid"
 };
 
 // types.ts
@@ -257,6 +255,7 @@ export type Events = {
 
 export type Exams = Exam & {
   examGradeSubjects: {
+    id: number;
     date: Date;
     startTime: string;
     maxMarks: number;
@@ -313,6 +312,7 @@ export type TeachersList = {
 
 export type StudentsList = {
   id: string;
+  admissionNo: string;
   name: string;
   img: string | null;
   gender: "Male" | "Female" | string;
@@ -331,6 +331,7 @@ export type FeesList = Grade & {
 // Types
 export type StudentsFeeReportList = {
   id: string;
+  admissionNo: string;
   name: string;
   username: string;
   fatherName: string | null;
@@ -340,7 +341,8 @@ export type StudentsFeeReportList = {
   gender: string | null;
 
   studentFees?: (StudentFees & { feeStructure?: FeeStructure })[];
-  studentTotalFees?: StudentTotalFees | null;
+
+  studentTotalFees?: StudentTotalFees[];
 
   enrollments?: CurrentEnrollment[];
 };
@@ -383,6 +385,7 @@ export type MessageList = Messages & {
 export type FeeColectList = Prisma.StudentGetPayload<{
   select: {
     id: true;
+    admissionNo: true;
     name: true;
     gender: true;
     fatherName: true;

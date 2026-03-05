@@ -33,7 +33,7 @@ const formatDateTime = (date: Date, time: string) => {
 const renderRow = (item: Exams, role: string | null) =>
   item.examGradeSubjects.map((egs, idx) => (
     <tr
-      key={`${item.id}-${egs.Grade.id}-${egs.Subject.id}-${idx}`}
+      key={egs.id}
       className="text-sm border-b border-gray-200 dark:border-gray-700 even:bg-slate-50 dark:even:bg-gray-800 hover:bg-LamaPurpleLight dark:hover:bg-grey-olive-950"
     >
       <td className="hidden md:table-cell">
@@ -105,21 +105,31 @@ const ExamsList = async ({
   const query: Prisma.ExamWhereInput = { schoolId: school.id };
   const examGradeSubjectsWhere: Prisma.ExamGradeSubjectWhereInput = {};
 
-  // Teacher restriction
-  let teacherGradeIds: number[] | null = null;
-
   if (role === "teacher" && teacherId) {
-    const teacherClasses = await db.class.findMany({
+    const teacherSubjects = await db.subjectTeacher.findMany({
       where: {
-        supervisorId: teacherId,
+        teacherId,
         schoolId: school.id,
       },
-      select: { gradeId: true },
+      select: {
+        subjectId: true,
+        class: { select: { gradeId: true } },
+      },
     });
 
-    teacherGradeIds = teacherClasses.map((cls) => cls.gradeId);
-    examGradeSubjectsWhere.gradeId = { in: teacherGradeIds };
+    const subjectIds = [...new Set(teacherSubjects.map((s) => s.subjectId))];
+    const gradeIds = [...new Set(teacherSubjects.map((s) => s.class.gradeId))];
+
+    if (subjectIds.length === 0 || gradeIds.length === 0) {
+      return <p className="text-center text-red-500">⚠️ No subjects assigned.</p>;
+    }
+
+    examGradeSubjectsWhere.AND = [
+      { subjectId: { in: subjectIds } },
+      { gradeId: { in: gradeIds } },
+    ];
   }
+
 
   // Student restriction
   if (role === "student" && gradeId) {
@@ -136,36 +146,11 @@ const ExamsList = async ({
 
   // Grade filter from query params (safe)
   if (searchGradeId) {
-    const parsedGradeId = Number(
-      Array.isArray(searchGradeId) ? searchGradeId[0] : searchGradeId,
+    const parsed = Number(
+      Array.isArray(searchGradeId) ? searchGradeId[0] : searchGradeId
     );
 
-    if (!Number.isNaN(parsedGradeId)) {
-      if (role === "admin") {
-        examGradeSubjectsWhere.gradeId = parsedGradeId;
-      }
-
-      if (role === "teacher") {
-        const existing = examGradeSubjectsWhere.gradeId;
-
-        if (
-          existing &&
-          typeof existing === "object" &&
-          "in" in existing &&
-          Array.isArray(existing.in)
-        ) {
-          if (existing.in.includes(parsedGradeId)) {
-            examGradeSubjectsWhere.gradeId = parsedGradeId;
-          }
-        }
-      }
-    }
-  }
-
-  if (searchGradeId && role === "teacher" && teacherGradeIds) {
-    const parsed = Number(searchGradeId);
-
-    if (teacherGradeIds.includes(parsed)) {
+    if (!Number.isNaN(parsed)) {
       examGradeSubjectsWhere.gradeId = parsed;
     }
   }

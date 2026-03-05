@@ -4,9 +4,9 @@ import prisma from "@/lib/prisma";
 import { getMessageContent } from "@/lib/utils/messageUtils";
 import { NextRequest, NextResponse } from "next/server";
 import { requireTenantAccess } from "@/lib/requireTenantAccess";
-import { MessageType } from "../../../../../../../types";
-import { Prisma } from "@prisma/client";
+import { MessageType, Prisma } from "@prisma/client";
 import { resolveSchoolId } from "@/lib/resolveSchool";
+import { SingleStudentSelect } from "../../../../../../../types/query-types";
 
 /* =======================================================
    POST  /attendance  (Bulk Upsert)
@@ -17,23 +17,26 @@ export async function POST(
   { params }: { params: Promise<{ schoolId: string }> },
 ) {
   try {
+    /* ================================
+       Resolve Tenant
+    ================================= */
+
     const { schoolId: slug } = await params;
     const resolvedSchoolId = await resolveSchoolId(slug);
     const access = await requireTenantAccess();
 
-    console.log("Slug:", slug);
-    console.log("ResolvedSchoolId:", resolvedSchoolId, typeof resolvedSchoolId);
-    console.log("SessionSchoolId:", access.schoolId, typeof access.schoolId);
-    console.log("Role:", access.role);
-
-    const schoolId = access.schoolId;
-    /* 🔐 Tenant + RBAC */
     if (
       access.schoolId !== resolvedSchoolId ||
       !["admin", "teacher"].includes(access.role)
     ) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    const schoolId = access.schoolId;
+
+    /* ================================
+       Parse Payload
+    ================================= */
 
     const payload = await req.json();
 
@@ -44,8 +47,27 @@ export async function POST(
       );
     }
 
-    /* ---------- Normalize Date (UTC Safe) ---------- */
+    if (
+      !payload.every(
+        (p) =>
+          p.studentId &&
+          p.classId &&
+          typeof p.present === "boolean" &&
+          p.date,
+      )
+    ) {
+      return NextResponse.json(
+        { error: "Invalid payload structure" },
+        { status: 400 },
+      );
+    }
+
+    /* ================================
+       Normalize Date
+    ================================= */
+
     const rawDate = new Date(payload[0].date);
+
     if (Number.isNaN(rawDate.getTime())) {
       return NextResponse.json({ error: "Invalid date" }, { status: 400 });
     }
@@ -58,11 +80,17 @@ export async function POST(
       ),
     );
 
-    /* ---------- Validate Classes ---------- */
+    /* ================================
+       Validate Classes
+    ================================= */
+
     const classIds = [...new Set(payload.map((e) => e.classId))];
 
     const validClasses = await prisma.class.findMany({
-      where: { id: { in: classIds }, schoolId },
+      where: {
+        id: { in: classIds },
+        schoolId,
+      },
       select: { id: true },
     });
 
@@ -73,17 +101,18 @@ export async function POST(
       );
     }
 
-    /* ---------- Validate Students ---------- */
+    /* ================================
+       Validate Students
+    ================================= */
+
     const studentIds = [...new Set(payload.map((e) => e.studentId))];
 
     const students = await prisma.student.findMany({
-      where: { id: { in: studentIds }, schoolId },
-      select: {
-        id: true,
-        name: true,
-        classId: true,
-        Class: { select: { name: true } },
+      where: {
+        id: { in: studentIds },
+        schoolId,
       },
+      select: SingleStudentSelect,
     });
 
     if (students.length !== studentIds.length) {
@@ -97,7 +126,12 @@ export async function POST(
 
     for (const entry of payload) {
       const student = studentMap.get(entry.studentId);
-      if (!student || student.classId !== entry.classId) {
+
+      const enrollment = student?.enrollments?.find(
+        (e) => e.class.id === entry.classId,
+      );
+
+      if (!student || !enrollment) {
         return NextResponse.json(
           { error: "Student does not belong to provided class" },
           { status: 400 },
@@ -105,10 +139,66 @@ export async function POST(
       }
     }
 
-    /* ---------------- TRANSACTION ---------------- */
+    /* ================================
+       Database Transaction
+    ================================= */
 
     await prisma.$transaction(async (tx) => {
-      // 🔹 Fetch school once for tenant-safe messaging
+      /* ---------- Active Academic Year ---------- */
+
+      const activeYear = await tx.academicYear.findFirst({
+        where: {
+          schoolId,
+          isActive: true,
+        },
+        select: { id: true },
+      });
+
+      if (!activeYear) {
+        throw new Error("No active academic year");
+      }
+
+      const academicYearId = activeYear.id;
+
+      /* ---------- Prepare Attendance Data ---------- */
+
+      const attendanceData = payload.map((entry) => ({
+        studentId: entry.studentId,
+        classId: entry.classId,
+        present: entry.present,
+        date: dateOnly,
+        schoolId,
+        academicYearId,
+      }));
+
+      /* ---------- Upsert Attendance ---------- */
+
+      await Promise.all(
+        attendanceData.map((data) =>
+          tx.attendance.upsert({
+            where: {
+              studentId_date_academicYearId_schoolId: {
+                studentId: data.studentId,
+                date: data.date,
+                academicYearId: data.academicYearId,
+                schoolId: data.schoolId,
+              },
+            },
+            update: {
+              present: data.present,
+            },
+            create: data,
+          }),
+        ),
+      );
+
+      /* ---------- Split Present / Absent ---------- */
+
+      const absentStudents = attendanceData.filter((a) => !a.present);
+      const presentStudents = attendanceData.filter((a) => a.present);
+
+      /* ---------- School Info ---------- */
+
       const school = await tx.schoolInfo.findUnique({
         where: { id: schoolId },
         select: { name: true },
@@ -116,75 +206,56 @@ export async function POST(
 
       const schoolName = school?.name ?? "School";
 
-      for (const entry of payload) {
-        /* --------- UPSERT ATTENDANCE --------- */
-        await tx.attendance.upsert({
-          where: {
-            studentId_date_schoolId: {
-              studentId: entry.studentId,
+      /* ---------- Create Absent Messages ---------- */
+
+      if (absentStudents.length > 0) {
+        const messages = absentStudents.map((entry) => {
+          const student = studentMap.get(entry.studentId);
+
+          const enrollment = student?.enrollments?.[0];
+          const className = enrollment?.class?.name ?? null;
+
+          return {
+            message: getMessageContent("ABSENT", {
+              studentName: student?.name ?? "",
+              className,
+              schoolName,
               date: dateOnly,
-              schoolId,
-            },
-          },
-          update: { present: entry.present },
-          create: {
+            }),
+            type: MessageType.ABSENT,
+            date: dateOnly,
             studentId: entry.studentId,
             classId: entry.classId,
+            schoolId,
+          };
+        });
+
+        await tx.messages.createMany({
+          data: messages,
+          skipDuplicates: true,
+        });
+      }
+
+      /* ---------- Remove Messages for Present ---------- */
+
+      if (presentStudents.length > 0) {
+        await tx.messages.deleteMany({
+          where: {
+            studentId: {
+              in: presentStudents.map((p) => p.studentId),
+            },
             date: dateOnly,
-            present: entry.present,
+            type: "ABSENT",
             schoolId,
           },
         });
-
-        const student = studentMap.get(entry.studentId);
-        if (!student) continue;
-
-        /* --------- HANDLE ABSENT MESSAGE --------- */
-        if (entry.present === false) {
-          const existingMessage = await tx.messages.findFirst({
-            where: {
-              studentId: entry.studentId,
-              date: dateOnly,
-              type: "ABSENT",
-              schoolId,
-            },
-            select: { id: true },
-          });
-
-          if (!existingMessage) {
-            await tx.messages.create({
-              data: {
-                message: getMessageContent("ABSENT", {
-                  studentName: student.name,
-                  className: student.Class?.name ?? null,
-                  schoolName,
-                  date: dateOnly,
-                }),
-                type: "ABSENT",
-                date: dateOnly,
-                studentId: entry.studentId,
-                classId: entry.classId ?? undefined,
-                schoolId,
-              },
-            });
-          }
-        } else {
-          /* --------- REMOVE MESSAGE IF MARKED PRESENT --------- */
-          await tx.messages.deleteMany({
-            where: {
-              studentId: entry.studentId,
-              date: dateOnly,
-              type: "ABSENT",
-              schoolId,
-            },
-          });
-        }
       }
     });
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
     console.error("Attendance POST error:", error);
+
     return NextResponse.json(
       { error: "Failed to save attendance" },
       { status: 500 },
@@ -201,15 +272,23 @@ export async function GET(
   { params }: { params: Promise<{ schoolId: string }> },
 ) {
   try {
+    /* ================================
+       Resolve Tenant
+    ================================= */
+
     const { schoolId: slug } = await params;
     const access = await requireTenantAccess();
 
-    // 🔐 Tenant validation
     if (access.schoolSlug !== slug) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const schoolId = access.schoolId;
+
+    /* ================================
+       Query Params
+    ================================= */
+
     const { searchParams } = new URL(req.url);
 
     const startParam = searchParams.get("start");
@@ -224,28 +303,59 @@ export async function GET(
     }
 
     const start = new Date(`${startParam}T00:00:00.000Z`);
-    const end = new Date(`${endParam}T00:00:00.000Z`);
+    const end = new Date(`${endParam}T23:59:59.999Z`);
+
+    /* ================================
+       Attendance Filter
+    ================================= */
 
     const where: Prisma.AttendanceWhereInput = {
       schoolId,
-      date: { gte: start, lte: end },
+      date: {
+        gte: start,
+        lte: end,
+      },
     };
 
-    // 🔐 Role restrictions
+    /* ================================
+       Role Restrictions
+    ================================= */
+
     if (access.role === "teacher") {
-      where.classId = access.classId;
-    } else if (access.role === "admin") {
+      where.classId = access.classId ?? undefined;
+    }
+
+    if (access.role === "admin") {
       if (classIdParam) {
         where.classId = Number(classIdParam);
       }
-    } else if (access.role === "student") {
-      where.studentId = access.studentId;
     }
+
+    if (access.role === "student") {
+      where.studentId = access.studentId ?? undefined;
+    }
+
+    /* ================================
+       Fetch Attendance
+    ================================= */
 
     const attendance = await prisma.attendance.findMany({
       where,
-      orderBy: { date: "asc" },
+      orderBy: {
+        date: "asc",
+      },
     });
+
+    if (attendance.length === 0) {
+      return NextResponse.json({
+        attendance: [],
+        students: [],
+      });
+    }
+
+    /* ================================
+       Fetch Students
+    ================================= */
 
     const studentIds = [...new Set(attendance.map((a) => a.studentId))];
 
@@ -254,11 +364,26 @@ export async function GET(
         id: { in: studentIds },
         schoolId,
       },
-      include: {
-        Class: {
-          include: {
-            Grade: {
-              select: { level: true },
+      select: {
+        id: true,
+        name: true,
+
+        enrollments: {
+          where: {
+            status: "ACTIVE",
+          },
+          select: {
+            class: {
+              select: {
+                id: true,
+                name: true,
+                section: true,
+                Grade: {
+                  select: {
+                    level: true,
+                  },
+                },
+              },
             },
           },
         },
@@ -271,6 +396,7 @@ export async function GET(
     });
   } catch (error) {
     console.error("Attendance GET error:", error);
+
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },

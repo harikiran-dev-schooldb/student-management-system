@@ -417,7 +417,7 @@ model Subject {
 }
 
 model Teacher {
-  id         String     @id
+  id String @id @default(cuid())
   username   String
   name       String
   parentName String?
@@ -618,6 +618,7 @@ model Attendance {
   @@index([schoolId])
   @@index([schoolId, date])
   @@index([academicYearId, studentId])
+  @@index([schoolId, classId, date])
 }
 
 model CancelledReceipt {

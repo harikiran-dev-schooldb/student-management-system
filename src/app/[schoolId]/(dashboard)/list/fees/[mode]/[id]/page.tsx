@@ -124,6 +124,11 @@ const StudentFeePage = async ({ params }: StudentFeePageProps) => {
 
   if (!student) notFound();
 
+  const studentGrade = student.enrollments[0]?.class.Grade.level || "N/A";
+  const studentSection = student.enrollments[0]?.class.section || "N/A";
+  const studentClassId = student.enrollments[0]?.class.id || "N/A";
+  const studentClass = student.enrollments[0]?.class.name || "N/A";
+
   return (
     <div className="flex flex-col gap-6 p-6 min-h-screen bg-gray-50/50 dark:bg-darkMode">
       {/* ================= TOP SECTION: Profile & Quick Links ================= */}
@@ -216,7 +221,7 @@ const StudentFeePage = async ({ params }: StudentFeePageProps) => {
                 </div>
                 <div>
                   <h2 className="text-lg font-bold text-gray-900 dark:text-white">
-                    {student.Class.Grade.level}
+                    {studentGrade}
                   </h2>
                   <span className="text-xs font-medium text-gray-500 uppercase">
                     Grade
@@ -230,7 +235,7 @@ const StudentFeePage = async ({ params }: StudentFeePageProps) => {
                 </div>
                 <div>
                   <h2 className="text-lg font-bold text-gray-900 dark:text-white">
-                    {student.Class.section}
+                    {studentSection}
                   </h2>
                   <span className="text-xs font-medium text-gray-500 uppercase">
                     Class
@@ -285,16 +290,16 @@ const StudentFeePage = async ({ params }: StudentFeePageProps) => {
             </h3>
 
             <div className="flex flex-col gap-2">
-              {student.Class.id && (
+              {studentClassId && (
                 <>
                   <QuickLink
-                    href={`/list/homeworks?classId=${student.Class.id}`}
+                    href={`/list/homeworks?classId=${studentClassId}`}
                     icon={BookOpen}
                     label="Homeworks"
                     colorClass="bg-yellow-500 text-yellow-600"
                   />
                   <QuickLink
-                    href={`/list/exams?classId=${student.Class.id}`}
+                    href={`/list/exams?classId=${studentClassId}`}
                     icon={FileText}
                     label="Exams"
                     colorClass="bg-sky-500 text-sky-600"

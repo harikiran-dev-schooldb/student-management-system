@@ -52,10 +52,16 @@ const StudentProfilePage = async ({ params }: StudentSinglePageProps) => {
 
   if (!student) return notFound();
 
+  const classId = student.enrollments?.[0]?.class?.id;
+
   const classStudentCount = await db.student.count({
     where: {
-      classId: student.classId,
-      status: "ACTIVE", // optional but recommended
+      status: "ACTIVE",
+      enrollments: {
+        some: {
+          classId: classId,
+        },
+      },
     },
   });
 
@@ -70,6 +76,8 @@ const StudentProfilePage = async ({ params }: StudentSinglePageProps) => {
       new Date(date),
     );
   };
+
+  const enrollments = student.enrollments[0];
 
   return (
     <div className="flex flex-col flex-1 gap-6 p-6 bg-gray-50/50 dark:bg-darkMode min-h-screen">
@@ -119,7 +127,7 @@ const StudentProfilePage = async ({ params }: StudentSinglePageProps) => {
                   </h2>
                   <p className="text-gray-500 dark:text-gray-400 text-sm flex flex-wrap items-center gap-2 mt-1">
                     <span className="font-medium text-gray-900 dark:text-gray-200">
-                      ID: {student.id}
+                      ID: {student.admissionNo}
                     </span>
                     <span className="hidden md:inline text-gray-300 dark:text-gray-700">
                       •
@@ -175,19 +183,19 @@ const StudentProfilePage = async ({ params }: StudentSinglePageProps) => {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <StatCard
                 label="Grade"
-                value={student.Class.Grade.level}
+                value={enrollments.class.Grade.level}
                 icon={<GraduationCap size={20} />}
                 colorClass="bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400"
               />
               <StatCard
                 label="Class"
-                value={student.Class.section}
+                value={enrollments.class.section}
                 icon={<Layers size={20} />}
                 colorClass="bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400"
               />
               <StatCard
                 label="Lessons"
-                value={student.Class._count.lessons.toString()}
+                value={enrollments.class._count.lessons.toString()}
                 icon={<BookOpen size={20} />}
                 colorClass="bg-sky-50 text-sky-600 dark:bg-sky-900/20 dark:text-sky-400"
               />
@@ -233,7 +241,7 @@ const StudentProfilePage = async ({ params }: StudentSinglePageProps) => {
                   Class Name
                 </span>
                 <span className="font-semibold text-gray-900 dark:text-white text-right">
-                  {student.Class.name}
+                  {enrollments.class.name}
                 </span>
 
                 {/* Class Teacher */}
@@ -241,7 +249,7 @@ const StudentProfilePage = async ({ params }: StudentSinglePageProps) => {
                   Class Teacher
                 </span>
                 <span className="font-semibold text-gray-900 dark:text-white text-right">
-                  {student.Class.Teacher?.name || "Not assigned"}
+                  {enrollments.class.teacherClassAssignments[0]?.teacher?.name || "Not assigned"}
                 </span>
 
                 {/* Capacity / Strength */}

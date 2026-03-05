@@ -10,7 +10,7 @@ import { ITEM_PER_PAGE } from "@/lib/settings";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
 import ResetFiltersButton from "@/components/ResetFiltersButton";
 import AcademicYearDropdown from "@/components/dropdowns/AcademicYearDropdown";
-import { AcademicYear, Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { Filter } from "lucide-react";
 import IconButton from "@/components/IconButton";
 import { FeesList, SearchParams } from "../../../../../../../types";
@@ -99,8 +99,6 @@ const FeesListPage = async ({
       : resolvedSearchParams.page || "1"
   );
 
-  const academicYear = resolvedSearchParams.academicYear || undefined;
-
   const gradeId = Array.isArray(resolvedSearchParams.gradeId)
     ? resolvedSearchParams.gradeId[0]
     : resolvedSearchParams.gradeId;
@@ -117,21 +115,17 @@ const FeesListPage = async ({
 
   const whereClause: Prisma.GradeWhereInput = {};
 
-  if (gradeId) whereClause.id = Number(gradeId);
+  const academicYearId = Array.isArray(resolvedSearchParams.academicYear)
+    ? resolvedSearchParams.academicYear[0]
+    : resolvedSearchParams.academicYear;
 
-  const parsedAcademicYear =
-    academicYear &&
-    Object.values(AcademicYear).includes(
-      academicYear as AcademicYear
-    )
-      ? (academicYear as AcademicYear)
-      : undefined;
-
-  if (parsedAcademicYear) {
+  if (academicYearId) {
     whereClause.feestructure = {
-      some: { academicYear: parsedAcademicYear },
+      some: { academicYearId },
     };
   }
+
+  if (gradeId) whereClause.id = Number(gradeId);
 
   const [grades, totalCount] = await Promise.all([
     db.grade.findMany({
@@ -139,11 +133,11 @@ const FeesListPage = async ({
       select: {
         ...FeeGradeSelect,
         feestructure: {
-          where: parsedAcademicYear
-            ? { academicYear: parsedAcademicYear }
+          where: academicYearId
+            ? { academicYearId }
             : undefined,
           select: FeeGradeSelect.feestructure.select,
-        },
+        }
       },
       orderBy: { [sortKey]: sortOrder },
       take: ITEM_PER_PAGE,

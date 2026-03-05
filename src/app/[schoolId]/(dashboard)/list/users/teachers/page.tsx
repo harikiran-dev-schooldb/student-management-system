@@ -17,12 +17,12 @@ import { Eye, Filter } from "lucide-react";
 import Avatar from "@/components/Avatar";
 import IconButton from "@/components/IconButton";
 import { notFound } from "next/navigation";
-import { SearchParams, TeachersList } from "../../../../../../../types";
-import { TeachersSelect } from "../../../../../../../types/query-types";
+import { SearchParams } from "../../../../../../../types";
+import { TeachersSelect, TeachersWithSelect } from "../../../../../../../types/query-types";
 import { tenantPrisma } from "@/lib/tenant-prisma";
 
 // -------------------- Table Row --------------------
-const renderRow = (item: TeachersList, role: string | null, schoolId: string) => (
+const renderRow = (item: TeachersWithSelect, role: string | null, schoolId: string) => (
   <tr
     className="text-sm border-b border-gray-200 even:bg-gray-50 hover:bg-LamaPurpleLight dark:border-gray-700 dark:even:bg-gray-800 dark:hover:bg-gray-700"
     key={item.id}
@@ -47,23 +47,24 @@ const renderRow = (item: TeachersList, role: string | null, schoolId: string) =>
     {role === "admin" && (
       <td className="py-4 px-6 align-middle">
         {(() => {
-          const hasClass = Boolean(item.class?.name);
+          const className =
+            item.teacherClassAssignments?.[0]?.class?.name ?? null;
+
+          const hasClass = Boolean(className);
 
           return (
             <div
               className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium
-            ${
-              hasClass
-                ? "border-indigo-100 bg-indigo-50/50 text-indigo-700 dark:border-indigo-900/30 dark:bg-indigo-900/10 dark:text-indigo-300"
-                : "border-red-200 bg-red-50 text-red-700 dark:border-red-900/30 dark:bg-red-900/10 dark:text-red-300"
-            }`}
+            ${hasClass
+                  ? "border-indigo-100 bg-indigo-50/50 text-indigo-700 dark:border-indigo-900/30 dark:bg-indigo-900/10 dark:text-indigo-300"
+                  : "border-red-200 bg-red-50 text-red-700 dark:border-red-900/30 dark:bg-red-900/10 dark:text-red-300"
+                }`}
             >
               <span
-                className={`h-1.5 w-1.5 rounded-full ${
-                  hasClass ? "bg-indigo-500" : "bg-red-500"
-                }`}
+                className={`h-1.5 w-1.5 rounded-full ${hasClass ? "bg-indigo-500" : "bg-red-500"
+                  }`}
               />
-              {hasClass ? item.class!.name : "No Class"}
+              {hasClass ? className : "No Class"}
             </div>
           );
         })()}
@@ -173,13 +174,23 @@ const TeacherListPage = async ({
 
     switch (key) {
       case "classId":
-        query.classId = parseInt(normalizedValue);
+        query.teacherClassAssignments = {
+          some: {
+            classId: parseInt(normalizedValue),
+          },
+        };
         break;
       case "search":
         query.OR = [
           { name: { contains: normalizedValue, mode: "insensitive" } },
           {
-            class: { name: { contains: normalizedValue, mode: "insensitive" } },
+            teacherClassAssignments: {
+              some: {
+                class: {
+                  name: { contains: normalizedValue, mode: "insensitive" },
+                },
+              },
+            },
           },
         ];
         break;

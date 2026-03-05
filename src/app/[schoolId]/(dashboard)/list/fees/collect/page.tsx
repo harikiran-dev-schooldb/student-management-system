@@ -32,9 +32,10 @@ const renderRow = (
   const paidAmount = studentFee?.totalPaidAmount ?? 0;
   const abacusAmount = studentFee?.totalAbacusAmount ?? 0;
   const totalFeeAmount = studentFee?.totalFeeAmount ?? 0;
-  const discountAmount = item.totalFees?.[0]?.totalDiscountAmount ?? 0;
+  const discountAmount =
+    item.totalFees?.[0]?.totalDiscountAmount?.toNumber?.() ?? 0;
   const dueAmount = totalFeeAmount - paidAmount - abacusAmount - discountAmount;
-  const isPreKg = item.Class?.section?.trim().toLowerCase() === "pre kg";
+  const isPreKg = item.enrollments[0]?.class.name?.trim().toLowerCase() === "pre kg";
 
   const { status } = getTermStatus({
     dueAmount,
@@ -71,9 +72,9 @@ const renderRow = (
 
         <div className="flex flex-col">
           <h3 className="font-semibold">
-            {item.name} ({item.Class?.Grade?.level}-{item.Class?.section})
+            {item.name} ({item.enrollments[0]?.class.name || "N/A"})
           </h3>
-          <p className="text-xs">{item.id}</p>
+          <p className="text-xs">{item.admissionNo}</p>
         </div>
       </td>
       <td className="hidden md:table-cell text-gray-700 dark:text-gray-200">
@@ -187,7 +188,7 @@ const StudentFeeListPage = async ({
 
   const sortKey = Array.isArray(resolvedSearchParams.sortKey)
     ? resolvedSearchParams.sortKey[0]
-    : resolvedSearchParams.sortKey || "classId";
+    : resolvedSearchParams.sortKey || "admissionNo";
 
   const classIdNum = classId ? Number(classId) : undefined;
 
@@ -200,8 +201,8 @@ const StudentFeeListPage = async ({
     ...(role === "teacher" && teacherClassId
       ? { classId: teacherClassId }
       : classIdNum
-      ? { classId: classIdNum }
-      : {}),
+        ? { classId: classIdNum }
+        : {}),
 
     ...(gradeId && {
       Class: { gradeId: Number(gradeId) },
@@ -239,14 +240,13 @@ const StudentFeeListPage = async ({
     }),
   };
 
+
   // 7️⃣ Tenant-safe queries
   const [data, count] = await db.$transaction([
     db.student.findMany({
       where: query,
       orderBy: [
         { [sortKey]: sortOrder },
-        { classId: "asc" },
-        { gender: "desc" },
         { name: "asc" },
       ],
       select: StudentFeeSelect,
@@ -260,8 +260,8 @@ const StudentFeeListPage = async ({
   const classes =
     role === "admin"
       ? await db.class.findMany({
-          where: gradeId ? { gradeId: Number(gradeId) } : {},
-        })
+        where: gradeId ? { gradeId: Number(gradeId) } : {},
+      })
       : [];
 
   const grades = role === "admin" ? await db.grade.findMany() : [];
@@ -279,9 +279,8 @@ const StudentFeeListPage = async ({
       <div className="flex items-center justify-between mb-3">
         <h1 className="hidden text-lg font-semibold md:block">
           {role === "teacher"
-            ? `Fees Collection - ${
-                data[0]?.Class?.section ?? "Your Class"
-              } (${count})`
+            ? `Fees Collection - ${data[0]?.enrollments[0].class.name ?? "Your Class"
+            } (${count})`
             : `Fees Collection (${count})`}
         </h1>
 

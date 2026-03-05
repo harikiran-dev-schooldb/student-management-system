@@ -5,6 +5,7 @@ import { Prisma } from "@prisma/client";
 // -------------------------------
 export const StudentSelect = {
   id: true,
+  admissionNo: true,
   name: true,
   gender: true,
   status: true,
@@ -48,6 +49,7 @@ export type StudentMinimal = Prisma.StudentGetPayload<{
 
 export const SingleStudentSelect = {
   id: true,
+  admissionNo: true,
   name: true,
   gender: true,
   fatherName: true,
@@ -125,6 +127,141 @@ export type StudentWithClass = Prisma.StudentGetPayload<{
   select: typeof SingleStudentSelect;
 }>;
 
+// -------------------------------
+// 🔹 Teacher List Page
+// -------------------------------
+export const SingleTeacherSelect = {
+  id: true,
+  username: true,
+  name: true,
+  parentName: true,
+  email: true,
+  phone: true,
+  address: true,
+  img: true,
+  bloodType: true,
+  gender: true,
+  dob: true,
+  status: true,
+  createdAt: true,
+  leftAt: true,
+  leftReason: true,
+
+  /* ---------------- PROFILE ---------------- */
+  profile: {
+    select: {
+      id: true,
+      clerk_id: true,
+      phone: true,
+    },
+  },
+
+  /* ---------------- CLASS ASSIGNMENTS ---------------- */
+  teacherClassAssignments: {
+    where: {
+      academicYear: {
+        isActive: true,
+      },
+    },
+    select: {
+      role: true,
+
+      class: {
+        select: {
+          id: true,
+          name: true,
+          section: true,
+
+          Grade: {
+            select: {
+              id: true,
+              level: true,
+
+              branch: {
+                select: {
+                  id: true,
+                  name: true,
+                  type: true,
+                },
+              },
+            },
+          },
+
+          /* Student count in class */
+          _count: {
+            select: {
+              studentEnrollments: true,
+            },
+          },
+        },
+      },
+    },
+  },
+
+  /* ---------------- SUBJECTS TEACHING ---------------- */
+  subjects: {
+    select: {
+      subject: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+
+      class: {
+        select: {
+          id: true,
+          name: true,
+          section: true,
+
+          Grade: {
+            select: {
+              level: true,
+            },
+          },
+        },
+      },
+    },
+  },
+
+  /* ---------------- LESSONS (TIMETABLE) ---------------- */
+  lessons: {
+    select: {
+      id: true,
+      title: true,
+      day: true,
+      period: true,
+
+      Subject: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+
+      Class: {
+        select: {
+          id: true,
+          name: true,
+          section: true,
+        },
+      },
+    },
+  },
+
+  /* ---------------- COUNTS ---------------- */
+  _count: {
+    select: {
+      lessons: true,
+      subjects: true,
+      teacherClassAssignments: true,
+    },
+  },
+} satisfies Prisma.TeacherSelect;
+
+export type TeacherWithDetails = Prisma.TeacherGetPayload<{
+  select: typeof SingleTeacherSelect;
+}>;
 // -------------------------------
 // 🔹 Fees Management Page
 // -------------------------------
@@ -369,6 +506,7 @@ export type MessagesList = Prisma.MessagesGetPayload<{
 // -------------------------------
 export const StudentFeeSelect = {
   id: true,
+  admissionNo: true,
   name: true,
   gender: true,
   fatherName: true,
@@ -571,6 +709,7 @@ export const PermissionSlipSelect = {
           academicYear: { isActive: true },
         },
         select: {
+          academicYearId: true,
           class: {
             select: {
               id: true,

@@ -31,7 +31,7 @@ const ExportButton = ({ data, fileName }: Props) => {
         date: new Date(item.date).toLocaleDateString("en-GB"),
         studentId: item.student.id, // ✅ fixed
         student: item.student.name,
-        class: `${item.student.Class.Grade.level} - ${item.student.Class.section}`,
+        class: `${item.student.enrollments[0]?.class.name}`,
         leaveType: item.leaveType,
         description: item.description || "-",
         time: new Date(item.timeIssued).toLocaleTimeString("en-GB", {
@@ -85,7 +85,7 @@ const ExportButton = ({ data, fileName }: Props) => {
         new Date(item.date).toLocaleDateString("en-GB"),
         item.student.id,
         item.student.name,
-        `${item.student.Class.Grade.level} - ${item.student.Class.section}`,
+        `${item.student.enrollments[0]?.class.name}`,
         item.leaveType,
         item.description || "-",
         new Date(item.timeIssued).toLocaleTimeString("en-GB", {

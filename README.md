@@ -1,7 +1,17 @@
 
 
-# 🎓 Student Management System — Multi-Tenant SaaS Platform
+# 🌐 SchoolDB – School Management SaaS Platform
 
+Official Product Website  
+https://schooldb.co.in
+
+Live Platform Demo  
+https://schooldb.co.in/demo
+
+Documentation  
+https://docs.schooldb.co.in
+
+![SaaS](https://img.shields.io/badge/Architecture-Multi--Tenant--SaaS-blue)
 ![Status](https://img.shields.io/badge/Status-Active-brightgreen)
 ![License](https://img.shields.io/github/license/harikiran-dev-schooldb/student-management-system)
 ![Repo Size](https://img.shields.io/github/repo-size/harikiran-dev-schooldb/student-management-system)
@@ -10,15 +20,26 @@
 ![Forks](https://img.shields.io/github/forks/harikiran-dev-schooldb/student-management-system)
 ![Stars](https://img.shields.io/github/stars/harikiran-dev-schooldb/student-management-system)
 
+## 🚦 Production Status
+
+Platform Version: **v1.0.0**
+
+Deployment Infrastructure:
+- Vercel Serverless Platform
+- Neon PostgreSQL
+- Clerk Authentication
+
+Architecture: **Multi-Tenant SaaS**
+
+The platform is actively maintained and designed for real-world school deployments.
+
 **A production-ready, multi-tenant School ERP solution for institutions — deployed on Vercel with Neon PostgreSQL and Clerk authentication.**
 
 This repository contains the web platform used to manage academic and administrative operations across multiple schools (tenants) from a single secure deployment.
 
----
-
 ## 🌐 Product Overview
 
-The **Student Management System** is a **multi-tenant, browser-based SaaS platform** designed to help schools and educational institutions manage:
+The **SchoolDB Platform** is a **multi-tenant, browser-based SaaS platform** designed to help schools and educational institutions manage:
 
 * student records
 * fee billing and payments
@@ -35,7 +56,12 @@ Each institution (tenant) operates in an isolated workspace under a single globa
 
 > Multi-tenant SaaS provides resource sharing and secure data partitioning for many customers from one deployed instance.
 
----
+## 📷 Platform Screenshots
+
+Dashboard  
+Student Management  
+Attendance Module  
+Fee Management
 
 ## 🚀 Core Product Highlights
 
@@ -95,6 +121,17 @@ School districts, coaching hubs, training institutes, chain schools, centralized
 | Payments (optional) | Razorpay (server only)                              |
 
 ---
+
+## 💰 SaaS Business Model
+
+SchoolDB operates using a **Software-as-a-Service (SaaS)** subscription model.
+
+Typical pricing strategy:
+
+- ₹2500 – ₹8000 per school per month
+- ₹10,000 – ₹20,000 onboarding/setup fee
+
+This model allows the platform to scale to **hundreds of institutions while maintaining low infrastructure overhead.**
 
 ## 📁 Project Structure
 
@@ -186,15 +223,32 @@ Multi-tenant SaaS architecture improves resource usage and reduces operational o
 
 ---
 
+## 🎯 Product Vision
+
+SchoolDB aims to become a **unified digital infrastructure for educational institutions** by providing affordable cloud-based school management tools.
+
+Long-term goals include:
+
+- Mobile applications for teachers and parents
+- Advanced academic analytics
+- AI-powered student performance insights
+- Integration with digital payment systems
+
+---
+
 ## ⚠️ License & Source Policy
 
 This repository is now **proprietary and non-open source** — it is no longer licensed under MIT in open-source mode and is restricted for internal or authorized deployment.
 
 ---
 
-## 📬 Contact
+## 👨‍💻 Maintainer
 
-Maintained by **Harikiran** — for feature access or enterprise onboarding, reach out via the internal maintainer channels (Clerk admin console + private support).
+**Harikiran**  
+Founder & Lead Developer
+
+SchoolDB – School Management SaaS Platform
+
+🌐 https://schooldb.co.in
 
 ---
-

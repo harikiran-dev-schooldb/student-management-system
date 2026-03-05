@@ -74,7 +74,7 @@ const HomeworkListPage = async ({
   const { schoolId: schoolSlug } = await params;
 
   const schoolId = await resolveSchoolId(schoolSlug);
-  
+
   const resolvedParams = await searchParams;
 
   const { page, gradeId, date, classId, ...queryParams } = resolvedParams;
@@ -104,17 +104,31 @@ const HomeworkListPage = async ({
   if (role === "teacher" && userId) {
     const teacher = await db.teacher.findFirst({
       where: { linkedUserId: userId },
-      select: { classId: true },
+      include: {
+        teacherClassAssignments: {
+          select: { classId: true },
+        },
+      },
     });
-    if (teacher?.classId) userClassIds = [teacher.classId];
+
+    if (teacher?.teacherClassAssignments?.length) {
+      userClassIds = teacher.teacherClassAssignments.map((a) => a.classId);
+    }
   }
 
   if (role === "student" && userId) {
     const student = await db.student.findFirst({
       where: { linkedUserId: userId },
-      select: { classId: true },
+      include: {
+        enrollments: {
+          select: { classId: true },
+        },
+      },
     });
-    if (student?.classId) userClassIds = [student.classId];
+
+    if (student?.enrollments?.length) {
+      userClassIds = student.enrollments.map((e) => e.classId);
+    }
   }
 
   const filters: Prisma.HomeworkWhereInput = {
@@ -122,8 +136,8 @@ const HomeworkListPage = async ({
     ...(userClassIds.length > 0
       ? { classId: { in: userClassIds } }
       : classId
-      ? { classId: Number(classId) }
-      : {}),
+        ? { classId: Number(classId) }
+        : {}),
     ...(gradeId ? { Class: { gradeId: Number(gradeId) } } : {}),
   };
 

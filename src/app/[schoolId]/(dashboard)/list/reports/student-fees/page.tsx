@@ -43,11 +43,10 @@ const StatusBadge = ({
   if (type === "due") {
     return (
       <span
-        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${
-          amount > 0
-            ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-            : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
-        }`}
+        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${amount > 0
+          ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+          : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+          }`}
       >
         {amount > 0 ? `₹${amount}` : "Paid"}
       </span>
@@ -68,17 +67,12 @@ const renderRow = (
   role: string | null,
   feeMap: Map<string, StudentFeeData>,
 ) => {
-  const studentFee = feeMap.get(item.id);
+  const fee = item.studentTotalFees?.[0];
 
-  const totalFees =
-    item.Class?.Grade?.feestructure?.reduce((acc, fee) => {
-      return acc + (fee.termFees ?? 0) + (fee.abacusFees ?? 0);
-    }, 0) || 0;
-
-  const paidAmount = studentFee?.totalPaidAmount ?? 0;
-  const discountAmount = studentFee?.totalDiscountAmount ?? 0;
-  const dueAmount = Math.max(totalFees - paidAmount - discountAmount, 0);
-
+  const totalFees = fee?.totalFeeAmount ?? 0;
+  const paidAmount = fee?.totalPaidAmount ?? 0;
+  const discountAmount = fee?.totalDiscountAmount ?? 0;
+  const dueAmount = fee?.dueAmount ?? 0;
   return (
     <tr
       key={item.id}
@@ -102,17 +96,17 @@ const renderRow = (
             <h3 className="font-semibold text-sm md:text-base text-darkfg dark:text-gray-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
               {item.name}
             </h3>
-            <span className="text-xs text-gray-500 font-mono">{item.id}</span>
+            <span className="text-xs text-gray-500 font-mono">{item.admissionNo}</span>
             {/* ✅ MOBILE ONLY: Show Class Name here */}
             <span className="md:hidden text-[10px] text-gray-400 font-medium mt-0.5">
-              {item.Class?.name ?? "N/A"}
+              {item.enrollments?.[0]?.class?.name ?? "N/A"}
             </span>
           </div>
         </div>
       </td>
       <td className="hidden md:table-cell p-4">
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-sm font-medium bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200">
-          {item.Class?.name ?? "N/A"}
+          {item.enrollments?.[0]?.class?.name ?? "N/A"}
         </span>
       </td>
       <td className="hidden lg:table-cell p-4 text-gray-600 dark:text-gray-400">
@@ -170,9 +164,16 @@ const StudentListPage = async ({
     : resolvedSearchParams.sortKey || "classId";
 
   // Build Query
-  const query: Prisma.StudentWhereInput = { status: "ACTIVE" };
-  if (classId) query.classId = Number(classId);
-  if (gradeId) query.Class = { gradeId: Number(gradeId) };
+  const query: Prisma.StudentWhereInput = {
+    status: "ACTIVE",
+  };
+
+  query.enrollments = {
+    some: {
+      ...(classId && { classId: Number(classId) }),
+      ...(gradeId && { class: { gradeId: Number(gradeId) } }),
+    },
+  };
 
   if (queryParams.search) {
     const searchValue = Array.isArray(queryParams.search)
@@ -194,14 +195,20 @@ const StudentListPage = async ({
     db.student.findMany({
       where: query,
       include: {
-        Class: { include: { Grade: { include: { feestructure: true } } } },
+        enrollments: {
+          where: { status: "ACTIVE" },
+          include: {
+            class: {
+              include: {
+                Grade: true,
+              },
+            },
+          },
+        },
         totalFees: true,
-        studentFees: { include: { feeStructure: true } },
+        studentFees: true,
       },
       orderBy: [
-        { [sortKey]: sortOrder },
-        { classId: "asc" },
-        { gender: "desc" },
         { name: "asc" },
       ],
       take: ITEM_PER_PAGE,

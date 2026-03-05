@@ -42,11 +42,7 @@ const TeacherProfilePage = async ({ params }: TeacherSinglePageProps) => {
   const db = tenantPrisma(school.id);
 
   // 🔐 Role-based access control
-  if (role === "student") {
-    notFound();
-  }
-
-  if (role === "teacher" && teacherId !== id) {
+  if (role === "student" || (role === "teacher" && teacherId !== id)) {
     notFound();
   }
 
@@ -54,13 +50,27 @@ const TeacherProfilePage = async ({ params }: TeacherSinglePageProps) => {
   const teacher = await db.teacher.findUnique({
     where: { id },
     include: {
-      class: {
+      teacherClassAssignments: {
         include: {
-          Grade: true,
-          _count: { select: { students: true, lessons: true } },
+          class: {
+            include: {
+              Grade: true,
+              _count: {
+                select: {
+                  lessons: true,
+                  studentEnrollments: true,
+                },
+              },
+            },
+          },
         },
       },
-      _count: { select: { subjects: true, lessons: true } },
+      _count: {
+        select: {
+          subjects: true,
+          lessons: true,
+        },
+      },
     },
   });
 
@@ -74,7 +84,13 @@ const TeacherProfilePage = async ({ params }: TeacherSinglePageProps) => {
     );
   };
 
-  const totalStudents = teacher.class?._count?.students ?? 0;
+  const classData = teacher.teacherClassAssignments[0]?.class;
+
+  const totalStudents = classData?._count?.studentEnrollments ?? 0;
+
+  const classId = classData?.id;
+
+  const className = classData ? `${classData.name}` : "N/A"
 
   return (
     <div className="flex flex-col flex-1 gap-6 p-6 bg-gray-50/50 dark:bg-darkMode min-h-screen">
@@ -137,7 +153,7 @@ const TeacherProfilePage = async ({ params }: TeacherSinglePageProps) => {
                       •
                     </span>
                     <span className="capitalize">{teacher.gender}</span>
-                    {teacher.class && (
+                    {classData && (
                       <>
                         <span className="hidden md:inline text-gray-300 dark:text-gray-700">
                           •
@@ -177,9 +193,8 @@ const TeacherProfilePage = async ({ params }: TeacherSinglePageProps) => {
                 />
                 <InfoItem
                   icon={<Users size={18} />}
-                  label="Supervisor"
-                  value={teacher.supervisor !== null ? "Yes" : "No"}
-                  highlight={teacher.supervisor}
+                  label="Role"
+                  value="Teacher"
                 />
               </div>
             </div>
@@ -195,7 +210,7 @@ const TeacherProfilePage = async ({ params }: TeacherSinglePageProps) => {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <StatCard
                 label="Class"
-                value={teacher.class?.name || "N/A"}
+                value={className || "N/A"}
                 icon={<GraduationCap size={20} />}
                 colorClass="bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400"
               />
@@ -232,10 +247,10 @@ const TeacherProfilePage = async ({ params }: TeacherSinglePageProps) => {
 
             <div className="flex flex-col gap-3">
               <ShortcutButton
-                href={`/list/users/students?classId=${teacher.classId}`}
+                href={`/list/users/students?classId=${classId}`}
                 label="View My Students"
                 icon={<Users size={18} />}
-                disabled={!teacher.classId}
+                disabled={!classId}
               />
               <ShortcutButton
                 href={`/list/lessons?teacherId=${teacher.id}`}
@@ -284,11 +299,10 @@ const InfoItem = ({
 }) => (
   <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
     <div
-      className={`p-2.5 rounded-full shrink-0 ${
-        highlight
-          ? "bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400"
-          : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
-      }`}
+      className={`p-2.5 rounded-full shrink-0 ${highlight
+        ? "bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400"
+        : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
+        }`}
     >
       {icon}
     </div>
@@ -297,11 +311,10 @@ const InfoItem = ({
         {label}
       </p>
       <p
-        className={`text-sm font-medium truncate ${
-          highlight
-            ? "text-purple-700 dark:text-purple-300"
-            : "text-gray-700 dark:text-gray-200"
-        }`}
+        className={`text-sm font-medium truncate ${highlight
+          ? "text-purple-700 dark:text-purple-300"
+          : "text-gray-700 dark:text-gray-200"
+          }`}
         title={value || ""}
       >
         {value || "Not provided"}

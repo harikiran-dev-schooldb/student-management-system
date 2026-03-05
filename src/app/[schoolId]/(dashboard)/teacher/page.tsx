@@ -39,11 +39,6 @@ const TeacherPage = async ({ params }: PageProps) => {
     redirect(`/${slug}/logout`);
   }
 
-  // 🔁 Role routing
-  if (role === "admin") {
-    redirect(`/${slug}/admin`);
-  }
-
   // 🔒 Only teacher allowed
   if (role !== "teacher" || !teacherId) {
     redirect(`/${slug}/logout`);
@@ -52,12 +47,26 @@ const TeacherPage = async ({ params }: PageProps) => {
   // 5️⃣ Fetch teacher safely
   const teacher = await db.teacher.findUnique({
     where: { id: teacherId },
-    include: { class: true },
+    include: {
+      teacherClassAssignments: {
+        where: {
+          academicYear: { isActive: true },
+        },
+        include: {
+          class: true,
+        },
+      },
+    },
   });
 
   if (!teacher) {
     redirect(`/${slug}/logout`);
   }
+
+  const className =
+    teacher.teacherClassAssignments?.[0]?.class?.name ?? null;
+  const isClass =
+  teacher.teacherClassAssignments?.[0]?.class ?? null;
 
   return (
     <div className="flex flex-col gap-6 p-6 min-h-screen bg-gray-50/50 dark:bg-darkbg">
@@ -86,9 +95,9 @@ const TeacherPage = async ({ params }: PageProps) => {
               <h2 className="text-lg font-bold text-gray-900 dark:text-white">
                 My Schedule
               </h2>
-              {teacher.class && (
+              {isClass && (
                 <span className="text-xs font-medium bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 px-2 py-1 rounded-md">
-                  Class Teacher: {teacher.class.name}
+                  Class Teacher: {className}
                 </span>
               )}
             </div>

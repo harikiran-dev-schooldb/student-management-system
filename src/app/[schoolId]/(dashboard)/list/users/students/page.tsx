@@ -45,7 +45,7 @@ const renderRow = (
         <h3 className="font-semibold text-darkMode dark:text-gray-100">
           {item.name}
         </h3>
-        <p className="text-xs text-darkMode dark:text-gray-300">{item.id}</p>
+        <p className="text-xs text-darkMode dark:text-gray-300">{item.admissionNo}</p>
       </div>
     </td>
 
@@ -204,8 +204,6 @@ const StudentListPage = async ({
     };
   }
 
-  const hasClassFilter = teacher || grade;
-
   const query: Prisma.StudentWhereInput = {
     schoolId: school.id,
     status: {
@@ -222,7 +220,7 @@ const StudentListPage = async ({
     ...(search && {
       OR: [
         { name: { contains: search, mode: "insensitive" } },
-        { id: { contains: search } },
+        { admissionNo: { contains: search } },
         { phone: { contains: search } },
       ],
     }),

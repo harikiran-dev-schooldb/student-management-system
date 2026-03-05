@@ -19,6 +19,7 @@ import {
   Book,
 } from "lucide-react";
 import { tenantPrisma } from "@/lib/tenant-prisma";
+import { SingleTeacherSelect } from "../../../../../../../../types/query-types";
 
 interface TeacherSinglePageProps {
   params: Promise<{ id: string; schoolId: string }>;
@@ -103,20 +104,19 @@ const SingleTeacherPage = async ({ params }: TeacherSinglePageProps) => {
 
   const teacher = await db.teacher.findUnique({
     where: { id },
-    include: {
-      class: {
-        include: {
-          Grade: true,
-          _count: { select: { students: true, lessons: true } },
-        },
-      },
-      _count: { select: { subjects: true, lessons: true } },
-    },
+    select: SingleTeacherSelect,
   });
 
   if (!teacher) return notFound();
 
-  const totalStudents = teacher.class?._count?.students ?? 0;
+  const supervisorClass = teacher.teacherClassAssignments.find(
+    (a) => a.role === "SUPERVISOR"
+  )?.class;
+
+  const totalStudents = teacher.teacherClassAssignments.reduce(
+    (sum, a) => sum + (a.class?._count?.studentEnrollments || 0),
+    0
+  );
 
   return (
     <div className="flex flex-col flex-1 gap-6 p-6 xl:flex-row bg-gray-50/50 dark:bg-darkMode min-h-screen">
@@ -183,8 +183,8 @@ const SingleTeacherPage = async ({ params }: TeacherSinglePageProps) => {
                   value={
                     teacher.dob
                       ? new Intl.DateTimeFormat("en-GB").format(
-                          new Date(teacher.dob),
-                        )
+                        new Date(teacher.dob),
+                      )
                       : "N/A"
                   }
                 />
@@ -207,9 +207,13 @@ const SingleTeacherPage = async ({ params }: TeacherSinglePageProps) => {
               <div>
                 <h2
                   className="text-lg font-bold text-gray-900 dark:text-white truncate max-w-[100px]"
-                  title={teacher.class?.name || ""}
+                  title={supervisorClass
+                    ? `${supervisorClass.Grade.level}-${supervisorClass.section}`
+                    : "N/A"}
                 >
-                  {teacher.class?.name || "N/A"}
+                  {supervisorClass
+                    ? `${supervisorClass.name}`
+                    : "N/A"}
                 </h2>
                 <span className="text-xs font-medium text-gray-500 uppercase">
                   Class

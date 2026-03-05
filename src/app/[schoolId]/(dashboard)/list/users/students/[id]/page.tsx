@@ -83,6 +83,11 @@ const SingleStudentPage = async ({ params }: StudentSinglePageProps) => {
 
   if (!student) return notFound();
 
+  const section = student.enrollments[0]?.class.section || "N/A";
+  const grade = student.enrollments[0]?.class.Grade.level || "N/A";
+  const class_count = student.enrollments[0]?.class._count.lessons || 0;
+  const classId = student.enrollments[0]?.class.id || 0;
+  
   return (
     <div className="flex flex-col flex-1 gap-6 p-6 xl:flex-row bg-gray-50/50 dark:bg-darkMode min-h-screen">
       {/* ================= LEFT COLUMN (Profile, Metrics, Schedule) ================= */}
@@ -123,7 +128,7 @@ const SingleStudentPage = async ({ params }: StudentSinglePageProps) => {
                     <span className="capitalize">{student.gender}</span>
                     <span className="w-1 h-1 bg-gray-300 rounded-full" />
                     <span className="bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded text-xs font-mono text-gray-600 dark:text-gray-300">
-                      ID: {student.id}
+                      ID: {student.admissionNo}
                     </span>
                   </p>
                 </div>
@@ -197,7 +202,7 @@ const SingleStudentPage = async ({ params }: StudentSinglePageProps) => {
               </div>
               <div>
                 <h2 className="text-lg font-bold text-gray-900 dark:text-white">
-                  {student.Class.Grade.level}
+                  {grade}
                 </h2>
                 <span className="text-xs font-medium text-gray-500 ">
                   Grade
@@ -212,7 +217,7 @@ const SingleStudentPage = async ({ params }: StudentSinglePageProps) => {
               </div>
               <div>
                 <h2 className="text-lg font-bold text-gray-900 dark:text-white">
-                  {student.Class._count.lessons}
+                  {class_count}
                 </h2>
                 <span className="text-xs font-medium text-gray-500 ">
                   Lessons
@@ -227,7 +232,7 @@ const SingleStudentPage = async ({ params }: StudentSinglePageProps) => {
               </div>
               <div>
                 <h2 className="text-lg font-bold text-gray-900 dark:text-white">
-                  {student.Class.section}
+                  {section}
                 </h2>
                 <span className="text-xs font-medium text-gray-500 ">
                   Section
@@ -245,7 +250,7 @@ const SingleStudentPage = async ({ params }: StudentSinglePageProps) => {
               Weekly Schedule
             </h3>
           </div>
-          <ClassTimetableContainer classId={student.Class.id} />
+          <ClassTimetableContainer classId={classId} />
         </div>
       </div>
 
