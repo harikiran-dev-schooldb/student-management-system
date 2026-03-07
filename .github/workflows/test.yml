@@ -2,12 +2,12 @@ name: API Tests
 
 on:
   push:
-    branches: [ main, dev ]
+    branches: [ master, api_test ]
   pull_request:
-    branches: [ main ]
+    branches: [ master ]
 
 jobs:
-  test:
+  api-test:
     runs-on: ubuntu-latest
 
     steps:
