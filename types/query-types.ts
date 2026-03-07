@@ -573,14 +573,14 @@ export const ExamListSelect = {
       startTime: true,
       maxMarks: true,
 
-      Grade: {
+      grade: {
         select: {
           id: true,
           level: true,
         },
       },
 
-      Subject: {
+      subject: {
         select: {
           id: true,
           name: true,

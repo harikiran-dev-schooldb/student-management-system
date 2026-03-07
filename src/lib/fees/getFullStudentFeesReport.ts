@@ -3,27 +3,45 @@ import { calculateStudentFeeReport } from "@/lib/fees/feeUtils";
 
 export async function getFullStudentFeesReport(
   schoolId: string,
-  academicYear?: string
+  academicYearId?: string
 ) {
-  const whereClause: any = {
-    schoolId,
-    status: "ACTIVE",
-  };
-
-  if (academicYear) {
-    whereClause.academicYear = academicYear;
-  }
-
   const students = await prisma.student.findMany({
-    where: whereClause,
+    where: {
+      schoolId,
+      status: "ACTIVE",
+    },
+
     include: {
-      Class: {
-        select: {
-          name: true,
+      enrollments: {
+        where: academicYearId
+          ? { academicYearId }
+          : undefined,
+        include: {
+          class: {
+            select: {
+              name: true,
+              section: true,
+              Grade: {
+                select: {
+                  level: true,
+                },
+              },
+            },
+          },
         },
+        take: 1,
       },
-      totalFees: true,
+
+      totalFees: academicYearId
+        ? {
+            where: { academicYearId },
+          }
+        : true,
+
       studentFees: {
+        where: academicYearId
+          ? { academicYearId }
+          : undefined,
         include: {
           feeStructure: true,
         },
@@ -31,10 +49,17 @@ export async function getFullStudentFeesReport(
     },
   });
 
-  return students.map((student) =>
-    calculateStudentFeeReport({
+  return students.map((student) => {
+    const enrollment = student.enrollments[0];
+
+    return calculateStudentFeeReport({
       ...student,
-      Class: { name: student.Class?.name ?? "-" },
-    })
-  );
+
+      Class: enrollment
+        ? {
+            name: `${enrollment.class.Grade.level}-${enrollment.class.section}`,
+          }
+        : { name: "-" },
+    });
+  });
 }

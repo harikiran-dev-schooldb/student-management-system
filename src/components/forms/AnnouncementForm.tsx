@@ -10,6 +10,7 @@ import {
 import React, { Dispatch, SetStateAction, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { useParams, useRouter } from "next/navigation";
+import { useTenantApi } from "@/hooks/useTenantApi";
 
 // Custom hook for API calls
 const useApiRequest = () => {
@@ -57,7 +58,6 @@ const AnnouncementForm = ({
     register,
     handleSubmit,
     formState: { errors },
-    reset,
   } = useForm<AnnouncementSchema>({
     resolver: zodResolver(announcementSchema),
     defaultValues: data || {}, // Pre-fill for update
@@ -65,13 +65,10 @@ const AnnouncementForm = ({
 
   const router = useRouter();
 
-  const { makeRequest } = useApiRequest();
-
   useEffect(() => {
     if (status === "success") {
       toast.success(
-        `Announcement ${
-          type === "create" ? "created" : "updated"
+        `Announcement ${type === "create" ? "created" : "updated"
         } successfully!`,
       );
       setOpen(false);
@@ -79,9 +76,7 @@ const AnnouncementForm = ({
     }
   }, [status, setOpen, router, type]);
 
-  const { schoolId } = useParams<{ schoolId: string }>();
-
-  const baseUrl = `/api/v1/tenants/${schoolId}/announcements`;
+  const api = useTenantApi();
 
   const onSubmit = handleSubmit(async (formData) => {
     try {
@@ -93,10 +88,9 @@ const AnnouncementForm = ({
         classId: formData.classId ?? null,
       };
 
-      const url = type === "create" ? baseUrl : `${baseUrl}/${data?.id}`;
+      const endpoint = type === "create" ? `/announcements` : `/announcements/${data?.id}`;
 
-      const method = type === "create" ? "POST" : "PUT";
-      await makeRequest(url, method, payload);
+      await api.post(endpoint, payload);
 
       setStatus("success");
     } catch (error: any) {

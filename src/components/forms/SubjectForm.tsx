@@ -36,12 +36,10 @@ const SubjectForm = ({
     },
   });
 
-  const schoolId = useSchoolSlug();
-const api = useTenantApi(schoolId);
+  const api = useTenantApi();
 
   const onSubmit = async (formData: SubjectSchema) => {
     try {
-      if (!schoolId) return;
 
       const dataToSend =
         type === "create"

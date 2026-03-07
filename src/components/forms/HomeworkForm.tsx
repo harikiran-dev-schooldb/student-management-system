@@ -7,7 +7,6 @@ import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 import { homeworkSchema, HomeworkSchema } from "@/lib/formValidationSchemas";
 import { useTenantApi } from "@/hooks/useTenantApi";
-import { useSchoolSlug } from "../hooks/getschool";
 
 const HomeworkForm = ({
   type,
@@ -47,8 +46,7 @@ const HomeworkForm = ({
     if (gradeId) setSelectedGrade(Number(gradeId));
   }, [gradeId]);
 
-  const schoolId = useSchoolSlug();
-  const api = useTenantApi(schoolId);
+  const api = useTenantApi();
 
   const onSubmit = async (formData: HomeworkSchema) => {
     setLoading(true);

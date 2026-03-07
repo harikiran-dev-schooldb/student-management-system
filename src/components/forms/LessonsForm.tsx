@@ -56,8 +56,7 @@ const LessonForm = ({
   });
 
   const classIdWatch = watch("classId");
-  const schoolId = useSchoolSlug();
-  const api = schoolId ? useTenantApi(schoolId) : null;
+  const api = useTenantApi();
 
   useEffect(() => {
     if (!classIdWatch || !api) return;

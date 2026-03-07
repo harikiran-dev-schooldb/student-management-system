@@ -6,12 +6,13 @@ export async function getAdminDashboardData(
   schoolSlug: string,
   targetDate: Date,
 ) {
-  // ✅ Resolve FIRST
+  /* ---------------- Resolve Tenant ---------------- */
+
   const schoolId = await resolveSchoolId(schoolSlug);
 
   const cached = unstable_cache(
     async () => {
-      /* ---------------- Date Range ---------------- */
+      /* ---------------- Date Range (Last 30 Days) ---------------- */
 
       const end = new Date(targetDate);
       end.setHours(23, 59, 59, 999);
@@ -20,7 +21,7 @@ export async function getAdminDashboardData(
       start.setDate(start.getDate() - 29);
       start.setHours(0, 0, 0, 0);
 
-      /* ---------------- Attendance ---------------- */
+      /* ---------------- Attendance Chart ---------------- */
 
       const attendanceRaw = await prisma.attendance.groupBy({
         by: ["date"],
@@ -96,13 +97,18 @@ export async function getAdminDashboardData(
       /* ---------------- Finance Chart ---------------- */
 
       const financeMap = new Map<string, number>(
-        financeRaw.map((row) => [
-          row.receiptDate.toISOString().split("T")[0],
-          row._sum.amount ?? 0,
-        ]),
+        financeRaw.map((row) => {
+          const date = row.receiptDate.toISOString().split("T")[0];
+          const amount = row._sum.amount
+            ? Number(row._sum.amount)
+            : 0;
+
+          return [date, amount] as [string, number];
+        }),
       );
 
       const finance: { date: string; collected: number }[] = [];
+
       const cursor = new Date(start);
 
       while (cursor <= end) {
@@ -116,6 +122,8 @@ export async function getAdminDashboardData(
         cursor.setDate(cursor.getDate() + 1);
       }
 
+      /* ---------------- Final Result ---------------- */
+
       return {
         adminCount,
         teacherCount,
@@ -127,10 +135,15 @@ export async function getAdminDashboardData(
       };
     },
 
-    // ✅ Tenant-safe cache key
+    /* ---------------- Cache Key (Tenant Safe) ---------------- */
+
     ["admin-dashboard", schoolId, targetDate.toISOString()],
-    { revalidate: 60 },
+
+    {
+      revalidate: 60, // cache for 60 seconds
+    },
   );
 
   return cached();
 }
+

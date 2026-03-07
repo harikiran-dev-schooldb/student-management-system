@@ -16,9 +16,7 @@ export default function PromoteStudentsPage() {
   const [toGrade, setToGrade] = useState<number>();
   const [fromClass, setFromClass] = useState<number>();
   const [toClass, setToClass] = useState<number>();
-  const [newAcademicYear, setNewAcademicYear] =
-    useState<AcademicYear>("Y2025_2026");
-
+  const [newAcademicYear, setNewAcademicYear] = useState<string>("Y2025_2026");
   const [fromClasses, setFromClasses] = useState<Class[]>([]);
   const [toClasses, setToClasses] = useState<Class[]>([]);
 
@@ -226,7 +224,7 @@ export default function PromoteStudentsPage() {
           label="Academic Year"
           icon={<GraduationCap className="w-4 h-4" />}
           value={newAcademicYear}
-          onChange={(val) => setNewAcademicYear(val as AcademicYear)}
+          onChange={(val) => setNewAcademicYear(val)}
           options={[
             { value: "Y2024_2025", label: "2024-2025" },
             { value: "Y2025_2026", label: "2025-2026" },
@@ -283,11 +281,10 @@ export default function PromoteStudentsPage() {
                   return (
                     <tr
                       key={s.id}
-                      className={`border-t transition-colors ${
-                        isSelected
+                      className={`border-t transition-colors ${isSelected
                           ? "bg-indigo-50/40 dark:bg-zinc-800/40"
                           : "hover:bg-indigo-50/40 dark:hover:bg-zinc-800/50"
-                      }`}
+                        }`}
                     >
                       <td className="p-4">
                         <input

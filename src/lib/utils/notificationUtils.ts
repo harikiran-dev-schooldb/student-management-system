@@ -1,5 +1,3 @@
-// src/lib/utils/notificationUtils.ts
-
 import prisma from "@/lib/prisma";
 import { getMessageContent } from "./messageUtils";
 import { MessageType } from "../../../types";
@@ -20,25 +18,39 @@ export async function createStudentMessage(
 
   const { studentId, date, type, classId, schoolId } = input;
 
-  /* 🔒 1️⃣ Validate student belongs to tenant */
+  /* 🔒 1️⃣ Validate student + get enrollment */
   const student = await db.student.findFirst({
     where: {
       id: studentId,
       schoolId,
     },
     select: {
+      id: true,
       name: true,
-      classId: true,
-      Class: {
+      enrollments: {
+        where: { status: "ACTIVE" },
         select: {
-          name: true,
-          Grade: { select: { level: true } },
+          classId: true,
+          class: {
+            select: {
+              name: true,
+              section: true,
+              Grade: {
+                select: {
+                  level: true,
+                },
+              },
+            },
+          },
         },
+        take: 1,
       },
     },
   });
 
   if (!student) return null;
+
+  const enrollment = student.enrollments[0];
 
   /* 🔒 2️⃣ Fetch school name */
   const school = await db.schoolInfo.findUnique({
@@ -48,8 +60,8 @@ export async function createStudentMessage(
 
   if (!school) return null;
 
-  const className = student.Class
-    ? `Grade ${student.Class.Grade?.level ?? ""} - ${student.Class.name}`
+  const className = enrollment
+    ? `Grade ${enrollment.class.Grade.level} - ${enrollment.class.section}`
     : undefined;
 
   const message = getMessageContent(type, {
@@ -66,7 +78,7 @@ export async function createStudentMessage(
       type,
       date: new Date(date),
       studentId,
-      classId: classId ?? student.classId ?? undefined,
+      classId: classId ?? enrollment?.classId ?? undefined,
       schoolId,
     },
   });

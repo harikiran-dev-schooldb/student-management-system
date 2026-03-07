@@ -37,12 +37,11 @@ const TeacherForm = ({
   });
 
   const router = useRouter();
-  const schoolId = useSchoolSlug();
-  const api = useTenantApi(schoolId);
+  const api = useTenantApi();
 
   const formAction = async (formData: any) => {
     try {
-      if (!schoolId) return;
+      if (!api) return;
 
       const payload = { ...formData, img: img?.secure_url };
 

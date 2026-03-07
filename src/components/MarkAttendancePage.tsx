@@ -18,7 +18,6 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import { useParams } from "next/navigation";
 import { tenantFetch } from "@/lib/tenantFetch";
 import { useSchoolSlug } from "./hooks/getschool";
 
@@ -103,7 +102,7 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
 
     setLoading(true);
 
-    
+
 
     try {
       const selectedDate = getValues("date") || today;
@@ -184,7 +183,7 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
 
   /* -------------------- Filtering & Pagination -------------------- */
 
-  
+
 
   // 1. Filter Logic: Runs on the ENTIRE list first
   const filteredStudents = useMemo(() => {
@@ -234,13 +233,23 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
 
   console.log("Frontend schoolId:", schoolId);
 
+
+
   const onSubmit = async (data: any) => {
+
+    const classId = role === "teacher" ? teacherClassId : selectedClass;
+
+    if (!classId) {
+      toast.error("Class not selected");
+      setSubmitting(false);
+      return;
+    }
     if (!students.length) return;
     setSubmitting(true);
 
     const payload = students.map((s) => ({
       studentId: s.id,
-      classId: s.classId,
+      classId,
       date: data.date,
       present: attendance[s.id] ?? true,
     }));
@@ -357,11 +366,10 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
                 onClick={fetchStudents}
                 disabled={loading}
                 className={`w-full h-10 inline-flex items-center justify-center gap-2 rounded-lg font-medium text-white transition-all
-        ${
-          loading
-            ? "bg-slate-400 cursor-not-allowed"
-            : "bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] shadow-sm"
-        }`}
+        ${loading
+                    ? "bg-slate-400 cursor-not-allowed"
+                    : "bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] shadow-sm"
+                  }`}
               >
                 {loading ? "Loading..." : "Load Students"}
                 {loading ? (
@@ -434,30 +442,27 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
                   className={`group relative flex items-center p-4 rounded-xl border-2 transition-all duration-200 text-left active:scale-[0.98]
 
                     // Attendance Cards 
-                    ${
-                      isPresent
-                        ? "bg-white dark:bg-darkfg border-slate-200 dark:border-slate-800 hover:border-emerald-400 dark:hover:border-emerald-500/50"
-                        : "bg-rose-50/50 dark:bg-rose-900/10 border-rose-200 dark:border-rose-800/50"
+                    ${isPresent
+                      ? "bg-white dark:bg-darkfg border-slate-200 dark:border-slate-800 hover:border-emerald-400 dark:hover:border-emerald-500/50"
+                      : "bg-rose-50/50 dark:bg-rose-900/10 border-rose-200 dark:border-rose-800/50"
                     } shadow-sm hover:shadow-md`}
                 >
                   <div
                     className={`h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold mr-3 transition-colors
-                    ${
-                      isPresent
+                    ${isPresent
                         ? "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 group-hover:bg-emerald-100 group-hover:text-emerald-700 dark:group-hover:bg-emerald-500/20 dark:group-hover:text-emerald-400"
                         : "bg-white dark:bg-darkMode text-rose-500"
-                    }`}
+                      }`}
                   >
                     {s.name.charAt(0)}
                   </div>
 
                   <div className="flex-1 min-w-0">
                     <p
-                      className={`font-semibold text-sm truncate ${
-                        isPresent
-                          ? "text-darkfg dark:text-slate-100"
-                          : "text-rose-700 dark:text-rose-400"
-                      }`}
+                      className={`font-semibold text-sm truncate ${isPresent
+                        ? "text-darkfg dark:text-slate-100"
+                        : "text-rose-700 dark:text-rose-400"
+                        }`}
                     >
                       {s.name}
                     </p>
@@ -467,26 +472,23 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
                   </div>
 
                   <div
-                    className={`absolute top-3 right-3 transition-transform duration-200 ${
-                      isPresent ? "scale-0 opacity-0" : "scale-100 opacity-100"
-                    }`}
+                    className={`absolute top-3 right-3 transition-transform duration-200 ${isPresent ? "scale-0 opacity-0" : "scale-100 opacity-100"
+                      }`}
                   >
                     <X className="w-5 h-5 text-rose-500" />
                   </div>
                   <div
-                    className={`absolute top-3 right-3 transition-transform duration-200 ${
-                      !isPresent ? "scale-0 opacity-0" : "scale-100 opacity-100"
-                    }`}
+                    className={`absolute top-3 right-3 transition-transform duration-200 ${!isPresent ? "scale-0 opacity-0" : "scale-100 opacity-100"
+                      }`}
                   >
                     <Check className="w-5 h-5 text-slate-200 dark:text-slate-700 group-hover:text-emerald-500" />
                   </div>
 
                   <div
-                    className={`absolute bottom-3 right-3 text-[10px] font-bold uppercase tracking-wider ${
-                      isPresent
-                        ? "text-slate-300 dark:text-slate-600 group-hover:text-emerald-600"
-                        : "text-rose-600 dark:text-rose-400"
-                    }`}
+                    className={`absolute bottom-3 right-3 text-[10px] font-bold uppercase tracking-wider ${isPresent
+                      ? "text-slate-300 dark:text-slate-600 group-hover:text-emerald-600"
+                      : "text-rose-600 dark:text-rose-400"
+                      }`}
                   >
                     {isPresent ? "Present" : "Absent"}
                   </div>

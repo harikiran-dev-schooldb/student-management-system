@@ -39,8 +39,8 @@ export async function getExamsForDate(date: string) {
             },
           },
           include: {
-            Grade: true,
-            Subject: true,
+            grade: true,
+            subject: true,
           },
         },
       },

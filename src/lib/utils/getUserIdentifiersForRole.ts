@@ -14,38 +14,63 @@ export const getUserIdentifiersForRole = async (
     return { classId: null, studentId: null };
   }
 
+  /* ---------------- STUDENT ---------------- */
+
   if (role === "student") {
-    const clerkStudent = await prisma.profile.findUnique({
+    const profile = await prisma.profile.findUnique({
       where: { clerk_id: userId },
       select: {
-        student: { select: { classId: true, id: true } },
+        student: {
+          select: {
+            id: true,
+            enrollments: {
+              where: { status: "ACTIVE" },
+              select: {
+                classId: true,
+              },
+              take: 1,
+            },
+          },
+        },
       },
     });
 
-    const firstStudent = clerkStudent?.student[0] ?? null;
+    const student = profile?.student?.[0];
 
     return {
-      classId: firstStudent?.classId ?? null,
-      studentId: firstStudent?.id ?? null,
+      classId: student?.enrollments?.[0]?.classId ?? null,
+      studentId: student?.id ?? null,
     };
   }
 
+  /* ---------------- TEACHER ---------------- */
+
   if (role === "teacher") {
-    const clerkTeacher = await prisma.profile.findUnique({
+    const profile = await prisma.profile.findUnique({
       where: { clerk_id: userId },
       select: {
-        teacher: { select: { classId: true, id: true } },
+        teacher: {
+          select: {
+            teacherClassAssignments: {
+              select: {
+                classId: true,
+              },
+              take: 1,
+            },
+          },
+        },
       },
     });
 
-    const firstTeacher = clerkTeacher?.teacher[0] ?? null;
+    const teacher = profile?.teacher?.[0];
 
     return {
-      classId: firstTeacher?.classId ?? null,
+      classId: teacher?.teacherClassAssignments?.[0]?.classId ?? null,
       studentId: null,
     };
   }
 
-  // ✅ default for all other roles
+  /* ---------------- DEFAULT ---------------- */
+
   return { classId: null, studentId: null };
 };

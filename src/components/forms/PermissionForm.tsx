@@ -6,8 +6,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 import { SlipSchema, slipSchema } from "@/lib/formValidationSchemas";
-import { useSchoolSlug } from "../hooks/getschool";
 import { useTenantApi } from "@/hooks/useTenantApi";
+
+interface PermissionResponse {
+  gateSlipPdf?: string;
+}
 
 const PermissionForm = ({
   type,
@@ -89,13 +92,12 @@ const PermissionForm = ({
     ? students.filter((stu) => stu.classId === selectedClass)
     : [];
 
-  const schoolId = useSchoolSlug();
-  const api = useTenantApi(schoolId);
+  const api = useTenantApi();
   const onSubmit = async (formData: SlipSchema) => {
     try {
-      if (!schoolId) return;
+      if (!api) return;
 
-      const { data } = await api.post("/permissions", formData);
+      const { data } = await api.post<PermissionResponse>("/permissions", formData);
 
       toast.success("Permission slip created successfully!");
       setOpen(false);
@@ -265,8 +267,8 @@ const PermissionForm = ({
         {isSubmitting
           ? "Submitting..."
           : type === "create"
-          ? "Submit Slip"
-          : "Update Slip"}
+            ? "Submit Slip"
+            : "Update Slip"}
       </button>
     </form>
   );
