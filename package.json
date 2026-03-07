@@ -16,7 +16,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:api": "jest tests/api",
-    "test:all-apis": "ts-node scripts/testAllApis.ts"
+    "test:all-apis": "tsx scripts/testAllApis.ts"
   },
   "dependencies": {
     "@capacitor/android": "^8.0.0",
@@ -125,7 +125,7 @@
     "tailwindcss": "^3.4.14",
     "ts-jest": "^29.4.6",
     "ts-node": "^10.9.2",
-    "tsx": "^4.19.3",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   },
   "overrides": {
