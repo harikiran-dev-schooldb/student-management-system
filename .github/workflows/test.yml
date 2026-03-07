@@ -2,34 +2,31 @@ name: API Tests
 
 on:
   push:
-    branches: [ master, api_test ]
-  pull_request:
-    branches: [ master ]
+    branches: ["**"]
 
 jobs:
   api-test:
     runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: Install dependencies
-        run: npm install
+      - run: npm install
 
-      - name: Generate Prisma client
-        run: npx prisma generate
+      - run: npx prisma generate
 
-      - name: Start Next.js server
+      - run: npm run build
+
+      - name: Start server
         run: |
-          npm run build
           npm run start &
-          sleep 10
+          npx wait-on http://localhost:3000
 
-      - name: Run API tests
-        run: npm run test:api
+      - run: npm run test:api
