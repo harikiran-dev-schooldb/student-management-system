@@ -63,6 +63,7 @@ const InfoRow = ({
 
 const SingleStudentPage = async ({ params }: StudentSinglePageProps) => {
   const { id, schoolId: slug } = await params;
+  console.log("Fetching student page for:", { slug, id });
 
   // 1️⃣ Resolve internal school ID
   const school = await prisma.schoolInfo.findUnique({
@@ -87,7 +88,7 @@ const SingleStudentPage = async ({ params }: StudentSinglePageProps) => {
   const grade = student.enrollments[0]?.class.Grade.level || "N/A";
   const class_count = student.enrollments[0]?.class._count.lessons || 0;
   const classId = student.enrollments[0]?.class.id || 0;
-  
+
   return (
     <div className="flex flex-col flex-1 gap-6 p-6 xl:flex-row bg-gray-50/50 dark:bg-darkMode min-h-screen">
       {/* ================= LEFT COLUMN (Profile, Metrics, Schedule) ================= */}
@@ -138,6 +139,7 @@ const SingleStudentPage = async ({ params }: StudentSinglePageProps) => {
                     type="update"
                     data={{
                       ...student,
+                      studentId: student.id,
                       dob: student.dob
                         ? student.dob.toISOString().split("T")[0]
                         : "",
@@ -163,8 +165,8 @@ const SingleStudentPage = async ({ params }: StudentSinglePageProps) => {
                   value={
                     student.dob
                       ? new Intl.DateTimeFormat("en-GB").format(
-                          new Date(student.dob),
-                        )
+                        new Date(student.dob),
+                      )
                       : "N/A"
                   }
                 />

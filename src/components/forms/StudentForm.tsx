@@ -28,15 +28,11 @@ const StudentForm = ({
   setOpen: Dispatch<SetStateAction<boolean>>;
   relatedData?: any;
 }) => {
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm<Studentschema>({
+  const form = useForm<Studentschema>({
     resolver: zodResolver(studentschema),
-    defaultValues: data || {},
   });
+
+  const { register, handleSubmit, reset, formState: { errors } } = form;
 
   const { classes } = relatedData;
   const [img, setImg] = useState<any>();
@@ -52,9 +48,15 @@ const StudentForm = ({
   const router = useRouter();
   const { schoolId } = useParams<{ schoolId: string }>();
 
-
   useEffect(() => {
-    reset(data);
+    if (!data) return;
+
+    reset({
+      ...data,
+      dob: data?.dob
+        ? new Date(data.dob).toISOString().split("T")[0]
+        : "",
+    });
   }, [data, reset]);
 
 
@@ -71,19 +73,21 @@ const StudentForm = ({
 
   const formAction = async (formData: any) => {
     try {
-      const payload = {
-        ...formData,
-        img: img?.secure_url ?? null,
-      };
+      const cleanedPayload = Object.fromEntries(
+        Object.entries({
+          ...formData,
+          img: img?.secure_url ?? data?.img ?? null,
+        }).filter(([_, v]) => v !== "" && v !== undefined && v !== null)
+      );
 
       await tenantFetch(
         schoolId,
         type === "update"
-          ? `/users/students/${formData.id}`
+          ? `/users/students/${data?.id}`
           : `/users/students`,
         {
           method: type === "update" ? "PUT" : "POST",
-          body: JSON.stringify(payload),
+          body: JSON.stringify(cleanedPayload),
         }
       );
 
@@ -96,7 +100,6 @@ const StudentForm = ({
       });
     }
   };
-
   useEffect(() => {
     if (state.success) {
       toast(`Student has been ${type === "create" ? "created" : "updated"}!`);
@@ -123,7 +126,6 @@ const StudentForm = ({
         <InputField
           label="Admission No"
           name="admissionNo"
-          defaultValue={data?.admissionNo}
           register={register}
           placeholder="Enter Admission No"
           error={errors.admissionNo}
@@ -138,8 +140,8 @@ const StudentForm = ({
           </label>
           <select
             id="classId"
+            defaultValue={data?.classId}
             {...register("classId", { valueAsNumber: true })}
-            defaultValue={data?.classId ?? ""}
             className="p-2 rounded-md text-sm w-full
   bg-gray-100 text-gray-900 border border-gray-300
   dark:bg-[#1a2035] dark:text-gray-100 dark:border-white/10
@@ -168,7 +170,6 @@ const StudentForm = ({
         <InputField
           label="Student Name"
           name="name"
-          defaultValue={data?.name}
           register={register}
           error={errors.name}
           placeholder="As per Record"
@@ -176,7 +177,6 @@ const StudentForm = ({
         <InputField
           label="Father Name"
           name="fatherName"
-          defaultValue={data?.fatherName}
           register={register}
           error={errors.fatherName}
           placeholder="Enter Father Name"
@@ -184,7 +184,6 @@ const StudentForm = ({
         <InputField
           label="Mother Name"
           name="motherName"
-          defaultValue={data?.motherName}
           register={register}
           error={errors.motherName}
           placeholder="Enter Mother Name"
@@ -192,7 +191,6 @@ const StudentForm = ({
         <InputField
           label="Phone"
           name="phone"
-          defaultValue={data?.phone}
           register={register}
           error={errors.phone}
           placeholder="Enter Mobile Number"
@@ -200,7 +198,6 @@ const StudentForm = ({
         <InputField
           label="Address"
           name="address"
-          defaultValue={data?.address}
           register={register}
           error={errors.address}
           placeholder="Enter Address"
@@ -208,7 +205,6 @@ const StudentForm = ({
         <InputField
           label="Email (Optional)"
           name="email"
-          defaultValue={data?.email}
           register={register}
           error={errors?.email}
           placeholder="Enter email id"
@@ -216,9 +212,6 @@ const StudentForm = ({
         <InputField
           label="Birthday"
           name="dob"
-          defaultValue={
-            data?.dob ? new Date(data.dob).toISOString().split("T")[0] : ""
-          }
           register={register}
           error={errors.dob}
           type="date"
@@ -232,7 +225,7 @@ const StudentForm = ({
           <select
             id="gender"
             {...register("gender")}
-            defaultValue={data?.gender || ""}
+            defaultValue={data?.gender}
             className="
   p-2 rounded-md text-sm w-full
   bg-gray-100 text-gray-900 border border-gray-300
@@ -258,7 +251,6 @@ const StudentForm = ({
         <InputField
           label="Pen Number"
           name="penNo"
-          defaultValue={data?.penNo}
           register={register}
           error={errors.penNo}
           placeholder="Enter Pen Number"
@@ -290,7 +282,6 @@ const StudentForm = ({
         <InputField
           label="Father Aadhar"
           name="fatherAadhar"
-          defaultValue={data?.fatherAadhar}
           register={register}
           error={errors.fatherAadhar}
           placeholder="Enter Father Aadhar"
@@ -298,7 +289,6 @@ const StudentForm = ({
         <InputField
           label="Student Aadhar"
           name="studentAadhar"
-          defaultValue={data?.studentAadhar}
           register={register}
           error={errors.studentAadhar}
           placeholder="Enter Student Aadhar"
@@ -306,7 +296,6 @@ const StudentForm = ({
         <InputField
           label="Mother Aadhar"
           name="motherAadhar"
-          defaultValue={data?.motherAadhar}
           register={register}
           error={errors.motherAadhar}
           placeholder="Enter Mother Aadhar"

@@ -7,55 +7,6 @@ import { fetchUserInfo } from "@/lib/utils/server-utils";
 export const runtime = "nodejs";
 
 /* ======================================================
-   GET → Get Teacher Subject Assignments (Tenant Safe)
-====================================================== */
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ schoolId: string; id: string }> },
-) {
-  try {
-    const { schoolId: schoolSlug, id: teacherId } = await params;
-    const schoolId = await resolveSchoolId(schoolSlug);
-
-    const user = await fetchUserInfo(schoolId);
-    if (!user || user.role !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    // Ensure teacher belongs to this school
-    const teacher = await prisma.teacher.findFirst({
-      where: { id: teacherId, schoolId },
-    });
-
-    if (!teacher) {
-      return NextResponse.json({ error: "Teacher not found" }, { status: 404 });
-    }
-
-    const mappings = await prisma.subjectTeacher.findMany({
-      where: {
-        teacherId,
-        schoolId,
-      },
-      include: {
-        subject: true,
-        class: true,
-      },
-      orderBy: {
-        class: { name: "asc" },
-      },
-    });
-
-    return NextResponse.json(mappings, { status: 200 });
-  } catch (error) {
-    console.error("GET teacher subjects error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch assignments" },
-      { status: 500 },
-    );
-  }
-}
-
-/* ======================================================
    POST → Replace Teacher Assignments (Safe Upsert)
 ====================================================== */
 export async function POST(
@@ -64,13 +15,13 @@ export async function POST(
 ) {
   try {
     const { schoolId: schoolSlug, id: teacherId } = await params;
-    const schoolId = await resolveSchoolId(schoolSlug);
+    const user = await fetchUserInfo(schoolSlug);
 
-    const user = await fetchUserInfo(schoolId);
-    if (!user || user.role !== "admin") {
+    if (!user || user.role !== "admin" || !user.schoolId) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    const schoolId = user.schoolId;
     const { assignments } = await req.json();
 
     if (!Array.isArray(assignments)) {
@@ -126,10 +77,6 @@ export async function POST(
 
     // Replace inside transaction
     const result = await prisma.$transaction(async (tx) => {
-      await tx.subjectTeacher.deleteMany({
-        where: { teacherId, schoolId },
-      });
-
       if (assignments.length > 0) {
         await tx.subjectTeacher.createMany({
           data: assignments.map((item: any) => ({
@@ -162,6 +109,60 @@ export async function POST(
 }
 
 /* ======================================================
+   GET → Get Teacher Subject Assignments (Tenant Safe)
+====================================================== */
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ schoolId: string; id: string }> },
+) {
+  try {
+    const { schoolId: schoolSlug, id: teacherId } = await params;
+    const user = await fetchUserInfo(schoolSlug);
+
+    if (!user || user.role !== "admin") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const schoolId = user.schoolId;
+
+    console.log("Fetching subjects for Teacher ID:", teacherId, "in School ID:", schoolId);
+
+    // Ensure teacher belongs to this school
+    const teacher = await prisma.teacher.findFirst({
+      where: { id: teacherId, schoolId },
+    });
+
+    if (!teacher) {
+      return NextResponse.json({ error: "Teacher not found" }, { status: 404 });
+    }
+
+    const mappings = await prisma.subjectTeacher.findMany({
+      where: {
+        teacherId,
+        schoolId,
+      },
+      include: {
+        subject: true,
+        class: true,
+      },
+      orderBy: {
+        class: { name: "asc" },
+      },
+    });
+
+    return NextResponse.json(mappings, { status: 200 });
+  } catch (error) {
+    console.error("GET teacher subjects error:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch assignments" },
+      { status: 500 },
+    );
+  }
+}
+
+
+
+/* ======================================================
    DELETE → Remove Single Assignment
 ====================================================== */
 export async function DELETE(
@@ -170,12 +171,13 @@ export async function DELETE(
 ) {
   try {
     const { schoolId: schoolSlug, id: teacherId } = await params;
-    const schoolId = await resolveSchoolId(schoolSlug);
+    const user = await fetchUserInfo(schoolSlug);
 
-    const user = await fetchUserInfo(schoolId);
     if (!user || user.role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    const schoolId = user.schoolId;
 
     const { searchParams } = new URL(req.url);
     const subjectId = Number(searchParams.get("subjectId"));

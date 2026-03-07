@@ -12,6 +12,16 @@ import {
   Filter,
 } from "lucide-react";
 import { tenantFetch } from "@/lib/tenantFetch";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+
+import { Button } from "@/components/ui/button";
 
 // TYPES
 interface Grade {
@@ -56,6 +66,11 @@ export default function TeacherAssignmentsPage() {
   // Form Selections
   const [selectedClassId, setSelectedClassId] = useState<string>("");
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>("");
+  const [deletingKey, setDeletingKey] = useState<string | null>(null);
+  const [deleteItem, setDeleteItem] = useState<{
+    subjectId: number;
+    classId: number;
+  } | null>(null);
 
   // 1. FETCH INITIAL DATA
   useEffect(() => {
@@ -133,18 +148,19 @@ export default function TeacherAssignmentsPage() {
   const handleAssign = async () => {
     if (!selectedClassId || !selectedSubjectId || !teacherId) return;
 
-    // Check duplicate locally
     const exists = assignments.find(
       (a) =>
         a.classId === Number(selectedClassId) &&
         a.subjectId === Number(selectedSubjectId),
     );
+
     if (exists) {
       alert("This subject is already assigned to this teacher for this class.");
       return;
     }
 
     setSaving(true);
+
     try {
       const payload = {
         assignments: [
@@ -155,29 +171,23 @@ export default function TeacherAssignmentsPage() {
         ],
       };
 
-      const res = await tenantFetch(
+      await tenantFetch(
         schoolId,
         `/users/teachers/${teacherId}/subjects`,
         {
           method: "POST",
           body: JSON.stringify(payload),
-        },
+        }
       );
 
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Failed to assign");
-      }
-
-      // Refresh list
       const refreshData = await tenantFetch<Assignment[]>(
         schoolId,
-        `/users/teachers/${teacherId}/subjects`,
+        `/users/teachers/${teacherId}/subjects`
       );
 
       setAssignments(refreshData);
-
       setSelectedSubjectId("");
+
     } catch (error) {
       console.error(error);
       alert("Failed to save assignment");
@@ -187,28 +197,34 @@ export default function TeacherAssignmentsPage() {
   };
 
   // 4. HANDLER: REMOVE
-  const handleRemove = async (sId: number, cId: number) => {
-    if (!confirm("Are you sure you want to remove this assignment?")) return;
+  const handleRemove = (sId: number, cId: number) => {
+    setDeleteItem({ subjectId: sId, classId: cId });
+  };
 
-    const previousState = [...assignments];
+  const confirmDelete = async () => {
+    if (!deleteItem) return;
 
-    // optimistic update
+    const { subjectId, classId } = deleteItem;
+
+    const previous = [...assignments];
+
     setAssignments((prev) =>
-      prev.filter((a) => !(a.subjectId === sId && a.classId === cId)),
+      prev.filter(
+        (a) => !(a.subjectId === subjectId && a.classId === classId)
+      )
     );
 
     try {
       await tenantFetch(
         schoolId,
-        `/users/teachers/${teacherId}/subjects?subjectId=${sId}&classId=${cId}`,
-        { method: "DELETE" },
+        `/users/teachers/${teacherId}/subjects?subjectId=${subjectId}&classId=${classId}`,
+        { method: "DELETE" }
       );
     } catch (error) {
       console.error(error);
-
-      // rollback
-      setAssignments(previousState);
-      alert("Failed to remove assignment");
+      setAssignments(previous);
+    } finally {
+      setDeleteItem(null);
     }
   };
 
@@ -296,8 +312,8 @@ export default function TeacherAssignmentsPage() {
                     {!selectedClassId
                       ? "Select Class first..."
                       : availableSubjects.length === 0
-                      ? "No subjects found for this grade"
-                      : "Select a Subject..."}
+                        ? "No subjects found for this grade"
+                        : "Select a Subject..."}
                   </option>
                   {availableSubjects.map((s) => (
                     <option key={s.id} value={s.id}>
@@ -383,13 +399,15 @@ export default function TeacherAssignmentsPage() {
                         </td>
                         <td className="px-6 py-4 text-right">
                           <button
-                            onClick={() =>
-                              handleRemove(item.subjectId, item.classId)
-                            }
-                            className="text-gray-400 hover:text-red-600 transition-colors p-1 rounded-md hover:bg-red-50"
-                            title="Remove"
+                            onClick={() => handleRemove(item.subjectId, item.classId)}
+                            disabled={deletingKey === `${item.subjectId}-${item.classId}`}
+                            className="text-gray-400 hover:text-red-600 transition-colors p-1 rounded-md hover:bg-red-50 disabled:opacity-50"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            {deletingKey === `${item.subjectId}-${item.classId}` ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="w-4 h-4" />
+                            )}
                           </button>
                         </td>
                       </tr>
@@ -398,6 +416,34 @@ export default function TeacherAssignmentsPage() {
                 </table>
               )}
             </div>
+
+            <Dialog open={!!deleteItem} onOpenChange={() => setDeleteItem(null)}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Remove Assignment</DialogTitle>
+
+                  <DialogDescription>
+                    Are you sure you want to remove this subject from the teacher?
+                  </DialogDescription>
+                </DialogHeader>
+
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => setDeleteItem(null)}
+                  >
+                    Cancel
+                  </Button>
+
+                  <Button
+                    variant="destructive"
+                    onClick={confirmDelete}
+                  >
+                    Delete
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
       </div>

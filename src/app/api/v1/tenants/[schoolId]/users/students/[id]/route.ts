@@ -18,6 +18,7 @@ export async function PUT(
 ) {
   try {
     const { schoolId: schoolSlug, id: studentId } = await params;
+    console.log("Updating student:", { schoolSlug, studentId });
     const schoolId = await resolveSchoolId(schoolSlug);
 
     const user = await fetchUserInfo(schoolSlug);

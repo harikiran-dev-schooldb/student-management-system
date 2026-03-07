@@ -116,16 +116,15 @@ export async function GET(
 ) {
   try {
     const { schoolId: schoolSlug } = await params;
-    const schoolId = await resolveSchoolId(schoolSlug);
-    const user = await fetchUserInfo(schoolId);
+    const user = await fetchUserInfo(schoolSlug);
 
-    if (!user || !user.role) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+    if (!user || user.role !== "admin") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    const schoolId = user.schoolId;
+
+    console.log("Fetching subjects for School ID:", schoolId);
     const { searchParams } = new URL(req.url);
     const gradeId = searchParams.get("gradeId");
 

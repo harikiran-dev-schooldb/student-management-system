@@ -3,7 +3,6 @@
 import {
   Announcement,
   Attendance,
-  Event,
   Exam,
   FeeTransaction,
   Grade,

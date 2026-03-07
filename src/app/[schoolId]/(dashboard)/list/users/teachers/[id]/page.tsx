@@ -95,6 +95,8 @@ const SingleTeacherPage = async ({ params }: TeacherSinglePageProps) => {
   if (!school) return notFound();
 
   const { role } = await fetchUserInfo(slug);
+  console.log("User Role:", role);
+  console.log("Accessing Teacher ID:", id, "in School ID:", slug);
 
   if (role !== "admin" && role !== "teacher") {
     return notFound();
@@ -290,17 +292,17 @@ const SingleTeacherPage = async ({ params }: TeacherSinglePageProps) => {
 
           <div className="flex flex-col gap-2">
             <Shortcut
-              href={`/list/users/teachers/${teacher.id}/assignments`}
+              href={`/${slug}/list/users/teachers/${teacher.id}/assignments`}
               label="Subject"
               icon={Book}
             />
             <Shortcut
-              href={`/list/users/students?teacherId=${teacher.id}`}
+              href={`/${slug}/list/users/students?teacherId=${teacher.id}`}
               label="My Students"
               icon={Users}
             />
             <Shortcut
-              href={`/list/lessons?teacherId=${teacher.id}`}
+              href={`/${slug}/list/lessons?teacherId=${teacher.id}`}
               label="My Lessons"
               icon={BookOpen}
             />
