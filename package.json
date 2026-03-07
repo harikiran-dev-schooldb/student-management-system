@@ -15,7 +15,8 @@
     "analyze": "set ANALYZE=true&& next build",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:api": "jest tests/api"
+    "test:api": "jest tests/api",
+    "test:all-apis": "ts-node scripts/testAllApis.ts"
   },
   "dependencies": {
     "@capacitor/android": "^8.0.0",

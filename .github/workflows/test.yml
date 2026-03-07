@@ -33,4 +33,4 @@ jobs:
           npm run start &
           npx wait-on http://localhost:3000
 
-      - run: npm run test:api
+      - run: npm run test:all-apis
