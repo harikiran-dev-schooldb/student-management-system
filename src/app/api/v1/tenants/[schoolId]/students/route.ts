@@ -11,59 +11,42 @@ export async function GET(
   { params }: { params: Promise<{ schoolId: string }> }
 ) {
   try {
-    /* -----------------------------
-       1️⃣ Resolve Tenant
-    ------------------------------ */
+
+    /* 1️⃣ Resolve Tenant */
+
     const { schoolId: schoolSlug } = await params;
     const schoolId = await resolveSchoolId(schoolSlug);
 
-    console.log("School ID:", schoolSlug, "Resolved ID:", schoolId);
+    /* 2️⃣ Authenticate */
 
-    /* -----------------------------
-       2️⃣ Authenticate
-    ------------------------------ */
-    const user = await fetchUserInfo(schoolSlug);
-    console.log("Authenticated User:", user);
+    const user = await fetchUserInfo(schoolId);
 
     if (!user || !user.role) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { searchParams } = new URL(req.url);
+
     const classId = searchParams.get("classId");
     const gradeId = searchParams.get("gradeId");
     const gender = searchParams.get("gender");
     const search = searchParams.get("search");
 
-    /* -----------------------------
-       3️⃣ Base Where (Tenant Safe)
-    ------------------------------ */
+    /* 3️⃣ Base Filter */
+
     const where: any = {
       schoolId,
       status: StudentStatus.ACTIVE,
     };
 
-    /* -----------------------------
-       4️⃣ Role-Based Filtering
-    ------------------------------ */
+    /* 4️⃣ Role Based Filtering */
 
-    // Student → only self
     if (user.role === "student") {
-      if (!user.studentId) {
-        return NextResponse.json(
-          { error: "Unauthorized" },
-          { status: 401 }
-        );
-      }
-
       where.id = user.studentId;
     }
 
-    // Teacher → only their class
     if (user.role === "teacher") {
+
       if (!user.classId) {
         return NextResponse.json(
           { error: "Unauthorized" },
@@ -71,27 +54,37 @@ export async function GET(
         );
       }
 
-      where.classId = user.classId;
+      where.enrollments = {
+        some: {
+          classId: user.classId,
+          status: "ACTIVE",
+        },
+      };
     }
 
-    // Admin → can filter freely
     if (user.role === "admin") {
+
       if (classId) {
-        where.classId = Number(classId);
+        where.enrollments = {
+          some: {
+            classId: Number(classId),
+          },
+        };
       }
 
       if (gradeId) {
-        where.Class = {
-          is: {
-            gradeId: Number(gradeId),
+        where.enrollments = {
+          some: {
+            class: {
+              gradeId: Number(gradeId),
+            },
           },
         };
       }
     }
 
-    /* -----------------------------
-       5️⃣ Optional Filters
-    ------------------------------ */
+    /* 5️⃣ Optional Filters */
+
     if (gender) {
       where.gender = gender;
     }
@@ -103,25 +96,33 @@ export async function GET(
       };
     }
 
-    /* -----------------------------
-       6️⃣ Fetch Students
-    ------------------------------ */
+    /* 6️⃣ Query */
+
     const students = await prisma.student.findMany({
       where,
       include: {
-        Class: true,
+        enrollments: {
+          where: { status: "ACTIVE" },
+          include: {
+            class: {
+              include: {
+                Grade: true,
+              },
+            },
+          },
+        },
       },
-      orderBy: [
-        { classId: "asc" },
-        { gender: "desc" },
-        { name: "asc" },
-      ],
+      orderBy: {
+        name: "asc",
+      },
     });
 
     return NextResponse.json(students);
 
   } catch (error: any) {
+
     console.error("Error fetching students:", error);
+
     return NextResponse.json(
       { error: "Failed to fetch students" },
       { status: 500 }

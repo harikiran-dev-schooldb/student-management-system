@@ -24,8 +24,7 @@ const AssignmentForm = ({
   setOpen,
 }: any) => {
   const router = useRouter();
-  const { schoolId } = useParams<{ schoolId: string }>();
-  const api = useTenantApi(schoolId);
+  const api = useTenantApi();
 
   const { grades = [], classes = [], subjects = [] } = relatedData || {};
 
@@ -68,10 +67,8 @@ const AssignmentForm = ({
 
     const fetchSubjects = async () => {
       try {
-        const { data } = await api.get(
-          `/classes/${selectedClass}/subjects`
-        );
-        setFilteredSubjects(data);
+        const res = await api.get(`/classes/${selectedClass}/subjects`);
+        setFilteredSubjects(res.data as any[]);
       } catch {
         setFilteredSubjects([]);
       }
@@ -91,8 +88,7 @@ const AssignmentForm = ({
       }
 
       toast.success(
-        `Assignment ${
-          type === "create" ? "created" : "updated"
+        `Assignment ${type === "create" ? "created" : "updated"
         } successfully`
       );
 

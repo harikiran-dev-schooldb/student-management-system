@@ -1,17 +1,19 @@
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
-import { resolveSchoolId } from "@/lib/resolveSchool";
 
+import { NextRequest, NextResponse } from "next/server";
+import { resolveSchoolId } from "@/lib/resolveSchool";
+import { tenantPrisma } from "@/lib/tenant-prisma";
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: Promise<{ schoolId: string; }> },
+  { params }: { params: Promise<{ schoolId: string }> },
 ) {
   try {
     const { schoolId: schoolSlug } = await params;
     const schoolId = await resolveSchoolId(schoolSlug);
+    const db = tenantPrisma(schoolId);
+
     const body = await req.json();
 
     const {
@@ -31,9 +33,13 @@ export async function POST(
       );
     }
 
-    /* ---------- Validate Grade belongs to school ---------- */
-    const grade = await prisma.grade.findFirst({
-      where: { id: gradeId, schoolId },
+    /* ---------- Validate Grade ---------- */
+
+    const grade = await db.grade.findFirst({
+      where: {
+        id: gradeId,
+        schoolId,
+      },
     });
 
     if (!grade) {
@@ -43,13 +49,14 @@ export async function POST(
       );
     }
 
-    /* ---------- Check existing composite unique ---------- */
-    const existing = await prisma.feeStructure.findUnique({
+    /* ---------- Check existing ---------- */
+
+    const existing = await db.feeStructure.findUnique({
       where: {
-        gradeId_term_academicYear_schoolId: {
+        gradeId_term_academicYearId_schoolId: {
           gradeId,
           term,
-          academicYear,
+          academicYearId: academicYear,
           schoolId,
         },
       },
@@ -62,11 +69,13 @@ export async function POST(
       );
     }
 
-    const fee = await prisma.feeStructure.create({
+    /* ---------- Create Fee Structure ---------- */
+
+    const fee = await db.feeStructure.create({
       data: {
         gradeId,
         term,
-        academicYear,
+        academicYearId: academicYear,
         startDate: new Date(startDate),
         dueDate: new Date(dueDate),
         termFees: Number(termFees),
@@ -75,9 +84,14 @@ export async function POST(
       },
     });
 
-    return NextResponse.json({ success: true, fee }, { status: 201 });
+    return NextResponse.json(
+      { success: true, fee },
+      { status: 201 },
+    );
+
   } catch (error) {
     console.error("Fee create error:", error);
+
     return NextResponse.json(
       { error: "Failed to create fee structure" },
       { status: 500 },
@@ -85,13 +99,15 @@ export async function POST(
   }
 }
 
+
 export async function GET(
   req: NextRequest,
-  { params }: { params: Promise<{ schoolId: string; }> },
+  { params }: { params: Promise<{ schoolId: string }> },
 ) {
   try {
     const { schoolId: slug } = await params;
     const schoolId = await resolveSchoolId(slug);
+    const db = tenantPrisma(schoolId);
 
     const { searchParams } = new URL(req.url);
 
@@ -107,45 +123,72 @@ export async function GET(
 
     const where: any = { schoolId };
 
-    if (studentId) where.studentId = studentId;
-    if (academicYear) where.academicYear = academicYear;
+    if (studentId) {
+      where.studentId = studentId;
+    }
+
+    if (academicYear) {
+      where.academicYearId = academicYear;
+    }
 
     if (gradeId) {
       where.feeStructure = {
-        gradeId: Number(gradeId),
+        is: {
+          gradeId: Number(gradeId),
+        },
       };
     }
 
     if (classId) {
       where.student = {
-        classId: Number(classId),
+        is: {
+          classId: Number(classId),
+        },
       };
     }
 
-    const [total, studentFees] = await prisma.$transaction([
-      prisma.studentFees.count({ where }),
-      prisma.studentFees.findMany({
+    const [total, studentFees] = await db.$transaction([
+      db.studentFees.count({ where }),
+
+      db.studentFees.findMany({
         where,
         skip,
         take: limit,
-        orderBy: { studentId: "desc" },
+        orderBy: {
+          studentId: "desc",
+        },
         include: {
           student: {
             select: {
               id: true,
               name: true,
-              classId: true,
+              enrollments: {
+                select: {
+                  class: {
+                    select: {
+                      id: true,
+                      name: true,
+                      section: true,
+                    },
+                  },
+                },
+                take: 1,
+              },
             },
           },
+
           feeStructure: {
             select: {
               term: true,
-              academicYear: true,
+              academicYearId: true,
               termFees: true,
             },
           },
+
           _count: {
-            select: { feeTransactions: true },
+            select: {
+              feeTransactions: true,
+            },
           },
         },
       }),
@@ -164,8 +207,7 @@ export async function GET(
 
     return NextResponse.json(
       { error: "Failed to fetch student fees" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
-

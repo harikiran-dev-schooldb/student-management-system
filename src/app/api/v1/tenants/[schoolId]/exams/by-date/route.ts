@@ -53,8 +53,8 @@ export async function GET(
             date: { gte: start, lte: end },
           },
           include: {
-            Grade: { select: { level: true } },
-            Subject: { select: { name: true } },
+            grade: { select: { level: true } },
+            subject: { select: { name: true } },
           },
         },
       },

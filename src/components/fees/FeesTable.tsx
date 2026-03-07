@@ -1,5 +1,7 @@
 "use client";
-
+import TransactionHistory from "@/components/fees/TransactionHistory";
+import { StatusBadge, ProgressBar } from "@/components/fees/FeeUI";
+import PaymentModal from "@/components/fees/PaymentModal";
 import React, { useCallback, useMemo, useState } from "react";
 import Script from "next/script";
 import {
@@ -27,7 +29,6 @@ import {
   Trash2,
 } from "lucide-react";
 import { StudentFee } from "../../../types";
-import { useSchoolSlug } from "../hooks/getschool";
 import { useTenantApi } from "@/hooks/useTenantApi";
 
 // --- Types ---
@@ -58,41 +59,6 @@ function formatCurrency(amount: number) {
   }).format(amount);
 }
 
-// --- UI Sub-Components ---
-
-const StatusBadge = ({ status }: { status: "Paid" | "Partial" | "Unpaid" }) => {
-  const styles = {
-    Paid: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800",
-    Partial:
-      "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800",
-    Unpaid:
-      "bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-900/30 dark:text-rose-400 dark:border-rose-800",
-  };
-
-  return (
-    <span
-      className={`px-2 py-0.5 text-xs font-bold uppercase tracking-wider rounded border ${styles[status]}`}
-    >
-      {status}
-    </span>
-  );
-};
-
-const ProgressBar = ({ paid, total }: { paid: number; total: number }) => {
-  const percentage =
-    total > 0 ? Math.min(100, Math.max(0, (paid / total) * 100)) : 100;
-  return (
-    <div className="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full mt-1 overflow-hidden">
-      <div
-        className={`h-full rounded-full transition-all duration-500 ${
-          percentage === 100 ? "bg-emerald-500" : "bg-indigo-500"
-        }`}
-        style={{ width: `${percentage}%` }}
-      />
-    </div>
-  );
-};
-
 const StatCard = ({
   title,
   amount,
@@ -114,14 +80,17 @@ const StatCard = ({
       <div className={`p-1.5 rounded-full ${color}`}>{icon}</div>
     </div>
     <div
-      className={`text-xl font-bold ${
-        isDestructive ? "text-rose-600" : "text-slate-900 dark:text-white"
-      }`}
+      className={`text-xl font-bold ${isDestructive ? "text-rose-600" : "text-slate-900 dark:text-white"
+        }`}
     >
       {formatCurrency(amount)}
     </div>
   </div>
 );
+
+type RazorpayOrderResponse = {
+  orderId: string;
+};
 
 const InputGroup = ({
   label,
@@ -159,61 +128,7 @@ const InputGroup = ({
   </div>
 );
 
-// --- Transaction History Component ---
-const TransactionHistory = ({
-  fee,
-  isMobile = false,
-}: {
-  fee: StudentFee;
-  isMobile?: boolean;
-}) => {
-  return (
-    <div className={isMobile ? "mt-2" : "ml-10"}>
-      <h4 className="text-xs font-bold uppercase text-gray-500 mb-2 flex items-center gap-2">
-        <Receipt size={14} /> Transaction History
-      </h4>
-      {fee.feeTransactions && fee.feeTransactions.length > 0 ? (
-        <div className="overflow-x-auto rounded border border-gray-200 dark:border-gray-700">
-          <table className="w-full text-xs bg-white dark:bg-slate-800">
-            <thead className="bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300">
-              <tr>
-                <th className="px-3 py-2 text-left">Date</th>
-                <th className="px-3 py-2 text-left">Receipt #</th>
-                <th className="px-3 py-2 text-left">Mode</th>
-                <th className="px-3 py-2 text-right">Amount</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-              {fee.feeTransactions.map((tx: any, i: number) => (
-                <tr
-                  key={i}
-                  className="hover:bg-gray-50 dark:hover:bg-slate-700/50"
-                >
-                  <td className="px-3 py-2 text-slate-600 dark:text-slate-400">
-                    {formatDate(tx.receiptDate || new Date())}
-                  </td>
-                  <td className="px-3 py-2 font-mono text-slate-500">
-                    {tx.receiptNo || "-"}
-                  </td>
-                  <td className="px-3 py-2 text-slate-600">
-                    {tx.paymentMode || "CASH"}
-                  </td>
-                  <td className="px-3 py-2 text-right font-medium text-emerald-600">
-                    {formatCurrency(tx.amount)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <p className="text-xs text-gray-400 italic border border-dashed border-gray-300 rounded p-2 text-center">
-          No transactions recorded yet.
-        </p>
-      )}
-    </div>
-  );
-};
+
 
 // --- Main Component ---
 const FeesTable: React.FC<FeesTableProps> = ({
@@ -251,9 +166,15 @@ const FeesTable: React.FC<FeesTableProps> = ({
 
   // --- Calculations Helpers ---
   const academicYears = useMemo(() => {
-    return Array.from(new Set(data.map((d) => d.academicYear))).sort((a, b) => {
-      const startA = Number(a.slice(1, 5));
-      const startB = Number(b.slice(1, 5));
+    const years = new Set<string>();
+
+    for (const d of data) {
+      if (d.academicYear?.name) years.add(d.academicYear.name);
+    }
+
+    return [...years].sort((a, b) => {
+      const startA = Number(a.split("-")[0]);
+      const startB = Number(b.split("-")[0]);
       return startA - startB;
     });
   }, [data]);
@@ -294,8 +215,7 @@ const FeesTable: React.FC<FeesTableProps> = ({
   }
 
   // --- Razorpay Logic ---
-  const schoolId = useSchoolSlug();
-  const api = useTenantApi(schoolId);
+  const api = useTenantApi();
 
   const initiateOnlinePayment = async (
     feesToPay: StudentFee[],
@@ -305,7 +225,7 @@ const FeesTable: React.FC<FeesTableProps> = ({
 
     try {
       // 1. Create Order (Tenant-aware)
-      const { data } = await api.post("/razorpay/order", {
+      const { data } = await api.post<RazorpayOrderResponse>("/razorpay/order", {
         amount: totalAmount,
       });
 
@@ -344,7 +264,7 @@ const FeesTable: React.FC<FeesTableProps> = ({
         },
       };
 
-      const paymentObject = new (window as any).Razorpay(options);
+      const paymentObject = new window.Razorpay(options);
       paymentObject.open();
     } catch (error) {
       console.error(error);
@@ -388,7 +308,7 @@ const FeesTable: React.FC<FeesTableProps> = ({
           receiptDate: new Date().toISOString(),
           receiptNo: `ONL-${transactionId.slice(-6)}`,
           remarks: `Online Payment: ${transactionId}`,
-          academicYear: fee.academicYear,
+          academicYearId: fee.academicYearId,
           paymentMode: "ONLINE",
           transactionId,
           orderId,
@@ -423,7 +343,7 @@ const FeesTable: React.FC<FeesTableProps> = ({
       // Show the actual error message from the backend if available
       toast.error(
         error.message ||
-          "Payment verified but database update failed. Contact Admin.",
+        "Payment verified but database update failed. Contact Admin.",
       );
     } finally {
       setIsProcessing(false);
@@ -450,8 +370,8 @@ const FeesTable: React.FC<FeesTableProps> = ({
     const defaultReceipt =
       payables.length === 1
         ? payables[0].receiptNo ||
-          payables[0].feeTransactions?.[0]?.receiptNo ||
-          ""
+        payables[0].feeTransactions?.[0]?.receiptNo ||
+        ""
         : "";
     const defaultRemarks =
       payables.length === 1
@@ -496,7 +416,7 @@ const FeesTable: React.FC<FeesTableProps> = ({
           receiptDate,
           receiptNo,
           remarks,
-          academicYear: fee.academicYear,
+          academicYearId: fee.academicYearId,
           paymentMode: selectedPaymentMode,
         };
 
@@ -557,7 +477,7 @@ const FeesTable: React.FC<FeesTableProps> = ({
     ];
     const rows = rowData.map((row) => [
       row.term,
-      row.academicYear,
+      row.academicYear?.name,
       getTotalFees(row),
       row.paidAmount || 0,
       calculateDueAmount(row),
@@ -657,11 +577,11 @@ const FeesTable: React.FC<FeesTableProps> = ({
         ),
       },
       {
-        accessorKey: "academicYear",
+        accessorFn: (row) => row.academicYear?.name,
         header: "Year",
         cell: ({ getValue }) => (
           <span className="text-xs text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-full">
-            {(getValue() as string).replace("Y", "").replace("_", "-")}
+            {(getValue() as string)?.replace("Y", "").replace("_", "-")}
           </span>
         ),
       },
@@ -699,9 +619,8 @@ const FeesTable: React.FC<FeesTableProps> = ({
           const due = calculateDueAmount(row.original);
           return (
             <span
-              className={`font-bold ${
-                due > 0 ? "text-rose-500" : "text-slate-400"
-              }`}
+              className={`font-bold ${due > 0 ? "text-rose-500" : "text-slate-400"
+                }`}
             >
               {formatCurrency(due)}
             </span>
@@ -793,7 +712,7 @@ const FeesTable: React.FC<FeesTableProps> = ({
   // --- Filtering & Sorting Data ---
   const filteredData = useMemo(() => {
     const baseData = selectedAcademicYear
-      ? rowData.filter((row) => row.academicYear === selectedAcademicYear)
+      ? rowData.filter((row) => row.academicYear?.name === selectedAcademicYear)
       : rowData;
 
     // Custom Sort: Year then Term
@@ -804,8 +723,8 @@ const FeesTable: React.FC<FeesTableProps> = ({
       FINAL: 4,
     };
     return [...baseData].sort((a, b) => {
-      const yearA = Number(a.academicYear.slice(1, 5));
-      const yearB = Number(b.academicYear.slice(1, 5));
+      const yearA = Number(a.academicYear?.name.split("-")[0]);
+      const yearB = Number(b.academicYear?.name.split("-")[0]);
       if (yearA !== yearB) return yearA - yearB;
       return (TERM_ORDER[a.term] ?? 99) - (TERM_ORDER[b.term] ?? 99);
     });
@@ -892,11 +811,10 @@ const FeesTable: React.FC<FeesTableProps> = ({
           </span>
           <button
             onClick={() => setSelectedAcademicYear(null)}
-            className={`text-xs px-3 py-1.5 rounded-full transition border ${
-              selectedAcademicYear === null
-                ? "bg-slate-800 text-white border-slate-800"
-                : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
-            }`}
+            className={`text-xs px-3 py-1.5 rounded-full transition border ${selectedAcademicYear === null
+              ? "bg-slate-800 text-white border-slate-800"
+              : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+              }`}
           >
             All
           </button>
@@ -904,11 +822,10 @@ const FeesTable: React.FC<FeesTableProps> = ({
             <button
               key={y}
               onClick={() => setSelectedAcademicYear(y)}
-              className={`text-xs px-3 py-1.5 rounded-full whitespace-nowrap transition border ${
-                selectedAcademicYear === y
-                  ? "bg-slate-800 text-white border-slate-800"
-                  : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
-              }`}
+              className={`text-xs px-3 py-1.5 rounded-full whitespace-nowrap transition border ${selectedAcademicYear === y
+                ? "bg-slate-800 text-white border-slate-800"
+                : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                }`}
             >
               {y.replace("Y", "").replace("_", "-")}
             </button>
@@ -977,11 +894,10 @@ const FeesTable: React.FC<FeesTableProps> = ({
               table.getRowModel().rows.map((row) => (
                 <React.Fragment key={row.id}>
                   <tr
-                    className={`transition-colors ${
-                      row.getIsExpanded()
-                        ? "bg-slate-50 dark:bg-slate-800/50"
-                        : "hover:bg-slate-50 dark:hover:bg-slate-800/30"
-                    }`}
+                    className={`transition-colors ${row.getIsExpanded()
+                      ? "bg-slate-50 dark:bg-slate-800/50"
+                      : "hover:bg-slate-50 dark:hover:bg-slate-800/30"
+                      }`}
                   >
                     {row.getVisibleCells().map((cell) => (
                       <td
@@ -1035,11 +951,10 @@ const FeesTable: React.FC<FeesTableProps> = ({
             return (
               <div
                 key={row.id}
-                className={`bg-white dark:bg-slate-900 rounded-xl border transition-all duration-200 ${
-                  isSelected
-                    ? "border-indigo-400 ring-1 ring-indigo-400"
-                    : "border-slate-200 dark:border-slate-800"
-                } shadow-sm overflow-hidden`}
+                className={`bg-white dark:bg-slate-900 rounded-xl border transition-all duration-200 ${isSelected
+                  ? "border-indigo-400 ring-1 ring-indigo-400"
+                  : "border-slate-200 dark:border-slate-800"
+                  } shadow-sm overflow-hidden`}
               >
                 {/* Header */}
                 <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-gray-50/50 dark:bg-slate-800/30">
@@ -1059,7 +974,7 @@ const FeesTable: React.FC<FeesTableProps> = ({
                         {row.original.term}
                       </h3>
                       <p className="text-[10px] text-slate-500 font-mono">
-                        {row.original.academicYear
+                        {row.original.academicYear?.name
                           .replace("Y", "")
                           .replace("_", "-")}
                       </p>
@@ -1096,9 +1011,8 @@ const FeesTable: React.FC<FeesTableProps> = ({
                       Due Amount
                     </span>
                     <span
-                      className={`font-bold ${
-                        dueAmount > 0 ? "text-rose-500" : "text-slate-400"
-                      }`}
+                      className={`font-bold ${dueAmount > 0 ? "text-rose-500" : "text-slate-400"
+                        }`}
                     >
                       {formatCurrency(dueAmount)}
                     </span>
@@ -1146,11 +1060,10 @@ const FeesTable: React.FC<FeesTableProps> = ({
 
                     <button
                       onClick={row.getToggleExpandedHandler()}
-                      className={`p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors ${
-                        isExpanded
-                          ? "text-indigo-600 bg-indigo-50"
-                          : "text-slate-500"
-                      }`}
+                      className={`p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors ${isExpanded
+                        ? "text-indigo-600 bg-indigo-50"
+                        : "text-slate-500"
+                        }`}
                     >
                       {isExpanded ? (
                         <ChevronUp size={16} />
@@ -1172,134 +1085,31 @@ const FeesTable: React.FC<FeesTableProps> = ({
           })
         )}
       </div>
+      <PaymentModal
+        isOpen={isModalOpen}
+        role={role}
+        selectedFees={selectedFees}
+        amount={amount}
+        setAmount={setAmount}
+        discount={discount}
+        setDiscount={setDiscount}
+        fine={fine}
+        setFine={setFine}
+        receiptNo={receiptNo}
+        setReceiptNo={setReceiptNo}
+        receiptDate={receiptDate}
+        setReceiptDate={setReceiptDate}
+        remarks={remarks}
+        setRemarks={setRemarks}
+        selectedPaymentMode={selectedPaymentMode}
+        setSelectedPaymentMode={setSelectedPaymentMode}
+        isProcessing={isProcessing}
+        handleManualFormSubmit={handleManualFormSubmit}
+        setIsModalOpen={setIsModalOpen}
+        formatCurrency={formatCurrency}
+        InputGroup={InputGroup}
+      />
 
-      {/* --- Admin Collection Modal --- */}
-      {isModalOpen && role === "admin" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-            {/* Modal Header */}
-            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
-              <div>
-                <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-                  Collect Payment
-                </h2>
-                <p className="text-xs text-slate-500 mt-1">
-                  {selectedFees.length > 1
-                    ? `Bulk Payment (${selectedFees.length} items)`
-                    : `${selectedFees[0]?.term} • ${selectedFees[0]?.academicYear}`}
-                </p>
-              </div>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 transition"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
-              <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-900 rounded-lg p-4 text-center">
-                <span className="text-xs text-indigo-600 dark:text-indigo-300 uppercase font-bold tracking-wider">
-                  Total Payable Amount
-                </span>
-                <div className="text-3xl font-bold text-indigo-700 dark:text-indigo-200 mt-1">
-                  {formatCurrency(amount)}
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <InputGroup
-                  label="Payment Amount"
-                  value={amount}
-                  onChange={(v) => setAmount(Number(v))}
-                  type="number"
-                  icon={<Banknote size={16} />}
-                  autoFocus
-                />
-
-                {selectedFees.length === 1 && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <InputGroup
-                      label="Discount"
-                      value={discount}
-                      onChange={(v) => setDiscount(Number(v))}
-                      type="number"
-                    />
-                    <InputGroup
-                      label="Fine"
-                      value={fine}
-                      onChange={(v) => setFine(Number(v))}
-                      type="number"
-                    />
-                  </div>
-                )}
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 mb-2 uppercase">
-                    Payment Mode
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {["CASH", "UPI", "ONLINE", "BANK_TRANSFER"].map((m) => (
-                      <button
-                        key={m}
-                        onClick={() => setSelectedPaymentMode(m)}
-                        className={`text-xs py-2.5 px-2 rounded-lg border transition-all font-medium ${
-                          selectedPaymentMode === m
-                            ? "bg-indigo-600 text-white border-indigo-600 shadow-md transform scale-[1.02]"
-                            : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 hover:bg-slate-50"
-                        }`}
-                      >
-                        {m.replace("_", " ")}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <InputGroup
-                    label="Receipt No"
-                    value={receiptNo}
-                    onChange={(v) => setReceiptNo(String(v))}
-                    type="text"
-                    icon={<Receipt size={16} />}
-                  />
-                  <InputGroup
-                    label="Date"
-                    value={receiptDate}
-                    onChange={(v) => setReceiptDate(String(v))}
-                    type="date"
-                  />
-                </div>
-
-                <InputGroup
-                  label="Remarks"
-                  value={remarks}
-                  onChange={(v) => setRemarks(String(v))}
-                  type="text"
-                />
-              </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="p-6 border-t border-slate-100 dark:border-slate-800 flex gap-3 bg-gray-50/50">
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="flex-1 py-2.5 text-sm font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleManualFormSubmit}
-                disabled={isProcessing}
-                className="flex-1 py-2.5 text-sm font-semibold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 shadow-lg disabled:opacity-70 transition flex justify-center items-center gap-2"
-              >
-                {isProcessing ? "Processing..." : "Confirm Payment"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

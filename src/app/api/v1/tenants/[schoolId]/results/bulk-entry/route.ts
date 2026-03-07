@@ -1,27 +1,19 @@
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+
 import prisma from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { resolveSchoolId, SchoolNotFoundError } from "@/lib/resolveSchool";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
 
-/* ======================================================
-   POST → Bulk Result Entry (Tenant + Role Safe)
-====================================================== */
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ schoolId: string; }> },
+  { params }: { params: Promise<{ schoolId: string }> }
 ) {
   try {
-    /* -------------------------
-       1️⃣ Resolve Tenant
-    -------------------------- */
     const { schoolId: schoolSlug } = await params;
     const schoolId = await resolveSchoolId(schoolSlug);
 
-    /* -------------------------
-       2️⃣ Authorization
-    -------------------------- */
     const user = await fetchUserInfo(schoolId);
 
     if (!user || (user.role !== "admin" && user.role !== "teacher")) {
@@ -30,126 +22,102 @@ export async function POST(
 
     const { gradeId, examId, entries } = await request.json();
 
-    /* -------------------------
-       3️⃣ Payload Validation
-    -------------------------- */
     if (!gradeId || !examId || !Array.isArray(entries)) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
     }
 
-    /* -------------------------
-       4️⃣ Validate Exam Belongs to School
-    -------------------------- */
+    /* --------------------------------
+       Validate Exam
+    -------------------------------- */
+
     const exam = await prisma.exam.findFirst({
       where: { id: Number(examId), schoolId },
-      select: { id: true },
+      select: { id: true, academicYearId: true },
     });
 
     if (!exam) {
-      return NextResponse.json({ error: "Invalid exam" }, { status: 404 });
+      return NextResponse.json({ error: "Exam not found" }, { status: 404 });
     }
 
-    /* -------------------------
-       5️⃣ Fetch Subjects (Tenant Safe)
-    -------------------------- */
+    const academicYearId = exam.academicYearId;
+
+    /* --------------------------------
+       Fetch Subjects
+    -------------------------------- */
+
     const subjects = await prisma.subject.findMany({
       where: {
         schoolId,
         grades: { some: { id: Number(gradeId) } },
       },
+      select: { id: true, name: true },
     });
 
-    const subjectMap = subjects.reduce((acc, subj) => {
-      acc[subj.name] = subj.id;
-      return acc;
-    }, {} as Record<string, number>);
+    const subjectMap: Record<string, number> = {};
+    for (const s of subjects) subjectMap[s.name] = s.id;
 
-    /* -------------------------
-       6️⃣ Validate Students
-    -------------------------- */
-    const studentIds = entries.map((e: any) => e.studentId);
+    /* --------------------------------
+       Build Bulk Rows
+    -------------------------------- */
 
-    const validStudents = await prisma.student.findMany({
-      where: {
-        id: { in: studentIds },
-        schoolId,
-        Class: { gradeId: Number(gradeId) },
-      },
-      select: { id: true },
-    });
-
-    const validStudentSet = new Set(validStudents.map((s) => s.id));
-
-    /* -------------------------
-       7️⃣ Prepare Upserts
-    -------------------------- */
-    const transactionOperations = [];
+    const rows: any[] = [];
 
     for (const entry of entries) {
-      if (!validStudentSet.has(entry.studentId)) continue;
-
       for (const [subjectName, markValue] of Object.entries(entry.marks)) {
         const subjectId = subjectMap[subjectName];
 
-        if (
-          !subjectId ||
-          markValue === "" ||
-          markValue === null ||
-          markValue === undefined
-        ) {
-          continue;
-        }
+        if (!subjectId || markValue === "" || markValue === null) continue;
 
-        const numericMark = Number(markValue);
-
-        transactionOperations.push(
-          prisma.result.upsert({
-            where: {
-              studentId_examId_subjectId_schoolId: {
-                studentId: entry.studentId,
-                examId: Number(examId),
-                subjectId,
-                schoolId,
-              },
-            },
-            update: { marks: numericMark },
-            create: {
-              studentId: entry.studentId,
-              examId: Number(examId),
-              subjectId,
-              marks: numericMark,
-              schoolId,
-            },
-          }),
-        );
+        rows.push({
+          studentId: entry.studentId,
+          examId: Number(examId),
+          subjectId,
+          marks: Number(markValue),
+          academicYearId,
+          schoolId,
+        });
       }
     }
 
-    /* -------------------------
-       8️⃣ Execute Transaction
-    -------------------------- */
-    if (transactionOperations.length > 0) {
-      await prisma.$transaction(transactionOperations);
+    if (!rows.length) {
+      return NextResponse.json({ message: "No results to insert" });
     }
 
-    return NextResponse.json(
-      {
-        success: true,
-        message: "Results saved successfully",
-        count: transactionOperations.length,
-      },
-      { status: 200 },
-    );
+    /* --------------------------------
+       Build SQL
+    -------------------------------- */
+
+    const values = rows
+      .map(
+        (r) =>
+          `('${r.studentId}', ${r.examId}, ${r.subjectId}, ${r.marks}, '${r.academicYearId}', '${r.schoolId}')`
+      )
+      .join(",");
+
+    const query = `
+      INSERT INTO "Result"
+      ("studentId","examId","subjectId","marks","academicYearId","schoolId")
+      VALUES ${values}
+      ON CONFLICT ("studentId","examId","subjectId","academicYearId","schoolId")
+      DO UPDATE SET "marks" = EXCLUDED."marks"
+    `;
+
+    await prisma.$executeRawUnsafe(query);
+
+    return NextResponse.json({
+      success: true,
+      inserted: rows.length,
+    });
   } catch (error) {
     if (error instanceof SchoolNotFoundError) {
       return NextResponse.json({ error: error.message }, { status: 404 });
     }
 
-    console.error("Bulk Entry Error:", error);
+    console.error("Bulk Result Error:", error);
 
     return NextResponse.json(
       { error: "Failed to save results" },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }

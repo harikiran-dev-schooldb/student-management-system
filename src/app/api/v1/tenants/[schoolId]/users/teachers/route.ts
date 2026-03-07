@@ -1,36 +1,34 @@
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
 import prisma from "@/lib/prisma";
 import { clerkClient } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { resolveSchoolId } from "@/lib/resolveSchool";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
 
-export const runtime = "nodejs";
-
 export async function POST(
   req: NextRequest,
-  { params }: { params: Promise<{ schoolId: string }> },
+  { params }: { params: Promise<{ schoolId: string }> }
 ) {
   try {
-    /* =====================================================
-       1️⃣ Resolve Tenant + Authorize
-    ===================================================== */
+
+    /* 1️⃣ Resolve tenant */
+
     const { schoolId: schoolSlug } = await params;
     const schoolId = await resolveSchoolId(schoolSlug);
 
-    const user = await fetchUserInfo(schoolSlug);
-    
+    const user = await fetchUserInfo(schoolId);
+
     if (!user || user.role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    /* =====================================================
-       2️⃣ Parse Input
-    ===================================================== */
+    /* 2️⃣ Parse input */
+
     const body = await req.json();
 
     const {
-      id,
       username,
       name,
       parentName,
@@ -52,9 +50,8 @@ export async function POST(
       );
     }
 
-    /* =====================================================
-       3️⃣ Prevent Duplicate Inside Tenant
-    ===================================================== */
+    /* 3️⃣ Prevent duplicate teacher */
+
     const existingTeacher = await prisma.teacher.findUnique({
       where: {
         username_schoolId: {
@@ -67,18 +64,39 @@ export async function POST(
     if (existingTeacher) {
       return NextResponse.json(
         { error: "Teacher already exists in this school" },
-        { status: 400 }
+        { status: 409 }
       );
     }
 
+    /* 4️⃣ Validate class */
+
+    let validatedClassId: number | null = null;
+
+    if (classId) {
+      const cls = await prisma.class.findFirst({
+        where: { id: Number(classId), schoolId },
+        select: { id: true },
+      });
+
+      if (!cls) {
+        return NextResponse.json(
+          { error: "Invalid classId" },
+          { status: 400 }
+        );
+      }
+
+      validatedClassId = cls.id;
+    }
+
     const client = await clerkClient();
+
     const phoneNumber = `+91${phone}`;
+
     const finalPassword =
       password && password !== "" ? password : phone;
 
-    /* =====================================================
-       4️⃣ Clerk User Handling
-    ===================================================== */
+    /* 5️⃣ Clerk user */
+
     const existingUsers = await client.users.getUserList({
       phoneNumber: [phoneNumber],
     });
@@ -88,6 +106,7 @@ export async function POST(
     if (existingUsers.data.length > 0) {
       clerkUser = existingUsers.data[0];
     } else {
+
       clerkUser = await client.users.createUser({
         username: username.trim(),
         password: finalPassword,
@@ -100,11 +119,10 @@ export async function POST(
       });
     }
 
-    /* =====================================================
-       5️⃣ Transaction
-    ===================================================== */
+    /* 6️⃣ Transaction */
+
     const result = await prisma.$transaction(async (tx) => {
-      // Profile
+
       const profile = await tx.profile.upsert({
         where: { clerk_id: clerkUser.id },
         update: {},
@@ -114,7 +132,6 @@ export async function POST(
         },
       });
 
-      // LinkedUser
       const linkedUser = await tx.linkedUser.create({
         data: {
           username: username.trim(),
@@ -131,10 +148,8 @@ export async function POST(
         });
       }
 
-      // Teacher
       const teacher = await tx.teacher.create({
         data: {
-          id: id ?? username,
           username: username.trim(),
           name,
           parentName: parentName ?? null,
@@ -148,17 +163,27 @@ export async function POST(
           clerk_id: clerkUser.id,
           profileId: profile.id,
           linkedUserId: linkedUser.id,
-          classId: classId ? Number(classId) : null,
           schoolId,
         },
       });
 
+      /* Optional class assignment */
+
+      if (validatedClassId) {
+        await tx.teacherClassAssignment.create({
+          data: {
+            teacherId: teacher.id,
+            classId: validatedClassId,
+            schoolId,
+            academicYearId: "",
+            role: "SUPERVISOR",
+          },
+        });
+      }
+
       return teacher;
     });
 
-    /* =====================================================
-       6️⃣ Response
-    ===================================================== */
     return NextResponse.json(
       {
         success: true,
@@ -169,6 +194,7 @@ export async function POST(
     );
 
   } catch (error) {
+
     console.error("Create Teacher Error:", error);
 
     return NextResponse.json(

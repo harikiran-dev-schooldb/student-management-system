@@ -3,15 +3,17 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { resolveSchoolId } from "@/lib/resolveSchool";
+import { tenantPrisma } from "@/lib/tenant-prisma";
 
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: Promise<{ schoolId: string; }> }
+  { params }: { params: Promise<{ schoolId: string }> }
 ) {
   try {
     const { schoolId: schoolSlug } = await params;
     const schoolId = await resolveSchoolId(schoolSlug);
+    const db = tenantPrisma(schoolId);
 
     const { searchParams } = new URL(req.url);
     const examTitle = searchParams.get("examTitle");
@@ -25,75 +27,88 @@ export async function GET(
     }
 
     const classId = Number(classIdParam);
-    if (Number.isNaN(classId)) {
-      return NextResponse.json({ error: "Invalid classId" }, { status: 400 });
-    }
 
-    /* 1️⃣ Resolve Class → Grade */
-    const cls = await prisma.class.findFirst({
+    /* -----------------------------
+       QUERY 1
+       Class + Grade + Exam Subjects
+    ------------------------------*/
+
+    const classData = await db.class.findFirst({
       where: { id: classId, schoolId },
-      select: { gradeId: true },
-    });
-
-    if (!cls) {
-      return NextResponse.json(
-        { error: "Class not found for this school" },
-        { status: 404 }
-      );
-    }
-
-    /* 2️⃣ Resolve Exam */
-    const exam = await prisma.exam.findUnique({
-      where: {
-        title_schoolId: {
-          title: examTitle,
-          schoolId,
+      select: {
+        gradeId: true,
+        Grade: {
+          select: {
+            examGradeSubjects: {
+              where: {
+                exam: {
+                  title: examTitle,
+                  schoolId,
+                  academicYear: { isActive: true },
+                },
+              },
+              select: {
+                subject: {
+                  select: { id: true, name: true },
+                },
+                maxMarks: true,
+                examId: true,
+              },
+            },
+          },
         },
       },
     });
 
-    if (!exam) {
-      return NextResponse.json(
-        { error: "Exam not found" },
-        { status: 404 }
-      );
+    if (!classData) {
+      return NextResponse.json({ error: "Class not found" }, { status: 404 });
     }
 
-    /* 3️⃣ Exam Schedule */
-    const examGradeSubjects = await prisma.examGradeSubject.findMany({
-      where: {
-        examId: exam.id,
-        gradeId: cls.gradeId,
-        schoolId,
-      },
-      include: {
-        Subject: { select: { id: true, name: true } },
-      },
-      orderBy: { Subject: { name: "asc" } },
-    });
+    const examSubjects = classData.Grade.examGradeSubjects;
 
-    if (!examGradeSubjects.length) {
+    if (!examSubjects.length) {
       return NextResponse.json(
         { error: "Exam not configured for this grade" },
         { status: 404 }
       );
     }
 
-    const subjects = examGradeSubjects.map((egs) => ({
-      id: egs.Subject.id,
-      name: egs.Subject.name,
-      maxMarks: egs.maxMarks,
+    const examId = examSubjects[0].examId;
+
+    const subjects = examSubjects.map((s) => ({
+      id: s.subject.id,
+      name: s.subject.name,
+      maxMarks: s.maxMarks,
     }));
 
-    /* 4️⃣ Students + Existing Results */
-    const students = await prisma.student.findMany({
-      where: { classId, schoolId },
+    /* -----------------------------
+       QUERY 2
+       Students + Results
+    ------------------------------*/
+
+    const students = await db.student.findMany({
+      where: {
+        schoolId,
+        enrollments: {
+          some: {
+            classId,
+            status: "ACTIVE",
+            academicYear: { isActive: true },
+          },
+        },
+      },
       select: {
         id: true,
         name: true,
         results: {
-          where: { examId: exam.id, schoolId },
-          select: { subjectId: true, marks: true },
+          where: {
+            examId,
+            schoolId,
+          },
+          select: {
+            subjectId: true,
+            marks: true,
+          },
         },
       },
       orderBy: { name: "asc" },
@@ -117,11 +132,14 @@ export async function GET(
     }
 
     return NextResponse.json({
-      examId: exam.id,
-      gradeId: cls.gradeId,
+      examId,
+      gradeId: classData.gradeId,
       classId,
       subjects,
-      students: students.map((s) => ({ id: s.id, name: s.name })),
+      students: students.map((s) => ({
+        id: s.id,
+        name: s.name,
+      })),
       existingMarks,
     });
 

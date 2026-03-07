@@ -2,7 +2,6 @@
 
 import { useState, useRef, DragEvent } from "react";
 import Papa from "papaparse";
-import axios from "axios";
 import {
   UploadCloud,
   FileSpreadsheet,
@@ -14,12 +13,15 @@ import {
   FileText,
   Book, // Changed icon to represent Subjects
 } from "lucide-react";
-import { useSchoolSlug } from "../hooks/getschool";
 import { useTenantApi } from "@/hooks/useTenantApi";
 
 type SubjectCSV = {
   name: string;
   gradeIds?: string;
+};
+
+type BulkSubjectResponse = {
+  errors?: string[];
 };
 
 export default function BulkSubjectUpload() {
@@ -65,10 +67,9 @@ export default function BulkSubjectUpload() {
             name: row.name?.trim(),
             gradeIds: row.gradeIds
               ? row.gradeIds
-                  .toString()
-                  .split(",")
-                  .map((id) => parseInt(id.trim()))
-                  .filter(Boolean)
+                .split(",")
+                .map((id) => Number(id.trim()))
+                .filter((id) => !isNaN(id))
               : [],
           };
         });
@@ -111,15 +112,15 @@ export default function BulkSubjectUpload() {
     }
   };
 
-  const schoolId = useSchoolSlug();
-  const api = useTenantApi(schoolId);
+  const api = useTenantApi();
 
   const handleUpload = async () => {
     setLoading(true);
     try {
-      const response = await api.post("/subjects/bulk-upload", {
-        subjects,
-      });
+      const response = await api.post<BulkSubjectResponse>(
+        "/subjects/bulk-upload",
+        { subjects }
+      );
 
       if (!response.data.errors?.length) {
         setSuccess(true);
@@ -172,10 +173,9 @@ export default function BulkSubjectUpload() {
             <div className="flex-1 flex flex-col items-center justify-center p-8 md:p-16">
               <div
                 className={`relative group cursor-pointer flex flex-col items-center justify-center w-full max-w-3xl h-80 rounded-3xl border-3 border-dashed transition-all duration-300 ease-out
-                  ${
-                    dragActive
-                      ? "border-indigo-500 bg-indigo-50/50 dark:bg-darkMode scale-[1.02] shadow-2xl shadow-indigo-500/10"
-                      : "border-zinc-200 dark:border-zinc-800 hover:border-indigo-400 dark:hover:border-indigo-500 hover:bg-zinc-50 dark:hover:bg-zinc-900"
+                  ${dragActive
+                    ? "border-indigo-500 bg-indigo-50/50 dark:bg-darkMode scale-[1.02] shadow-2xl shadow-indigo-500/10"
+                    : "border-zinc-200 dark:border-zinc-800 hover:border-indigo-400 dark:hover:border-indigo-500 hover:bg-zinc-50 dark:hover:bg-zinc-900"
                   }`}
                 onDragEnter={handleDrag}
                 onDragLeave={handleDrag}
@@ -198,11 +198,10 @@ export default function BulkSubjectUpload() {
 
                 <div className="relative z-10 flex flex-col items-center gap-6 text-center p-6">
                   <div
-                    className={`p-5 rounded-2xl shadow-sm transition-all duration-300 ${
-                      dragActive
+                    className={`p-5 rounded-2xl shadow-sm transition-all duration-300 ${dragActive
                         ? "bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600"
                         : "bg-white dark:bg-darkMode text-zinc-400 group-hover:text-indigo-500 group-hover:scale-110"
-                    }`}
+                      }`}
                   >
                     <UploadCloud className="w-10 h-10" />
                   </div>
@@ -358,7 +357,7 @@ export default function BulkSubjectUpload() {
                 </button>
                 <button
                   onClick={handleUpload}
-                  disabled={loading || errors.length > 0}
+                  disabled={loading || errors.length > 0 || subjects.length === 0}
                   className="px-8 py-2.5 rounded-xl font-bold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 shadow-lg shadow-indigo-500/25 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none flex items-center gap-2"
                 >
                   {loading ? (

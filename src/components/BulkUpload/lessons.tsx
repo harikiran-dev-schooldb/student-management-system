@@ -2,19 +2,17 @@
 
 import { useState, useRef, DragEvent } from "react";
 import Papa from "papaparse";
-import axios from "axios";
-import { 
-  UploadCloud, 
-  FileSpreadsheet, 
-  AlertCircle, 
-  CheckCircle2, 
-  X, 
-  Loader2, 
+import {
+  UploadCloud,
+  FileSpreadsheet,
+  AlertCircle,
+  CheckCircle2,
+  X,
+  Loader2,
   Trash2,
   FileText,
   BookOpen // Changed icon to represent Lessons
 } from "lucide-react";
-import { useSchoolSlug } from "../hooks/getschool";
 import { useTenantApi } from "@/hooks/useTenantApi";
 
 type LessonCSV = {
@@ -24,6 +22,10 @@ type LessonCSV = {
   teacherId: string;
   day: string;
   period: string;
+};
+
+type BulkLessonResponse = {
+  errors?: string[];
 };
 
 export default function BulkLessonsUpload() {
@@ -99,19 +101,18 @@ export default function BulkLessonsUpload() {
     }
   };
 
-  const schoolId = useSchoolSlug();
-  const api = useTenantApi(schoolId);
+  const api = useTenantApi();
 
   const handleUpload = async () => {
     setLoading(true);
     try {
-      const response = await api.post("/lessons/bulk", {
+      const response = await api.post<BulkLessonResponse>("/lessons/bulk", {
         lessons,
       });
 
       if (!response.data.errors?.length) {
         setSuccess(true);
-        setTimeout(() => resetForm(), 3000); 
+        setTimeout(() => resetForm(), 3000);
       } else {
         setErrors(response.data.errors);
       }
@@ -125,7 +126,7 @@ export default function BulkLessonsUpload() {
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-darkMode text-zinc-900 dark:text-zinc-100 font-sans transition-colors">
-      
+
       {/* 1. Header Section */}
       <header className="px-6 py-8 md:px-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
@@ -139,13 +140,13 @@ export default function BulkLessonsUpload() {
             Schedule multiple lessons at once by uploading a CSV.
           </p>
         </div>
-        
-        <button 
-          onClick={() => window.open('/sample/lessons-bulk-template.csv')} 
+
+        <button
+          onClick={() => window.open('/sample/lessons-bulk-template.csv')}
           className="group flex items-center gap-3 px-5 py-3 rounded-xl bg-white dark:bg-darkMode border border-zinc-200 dark:border-zinc-800 hover:border-indigo-300 dark:hover:border-indigo-700 shadow-sm hover:shadow-md transition-all active:scale-95"
         >
           <div className="p-1.5 bg-indigo-50 dark:bg-darkMode rounded-lg text-indigo-600 dark:text-indigo-400 group-hover:text-indigo-700">
-             <FileText className="w-4 h-4" />
+            <FileText className="w-4 h-4" />
           </div>
           <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">
             Download Template
@@ -156,14 +157,14 @@ export default function BulkLessonsUpload() {
       {/* 2. Main Content - Expanded Width */}
       <main className="flex-1 px-4 md:px-10 pb-10">
         <div className="bg-white dark:bg-darkMode rounded-3xl shadow-xl shadow-zinc-200/50 dark:shadow-black/50 border border-zinc-200 dark:border-zinc-800 overflow-hidden flex flex-col min-h-[600px]">
-          
+
           {/* A. Empty State / Drop Zone */}
           {!lessons.length && (
             <div className="flex-1 flex flex-col items-center justify-center p-8 md:p-16">
               <div
                 className={`relative group cursor-pointer flex flex-col items-center justify-center w-full max-w-3xl h-80 rounded-3xl border-3 border-dashed transition-all duration-300 ease-out
-                  ${dragActive 
-                    ? "border-indigo-500 bg-indigo-50/50 dark:bg-darkMode scale-[1.02] shadow-2xl shadow-indigo-500/10" 
+                  ${dragActive
+                    ? "border-indigo-500 bg-indigo-50/50 dark:bg-darkMode scale-[1.02] shadow-2xl shadow-indigo-500/10"
                     : "border-zinc-200 dark:border-zinc-800 hover:border-indigo-400 dark:hover:border-indigo-500 hover:bg-zinc-50 dark:hover:bg-zinc-900"
                   }`}
                 onDragEnter={handleDrag}
@@ -179,10 +180,10 @@ export default function BulkLessonsUpload() {
                   className="hidden"
                   onChange={handleFileChange}
                 />
-                
+
                 {/* Decorative Icon Background */}
                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
-                   <div className="w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl"></div>
+                  <div className="w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl"></div>
                 </div>
 
                 <div className="relative z-10 flex flex-col items-center gap-6 text-center p-6">
@@ -221,9 +222,9 @@ export default function BulkLessonsUpload() {
                     </p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-3">
-                  <button 
+                  <button
                     onClick={resetForm}
                     className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-zinc-600 dark:text-zinc-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                   >
@@ -245,14 +246,14 @@ export default function BulkLessonsUpload() {
                         {errors.map((err, i) => <li key={i}>{err}</li>)}
                       </ul>
                     </div>
-                    <button onClick={() => setErrors([])} className="text-red-400 hover:text-red-600"><X className="w-4 h-4"/></button>
+                    <button onClick={() => setErrors([])} className="text-red-400 hover:text-red-600"><X className="w-4 h-4" /></button>
                   </div>
                 )}
 
                 {success && (
                   <div className="p-4 rounded-xl bg-emerald-50 dark:bg-darkMode border border-emerald-200 dark:border-emerald-800/50 flex items-center gap-4 animate-in slide-in-from-top-2">
                     <div className="p-2 bg-emerald-100 dark:bg-darkMode rounded-full text-emerald-600 dark:text-emerald-400">
-                       <CheckCircle2 className="w-6 h-6" />
+                      <CheckCircle2 className="w-6 h-6" />
                     </div>
                     <div>
                       <h3 className="text-sm font-bold text-emerald-800 dark:text-emerald-300">Import Successful</h3>
@@ -295,7 +296,7 @@ export default function BulkLessonsUpload() {
                   </table>
                 </div>
               </div>
-              
+
               {/* Sticky Footer */}
               <div className="p-6 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-darkMode flex justify-end gap-3 sticky bottom-0 z-20">
                 <button
@@ -307,7 +308,7 @@ export default function BulkLessonsUpload() {
                 </button>
                 <button
                   onClick={handleUpload}
-                  disabled={loading || errors.length > 0}
+                  disabled={loading || errors.length > 0 || lessons.length === 0}
                   className="px-8 py-2.5 rounded-xl font-bold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 shadow-lg shadow-indigo-500/25 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none flex items-center gap-2"
                 >
                   {loading ? (

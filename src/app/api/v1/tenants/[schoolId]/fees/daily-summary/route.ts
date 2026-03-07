@@ -1,19 +1,21 @@
 export const runtime = "nodejs";
+
 import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
 import { resolveSchoolId } from "@/lib/resolveSchool";
-import { AcademicYear } from "@prisma/client";
+import { tenantPrisma } from "@/lib/tenant-prisma";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: Promise<{ schoolId: string; }> }
+  { params }: { params: Promise<{ schoolId: string }> }
 ) {
   try {
     const { schoolId: schoolSlug } = await params;
     const schoolId = await resolveSchoolId(schoolSlug);
+    const db = tenantPrisma(schoolId);
 
     const { searchParams } = new URL(req.url);
-    const academicYearParam = searchParams.get("academicYear");
+
+    const academicYearId = searchParams.get("academicYear");
     const fromParam = searchParams.get("from");
     const toParam = searchParams.get("to");
 
@@ -23,14 +25,14 @@ export async function GET(
 
     const from = fromParam
       ? new Date(fromParam)
-      : new Date(today.setDate(today.getDate() - 30));
+      : new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
 
     const to = toParam ? new Date(toParam) : new Date();
 
     from.setHours(0, 0, 0, 0);
     to.setHours(23, 59, 59, 999);
 
-    /* ---------------- Where Clause ---------------- */
+    /* ---------------- Base Where ---------------- */
 
     const where: any = {
       schoolId,
@@ -42,40 +44,35 @@ export async function GET(
       },
     };
 
-    if (
-      academicYearParam &&
-      Object.values(AcademicYear).includes(
-        academicYearParam as AcademicYear
-      )
-    ) {
-      where.academicYear = academicYearParam;
+    if (academicYearId) {
+      where.academicYearId = academicYearId;
     }
 
     /* ---------------- Fetch Transactions ---------------- */
 
-    const transactions = await prisma.feeTransaction.findMany({
+    const transactions = await db.feeTransaction.findMany({
       where,
       select: {
         receiptDate: true,
         amount: true,
       },
-      orderBy: { receiptDate: "asc" },
+      orderBy: {
+        receiptDate: "asc",
+      },
     });
 
     /* ---------------- Aggregate By Date ---------------- */
 
-    const dailyMap: Record<string, number> = {};
+    const dailyMap = new Map<string, number>();
 
     for (const txn of transactions) {
-      const dateKey = txn.receiptDate
-        .toISOString()
-        .split("T")[0];
+      const dateKey = txn.receiptDate.toISOString().split("T")[0];
 
-      dailyMap[dateKey] =
-        (dailyMap[dateKey] || 0) + (txn.amount || 0);
+      const prev = dailyMap.get(dateKey) || 0;
+      dailyMap.set(dateKey, prev + Number(txn.amount));
     }
 
-    const summary = Object.entries(dailyMap).map(
+    const summary = Array.from(dailyMap.entries()).map(
       ([date, collected]) => ({
         date,
         collected,

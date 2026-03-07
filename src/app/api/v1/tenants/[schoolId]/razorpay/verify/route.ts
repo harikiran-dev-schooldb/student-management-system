@@ -1,14 +1,12 @@
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import Razorpay from "razorpay";
 import prisma from "@/lib/prisma";
 import { resolveSchoolId } from "@/lib/resolveSchool";
-
-/* ======================================================
-   POST → Verify Razorpay Payment (Tenant Safe + Atomic)
-====================================================== */
+import { Term } from "@prisma/client";
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID!,
@@ -20,7 +18,7 @@ export async function POST(
   { params }: { params: Promise<{ schoolId: string }> }
 ) {
   try {
-    const { schoolId: schoolSlug} = await params
+    const { schoolId: schoolSlug } = await params;
     const schoolId = await resolveSchoolId(schoolSlug);
 
     const {
@@ -30,18 +28,31 @@ export async function POST(
     } = await req.json();
 
     if (!orderCreationId || !razorpayPaymentId || !razorpaySignature) {
-      return NextResponse.json({ error: "Missing fields" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 }
+      );
     }
 
-    /* 1️⃣ Verify signature */
+    /* ==============================
+       Verify Razorpay Signature
+    ============================== */
+
     const expectedSignature = crypto
       .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET!)
       .update(`${orderCreationId}|${razorpayPaymentId}`)
       .digest("hex");
 
     if (expectedSignature !== razorpaySignature) {
-      return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid payment signature" },
+        { status: 400 }
+      );
     }
+
+    /* ==============================
+       Atomic DB Transaction
+    ============================== */
 
     const result = await prisma.$transaction(async (tx) => {
       const payment = await tx.feePayment.findUnique({
@@ -50,16 +61,19 @@ export async function POST(
 
       if (!payment) throw new Error("Payment record not found");
 
-      if (payment.status === "SUCCESS") return payment;
+      /* Prevent duplicate settlement */
+      if (payment.status === "SUCCESS") {
+        return payment;
+      }
 
-      /* 2️⃣ Validate Razorpay amount */
+      /* Validate Razorpay order */
       const razorpayOrder = await razorpay.orders.fetch(orderCreationId);
 
-      if (razorpayOrder.amount !== payment.amount * 100) {
+      if (razorpayOrder.amount !== Number(payment.amount) * 100) {
         throw new Error("Amount mismatch detected");
       }
 
-      /* 3️⃣ Mark SUCCESS */
+      /* Mark payment SUCCESS */
       const updatedPayment = await tx.feePayment.update({
         where: { id: payment.id },
         data: {
@@ -68,50 +82,63 @@ export async function POST(
         },
       });
 
-      /* 4️⃣ Extract metadata */
+      /* Extract metadata safely */
       const metadata = payment.metadata as any;
-      const terms = metadata?.terms || [];
-      const academicYear = metadata?.academicYear;
+
+      if (!metadata?.terms || !metadata?.academicYear) {
+        throw new Error("Invalid payment metadata");
+      }
+
+      const terms: Term[] = metadata.terms;
+      const academicYearId = metadata.academicYear;
 
       for (const term of terms) {
         const studentFee = await tx.studentFees.findFirst({
           where: {
             studentId: payment.studentId,
             term,
-            academicYear,
+            academicYearId,
             schoolId,
           },
+          include: { feeStructure: true },
         });
 
         if (!studentFee) continue;
 
-        const dueAmount =
-          studentFee.paidAmount +
+        const assignedFee =
+          (studentFee.feeStructure.termFees || 0) +
+          (studentFee.feeStructure.abacusFees || 0);
+
+        const due =
+          assignedFee -
+          studentFee.paidAmount -
           studentFee.discountAmount +
           studentFee.fineAmount;
+
+        if (due <= 0) continue;
 
         /* Update StudentFees */
         await tx.studentFees.update({
           where: { id: studentFee.id },
           data: {
-            paidAmount: dueAmount,
+            paidAmount: { increment: due },
             paymentMode: "ONLINE",
-            receiptNo: `ONL-${razorpayPaymentId.slice(-6)}`,
             receiptDate: new Date(),
+            receiptNo: `ONL-${razorpayPaymentId.slice(-6)}`,
           },
         });
 
-        /* Insert FeeTransaction */
+        /* Create FeeTransaction */
         await tx.feeTransaction.create({
           data: {
             studentId: payment.studentId,
             studentFeesId: studentFee.id,
-            term,
-            amount: dueAmount,
+            term: term,
+            academicYearId,
+            amount: due,
             receiptDate: new Date(),
             receiptNo: `ONL-${razorpayPaymentId.slice(-6)}`,
             paymentMode: "ONLINE",
-            academicYear,
             schoolId,
           },
         });
@@ -127,7 +154,8 @@ export async function POST(
     });
 
   } catch (error: any) {
-    console.error(error);
+    console.error("Payment verification error:", error);
+
     return NextResponse.json(
       { error: error.message || "Verification failed" },
       { status: 500 }

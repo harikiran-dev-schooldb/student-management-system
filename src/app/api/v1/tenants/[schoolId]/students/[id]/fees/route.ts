@@ -1,105 +1,85 @@
+export const runtime = "nodejs";
+
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { resolveSchoolId } from "@/lib/resolveSchool";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
 
-export const runtime = "nodejs";
-
 /* ======================================================
    GET → Fetch Student Fees (Tenant + Role Safe)
 ====================================================== */
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ schoolId: string; id: string }> }
 ) {
   try {
-    /* -----------------------------
-       1️⃣ Resolve Tenant
-    ------------------------------ */
+    /* 1️⃣ Resolve Tenant */
     const { schoolId: schoolSlug, id: studentId } = await params;
     const schoolId = await resolveSchoolId(schoolSlug);
 
-    /* -----------------------------
-       2️⃣ Authenticate User
-    ------------------------------ */
+    /* 2️⃣ Auth */
     const user = await fetchUserInfo(schoolId);
 
     if (!user || !user.profileId) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    /* -----------------------------
-       3️⃣ Authorization Check
-    ------------------------------ */
+    /* 3️⃣ Student access restriction */
     if (user.role === "student" && user.studentId !== studentId) {
-      return NextResponse.json(
-        { error: "Forbidden" },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    /* -----------------------------
-       4️⃣ Fetch Student (Tenant Safe)
-    ------------------------------ */
-    const student = await prisma.student.findFirst({
+    /* 4️⃣ Get active enrollment */
+    const enrollment = await prisma.studentEnrollment.findFirst({
       where: {
-        id: studentId,
-        schoolId, // 🔒 Tenant isolation
+        studentId,
+        schoolId,
+        status: "ACTIVE",
       },
       include: {
-        Class: {
-          select: { gradeId: true },
+        class: {
+          select: {
+            gradeId: true,
+          },
         },
       },
     });
 
-    if (!student) {
+    if (!enrollment) {
       return NextResponse.json(
-        { error: "Student not found" },
+        { error: "Student enrollment not found" },
         { status: 404 }
       );
     }
 
-    const gradeId = student.Class?.gradeId;
-    const academicYear = student.academicYear;
+    const gradeId = enrollment.class.gradeId;
+    const academicYearId = enrollment.academicYearId;
 
-    if (!gradeId) {
-      return NextResponse.json(
-        { error: "Grade not found for student" },
-        { status: 404 }
-      );
-    }
-
-    /* -----------------------------
-       5️⃣ Fetch Fee Structures
-    ------------------------------ */
+    /* 5️⃣ Fee structures for grade */
     const feeStructures = await prisma.feeStructure.findMany({
       where: {
         schoolId,
         gradeId,
-        academicYear,
+        academicYearId,
+      },
+      orderBy: {
+        term: "asc",
       },
     });
 
-    /* -----------------------------
-       6️⃣ Fetch Student Fees
-    ------------------------------ */
+    /* 6️⃣ Student payments */
     const studentFees = await prisma.studentFees.findMany({
       where: {
         schoolId,
         studentId,
-        academicYear,
+        academicYearId,
       },
     });
 
-    /* -----------------------------
-       7️⃣ Merge
-    ------------------------------ */
-    const feesWithPaymentStatus = feeStructures.map((fee) => {
-      const matchingPayment = studentFees.find(
+    /* 7️⃣ Merge fee + payment */
+    const result = feeStructures.map((fee) => {
+      const payment = studentFees.find(
         (sf) => sf.feeStructureId === fee.id
       );
 
@@ -107,21 +87,23 @@ export async function GET(
         feeStructureId: fee.id,
         studentId,
         term: fee.term,
-        academicYear: fee.academicYear,
-        paidAmount: matchingPayment?.paidAmount ?? 0,
-        discountAmount: matchingPayment?.discountAmount ?? 0,
-        fineAmount: matchingPayment?.fineAmount ?? 0,
-        receivedDate: matchingPayment?.receivedDate ?? null,
-        paymentMode: matchingPayment?.paymentMode ?? null,
+        academicYearId,
+        assignedFee: (fee.termFees || 0) + (fee.abacusFees || 0),
+        paidAmount: payment?.paidAmount ?? 0,
+        discountAmount: payment?.discountAmount ?? 0,
+        fineAmount: payment?.fineAmount ?? 0,
+        receivedDate: payment?.receivedDate ?? null,
+        paymentMode: payment?.paymentMode ?? null,
       };
     });
 
-    return NextResponse.json(feesWithPaymentStatus, { status: 200 });
+    return NextResponse.json(result, { status: 200 });
+
   } catch (error) {
-    console.error("Error fetching student fees:", error);
+    console.error("Student fee API error:", error);
 
     return NextResponse.json(
-      { error: "Internal Server Error" },
+      { error: "Failed to fetch student fees" },
       { status: 500 }
     );
   }

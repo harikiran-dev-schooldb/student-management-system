@@ -1,53 +1,68 @@
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-import prisma from "@/lib/prisma";
+
 import { NextRequest, NextResponse } from "next/server";
 import { resolveSchoolId } from "@/lib/resolveSchool";
+import { tenantPrisma } from "@/lib/tenant-prisma";
 import { slipSchema } from "@/lib/formValidationSchemas";
-
 import { generatePermissionSlipPDF } from "@/lib/pdf/permissionSlipPdf";
 import { getMessageContent } from "@/lib/utils/messageUtils";
 
-/* ======================================================
-   POST → Create Permission Slip (Tenant Safe)
-====================================================== */
 export async function POST(
   req: NextRequest,
-  { params }: { params: Promise<{ schoolId: string }> },
+  { params }: { params: Promise<{ schoolId: string }> }
 ) {
   try {
     const { schoolId: slug } = await params;
-    const schoolId = await resolveSchoolId(slug);
 
-    const school = await prisma.schoolInfo.findUnique({
+    const schoolId = await resolveSchoolId(slug);
+    const db = tenantPrisma(schoolId);
+
+    const school = await db.schoolInfo.findUnique({
       where: { id: schoolId },
       select: { name: true },
     });
 
     if (!school) {
-      return NextResponse.json({ error: "School not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "School not found" },
+        { status: 404 }
+      );
     }
 
     const body = await req.json();
     const data = slipSchema.parse(body);
 
-    const student = await prisma.student.findFirst({
+    const student = await db.student.findFirst({
       where: { id: data.studentId, schoolId },
       include: {
-        Class: { include: { Grade: true } },
+        enrollments: {
+          where: { status: "ACTIVE" },
+          include: {
+            class: {
+              include: {
+                Grade: true,
+              },
+            },
+          },
+          take: 1,
+        },
       },
     });
 
     if (!student) {
       return NextResponse.json(
         { error: "Student not found in this school" },
-        { status: 404 },
+        { status: 404 }
       );
     }
 
+    const enrollment = student.enrollments[0];
+    const classInfo = enrollment?.class;
+
     const leaveDate = data.date ? new Date(data.date) : new Date();
 
-    const newSlip = await prisma.permissionSlip.create({
+    const newSlip = await db.permissionSlip.create({
       data: {
         studentId: data.studentId,
         leaveType: data.leaveType,
@@ -66,11 +81,13 @@ export async function POST(
       slip: newSlip,
     });
 
+    const className = classInfo
+      ? `${classInfo.Grade?.level ?? ""} - ${classInfo.section ?? ""}`
+      : "";
+
     const messageText = getMessageContent("PERMISSION_SLIP", {
       studentName: student.name,
-      className: `${student.Class?.Grade?.level ?? ""} - ${
-        student.Class?.section ?? ""
-      }`,
+      className,
       schoolName: school.name,
       date: leaveDate,
       leaveType: newSlip.leaveType,
@@ -78,12 +95,14 @@ export async function POST(
       relation: newSlip.relation || undefined,
     });
 
-    await prisma.messages.create({
+    await db.messages.create({
       data: {
         schoolId,
         studentId: student.id,
+        classId: classInfo?.id,
         message: messageText,
         type: "PERMISSION_SLIP",
+        date: leaveDate,
       },
     });
 
@@ -93,19 +112,21 @@ export async function POST(
         data: newSlip,
         gateSlipPdf: `data:application/pdf;base64,${pdfBase64}`,
       },
-      { status: 201 },
+      { status: 201 }
     );
   } catch (error: any) {
     console.error("Permission slip POST error:", error);
 
+    if (error?.name === "ZodError") {
+      return NextResponse.json(
+        { error: "Validation failed", details: error.flatten() },
+        { status: 400 }
+      );
+    }
+
     return NextResponse.json(
-      {
-        error:
-          error?.name === "ZodError"
-            ? "Validation failed"
-            : "Failed to create permission slip",
-      },
-      { status: 400 },
+      { error: "Failed to create permission slip" },
+      { status: 500 }
     );
   }
 }
@@ -114,25 +135,23 @@ export async function POST(
    GET → Fetch Single Permission Slip
 ====================================================== */
 export async function GET(
-  _req: NextRequest,
-  { params }: { params: Promise<{ schoolId: string }> },
+  req: NextRequest,
+  { params }: { params: Promise<{ schoolId: string }> }
 ) {
   try {
     const { schoolId: slug } = await params;
-    const schoolId = await resolveSchoolId(slug);
 
-    const slip = await prisma.permissionSlip.findFirst({
-      where: {
-        schoolId,
-      },
+    const schoolId = await resolveSchoolId(slug);
+    const db = tenantPrisma(schoolId);
+
+    const slip = await db.permissionSlip.findFirst({
+      where: { schoolId },
+      orderBy: { createdAt: "desc" },
       include: {
         student: {
           select: {
             id: true,
             name: true,
-            Class: {
-              include: { Grade: true },
-            },
           },
         },
       },
@@ -141,16 +160,17 @@ export async function GET(
     if (!slip) {
       return NextResponse.json(
         { error: "Permission slip not found" },
-        { status: 404 },
+        { status: 404 }
       );
     }
 
-    return NextResponse.json(slip, { status: 200 });
+    return NextResponse.json(slip);
   } catch (error) {
     console.error("Permission slip GET error:", error);
+
     return NextResponse.json(
       { error: "Failed to fetch permission slip" },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }

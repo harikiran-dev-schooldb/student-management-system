@@ -1,9 +1,10 @@
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
 import { examSchema } from "@/lib/formValidationSchemas";
 import { resolveSchoolId, SchoolNotFoundError } from "@/lib/resolveSchool";
+import { tenantPrisma } from "@/lib/tenant-prisma";
+import { fetchUserInfo } from "@/lib/utils/server-utils";
 
 /* ===============================
    POST  /exams
@@ -17,6 +18,14 @@ export async function POST(
     const { schoolId: slug } = await params;
     const schoolId = await resolveSchoolId(slug);
 
+    const db = tenantPrisma(schoolId);
+
+    const user = await fetchUserInfo(slug);
+
+    if (user?.role !== "admin") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const body = await req.json();
     const parsed = examSchema.safeParse(body);
 
@@ -27,11 +36,11 @@ export async function POST(
       );
     }
 
-    const { title, examDate, startTime, gradeId, subjectId, maxMarks } =
+    const { title, examDate, startTime, gradeId, subjectId, maxMarks, academicYearId } =
       parsed.data;
 
     /* ----- Validate Grade ----- */
-    const grade = await prisma.grade.findFirst({
+    const grade = await db.grade.findFirst({
       where: { id: gradeId, schoolId },
       select: { id: true },
     });
@@ -43,8 +52,23 @@ export async function POST(
       );
     }
 
+    const academicYear = await db.academicYear.findFirst({
+      where: {
+        id: academicYearId,
+        schoolId,
+      },
+      select: { id: true },
+    });
+
+    if (!academicYear) {
+      return NextResponse.json(
+        { error: "Invalid academic year for this school" },
+        { status: 400 }
+      );
+    }
+
     /* ----- Validate Subject belongs to Grade ----- */
-    const subjectBelongsToGrade = await prisma.subject.findFirst({
+    const subjectBelongsToGrade = await db.subject.findFirst({
       where: {
         id: subjectId,
         schoolId,
@@ -60,26 +84,27 @@ export async function POST(
       );
     }
 
-    const exam = await prisma.$transaction(async (tx) => {
+    const exam = await db.$transaction(async (tx) => {
       let existingExam = await tx.exam.findUnique({
         where: {
-          title_schoolId: { title, schoolId },
+          title_academicYearId_schoolId: { title, schoolId, academicYearId },
         },
       });
 
       if (!existingExam) {
         existingExam = await tx.exam.create({
-          data: { title, schoolId },
+          data: { title, schoolId, academicYearId },
         });
       }
 
       await tx.examGradeSubject.upsert({
         where: {
-          examId_gradeId_subjectId_schoolId: {
+          examId_gradeId_subjectId_academicYearId_schoolId: {
             examId: existingExam.id,
             gradeId,
             subjectId,
             schoolId,
+            academicYearId,
           },
         },
         update: {
@@ -95,6 +120,7 @@ export async function POST(
           startTime,
           maxMarks,
           schoolId,
+          academicYearId,
         },
       });
 
@@ -127,32 +153,39 @@ export async function GET(
   try {
     const { schoolId: slug } = await params;
     const schoolId = await resolveSchoolId(slug);
+    const db = tenantPrisma(schoolId);
 
     const { searchParams } = new URL(req.url);
     const onlyTitles = searchParams.get("titles") === "true";
 
     if (onlyTitles) {
-      const titles = await prisma.exam.findMany({
+      const titles = await db.exam.findMany({
         where: { schoolId },
+        distinct: ["title"],
         select: {
           id: true,
           title: true,
         },
-        orderBy: { id: "desc" },
+        orderBy: { id: "asc" },
       });
 
       return NextResponse.json({ titles });
     }
 
-    const exams = await prisma.exam.findMany({
+    const exams = await db.exam.findMany({
       where: { schoolId },
       orderBy: { id: "desc" },
       include: {
         examGradeSubjects: {
           where: { schoolId },
+          select: {
+            date: true,
+            startTime: true,
+            maxMarks: true,
+          },
           include: {
-            Grade: { select: { id: true, level: true } },
-            Subject: { select: { id: true, name: true } },
+            grade: { select: { id: true, level: true } },
+            subject: { select: { id: true, name: true } },
           },
         },
       },

@@ -1,42 +1,35 @@
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { resolveSchoolId } from "@/lib/resolveSchool";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
 
-export const runtime = "nodejs";
-
-/* ======================================================
-   POST → Promote Students (Admin Only, Tenant Safe)
-====================================================== */
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ schoolId: string }> }
 ) {
   try {
-    /* -----------------------------
-       1️⃣ Resolve Tenant
-    ------------------------------ */
+
+    /* 1️⃣ Resolve tenant */
+
     const { schoolId: schoolSlug } = await params;
     const schoolId = await resolveSchoolId(schoolSlug);
 
-    /* -----------------------------
-       2️⃣ Authenticate + Authorize
-    ------------------------------ */
+    /* 2️⃣ Auth */
+
     const user = await fetchUserInfo(schoolId);
 
     if (!user || user.role !== "admin") {
-      return NextResponse.json(
-        { error: "Forbidden" },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const {
       studentIds,
       fromClassId,
       toClassId,
-      academicYear,
+      academicYearId,
     } = await req.json();
 
     if (
@@ -44,7 +37,7 @@ export async function POST(
       studentIds.length === 0 ||
       !fromClassId ||
       !toClassId ||
-      !academicYear
+      !academicYearId
     ) {
       return NextResponse.json(
         { error: "Invalid payload" },
@@ -52,17 +45,14 @@ export async function POST(
       );
     }
 
-    /* -----------------------------
-       3️⃣ Validate Classes Belong To School
-    ------------------------------ */
+    /* 3️⃣ Validate classes */
+
     const [fromClass, toClass] = await Promise.all([
       prisma.class.findFirst({
         where: { id: Number(fromClassId), schoolId },
-        select: { id: true },
       }),
       prisma.class.findFirst({
         where: { id: Number(toClassId), schoolId },
-        select: { id: true },
       }),
     ]);
 
@@ -73,45 +63,62 @@ export async function POST(
       );
     }
 
-    /* -----------------------------
-       4️⃣ Validate Students Belong To School + From Class
-    ------------------------------ */
-    const students = await prisma.student.findMany({
+    /* 4️⃣ Validate enrollments */
+
+    const enrollments = await prisma.studentEnrollment.findMany({
       where: {
-        id: { in: studentIds },
-        schoolId,
+        studentId: { in: studentIds },
         classId: Number(fromClassId),
+        academicYearId,
+        schoolId,
+        status: "ACTIVE",
       },
-      select: { id: true },
     });
 
-    if (students.length !== studentIds.length) {
+    if (enrollments.length !== studentIds.length) {
       return NextResponse.json(
-        { error: "Some students are invalid or not in selected class" },
+        { error: "Some students not found in the selected class" },
         { status: 400 }
       );
     }
 
-    /* -----------------------------
-       5️⃣ Promote (Atomic Transaction)
-    ------------------------------ */
-    await prisma.$transaction(
-      studentIds.map((studentId: string) =>
-        prisma.student.update({
-          where: { id: studentId },
+    /* 5️⃣ Promotion transaction */
+
+    await prisma.$transaction(async (tx) => {
+
+      for (const enrollment of enrollments) {
+
+        /* mark old enrollment */
+
+        await tx.studentEnrollment.update({
+          where: { id: enrollment.id },
+          data: { status: "PROMOTED" },
+        });
+
+        /* create new enrollment */
+
+        await tx.studentEnrollment.create({
           data: {
+            studentId: enrollment.studentId,
             classId: Number(toClassId),
-            academicYear,
+            academicYearId,
+            schoolId,
+            status: "ACTIVE",
+            promotedFromId: enrollment.id,
           },
-        })
-      )
-    );
+        });
+
+      }
+
+    });
 
     return NextResponse.json(
       { success: true, message: "Promotion successful" },
       { status: 200 }
     );
+
   } catch (error) {
+
     console.error("Promotion error:", error);
 
     return NextResponse.json(

@@ -171,8 +171,8 @@ const ExamsList = async ({
       ? queryParams.search[0]
       : queryParams.search;
     examGradeSubjectsWhere.OR = [
-      { Subject: { name: { contains: searchValue, mode: "insensitive" } } },
-      { Grade: { level: { contains: searchValue, mode: "insensitive" } } },
+      { subject: { name: { contains: searchValue, mode: "insensitive" } } },
+      { grade: { level: { contains: searchValue, mode: "insensitive" } } },
     ];
   }
 

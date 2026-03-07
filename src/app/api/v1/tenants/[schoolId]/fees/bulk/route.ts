@@ -1,10 +1,13 @@
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-import prisma from "@/lib/prisma";
+
 import { NextRequest, NextResponse } from "next/server";
-import { PaymentMode, AcademicYear } from "@prisma/client";
+import { PaymentMode } from "@prisma/client";
 import { resolveSchoolId } from "@/lib/resolveSchool";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
+import { tenantPrisma } from "@/lib/tenant-prisma";
+
+const CONCURRENCY_LIMIT = 8; // safe parallelism
 
 export async function POST(
   req: NextRequest,
@@ -13,13 +16,10 @@ export async function POST(
   try {
     const { schoolId: schoolSlug } = await params;
     const schoolId = await resolveSchoolId(schoolSlug);
+    const db = tenantPrisma(schoolId);
 
     const user = await fetchUserInfo(schoolSlug);
-    console.log("School Id:", schoolSlug);
-    console.log("Bulk fee collection initiated by user:", user);
-
     const records = await req.json();
-    
 
     if (!Array.isArray(records) || records.length === 0) {
       return NextResponse.json(
@@ -30,7 +30,11 @@ export async function POST(
 
     const results: any[] = [];
 
-    for (const record of records) {
+    /* ---------------------------------------------------
+       Worker Function (single student transaction)
+    --------------------------------------------------- */
+
+    const processRecord = async (record: any) => {
       const {
         studentId,
         term,
@@ -45,31 +49,27 @@ export async function POST(
       } = record;
 
       if (!studentId || !term || !academicYear || amount < 0) {
-        results.push({
+        return {
           studentId,
           status: "error",
           message: "Missing required fields",
-        });
-        continue;
-      }
-
-      if (!Object.values(AcademicYear).includes(academicYear as AcademicYear)) {
-        results.push({
-          studentId,
-          status: "error",
-          message: "Invalid academicYear",
-        });
-        continue;
+        };
       }
 
       try {
-        await prisma.$transaction(async (tx) => {
-          /* 1️⃣ Fetch StudentFees */
+        await db.$transaction(async (tx) => {
+
+          const year = await tx.academicYear.findFirst({
+            where: { id: academicYear, schoolId },
+          });
+
+          if (!year) throw new Error("Invalid academic year");
+
           const studentFee = await tx.studentFees.findUnique({
             where: {
               studentId_academicYear_term: {
                 studentId,
-                academicYear,
+                academicYearId: year.id,
                 term,
                 schoolId,
               },
@@ -97,7 +97,6 @@ export async function POST(
             throw new Error(`Overpayment not allowed. Due: ₹${due}`);
           }
 
-          /* 2️⃣ Update StudentFees */
           await tx.studentFees.update({
             where: { id: studentFee.id },
             data: {
@@ -108,46 +107,43 @@ export async function POST(
               remarks,
               receiptDate: receiptDate ? new Date(receiptDate) : new Date(),
               receiptNo: receiptNo ? String(receiptNo) : null,
-              updatedByName: user.userId,
+              updatedByName: user?.userId,
             },
           });
 
-          /* 3️⃣ Update StudentTotalFees */
           await tx.studentTotalFees.upsert({
             where: {
-              studentId_schoolId: {
+              studentId_academicYearId_schoolId: {
                 studentId,
+                academicYearId: year.id,
                 schoolId,
               },
             },
             update: {
               totalPaidAmount: { increment: amount },
-              totalDiscountAmount: {
-                increment: discountAmount,
-              },
+              totalDiscountAmount: { increment: discountAmount },
               totalFineAmount: { increment: fineAmount },
-              totalFeeAmount: {
-                increment: incoming,
-              },
+              totalFeeAmount: { increment: incoming },
             },
             create: {
               studentId,
               schoolId,
+              academicYearId: year.id,
               totalPaidAmount: amount,
               totalDiscountAmount: discountAmount,
               totalFineAmount: fineAmount,
               totalFeeAmount: incoming,
               totalAbacusAmount: 0,
+              dueAmount: 0,
             },
           });
 
-          /* 4️⃣ Create FeeTransaction */
           await tx.feeTransaction.create({
             data: {
               studentId,
               studentFeesId: studentFee.id,
               term,
-              academicYear,
+              academicYearId: year.id,
               amount,
               discountAmount,
               fineAmount,
@@ -155,28 +151,45 @@ export async function POST(
               receiptNo: receiptNo ? String(receiptNo) : "",
               paymentMode,
               remarks,
-              updatedByName: user.userId,
+              updatedByName: user?.userId,
               transactionType: "PAYMENT",
               schoolId,
             },
           });
         });
 
-        results.push({ studentId, status: "success" });
+        return { studentId, status: "success" };
+
       } catch (err: any) {
-        results.push({
+        return {
           studentId,
           status: "error",
           message: err.message,
-        });
+        };
       }
+    };
+
+    /* ---------------------------------------------------
+       Parallel Batch Processing
+    --------------------------------------------------- */
+
+    for (let i = 0; i < records.length; i += CONCURRENCY_LIMIT) {
+      const batch = records.slice(i, i + CONCURRENCY_LIMIT);
+
+      const batchResults = await Promise.all(
+        batch.map((r) => processRecord(r)),
+      );
+
+      results.push(...batchResults);
     }
 
     return NextResponse.json({
       message: "Bulk fee collection completed",
+      processed: records.length,
       results,
     });
-  } catch (error: any) {
+
+  } catch (error) {
     console.error("Bulk fee error:", error);
 
     return NextResponse.json(

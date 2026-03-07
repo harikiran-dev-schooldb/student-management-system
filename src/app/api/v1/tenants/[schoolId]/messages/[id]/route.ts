@@ -1,26 +1,19 @@
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-import prisma from "@/lib/prisma";
+
 import { NextRequest, NextResponse } from "next/server";
 import { resolveSchoolId } from "@/lib/resolveSchool";
+import { tenantPrisma } from "@/lib/tenant-prisma";
 
-/* ======================================================
-   PUT  → Update Message (Tenant Safe)
-====================================================== */
 export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ schoolId: string; id: string }> }
 ) {
   try {
     const { schoolId: slug, id: messageId } = await params;
-    const schoolId = await resolveSchoolId(slug);
 
-    if (!messageId) {
-      return NextResponse.json(
-        { error: "Message ID is required" },
-        { status: 400 }
-      );
-    }
+    const schoolId = await resolveSchoolId(slug);
+    const db = tenantPrisma(schoolId);
 
     const body = await req.json();
     const { message, type, studentId, classId, gradeId, date } = body;
@@ -32,82 +25,82 @@ export async function PUT(
       );
     }
 
-    /* ----------------------------------------------------
-       Ensure Message Belongs to This School
-    ----------------------------------------------------- */
-    const existingMessage = await prisma.messages.findFirst({
+    const existing = await db.messages.findFirst({
       where: { id: messageId, schoolId },
     });
 
-    if (!existingMessage) {
+    if (!existing) {
       return NextResponse.json(
-        { error: "Message not found in this school" },
+        { error: "Message not found" },
         { status: 404 }
       );
     }
 
-    /* ----------------------------------------------------
-       Prevent Conflicting Targeting
-    ----------------------------------------------------- */
     const targets = [studentId, classId, gradeId].filter(Boolean);
     if (targets.length > 1) {
       return NextResponse.json(
-        { error: "Provide only one of studentId, classId, or gradeId" },
+        { error: "Provide only one target: studentId, classId, or gradeId" },
         { status: 400 }
       );
     }
 
     const updatedDate = date ? new Date(date) : new Date();
 
-    /* -----------------------------
-       1️⃣ Student Target
-    ------------------------------ */
+    /* ==============================
+       STUDENT TARGET
+    ============================== */
+
     if (studentId) {
-      const student = await prisma.student.findFirst({
-        where: { id: studentId, schoolId },
-        select: { id: true, classId: true },
+      const enrollment = await db.studentEnrollment.findFirst({
+        where: {
+          studentId,
+          schoolId,
+          status: "ACTIVE",
+        },
+        select: { classId: true },
       });
 
-      if (!student) {
+      if (!enrollment) {
         return NextResponse.json(
-          { error: "Student not found in this school" },
+          { error: "Student enrollment not found" },
           { status: 404 }
         );
       }
 
-      const updatedMessage = await prisma.messages.update({
+      const updated = await db.messages.update({
         where: { id: messageId },
         data: {
           message,
           type,
           date: updatedDate,
           studentId,
-          classId: student.classId,
+          classId: enrollment.classId,
         },
       });
 
-      return NextResponse.json(
-        { success: true, data: updatedMessage },
-        { status: 200 }
-      );
+      return NextResponse.json({ success: true, data: updated });
     }
 
-    /* -----------------------------
-       2️⃣ Class Target
-    ------------------------------ */
+    /* ==============================
+       CLASS TARGET
+    ============================== */
+
     if (classId) {
-      const cls = await prisma.class.findFirst({
-        where: { id: Number(classId), schoolId },
+      const cls = await db.class.findFirst({
+        where: {
+          id: Number(classId),
+          schoolId,
+        },
       });
 
       if (!cls) {
         return NextResponse.json(
-          { error: "Class not found in this school" },
+          { error: "Class not found" },
           { status: 404 }
         );
       }
 
-      const updatedMessage = await prisma.messages.update({
+      const updated = await db.messages.update({
         where: { id: messageId },
         data: {
           message,
@@ -118,19 +111,19 @@ export async function PUT(
         },
       });
 
-      return NextResponse.json(
-        { success: true, data: updatedMessage },
-        { status: 200 }
-      );
+      return NextResponse.json({ success: true, data: updated });
     }
 
-    /* -----------------------------
-       3️⃣ Grade Target
-       (Re-target to all classes in grade)
-    ------------------------------ */
+    /* ==============================
+       GRADE TARGET
+    ============================== */
+
     if (gradeId) {
-      const classes = await prisma.class.findMany({
-        where: { gradeId: Number(gradeId), schoolId },
+      const classes = await db.class.findMany({
+        where: {
+          gradeId: Number(gradeId),
+          schoolId,
+        },
         select: { id: true },
       });
 
@@ -141,8 +134,7 @@ export async function PUT(
         );
       }
 
-      // Update current message to first class
-      const updatedMessage = await prisma.messages.update({
+      const updated = await db.messages.update({
         where: { id: messageId },
         data: {
           message,
@@ -153,20 +145,18 @@ export async function PUT(
         },
       });
 
-      return NextResponse.json(
-        {
-          success: true,
-          message: `Message updated and re-targeted to grade`,
-          data: updatedMessage,
-        },
-        { status: 200 }
-      );
+      return NextResponse.json({
+        success: true,
+        message: "Message re-targeted to grade classes",
+        data: updated,
+      });
     }
 
-    /* -----------------------------
-       4️⃣ School-wide
-    ------------------------------ */
-    const updatedMessage = await prisma.messages.update({
+    /* ==============================
+       SCHOOL WIDE
+    ============================== */
+
+    const updated = await db.messages.update({
       where: { id: messageId },
       data: {
         message,
@@ -177,12 +167,11 @@ export async function PUT(
       },
     });
 
-    return NextResponse.json(
-      { success: true, data: updatedMessage },
-      { status: 200 }
-    );
+    return NextResponse.json({ success: true, data: updated });
+
   } catch (error) {
     console.error("Message PUT error:", error);
+
     return NextResponse.json(
       { error: "Failed to update message" },
       { status: 500 }
@@ -196,46 +185,36 @@ export async function DELETE(
 ) {
   try {
     const { schoolId: slug, id: messageId } = await params;
+
     const schoolId = await resolveSchoolId(slug);
+    const db = tenantPrisma(schoolId);
 
-    if (!messageId) {
-      return NextResponse.json(
-        { error: "Message ID is required" },
-        { status: 400 }
-      );
-    }
-
-    /* ----------------------------------------------------
-       Ensure Message Belongs to This School
-    ----------------------------------------------------- */
-    const existingMessage = await prisma.messages.findFirst({
+    const existing = await db.messages.findFirst({
       where: {
         id: messageId,
         schoolId,
       },
-      select: { id: true },
     });
 
-    if (!existingMessage) {
+    if (!existing) {
       return NextResponse.json(
-        { error: "Message not found in this school" },
+        { error: "Message not found" },
         { status: 404 }
       );
     }
 
-    /* ----------------------------------------------------
-       Tenant-Safe Delete
-    ----------------------------------------------------- */
-    await prisma.messages.delete({
+    await db.messages.delete({
       where: { id: messageId },
     });
 
-    return NextResponse.json(
-      { success: true, message: "Message deleted successfully" },
-      { status: 200 }
-    );
+    return NextResponse.json({
+      success: true,
+      message: "Message deleted successfully",
+    });
+
   } catch (error) {
     console.error("Message DELETE error:", error);
+
     return NextResponse.json(
       { error: "Failed to delete message" },
       { status: 500 }

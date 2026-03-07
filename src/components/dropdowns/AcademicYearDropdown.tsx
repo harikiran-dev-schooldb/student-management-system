@@ -1,19 +1,36 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { dropdownUI } from "../../../types"; // uses your shared styles
-import { AcademicYear } from "@prisma/client"; // ✅ import the Prisma enum
+import { useEffect, useState } from "react";
+import { dropdownUI } from "../../../types";
+import { useTenantApi } from "@/hooks/useTenantApi";
+
+type AcademicYear = {
+  id: string;
+  name: string;
+};
 
 export default function AcademicYearDropdown({ basePath }: { basePath: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const api = useTenantApi();
+
   const selectedYear = searchParams.get("academicYear") || "";
 
-  // Convert enum to dropdown list
-  const years = Object.values(AcademicYear).map((value) => ({
-    value,
-    label: value.replace("Y", "").replace("_", "-"), // Example: Y2024_2025 → 2024-2025
-  }));
+  const [years, setYears] = useState<AcademicYear[]>([]);
+
+  useEffect(() => {
+    const loadYears = async () => {
+      try {
+        const res = await api.get<AcademicYear[]>("/academic-years");
+        setYears(res.data);
+      } catch (err) {
+        console.error("Failed to load academic years", err);
+      }
+    };
+
+    loadYears();
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const year = e.target.value;
@@ -22,7 +39,6 @@ export default function AcademicYearDropdown({ basePath }: { basePath: string })
     if (year) params.set("academicYear", year);
     else params.delete("academicYear");
 
-    // Reset pagination to page 1 when filter changes
     params.delete("page");
 
     router.push(`${basePath}?${params.toString()}`);
@@ -36,11 +52,13 @@ export default function AcademicYearDropdown({ basePath }: { basePath: string })
         value={selectedYear}
       >
         <option value="">Select Academic Year</option>
+
         {years.map((y) => (
-          <option key={y.value} value={y.value}>
-            {y.label}
+          <option key={y.id} value={y.id}>
+            {y.name}
           </option>
         ))}
+
       </select>
     </div>
   );

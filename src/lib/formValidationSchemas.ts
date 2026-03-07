@@ -299,6 +299,7 @@ export const examSchema = z.object({
   startTime: z.string().min(1, { message: "Start Time is required!" }),
   gradeId: z.coerce.number({ message: "Grade is required!" }),
   subjectId: z.coerce.number({ message: "Subject is required!" }),
+  academicYearId: z.string().min(1, { message: "Academic Year is required!" }),
   maxMarks: z.coerce
     .number({ message: "Max Marks is required!" })
     .min(1, { message: "Max Marks must be greater than 0!" }),

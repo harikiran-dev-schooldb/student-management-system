@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { resolveSchoolId } from "@/lib/resolveSchool";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
+import { tenantPrisma } from "@/lib/tenant-prisma";
 
 /* ======================================================
    UPDATE EXAM SCHEDULE ENTRY
@@ -19,6 +20,8 @@ export async function PUT(
     ------------------------------ */
     const { schoolId: schoolSlug, id: examIdString } = await params;
     const schoolId = await resolveSchoolId(schoolSlug);
+
+    const db = tenantPrisma(schoolId);
     const examId = Number(examIdString);
 
     if (isNaN(examId)) {
@@ -37,7 +40,7 @@ export async function PUT(
     /* -----------------------------
        3️⃣ Validate Payload
     ------------------------------ */
-    const { gradeId, subjectId, examDate, startTime, maxMarks } =
+    const { gradeId, subjectId, examDate, startTime, maxMarks, academicYearId } =
       await req.json();
 
     if (!gradeId || !subjectId || !examDate || !startTime || !maxMarks) {
@@ -50,12 +53,15 @@ export async function PUT(
     /* -----------------------------
        4️⃣ Ensure Schedule Exists
     ------------------------------ */
-    const existing = await prisma.examGradeSubject.findFirst({
+    const existing = await db.examGradeSubject.findUnique({
       where: {
-        examId,
-        gradeId: Number(gradeId),
-        subjectId: Number(subjectId),
-        schoolId,
+        examId_gradeId_subjectId_academicYearId_schoolId: {
+          examId,
+          gradeId: Number(gradeId),
+          subjectId: Number(subjectId),
+          schoolId,
+          academicYearId: (academicYearId),
+        },
       },
     });
 
@@ -69,12 +75,13 @@ export async function PUT(
     /* -----------------------------
        5️⃣ Update
     ------------------------------ */
-    const updated = await prisma.examGradeSubject.update({
+    const updated = await db.examGradeSubject.update({
       where: {
-        examId_gradeId_subjectId_schoolId: {
+        examId_gradeId_subjectId_academicYearId_schoolId: {
           examId,
           gradeId: Number(gradeId),
           subjectId: Number(subjectId),
+          academicYearId: existing.academicYearId,
           schoolId,
         },
       },
@@ -110,6 +117,7 @@ export async function DELETE(
     const { schoolId: schoolSlug, id: examIdString } = await params;
     const schoolId = await resolveSchoolId(schoolSlug);
     const examId = Number(examIdString);
+    const db = tenantPrisma(schoolId)
 
     if (isNaN(examId)) {
       return NextResponse.json({ error: "Invalid exam ID" }, { status: 400 });
@@ -127,7 +135,7 @@ export async function DELETE(
     /* -----------------------------
        3️⃣ Ensure Exam Exists
     ------------------------------ */
-    const exam = await prisma.exam.findFirst({
+    const exam = await db.exam.findFirst({
       where: { id: examId, schoolId },
     });
 
@@ -138,7 +146,7 @@ export async function DELETE(
     /* -----------------------------
        4️⃣ Prevent Deletion If Results Exist
     ------------------------------ */
-    const resultCount = await prisma.result.count({
+    const resultCount = await db.result.count({
       where: { examId, schoolId },
     });
 
@@ -152,7 +160,7 @@ export async function DELETE(
     /* -----------------------------
        5️⃣ Transactional Delete
     ------------------------------ */
-    await prisma.$transaction(async (tx) => {
+    await db.$transaction(async (tx) => {
       // remove schedule entries
       await tx.examGradeSubject.deleteMany({
         where: { examId, schoolId },

@@ -7,7 +7,6 @@ import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 import { feesSchema, FeesSchema } from "@/lib/formValidationSchemas";
 import InputField from "../InputField";
-import { useSchoolSlug } from "../hooks/getschool";
 import { useTenantApi } from "@/hooks/useTenantApi";
 
 const FeesManagementForm = ({
@@ -35,8 +34,7 @@ const FeesManagementForm = ({
 
   const { grades = [] } = relatedData || {};
   
-  const schoolId = useSchoolSlug();
-  const api = useTenantApi(schoolId);
+  const api = useTenantApi();
 
   // ✅ Submit handler (uses fetch → API routes)
   const onSubmit = handleSubmit(async (formData) => {

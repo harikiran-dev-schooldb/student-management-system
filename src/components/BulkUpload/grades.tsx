@@ -1,8 +1,6 @@
 "use client";
-import { useParams } from "next/navigation";
 import { useState, useRef, DragEvent } from "react";
 import Papa from "papaparse";
-import axios from "axios";
 import {
   UploadCloud,
   FileSpreadsheet,
@@ -53,8 +51,22 @@ export default function BulkGradeUpload() {
         const parsed = results.data as GradeCSV[];
         const err: string[] = [];
 
+        if (parsed.length === 0) {
+          err.push("CSV file is empty");
+        }
+
+        /* ✅ Detect duplicate grade IDs */
+        const ids = new Set();
+
         parsed.forEach((row, index) => {
+          if (ids.has(row.id)) {
+            err.push(`Row ${index + 2} duplicate id: ${row.id}`);
+          } else {
+            ids.add(row.id);
+          }
+
           const missingFields = [];
+
           if (!row.id) missingFields.push("id");
           if (!row.level) missingFields.push("level");
           if (!row.branchId) missingFields.push("branchId");
@@ -94,24 +106,28 @@ export default function BulkGradeUpload() {
     }
   };
 
-  const schoolId = useSchoolSlug();
-  const api = useTenantApi(schoolId);
+  const api = useTenantApi();
 
   const handleUpload = async () => {
+    if (errors.length > 0) {
+      setErrors(["Fix CSV errors before uploading"]);
+      return;
+    }
+
     setLoading(true);
-  
+
     try {
       await api.post("/grades/bulk-upload", {
         grades: grades.map((g) => ({
-          level: g.level,
-          branchId: Number(g.branchId),
+          level: g.level.trim(),
+          branchId: g.branchId ? Number(g.branchId) : null,
         })),
       });
-  
+
       setSuccess(true);
       setTimeout(() => resetForm(), 3000);
     } catch (error: any) {
-      setErrors([error.message]);
+      setErrors([error?.response?.data?.message || "Upload failed"]);
     } finally {
       setLoading(false);
     }
@@ -180,8 +196,8 @@ export default function BulkGradeUpload() {
                 <div className="relative z-10 flex flex-col items-center gap-6 text-center p-6">
                   <div
                     className={`p-5 rounded-2xl shadow-sm transition-all duration-300 ${dragActive
-                        ? "bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600"
-                        : "bg-white dark:bg-darkMode text-zinc-400 group-hover:text-indigo-500 group-hover:scale-110"
+                      ? "bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600"
+                      : "bg-white dark:bg-darkMode text-zinc-400 group-hover:text-indigo-500 group-hover:scale-110"
                       }`}
                   >
                     <UploadCloud className="w-10 h-10" />
@@ -282,7 +298,7 @@ export default function BulkGradeUpload() {
                     <thead className="text-xs font-bold uppercase tracking-wider bg-zinc-50 dark:bg-darkMode text-zinc-500 dark:text-zinc-400 sticky top-0 z-10 backdrop-blur-sm border-b border-zinc-200 dark:border-zinc-800">
                       <tr>
                         <th className="px-6 py-4 w-16 text-center">#</th>
-                        {Object.keys(grades[0]).map((key) => (
+                        {Object.keys(grades[0] as Record<string, any>).map((key) => (
                           <th key={key} className="px-6 py-4">
                             {key}
                           </th>
@@ -330,7 +346,7 @@ export default function BulkGradeUpload() {
                 </button>
                 <button
                   onClick={handleUpload}
-                  disabled={loading || errors.length > 0}
+                  disabled={loading || errors.length > 0 || grades.length === 0}
                   className="px-8 py-2.5 rounded-xl font-bold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 shadow-lg shadow-indigo-500/25 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none flex items-center gap-2"
                 >
                   {loading ? (

@@ -1,30 +1,29 @@
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-import prisma from "@/lib/prisma";
+
 import { NextRequest, NextResponse } from "next/server";
 import { resolveSchoolId } from "@/lib/resolveSchool";
 import { requireTenantAccess } from "@/lib/requireTenantAccess";
+import { tenantPrisma } from "@/lib/tenant-prisma";
 
-/* ======================================================
-   POST  → Create Message
-====================================================== */
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ schoolId: string }> },
 ) {
   try {
     const { schoolId: slug } = await params;
-    const resolvedSchoolId = await resolveSchoolId(slug);
+
+    const schoolId = await resolveSchoolId(slug);
     const access = await requireTenantAccess();
 
     if (
-      access.schoolId !== resolvedSchoolId ||
+      access.schoolId !== schoolId ||
       !["admin", "teacher"].includes(access.role)
     ) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const schoolId = resolvedSchoolId;
+    const db = tenantPrisma(schoolId);
 
     const body = await req.json();
     const { message, type, studentId, classId, gradeId } = body;
@@ -36,66 +35,71 @@ export async function POST(
       );
     }
 
-    // Prevent conflicting targeting
     const targets = [studentId, classId, gradeId].filter(Boolean);
     if (targets.length > 1) {
       return NextResponse.json(
-        { error: "Provide only one of studentId, classId, or gradeId" },
+        { error: "Provide only one of studentId, classId, gradeId" },
         { status: 400 },
       );
     }
 
     const now = new Date();
 
-    /* -----------------------------
-       1️⃣ Student Message
-    ------------------------------ */
+    /* =========================
+       STUDENT MESSAGE
+    ========================= */
+
     if (studentId) {
-      const student = await prisma.student.findFirst({
-        where: { id: studentId, schoolId },
-        select: { id: true, classId: true },
+      const enrollment = await db.studentEnrollment.findFirst({
+        where: {
+          studentId,
+          schoolId,
+          status: "ACTIVE",
+        },
+        select: { classId: true },
       });
 
-      if (!student) {
+      if (!enrollment) {
         return NextResponse.json(
-          { error: "Student not found in this school" },
+          { error: "Student enrollment not found" },
           { status: 404 },
         );
       }
 
-      const newMessage = await prisma.messages.create({
+      const newMessage = await db.messages.create({
         data: {
           message,
           type,
           date: now,
           studentId,
-          classId: student.classId,
+          classId: enrollment.classId,
           schoolId,
         },
       });
 
-      return NextResponse.json(
-        { success: true, data: newMessage },
-        { status: 201 },
-      );
+      return NextResponse.json({ success: true, data: newMessage }, { status: 201 });
     }
 
-    /* -----------------------------
-       2️⃣ Class Message
-    ------------------------------ */
+    /* =========================
+       CLASS MESSAGE
+    ========================= */
+
     if (classId) {
-      const cls = await prisma.class.findFirst({
-        where: { id: Number(classId), schoolId },
+      const cls = await db.class.findFirst({
+        where: {
+          id: Number(classId),
+          schoolId,
+        },
       });
 
       if (!cls) {
         return NextResponse.json(
-          { error: "Class not found in this school" },
+          { error: "Class not found" },
           { status: 404 },
         );
       }
 
-      const newMessage = await prisma.messages.create({
+      const newMessage = await db.messages.create({
         data: {
           message,
           type,
@@ -105,18 +109,19 @@ export async function POST(
         },
       });
 
-      return NextResponse.json(
-        { success: true, data: newMessage },
-        { status: 201 },
-      );
+      return NextResponse.json({ success: true, data: newMessage }, { status: 201 });
     }
 
-    /* -----------------------------
-       3️⃣ Grade Message
-    ------------------------------ */
+    /* =========================
+       GRADE MESSAGE
+    ========================= */
+
     if (gradeId) {
-      const classes = await prisma.class.findMany({
-        where: { gradeId: Number(gradeId), schoolId },
+      const classes = await db.class.findMany({
+        where: {
+          gradeId: Number(gradeId),
+          schoolId,
+        },
         select: { id: true },
       });
 
@@ -127,7 +132,7 @@ export async function POST(
         );
       }
 
-      await prisma.messages.createMany({
+      await db.messages.createMany({
         data: classes.map((cls) => ({
           message,
           type,
@@ -146,10 +151,11 @@ export async function POST(
       );
     }
 
-    /* -----------------------------
-       4️⃣ School-wide
-    ------------------------------ */
-    const newMessage = await prisma.messages.create({
+    /* =========================
+       SCHOOL WIDE MESSAGE
+    ========================= */
+
+    const newMessage = await db.messages.create({
       data: {
         message,
         type,
@@ -158,12 +164,11 @@ export async function POST(
       },
     });
 
-    return NextResponse.json(
-      { success: true, data: newMessage },
-      { status: 201 },
-    );
+    return NextResponse.json({ success: true, data: newMessage }, { status: 201 });
+
   } catch (error) {
     console.error("Message POST error:", error);
+
     return NextResponse.json(
       { error: "Failed to create message" },
       { status: 500 },
@@ -175,25 +180,39 @@ export async function POST(
    GET  → Fetch Messages (Tenant Safe)
 ====================================================== */
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ schoolId: string }> },
 ) {
   try {
     const { schoolId: slug } = await params;
-    const schoolId = await resolveSchoolId(slug);
 
-    const messages = await prisma.messages.findMany({
+    const schoolId = await resolveSchoolId(slug);
+    const access = await requireTenantAccess();
+
+    if (access.schoolId !== schoolId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const db = tenantPrisma(schoolId);
+
+    const messages = await db.messages.findMany({
       where: { schoolId },
       orderBy: { date: "desc" },
       include: {
-        Student: { select: { id: true, name: true } },
-        Class: { select: { id: true, name: true } },
+        Student: {
+          select: { id: true, name: true },
+        },
+        Class: {
+          select: { id: true, name: true },
+        },
       },
     });
 
-    return NextResponse.json(messages, { status: 200 });
+    return NextResponse.json(messages);
+
   } catch (error) {
     console.error("Message GET error:", error);
+
     return NextResponse.json(
       { error: "Failed to fetch messages" },
       { status: 500 },

@@ -1,10 +1,10 @@
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+
 import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
 import { resolveSchoolId } from "@/lib/resolveSchool";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
-import { calculateDueAmount, getAssignedFee } from "@/lib/fees/fees";
+import { tenantPrisma } from "@/lib/tenant-prisma";
 
 export async function POST(
   req: NextRequest,
@@ -14,33 +14,38 @@ export async function POST(
     const { schoolId: schoolSlug } = await params;
     const schoolId = await resolveSchoolId(schoolSlug);
 
+    const db = tenantPrisma(schoolId);
+
     const user = await fetchUserInfo(schoolSlug);
 
-    if (!user.userId || user.role !== "admin") {
+    if (!user?.userId || user.role !== "admin") {
       return NextResponse.json(
         { error: "Only admin can cancel transactions" },
         { status: 403 },
       );
     }
 
-    const { studentId, academicYear, term, reason } = await req.json();
+    const { studentId, academicYearId, term, reason } = await req.json();
 
-    if (!studentId || !academicYear || !term) {
+    if (!studentId || !academicYearId || !term) {
       return NextResponse.json(
-        { error: "studentId, academicYear, term required" },
+        { error: "studentId, academicYearId and term are required" },
         { status: 400 },
       );
     }
 
-    await prisma.$transaction(async (tx) => {
-      // 1️⃣ Get all active transactions for this term
+    await db.$transaction(async (tx) => {
+
+      /* 1️⃣ Fetch active transactions */
+
       const transactions = await tx.feeTransaction.findMany({
         where: {
           studentId,
-          academicYear,
+          academicYearId,
           term,
           schoolId,
           deletedAt: null,
+          transactionType: "PAYMENT",
         },
       });
 
@@ -48,11 +53,12 @@ export async function POST(
         throw new Error("No active transactions found for this term");
       }
 
-      // 2️⃣ Soft cancel all transactions
+      /* 2️⃣ Soft cancel transactions */
+
       await tx.feeTransaction.updateMany({
         where: {
           studentId,
-          academicYear,
+          academicYearId,
           term,
           schoolId,
           deletedAt: null,
@@ -63,20 +69,30 @@ export async function POST(
         },
       });
 
-      // 3️⃣ Calculate total reversal amounts
-      const totalPaid = transactions.reduce((s, t) => s + t.amount, 0);
-      const totalDiscount = transactions.reduce(
-        (s, t) => s + t.discountAmount,
+      /* 3️⃣ Calculate totals */
+
+      const totalPaid = transactions.reduce(
+        (sum, t) => sum + Number(t.amount),
         0,
       );
-      const totalFine = transactions.reduce((s, t) => s + t.fineAmount, 0);
 
-      // 4️⃣ Reset studentFees for that term
+      const totalDiscount = transactions.reduce(
+        (sum, t) => sum + Number(t.discountAmount),
+        0,
+      );
+
+      const totalFine = transactions.reduce(
+        (sum, t) => sum + Number(t.fineAmount),
+        0,
+      );
+
+      /* 4️⃣ Reset studentFees */
+
       await tx.studentFees.update({
         where: {
           studentId_academicYear_term: {
             studentId,
-            academicYear,
+            academicYearId,
             term,
             schoolId,
           },
@@ -86,33 +102,47 @@ export async function POST(
           discountAmount: 0,
           fineAmount: 0,
           receiptNo: null,
-          remarks: "Term Cancelled",
+          remarks: "Term payment cancelled",
         },
       });
 
-      // 5️⃣ Update studentTotalFees
+      /* 5️⃣ Update StudentTotalFees */
+
       const totalRecord = await tx.studentTotalFees.findUnique({
         where: {
-          studentId_schoolId: { studentId, schoolId },
+          studentId_academicYearId_schoolId: {
+            studentId,
+            schoolId,
+            academicYearId,
+          },
         },
       });
 
       if (totalRecord) {
         await tx.studentTotalFees.update({
           where: {
-            studentId_schoolId: { studentId, schoolId },
+            studentId_academicYearId_schoolId: {
+              studentId,
+              schoolId,
+              academicYearId,
+            },
           },
           data: {
-            totalPaidAmount: { decrement: totalPaid },
-            totalDiscountAmount: { decrement: totalDiscount },
-            totalFineAmount: { decrement: totalFine },
-            dueAmount: totalRecord.dueAmount + totalPaid,
-            status: "Not Paid",
+            totalPaidAmount: {
+              decrement: totalPaid,
+            },
+            totalDiscountAmount: {
+              decrement: totalDiscount,
+            },
+            totalFineAmount: {
+              decrement: totalFine,
+            },
           },
         });
       }
 
-      // 6️⃣ Log cancellation entry
+      /* 6️⃣ Log cancellation */
+
       await tx.cancelledReceipt.create({
         data: {
           studentId,
@@ -127,11 +157,13 @@ export async function POST(
           schoolId,
         },
       });
+
     });
 
     return NextResponse.json({
       message: "Transaction cancelled successfully",
     });
+
   } catch (error: any) {
     console.error("Cancel transaction error:", error);
 

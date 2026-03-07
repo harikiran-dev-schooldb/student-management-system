@@ -2,14 +2,13 @@ import React from "react";
 import prisma from "@/lib/prisma";
 import FeesTable from "./FeesTable";
 import { StudentFee } from "../../../types";
-import { AcademicYear } from "@prisma/client";
 
 interface FeesTableContainerProps {
   studentId: string;
   mode: "collect" | "cancel" | "view";
-  role?: "admin" | "student"; // <--- Add this
-  studentName?: string;       // <--- Add this
-  studentEmail?: string;      // <--- Add this
+  role?: "admin" | "student";
+  studentName?: string;
+  studentEmail?: string;
   studentMobile?: string;
 }
 
@@ -19,94 +18,115 @@ const FeesTableContainer = async ({
   role = "admin",
   studentName,
   studentEmail,
-  studentMobile
-
+  studentMobile,
 }: FeesTableContainerProps) => {
+
   /* -------------------------------------------------
-     1. Fetch Student
+  1. Fetch Student + Active Enrollment
   --------------------------------------------------*/
   const student = await prisma.student.findUnique({
     where: { id: studentId },
-    include: { Class: { include: { Grade: true } } },
+    include: {
+      enrollments: {
+        where: { status: "ACTIVE" },
+        include: {
+          class: {
+            include: {
+              Grade: true,
+            },
+          },
+          academicYear: true,
+        },
+        take: 1,
+      },
+    },
   });
 
   if (!student) {
     return <div className="text-sm text-gray-500">Student not found</div>;
   }
 
-  const gradeId = student.Class?.gradeId;
-  if (!gradeId) {
-    return (
-      <div className="text-sm text-gray-500">
-        Grade not found for student
-      </div>
+  const enrollment = student.enrollments[0];
+
+  if (!enrollment) {
+    return (<div className="text-sm text-gray-500">
+      No active enrollment found </div>
     );
   }
 
+  const gradeId = enrollment.class.gradeId;
+
   /* -------------------------------------------------
-     2. Fetch Student Fees (SOURCE OF TRUTH)
+  2. Fetch Student Fees
   --------------------------------------------------*/
   const studentFees = await prisma.studentFees.findMany({
     where: { studentId },
-    include: { feeTransactions: true },
+    include: {
+      feeTransactions: true,
+      academicYear: true,
+    },
   });
 
-  /* -------------------------------------------------
-     3. Page Title (MODE SAFE)
-  --------------------------------------------------*/
-
   if (studentFees.length === 0) {
-    return (
-      <div className="w-full">
-        <p className="text-sm text-gray-500">
-          No fees have been assigned to this student yet.
-        </p>
-      </div>
+    return (<div className="text-sm text-gray-500">
+      No fees assigned to this student. </div>
     );
   }
 
   /* -------------------------------------------------
-     4. Determine Assigned Academic Years
+  3. Determine Assigned Academic Years
   --------------------------------------------------*/
-  const assignedYears: AcademicYear[] = [
-    ...new Set(studentFees.map((sf) => sf.academicYear)),
+  const assignedYearIds = [
+    ...new Set(studentFees.map((sf) => sf.academicYearId)),
   ];
 
   /* -------------------------------------------------
-     5. Fetch Fee Structures
+  4. Fetch Fee Structures
   --------------------------------------------------*/
   const feeStructures = await prisma.feeStructure.findMany({
     where: {
       gradeId,
-      academicYear: { in: assignedYears },
+      academicYearId: { in: assignedYearIds },
     },
-    orderBy: [{ academicYear: "asc" }, { term: "asc" }],
+    include: {
+      academicYear: true,
+    },
+    orderBy: [
+      { academicYear: { startDate: "asc" } },
+      { term: "asc" },
+    ],
   });
 
   /* -------------------------------------------------
-     6. Merge & Normalize
+  5. Merge Structures + Payments
   --------------------------------------------------*/
   const transformedData: StudentFee[] = feeStructures.map((fee) => {
-    const matchingPayment = studentFees.find(
+
+
+    const payment = studentFees.find(
       (sf) => sf.feeStructureId === fee.id
     );
 
     return {
-      id: matchingPayment?.id ?? 0,
+      id: payment?.id ?? 0,
       studentId,
-      academicYear: fee.academicYear,
-      feeStructureId: fee.id,
+
       term: fee.term,
 
-      paidAmount: matchingPayment?.paidAmount ?? 0,
-      discountAmount: matchingPayment?.discountAmount ?? 0,
-      fineAmount: matchingPayment?.fineAmount ?? 0,
-      abacusPaidAmount: matchingPayment?.abacusPaidAmount ?? null,
+      academicYearId: fee.academicYearId,
+      academicYear: {
+        id: fee.academicYear.id,
+        name: fee.academicYear.name,
+      },
 
-      receiptDate: matchingPayment?.receiptDate?.toISOString(),
-      receiptNo: matchingPayment?.receiptNo ?? undefined,
-      remarks: matchingPayment?.remarks ?? undefined,
-      paymentMode: matchingPayment?.paymentMode ?? "CASH",
+      paidAmount: payment?.paidAmount ?? 0,
+      discountAmount: payment?.discountAmount ?? 0,
+      fineAmount: payment?.fineAmount ?? 0,
+
+      receiptDate: payment?.receiptDate?.toISOString(),
+      receiptNo: payment?.receiptNo ?? undefined,
+      remarks: payment?.remarks ?? undefined,
+      paymentMode: payment?.paymentMode ?? "CASH",
 
       feeStructure: {
         id: fee.id,
@@ -116,29 +136,26 @@ const FeesTableContainer = async ({
       },
 
       feeTransactions:
-        matchingPayment?.feeTransactions?.map((tx) => ({
+        payment?.feeTransactions?.map((tx) => ({
           receiptNo: tx.receiptNo ?? undefined,
           remarks: tx.remarks ?? undefined,
         })) ?? [],
     };
+
+
   });
 
   /* -------------------------------------------------
-     7. Render
+  6. Render
   --------------------------------------------------*/
-  return (
-    <div className="w-full">
-
-      <FeesTable
-        data={transformedData}
-        mode={mode}
-        // Pass the new props down to the Client Component
-        role={role}
-        studentName={studentName}
-        studentEmail={studentEmail}
-        studentMobile={studentMobile}
-      />
-    </div>
+  return (<div className="w-full"> <FeesTable
+    data={transformedData}
+    mode={mode}
+    role={role}
+    studentName={studentName}
+    studentEmail={studentEmail}
+    studentMobile={studentMobile}
+  /> </div>
   );
 };
 

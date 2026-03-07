@@ -1,16 +1,18 @@
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+
 import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
 import { resolveSchoolId } from "@/lib/resolveSchool";
+import { tenantPrisma } from "@/lib/tenant-prisma";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: Promise<{ schoolId: string;}> },
+  { params }: { params: Promise<{ schoolId: string }> },
 ) {
   try {
     const { schoolId: schoolSlug } = await params;
     const schoolId = await resolveSchoolId(schoolSlug);
+    const db = tenantPrisma(schoolId);
 
     const { searchParams } = new URL(req.url);
     const from = searchParams.get("from");
@@ -24,14 +26,17 @@ export async function GET(
     };
 
     /* ---------- Date Handling ---------- */
+
     if (from || to) {
       where.receiptDate = {};
+
       if (from) {
         const fromDate = new Date(from);
         if (!isNaN(fromDate.getTime())) {
           where.receiptDate.gte = fromDate;
         }
       }
+
       if (to) {
         const toDate = new Date(to);
         if (!isNaN(toDate.getTime())) {
@@ -42,13 +47,14 @@ export async function GET(
     }
 
     if (academicYear) {
-      where.academicYear = academicYear;
+      where.academicYearId = academicYear;
     }
 
     /* ================================
        1️⃣ Payment Mode Summary
     ================================= */
-    const paymentMode = await prisma.feeTransaction.groupBy({
+
+    const paymentMode = await db.feeTransaction.groupBy({
       by: ["paymentMode"],
       where,
       _sum: {
@@ -62,7 +68,8 @@ export async function GET(
     /* ================================
        2️⃣ Term-wise Summary
     ================================= */
-    const termWise = await prisma.feeTransaction.groupBy({
+
+    const termWise = await db.feeTransaction.groupBy({
       by: ["term"],
       where,
       _sum: {
@@ -75,7 +82,8 @@ export async function GET(
     /* ================================
        3️⃣ Class-wise Summary
     ================================= */
-    const rawTransactions = await prisma.feeTransaction.findMany({
+
+    const rawTransactions = await db.feeTransaction.findMany({
       where,
       select: {
         studentId: true,
@@ -87,21 +95,33 @@ export async function GET(
 
     const studentIds = [...new Set(rawTransactions.map((r) => r.studentId))];
 
-    const students = await prisma.student.findMany({
+    const students = await db.student.findMany({
       where: {
         id: { in: studentIds },
         schoolId,
       },
       select: {
         id: true,
-        Class: {
-          select: { name: true },
+        enrollments: {
+          select: {
+            class: {
+              select: {
+                id: true,
+                name: true,
+                section: true,
+              },
+            },
+          },
+          take: 1,
         },
       },
     });
 
     const classMap = new Map(
-      students.map((s) => [s.id, s.Class?.name ?? "Unknown"]),
+      students.map((s) => [
+        s.id,
+        s.enrollments?.[0]?.class?.name ?? "Unknown",
+      ]),
     );
 
     const classWiseMap: Record<
@@ -121,9 +141,9 @@ export async function GET(
         };
       }
 
-      classWiseMap[className].collected += txn.amount ?? 0;
-      classWiseMap[className].discount += txn.discountAmount ?? 0;
-      classWiseMap[className].fine += txn.fineAmount ?? 0;
+      classWiseMap[className].collected += Number(txn.amount || 0);
+      classWiseMap[className].discount += Number(txn.discountAmount || 0);
+      classWiseMap[className].fine += Number(txn.fineAmount || 0);
     }
 
     const classWise = Object.values(classWiseMap);
@@ -133,6 +153,7 @@ export async function GET(
       termWise,
       classWise,
     });
+
   } catch (error) {
     console.error("Fees summary error:", error);
 

@@ -1,25 +1,31 @@
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-import prisma from "@/lib/prisma";
+
 import { NextRequest, NextResponse } from "next/server";
 import { resolveSchoolId } from "@/lib/resolveSchool";
+import { tenantPrisma } from "@/lib/tenant-prisma";
 import { slipSchema } from "@/lib/formValidationSchemas";
 
-/* ======================================================
-   PUT → Update Permission Slip
-====================================================== */
 export async function PUT(
   req: NextRequest,
-  { params }: { params: Promise<{ schoolId: string, id: string }> }
+  { params }: { params: Promise<{ schoolId: string; id: string }> }
 ) {
   try {
-    const { schoolId: slug, id: slipIdStr } = await params;
+    const { schoolId: slug, id } = await params;
+
     const schoolId = await resolveSchoolId(slug);
-    const slipId = Number(slipIdStr);
+    const db = tenantPrisma(schoolId);
 
-    
+    const slipId = Number(id);
 
-    const existingSlip = await prisma.permissionSlip.findFirst({
+    if (Number.isNaN(slipId)) {
+      return NextResponse.json(
+        { error: "Invalid slip ID" },
+        { status: 400 }
+      );
+    }
+
+    const existingSlip = await db.permissionSlip.findFirst({
       where: { id: slipId, schoolId },
     });
 
@@ -33,13 +39,13 @@ export async function PUT(
     const body = await req.json();
     const data = slipSchema.partial().parse(body);
 
-    /* -------------------------------
-       Optional Student Validation
-    -------------------------------- */
+    /* -------------------------
+       Optional Student Check
+    ------------------------- */
     if (data.studentId) {
-      const student = await prisma.student.findFirst({
+      const student = await db.student.findFirst({
         where: { id: data.studentId, schoolId },
-        include: { Class: { include: { Grade: true } } },
+        select: { id: true },
       });
 
       if (!student) {
@@ -50,11 +56,11 @@ export async function PUT(
       }
     }
 
-    const updatedSlip = await prisma.permissionSlip.update({
+    const updatedSlip = await db.permissionSlip.update({
       where: { id: slipId },
       data: {
         ...data,
-        date: data.date ? new Date(data.date) : undefined,
+        ...(data.date && { date: new Date(data.date) }),
       },
     });
 
@@ -62,17 +68,20 @@ export async function PUT(
       { success: true, data: updatedSlip },
       { status: 200 }
     );
+
   } catch (error: any) {
     console.error("Permission slip PUT error:", error);
 
+    if (error.name === "ZodError") {
+      return NextResponse.json(
+        { error: "Validation failed", details: error.flatten() },
+        { status: 400 }
+      );
+    }
+
     return NextResponse.json(
-      {
-        error:
-          error?.name === "ZodError"
-            ? "Validation failed"
-            : "Failed to update permission slip",
-      },
-      { status: 400 }
+      { error: "Failed to update permission slip" },
+      { status: 500 }
     );
   }
 }
@@ -81,15 +90,25 @@ export async function PUT(
    DELETE → Remove Permission Slip
 ====================================================== */
 export async function DELETE(
-  _req: NextRequest,
-  { params }: { params: Promise<{ schoolId: string, id: string }> }
+  req: NextRequest,
+  { params }: { params: Promise<{ schoolId: string; id: string }> }
 ) {
   try {
-    const { schoolId: slug, id: slipIdStr } = await params;
-    const schoolId = await resolveSchoolId(slug);
-    const slipId = Number(slipIdStr);
+    const { schoolId: slug, id } = await params;
 
-    const existingSlip = await prisma.permissionSlip.findFirst({
+    const schoolId = await resolveSchoolId(slug);
+    const db = tenantPrisma(schoolId);
+
+    const slipId = Number(id);
+
+    if (Number.isNaN(slipId)) {
+      return NextResponse.json(
+        { error: "Invalid slip ID" },
+        { status: 400 }
+      );
+    }
+
+    const existingSlip = await db.permissionSlip.findFirst({
       where: { id: slipId, schoolId },
     });
 
@@ -100,16 +119,18 @@ export async function DELETE(
       );
     }
 
-    await prisma.permissionSlip.delete({
+    await db.permissionSlip.delete({
       where: { id: slipId },
     });
 
-    return NextResponse.json(
-      { success: true, message: "Permission slip deleted" },
-      { status: 200 }
-    );
+    return NextResponse.json({
+      success: true,
+      message: "Permission slip deleted successfully",
+    });
+
   } catch (error) {
     console.error("Permission slip DELETE error:", error);
+
     return NextResponse.json(
       { error: "Failed to delete permission slip" },
       { status: 500 }

@@ -227,53 +227,74 @@ model Event {
 model Exam {
   id                Int                @id @default(autoincrement())
   title             String
+
+  academicYearId    String
+  academicYear      AcademicYear       @relation(fields: [academicYearId], references: [id])
+
   examGradeSubjects ExamGradeSubject[]
   results           Result[]
+
   schoolId          String
   school            SchoolInfo         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
-  @@unique([title, schoolId])
+  @@unique([title, academicYearId, schoolId])
   @@index([schoolId])
+  @@index([academicYearId])
 }
 
 model ExamGradeSubject {
-  id        Int        @id @default(autoincrement())
-  examId    Int
-  gradeId   Int
-  subjectId Int
-  date      DateTime
-  startTime String
-  maxMarks  Int
-  Exam      Exam       @relation(fields: [examId], references: [id], onDelete: Cascade)
-  Grade     Grade      @relation(fields: [gradeId], references: [id], onDelete: Cascade)
-  Subject   Subject    @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  schoolId  String
-  school    SchoolInfo @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  id             Int          @id @default(autoincrement())
 
-  @@unique([examId, gradeId, subjectId, schoolId])
+  examId         Int
+  gradeId        Int
+  subjectId      Int
+
+  date           DateTime
+  startTime      String
+  maxMarks       Int
+
+  exam           Exam         @relation(fields: [examId], references: [id], onDelete: Cascade)
+  grade          Grade        @relation(fields: [gradeId], references: [id], onDelete: Cascade)
+  subject        Subject      @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  academicYearId String
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id])
+
+  schoolId       String
+  school         SchoolInfo   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([examId, gradeId, subjectId, academicYearId, schoolId])
   @@index([schoolId])
   @@index([examId])
   @@index([gradeId])
+  @@index([subjectId])
 }
 
 model Result {
   id             Int          @id @default(autoincrement())
+
   marks          Float
+
   studentId      String
   examId         Int
   subjectId      Int
-  createdAt      DateTime     @default(now())
-  Exam           Exam         @relation(fields: [examId], references: [id], onDelete: Cascade)
-  Student        Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  Subject        Subject      @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  schoolId       String
-  school         SchoolInfo   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
   academicYearId String
   academicYear   AcademicYear @relation(fields: [academicYearId], references: [id])
 
+  createdAt      DateTime     @default(now())
+
+  exam           Exam         @relation(fields: [examId], references: [id], onDelete: Cascade)
+  student        Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subject        Subject      @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  schoolId       String
+  school         SchoolInfo   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
   @@unique([studentId, examId, subjectId, academicYearId, schoolId])
-  @@index([academicYearId, studentId])
-  @@index([schoolId])
+
+  @@index([examId, schoolId, studentId])
+  @@index([academicYearId])
 }
 
 model Assignment {
@@ -544,9 +565,13 @@ model FeeTransaction {
   school      SchoolInfo  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@index([schoolId])
+  @@index([studentFeesId])
   @@index([schoolId, receiptDate])
+  @@unique([receiptNo, schoolId])
   @@index([academicYearId, receiptDate])
   @@index([studentId, academicYearId])
+  @@index([studentId, term])
+@@index([studentId, receiptDate])
 }
 
 model StudentFees {
@@ -575,6 +600,8 @@ model StudentFees {
 
   @@unique([studentId, academicYearId, term, schoolId], name: "studentId_academicYear_term")
   @@index([schoolId])
+  @@index([studentId, academicYearId])
+  @@index([studentId, term])
 }
 
 model StudentTotalFees {
@@ -802,6 +829,8 @@ model AcademicYear {
   attendance              Attendance[]
   studentTotalFees        StudentTotalFees[]
   teacherClassAssignments TeacherClassAssignment[]
+  exams                   Exam[]
+  examGradeSubject        ExamGradeSubject[]
 
   @@unique([name, schoolId])
   @@index([schoolId])

@@ -1,6 +1,6 @@
-import prisma from "@/lib/prisma";
-import { fetchUserInfo } from "@/lib/utils/server-utils";
 export const runtime = "nodejs";
+
+import prisma from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { resolveSchoolId, SchoolNotFoundError } from "@/lib/resolveSchool";
 import { requireTenantAccess } from "@/lib/requireTenantAccess";
@@ -9,131 +9,147 @@ import { Prisma } from "@prisma/client";
 /* ======================================================
    GET → Fetch Results (Tenant + Role Safe)
 ====================================================== */
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ schoolId: string }> },
 ) {
   try {
-    /* -------------------------------
-       1️⃣ Resolve Tenant
-    -------------------------------- */
+    /* 1️⃣ Resolve tenant */
     const { schoolId: schoolSlug } = await params;
     const schoolId = await resolveSchoolId(schoolSlug);
 
-    /* -------------------------------
-       2️⃣ Parse Query Params
-    -------------------------------- */
     const url = new URL(req.url);
+
     const examId = url.searchParams.get("examId");
     const gradeId = url.searchParams.get("gradeId");
     const classId = url.searchParams.get("classId");
     const studentId = url.searchParams.get("studentId");
 
-    /* -------------------------------
-       3️⃣ Get Current User
-    -------------------------------- */
     const access = await requireTenantAccess();
 
     if (access.schoolId !== schoolId) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    if (!access?.role) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    /* -------------------------------
-       4️⃣ Build Tenant-Safe Filter
-    -------------------------------- */
     const where: Prisma.ResultWhereInput = { schoolId };
 
-    // STUDENT → Only own results
-    if (access.role === "student") {
-      const myStudentId = access.studentId;
+    /* =============================
+       STUDENT → only own results
+    ============================= */
 
-      if (!examId || !myStudentId) {
+    if (access.role === "student") {
+      if (!examId || !access.studentId) {
         return NextResponse.json({ error: "Exam required" }, { status: 400 });
       }
 
-      const parsedExamId = examId ? Number(examId) : undefined;
-
-      if (examId && Number.isNaN(parsedExamId)) {
-        return NextResponse.json({ error: "Invalid examId" }, { status: 400 });
-      }
-      where.studentId = myStudentId;
+      where.studentId = access.studentId;
+      where.examId = Number(examId);
     }
 
-    // TEACHER → Only their class
+    /* =============================
+       TEACHER → only class students
+    ============================= */
+
     else if (access.role === "teacher") {
       if (!examId || !access.classId) {
         return NextResponse.json({ error: "Exam required" }, { status: 400 });
       }
 
-      const parsedExamId = examId ? Number(examId) : undefined;
+      where.examId = Number(examId);
 
-      if (examId && Number.isNaN(parsedExamId)) {
-        return NextResponse.json({ error: "Invalid examId" }, { status: 400 });
-      }
-      where.Student = {
+      where.student = {
         is: {
-          classId: access.classId,
+          enrollments: {
+            some: {
+              classId: access.classId,
+              status: "ACTIVE",
+              schoolId,
+            },
+          },
         },
       };
     }
 
-    // ADMIN → Flexible filtering
+    /* =============================
+       ADMIN → flexible filters
+    ============================= */
+
     else if (access.role === "admin") {
       if (studentId) {
         where.studentId = studentId;
-      } else if (examId && gradeId && classId) {
-        const parsedExamId = examId ? Number(examId) : undefined;
+      }
 
-        if (examId && Number.isNaN(parsedExamId)) {
-          return NextResponse.json(
-            { error: "Invalid examId" },
-            { status: 400 },
-          );
-        }
-        where.Student = {
+      if (examId) {
+        where.examId = Number(examId);
+      }
+
+      if (classId) {
+        where.student = {
           is: {
-            Class: {
-              is: {
-                id: Number(classId),
-                gradeId: Number(gradeId),
+            enrollments: {
+              some: {
+                classId: Number(classId),
+                schoolId,
               },
             },
           },
         };
-      } else if (examId) {
-        where.examId = Number(examId);
+      }
+
+      if (gradeId) {
+        where.student = {
+          is: {
+            enrollments: {
+              some: {
+                class: {
+                  gradeId: Number(gradeId),
+                },
+                schoolId,
+              },
+            },
+          },
+        };
       }
     }
 
-    /* -------------------------------
-       5️⃣ Fetch Results
-    -------------------------------- */
+    /* =============================
+       Fetch Results
+    ============================= */
+
     const results = await prisma.result.findMany({
       where,
       include: {
-        Student: {
-          include: {
-            Class: {
-              select: { gradeId: true },
+        student: {
+          select: {
+            id: true,
+            name: true,
+            enrollments: {
+              where: { status: "ACTIVE" },
+              include: {
+                class: {
+                  select: {
+                    id: true,
+                    gradeId: true,
+                  },
+                },
+              },
             },
           },
         },
-        Subject: true,
-        Exam: true,
+        subject: true,
+        exam: true,
       },
     });
 
-    /* -------------------------------
-       6️⃣ Resolve Max Marks
-    -------------------------------- */
+    /* =============================
+       Resolve Max Marks
+    ============================= */
+
     const triplets = results.map((r) => ({
       examId: r.examId,
       subjectId: r.subjectId,
-      gradeId: r.Student.Class.gradeId,
+      gradeId: r.student.enrollments[0]?.class.gradeId,
     }));
 
     const examGradeSubjects =
@@ -152,15 +168,20 @@ export async function GET(
       );
     });
 
-    const resultsWithMaxMarks = results.map((r) => ({
-      ...r,
-      maxMarks:
-        maxMarksMap.get(
-          `${r.examId}-${r.subjectId}-${r.Student.Class.gradeId}`,
-        ) ?? 100,
-    }));
+    const resultsWithMaxMarks = results.map((r) => {
+      const gradeId = r.student.enrollments[0]?.class.gradeId;
 
-    return NextResponse.json({ results: resultsWithMaxMarks }, { status: 200 });
+      return {
+        ...r,
+        maxMarks:
+          maxMarksMap.get(`${r.examId}-${r.subjectId}-${gradeId}`) ?? 100,
+      };
+    });
+
+    return NextResponse.json(
+      { results: resultsWithMaxMarks },
+      { status: 200 },
+    );
   } catch (error) {
     if (error instanceof SchoolNotFoundError) {
       return NextResponse.json({ error: error.message }, { status: 404 });

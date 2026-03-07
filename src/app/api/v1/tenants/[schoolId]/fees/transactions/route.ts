@@ -1,10 +1,11 @@
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+
 import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
 import { resolveSchoolId } from "@/lib/resolveSchool";
 import { PaymentMode } from "@prisma/client";
 import { currentUser } from "@clerk/nextjs/server";
+import { tenantPrisma } from "@/lib/tenant-prisma";
 import { calculateDueAmount, getAssignedFee } from "@/lib/fees/fees";
 import { getMessageContent } from "@/lib/utils/messageUtils";
 
@@ -13,10 +14,12 @@ export async function POST(
   { params }: { params: Promise<{ schoolId: string }> },
 ) {
   try {
-    const { schoolId: schoolSlug } = await params;
-    const schoolId = await resolveSchoolId(schoolSlug);
+    const { schoolId: slug } = await params;
+    const schoolId = await resolveSchoolId(slug);
+    const db = tenantPrisma(schoolId);
 
     const user = await currentUser();
+
     if (!user) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
@@ -28,7 +31,7 @@ export async function POST(
     const {
       studentId,
       term,
-      academicYear,
+      academicYearId,
       amount = 0,
       discountAmount = 0,
       fineAmount = 0,
@@ -38,20 +41,29 @@ export async function POST(
       paymentMode = PaymentMode.CASH,
     } = body;
 
-    if (!studentId || !term || !academicYear) {
+    if (!studentId || !term || !academicYearId) {
       return NextResponse.json(
-        { message: "studentId, term, academicYear required" },
+        { message: "studentId, term, academicYearId required" },
         { status: 400 },
       );
     }
 
-    /* ------------- TRANSACTION WRAPPER (CRITICAL) ------------- */
-    const result = await prisma.$transaction(async (tx) => {
+    const parsedReceiptDate =
+      receiptDate && !isNaN(Date.parse(receiptDate))
+        ? new Date(receiptDate)
+        : new Date();
+
+    const result = await db.$transaction(async (tx) => {
+
+      /* ===============================
+         Fetch StudentFees
+      =============================== */
+
       const studentFee = await tx.studentFees.findUnique({
         where: {
           studentId_academicYear_term: {
             studentId,
-            academicYear,
+            academicYearId,
             term,
             schoolId,
           },
@@ -71,17 +83,9 @@ export async function POST(
         throw new Error("Overpayment not allowed");
       }
 
-      console.log({
-        currentDue,
-        amount,
-        discountAmount,
-        fineAmount,
-      });
-
-      const parsedReceiptDate =
-        receiptDate && !isNaN(Date.parse(receiptDate))
-          ? new Date(receiptDate)
-          : new Date();
+      /* ===============================
+         Update StudentFees
+      =============================== */
 
       const updatedFee = await tx.studentFees.update({
         where: { id: studentFee.id },
@@ -105,41 +109,47 @@ export async function POST(
         fineAmount: studentFee.fineAmount + fineAmount,
       });
 
+      /* ===============================
+         Update StudentTotalFees
+      =============================== */
+
       const updatedTotal = await tx.studentTotalFees.upsert({
         where: {
-          studentId_schoolId: { studentId, schoolId },
+          studentId_academicYearId_schoolId: {
+            studentId,
+            schoolId,
+            academicYearId,
+          },
         },
         update: {
           totalPaidAmount: { increment: amount },
           totalDiscountAmount: { increment: discountAmount },
           totalFineAmount: { increment: fineAmount },
           dueAmount: newDue,
-          status:
-            newDue === 0
-              ? "Paid"
-              : newDue < assignedFee
-              ? "Partially Paid"
-              : "Not Paid",
         },
         create: {
           studentId,
           schoolId,
+          academicYearId,
           totalPaidAmount: amount,
           totalDiscountAmount: discountAmount,
           totalFineAmount: fineAmount,
           totalAbacusAmount: 0,
           totalFeeAmount: assignedFee,
           dueAmount: newDue,
-          status: newDue === 0 ? "Paid" : "Partially Paid",
         },
       });
+
+      /* ===============================
+         Create FeeTransaction
+      =============================== */
 
       const transaction = await tx.feeTransaction.create({
         data: {
           studentId,
-          academicYear,
-          term,
           studentFeesId: studentFee.id,
+          term,
+          academicYearId,
           amount,
           discountAmount,
           fineAmount,
@@ -152,17 +162,26 @@ export async function POST(
         },
       });
 
-      // 🔹 Fetch student + class info
+      /* ===============================
+         Fetch Student + Class
+      =============================== */
+
       const student = await tx.student.findUnique({
         where: { id: studentId },
         select: {
+          id: true,
           name: true,
-          classId: true,
-          Class: { select: { name: true } },
+          enrollments: {
+            select: {
+              class: {
+                select: { id: true, name: true },
+              },
+            },
+            take: 1,
+          },
         },
       });
 
-      // 🔹 Fetch school name once
       const school = await tx.schoolInfo.findUnique({
         where: { id: schoolId },
         select: { name: true },
@@ -174,14 +193,14 @@ export async function POST(
             type: "FEE_COLLECTION",
             message: getMessageContent("FEE_COLLECTION", {
               studentName: student.name,
-              className: student.Class?.name ?? null,
+              className: student.enrollments?.[0]?.class?.name ?? null,
               schoolName: school.name,
               amount,
               term,
               date: parsedReceiptDate,
             }),
             studentId,
-            classId: student.classId ?? undefined,
+            classId: student.enrollments?.[0]?.class?.id,
             schoolId,
             date: parsedReceiptDate,
           },
@@ -198,133 +217,13 @@ export async function POST(
       },
       { status: 200 },
     );
+
   } catch (error: any) {
     console.error("Fee transaction error:", error);
 
     return NextResponse.json(
       { message: error.message || "Payment failed" },
       { status: 400 },
-    );
-  }
-}
-
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ schoolId: string }> },
-) {
-  try {
-    const { schoolId: schoolSlug } = await params;
-    const schoolId = await resolveSchoolId(schoolSlug);
-
-    const { searchParams } = new URL(req.url);
-
-    const receiptDate = searchParams.get("receiptDate");
-    const from = searchParams.get("from");
-    const to = searchParams.get("to");
-    const academicYear = searchParams.get("academicYear");
-    const paymentMode = searchParams.get("paymentMode");
-    const term = searchParams.get("term");
-    const studentId = searchParams.get("studentId");
-
-    const page = Number(searchParams.get("page") || 1);
-    const limit = Number(searchParams.get("limit") || 20);
-    const skip = (page - 1) * limit;
-
-    const where: any = { schoolId };
-
-    /* ===========================
-       Date Handling (Safe)
-    ============================ */
-
-    if (receiptDate) {
-      const base = new Date(receiptDate);
-      if (!isNaN(base.getTime())) {
-        const start = new Date(base);
-        start.setHours(0, 0, 0, 0);
-
-        const end = new Date(base);
-        end.setHours(23, 59, 59, 999);
-
-        where.receiptDate = { gte: start, lte: end };
-      }
-    } else if (from || to) {
-      where.receiptDate = {};
-
-      if (from) {
-        const start = new Date(from);
-        if (!isNaN(start.getTime())) {
-          start.setHours(0, 0, 0, 0);
-          where.receiptDate.gte = start;
-        }
-      }
-
-      if (to) {
-        const end = new Date(to);
-        if (!isNaN(end.getTime())) {
-          end.setHours(23, 59, 59, 999);
-          where.receiptDate.lte = end;
-        }
-      }
-    } else {
-      // Default: today
-      const today = new Date();
-
-      const start = new Date(today);
-      start.setHours(0, 0, 0, 0);
-
-      const end = new Date(today);
-      end.setHours(23, 59, 59, 999);
-
-      where.receiptDate = { gte: start, lte: end };
-    }
-
-    /* ===========================
-       Optional Filters
-    ============================ */
-
-    if (academicYear) where.academicYear = academicYear;
-    if (paymentMode) where.paymentMode = paymentMode;
-    if (term) where.term = term;
-    if (studentId) where.studentId = studentId;
-
-    /* ===========================
-       Query + Pagination
-    ============================ */
-
-    const [total, receipts] = await prisma.$transaction([
-      prisma.feeTransaction.count({ where }),
-      prisma.feeTransaction.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: { id: "desc" },
-        include: {
-          student: {
-            select: {
-              id: true,
-              name: true,
-              Class: {
-                select: { name: true },
-              },
-            },
-          },
-        },
-      }),
-    ]);
-
-    return NextResponse.json({
-      page,
-      limit,
-      total,
-      totalPages: Math.ceil(total / limit),
-      data: receipts,
-    });
-  } catch (error) {
-    console.error("Fee transactions error:", error);
-
-    return NextResponse.json(
-      { error: "Failed to fetch fee transactions" },
-      { status: 500 },
     );
   }
 }

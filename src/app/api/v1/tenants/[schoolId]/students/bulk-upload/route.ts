@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { resolveSchoolId } from "@/lib/resolveSchool";
@@ -17,13 +18,14 @@ export async function POST(
 ) {
   try {
     const { schoolId: schoolSlug } = await params;
-    const schoolId = await resolveSchoolId(schoolSlug); 
+    const schoolId = await resolveSchoolId(schoolSlug);
+
     const { students } = await req.json();
 
     if (!Array.isArray(students)) {
       return NextResponse.json(
         { error: "Invalid data format" },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
@@ -32,9 +34,8 @@ export async function POST(
     let feesMapped = 0;
     const errors: string[] = [];
 
-    /* -------------------------------------------------
-       🔥 PRELOAD CLASSES (ONE QUERY)
-    -------------------------------------------------- */
+    /* ---------- preload classes ---------- */
+
     const classes = await prisma.class.findMany({
       where: { schoolId },
       include: { Grade: true },
@@ -42,9 +43,8 @@ export async function POST(
 
     const classMap = new Map(classes.map((c) => [c.id, c]));
 
-    /* -------------------------------------------------
-       🔥 PRELOAD FEE STRUCTURES (ONE QUERY)
-    -------------------------------------------------- */
+    /* ---------- preload fee structures ---------- */
+
     const feeStructures = await prisma.feeStructure.findMany({
       where: { schoolId },
     });
@@ -52,48 +52,61 @@ export async function POST(
     const feeMap = new Map<string, typeof feeStructures>();
 
     for (const fee of feeStructures) {
-      const key = `${fee.gradeId}-${fee.academicYear}`;
+      const key = `${fee.gradeId}-${fee.academicYearId}`;
       if (!feeMap.has(key)) feeMap.set(key, []);
       feeMap.get(key)!.push(fee);
     }
 
-    /* -------------------------------------------------
-       🚀 PROCESS STUDENTS (TRANSACTION PER STUDENT)
-    -------------------------------------------------- */
+    /* ---------- process students ---------- */
+
     for (const s of students) {
       try {
-        const { id, name, phone, address, gender, dob, classId, academicYear } =
-          s;
+        const {
+          id,
+          name,
+          phone,
+          address,
+          gender,
+          dob,
+          classId,
+          academicYearId,
+        } = s;
 
-        if (!id || !name || !phone || !dob || !classId) {
+        if (!id || !name || !phone || !dob || !classId || !academicYearId) {
           errors.push(`Missing required fields for ${id}`);
           continue;
         }
 
         const parsedDob = parseDDMMYYYY(dob);
+
         if (!parsedDob) {
           errors.push(`Invalid DOB for ${id}`);
           continue;
         }
 
         const cls = classMap.get(Number(classId));
+
         if (!cls) {
           errors.push(`Invalid class for ${id}`);
           continue;
         }
 
         await prisma.$transaction(async (tx) => {
-          /* ---------------- UPSERT STUDENT ---------------- */
+
+          /* ---------- student upsert ---------- */
+
+          const existing = await tx.student.findUnique({
+            where: { id },
+          });
+
           const student = await tx.student.upsert({
-            where: { id }, // ensure id is globally unique or use composite
+            where: { id },
             update: {
               name,
               phone,
               address,
               gender,
               dob: parsedDob,
-              classId: Number(classId),
-              academicYear,
             },
             create: {
               id,
@@ -103,14 +116,37 @@ export async function POST(
               address,
               gender,
               dob: parsedDob,
-              classId: Number(classId),
-              academicYear,
               schoolId,
             },
           });
 
-          /* ---------------- FEE MAPPING ---------------- */
-          const feeKey = `${cls.Grade.id}-${academicYear}`;
+          if (existing) updated++;
+          else created++;
+
+          /* ---------- enrollment ---------- */
+
+          await tx.studentEnrollment.upsert({
+            where: {
+              studentId_academicYearId_schoolId: {
+                studentId: student.id,
+                academicYearId,
+                schoolId,
+              },
+            },
+            update: {
+              classId: Number(classId),
+            },
+            create: {
+              studentId: student.id,
+              classId: Number(classId),
+              academicYearId,
+              schoolId,
+            },
+          });
+
+          /* ---------- fee mapping ---------- */
+
+          const feeKey = `${cls.gradeId}-${academicYearId}`;
           const fees = feeMap.get(feeKey);
 
           if (!fees) {
@@ -122,23 +158,21 @@ export async function POST(
             await tx.studentFees.upsert({
               where: {
                 studentId_academicYear_term: {
-                  studentId: id,
-                  academicYear: fee.academicYear,
+                  studentId: student.id,
+                  academicYearId,
                   term: fee.term,
                   schoolId,
                 },
               },
               update: {},
               create: {
-                studentId: id,
+                studentId: student.id,
                 feeStructureId: fee.id,
-                academicYear: fee.academicYear,
+                academicYearId,
                 term: fee.term,
                 paidAmount: 0,
                 discountAmount: 0,
                 fineAmount: 0,
-                abacusPaidAmount: 0,
-                paymentMode: "CASH",
                 schoolId,
               },
             });
@@ -146,6 +180,7 @@ export async function POST(
 
           feesMapped++;
         });
+
       } catch (err: any) {
         errors.push(`Student ${s.id}: ${err.message}`);
       }
@@ -158,8 +193,10 @@ export async function POST(
       feesMapped,
       errors,
     });
+
   } catch (error) {
     console.error("Bulk upload failed:", error);
+
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },

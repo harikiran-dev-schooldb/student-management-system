@@ -15,7 +15,6 @@ import {
   UserPlus, // Changed icon to represent Student Upload
 } from "lucide-react";
 import { useTenantApi } from "@/hooks/useTenantApi";
-import { useSchoolSlug } from "../hooks/getschool";
 
 type StudentCSV = {
   id: string;
@@ -32,6 +31,10 @@ type StudentCSV = {
   classId: string;
   clerk_id?: string;
   academicYear: string;
+};
+
+type BulkStudentUploadResponse = {
+  errors?: string[];
 };
 
 export default function BulkStudentUpload() {
@@ -110,13 +113,15 @@ export default function BulkStudentUpload() {
     }
   };
 
-  const schoolId = useSchoolSlug();
-  const api = useTenantApi(schoolId);
+  const api = useTenantApi();
 
   const handleUpload = async () => {
     setLoading(true);
     try {
-      const { data } = await api.post("/students/bulk-upload", { students });
+      const { data } = await api.post<BulkStudentUploadResponse>(
+        "/students/bulk-upload",
+        { students }
+      );
 
       if (data.errors?.length) {
         setErrors(data.errors);
@@ -170,10 +175,9 @@ export default function BulkStudentUpload() {
             <div className="flex-1 flex flex-col items-center justify-center p-8 md:p-16">
               <div
                 className={`relative group cursor-pointer flex flex-col items-center justify-center w-full max-w-3xl h-80 rounded-3xl border-3 border-dashed transition-all duration-300 ease-out
-                  ${
-                    dragActive
-                      ? "border-indigo-500 bg-indigo-50/50 dark:bg-darkMode scale-[1.02] shadow-2xl shadow-indigo-500/10"
-                      : "border-zinc-200 dark:border-zinc-800 hover:border-indigo-400 dark:hover:border-indigo-500 hover:bg-zinc-50 dark:hover:bg-zinc-900"
+                  ${dragActive
+                    ? "border-indigo-500 bg-indigo-50/50 dark:bg-darkMode scale-[1.02] shadow-2xl shadow-indigo-500/10"
+                    : "border-zinc-200 dark:border-zinc-800 hover:border-indigo-400 dark:hover:border-indigo-500 hover:bg-zinc-50 dark:hover:bg-zinc-900"
                   }`}
                 onDragEnter={handleDrag}
                 onDragLeave={handleDrag}
@@ -196,11 +200,10 @@ export default function BulkStudentUpload() {
 
                 <div className="relative z-10 flex flex-col items-center gap-6 text-center p-6">
                   <div
-                    className={`p-5 rounded-2xl shadow-sm transition-all duration-300 ${
-                      dragActive
+                    className={`p-5 rounded-2xl shadow-sm transition-all duration-300 ${dragActive
                         ? "bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600"
                         : "bg-white dark:bg-darkMode text-zinc-400 group-hover:text-indigo-500 group-hover:scale-110"
-                    }`}
+                      }`}
                   >
                     <UploadCloud className="w-10 h-10" />
                   </div>
@@ -348,7 +351,7 @@ export default function BulkStudentUpload() {
                 </button>
                 <button
                   onClick={handleUpload}
-                  disabled={loading || errors.length > 0}
+                  disabled={loading || errors.length > 0 || students.length === 0}
                   className="px-8 py-2.5 rounded-xl font-bold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 shadow-lg shadow-indigo-500/25 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none flex items-center gap-2"
                 >
                   {loading ? (

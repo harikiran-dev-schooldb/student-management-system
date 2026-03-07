@@ -165,17 +165,28 @@ export interface StudentFee {
   paidAmount: number;
   discountAmount: number;
   fineAmount: number;
+
   receiptDate?: string;
   receiptNo?: string;
   remarks?: string;
+
   paymentMode: PaymentMode;
-  academicYearId: string; // ✅ add this line
+
+  academicYearId: string;
+
+  // ✅ ADD THIS
+  academicYear?: {
+    id: string;
+    name: string;
+  };
+
   feeStructure?: {
     id: number;
     termFees?: number;
     abacusFees?: number;
     dueDate?: string;
   };
+
   feeTransactions?: {
     receiptNo?: string;
     remarks?: string;

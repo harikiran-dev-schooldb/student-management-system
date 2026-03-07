@@ -1,8 +1,10 @@
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { resolveSchoolId, SchoolNotFoundError } from "@/lib/resolveSchool";
-import { NextRequest, NextResponse } from "next/server";
+import { tenantPrisma } from "@/lib/tenant-prisma";
 
 /* =======================
    GET SINGLE GRADE
@@ -12,31 +14,50 @@ export async function GET(
   { params }: { params: Promise<{ schoolId: string; id: string }> },
 ) {
   try {
-    const { schoolId: slug, id: gradeId } = await params;
-    const parsedGradeId = parseInt(gradeId, 10);
+    const { schoolId: slug, id } = await params;
+    const gradeId = Number(id);
 
-    if (Number.isNaN(parsedGradeId)) {
-      return NextResponse.json(
-        { error: "Invalid grade ID" },
-        { status: 400 }
-      );
+    if (Number.isNaN(gradeId)) {
+      return NextResponse.json({ error: "Invalid grade ID" }, { status: 400 });
     }
 
     const schoolId = await resolveSchoolId(slug);
+    const db = tenantPrisma(schoolId);
 
-    const grade = await prisma.grade.findFirst({
+    const grade = await db.grade.findFirst({
       where: {
-        id: parsedGradeId,
+        id: gradeId,
         schoolId,
       },
-      include: {
-        subjects: true,
+      select: {
+        id: true,
+        level: true,
+
+        subjects: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+
         classes: {
-          include: {
-            students: {
+          select: {
+            id: true,
+            name: true,
+            section: true,
+
+            studentEnrollments: {
+              where: {
+                status: "ACTIVE",
+              },
               select: {
-                id: true,
-                name: true,
+                student: {
+                  select: {
+                    id: true,
+                    name: true,
+                    admissionNo: true,
+                  },
+                },
               },
             },
           },
@@ -45,13 +66,12 @@ export async function GET(
     });
 
     if (!grade) {
-      return NextResponse.json(
-        { error: "Grade not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Grade not found" }, { status: 404 });
     }
 
-    const students = grade.classes.flatMap(c => c.students);
+    const students = grade.classes.flatMap((c) =>
+      c.studentEnrollments.map((e) => e.student)
+    );
 
     return NextResponse.json({
       id: grade.id,
@@ -62,10 +82,7 @@ export async function GET(
 
   } catch (error) {
     if (error instanceof SchoolNotFoundError) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: error.message }, { status: 404 });
     }
 
     console.error("Grade Details API Error:", error);
@@ -77,51 +94,43 @@ export async function GET(
   }
 }
 
+/* =======================
+   UPDATE GRADE
+======================= */
 export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ schoolId: string; id: string }> },
 ) {
   try {
-    const { schoolId: slug, id: gradeId } = await params;
-    const parsedGradeId = parseInt(gradeId, 10);
+    const { schoolId: slug, id } = await params;
+    const gradeId = Number(id);
 
-    if (Number.isNaN(parsedGradeId)) {
-      return NextResponse.json(
-        { error: "Invalid grade ID" },
-        { status: 400 }
-      );
+    if (Number.isNaN(gradeId)) {
+      return NextResponse.json({ error: "Invalid grade ID" }, { status: 400 });
     }
 
     const { level } = await req.json();
 
     if (!level || typeof level !== "string") {
-      return NextResponse.json(
-        { error: "Level is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Level is required" }, { status: 400 });
     }
 
     const schoolId = await resolveSchoolId(slug);
+    const db = tenantPrisma(schoolId);
 
-    const grade = await prisma.grade.findFirst({
-      where: {
-        id: parsedGradeId,
-        schoolId,
-      },
+    const existing = await db.grade.findFirst({
+      where: { id: gradeId, schoolId },
     });
 
-    if (!grade) {
-      return NextResponse.json(
-        { error: "Grade not found" },
-        { status: 404 }
-      );
+    if (!existing) {
+      return NextResponse.json({ error: "Grade not found" }, { status: 404 });
     }
 
-    const duplicate = await prisma.grade.findFirst({
+    const duplicate = await db.grade.findFirst({
       where: {
         level: level.trim(),
         schoolId,
-        NOT: { id: parsedGradeId },
+        NOT: { id: gradeId },
       },
     });
 
@@ -132,8 +141,8 @@ export async function PUT(
       );
     }
 
-    const updated = await prisma.grade.update({
-      where: { id: parsedGradeId },
+    const updated = await db.grade.update({
+      where: { id: gradeId },
       data: { level: level.trim() },
     });
 
@@ -141,10 +150,7 @@ export async function PUT(
 
   } catch (error) {
     if (error instanceof SchoolNotFoundError) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: error.message }, { status: 404 });
     }
 
     console.error("Update Grade Error:", error);
@@ -156,41 +162,35 @@ export async function PUT(
   }
 }
 
+/* =======================
+   DELETE GRADE
+======================= */
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ schoolId: string; id: string }> },
 ) {
   try {
-    const { schoolId: slug, id: gradeId } = await params;
-    const parsedGradeId = parseInt(gradeId, 10);
+    const { schoolId: slug, id } = await params;
+    const gradeId = Number(id);
 
-    if (Number.isNaN(parsedGradeId)) {
-      return NextResponse.json(
-        { error: "Invalid grade ID" },
-        { status: 400 }
-      );
+    if (Number.isNaN(gradeId)) {
+      return NextResponse.json({ error: "Invalid grade ID" }, { status: 400 });
     }
 
-    // 🔎 Resolve tenant
     const schoolId = await resolveSchoolId(slug);
+    const db = tenantPrisma(schoolId);
 
-    // 🔐 Ensure grade belongs to this school
-    const grade = await prisma.grade.findFirst({
-      where: {
-        id: parsedGradeId,
-        schoolId,
-      },
+    const grade = await db.grade.findFirst({
+      where: { id: gradeId, schoolId },
       select: { id: true },
     });
 
     if (!grade) {
-      return NextResponse.json(
-        { error: "Grade not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Grade not found" }, { status: 404 });
     }
 
-    // 🔍 Check ALL dependencies in parallel
+    /* Check dependencies */
+
     const [
       classCount,
       subjectCount,
@@ -198,38 +198,36 @@ export async function DELETE(
       feeStructureCount,
       homeworkCount,
     ] = await Promise.all([
-      prisma.class.count({
-        where: { gradeId: parsedGradeId, schoolId },
+      db.class.count({
+        where: { gradeId, schoolId },
       }),
-      prisma.subject.count({
+      db.subject.count({
         where: {
           schoolId,
-          grades: { some: { id: parsedGradeId } },
+          grades: { some: { id: gradeId } },
         },
       }),
-      prisma.examGradeSubject.count({
-        where: { gradeId: parsedGradeId, schoolId },
+      db.examGradeSubject.count({
+        where: { gradeId, schoolId },
       }),
-      prisma.feeStructure.count({
-        where: { gradeId: parsedGradeId, schoolId },
+      db.feeStructure.count({
+        where: { gradeId, schoolId },
       }),
-      prisma.homework.count({
-        where: { gradeId: parsedGradeId, schoolId },
+      db.homework.count({
+        where: { gradeId, schoolId },
       }),
     ]);
 
-    // 🚫 Block deletion if linked
     if (
-      classCount > 0 ||
-      subjectCount > 0 ||
-      examGradeCount > 0 ||
-      feeStructureCount > 0 ||
-      homeworkCount > 0
+      classCount ||
+      subjectCount ||
+      examGradeCount ||
+      feeStructureCount ||
+      homeworkCount
     ) {
       return NextResponse.json(
         {
-          error:
-            "Cannot delete grade. It is linked to classes, subjects, exams, fees, or homework.",
+          error: "Cannot delete grade. It has linked data.",
           details: {
             classes: classCount,
             subjects: subjectCount,
@@ -242,9 +240,8 @@ export async function DELETE(
       );
     }
 
-    // 🗑 Safe to delete
-    await prisma.grade.delete({
-      where: { id: parsedGradeId },
+    await db.grade.delete({
+      where: { id: gradeId },
     });
 
     return NextResponse.json({
@@ -253,10 +250,7 @@ export async function DELETE(
 
   } catch (error) {
     if (error instanceof SchoolNotFoundError) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: error.message }, { status: 404 });
     }
 
     console.error("Delete Grade Error:", error);
@@ -267,5 +261,3 @@ export async function DELETE(
     );
   }
 }
-
-

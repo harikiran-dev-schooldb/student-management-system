@@ -1,4 +1,6 @@
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { clerkClient } from "@clerk/nextjs/server";
@@ -7,27 +9,26 @@ import { resolveSchoolId } from "@/lib/resolveSchool";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
 import { revalidatePath } from "next/cache";
 
-export const runtime = "nodejs";
-
 export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ schoolId: string; id: string }> }
 ): Promise<NextResponse> {
+
   try {
-    /* =====================================================
-       1️⃣ Resolve Tenant + Authorize
-    ===================================================== */
+
+    /* 1️⃣ Resolve tenant */
+
     const { schoolId: schoolSlug, id: teacherId } = await params;
     const schoolId = await resolveSchoolId(schoolSlug);
 
     const currentUser = await fetchUserInfo(schoolId);
+
     if (!currentUser || currentUser.role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    /* =====================================================
-       2️⃣ Validate Input
-    ===================================================== */
+    /* 2️⃣ Validate */
+
     const body = await req.json();
     const parsed = teacherschema.safeParse({ ...body, id: teacherId });
 
@@ -39,19 +40,12 @@ export async function PUT(
     }
 
     const data = parsed.data;
-    const client = await clerkClient();
 
-    /* =====================================================
-       3️⃣ Ensure Teacher Belongs To School
-    ===================================================== */
+    /* 3️⃣ Ensure teacher exists */
+
     const existingTeacher = await prisma.teacher.findFirst({
-      where: {
-        id: teacherId,
-        schoolId,
-      },
-      include: {
-        linkedUser: true,
-      },
+      where: { id: teacherId, schoolId },
+      include: { linkedUser: true },
     });
 
     if (!existingTeacher) {
@@ -61,9 +55,8 @@ export async function PUT(
       );
     }
 
-    /* =====================================================
-       4️⃣ Prevent Duplicate Username (Per School)
-    ===================================================== */
+    /* 4️⃣ Username duplicate check */
+
     if (data.username) {
       const duplicate = await prisma.teacher.findFirst({
         where: {
@@ -81,11 +74,10 @@ export async function PUT(
       }
     }
 
-    /* =====================================================
-       5️⃣ Transaction Update
-    ===================================================== */
+    /* 5️⃣ Transaction */
+
     const updatedTeacher = await prisma.$transaction(async (tx) => {
-      /* ----- Update Teacher ----- */
+
       const teacher = await tx.teacher.update({
         where: { id: teacherId },
         data: {
@@ -99,12 +91,11 @@ export async function PUT(
           bloodType: data.bloodType ?? null,
           gender: data.gender,
           dob: data.dob ? new Date(data.dob) : null,
-          classId: data.classId ?? null,
-          supervisor: data.supervisor ?? false,
         },
       });
 
-      /* ----- Sync LinkedUser Username ----- */
+      /* Sync linked user */
+
       if (existingTeacher.linkedUser) {
         await tx.linkedUser.update({
           where: { id: existingTeacher.linkedUser.id },
@@ -112,9 +103,10 @@ export async function PUT(
         });
       }
 
-      /* ----- Subject Assignment (Tenant Safe) ----- */
+      /* Subject assignment */
+
       if (Array.isArray(data.subjects)) {
-        // Remove only inside this school
+
         await tx.subjectTeacher.deleteMany({
           where: { teacherId, schoolId },
         });
@@ -124,21 +116,31 @@ export async function PUT(
         );
 
         if (validSubjects.length > 0) {
-          // Validate subjects belong to school
+
           const subjectIds = validSubjects.map((s: any) =>
             Number(s.subjectId)
           );
 
-          const validSubjectRecords = await tx.subject.findMany({
-            where: {
-              id: { in: subjectIds },
-              schoolId,
-            },
-            select: { id: true },
-          });
+          const classIds = validSubjects.map((s: any) =>
+            Number(s.classId)
+          );
 
-          if (validSubjectRecords.length !== subjectIds.length) {
-            throw new Error("Invalid subject assignment detected.");
+          const [subjects, classes] = await Promise.all([
+            tx.subject.findMany({
+              where: { id: { in: subjectIds }, schoolId },
+              select: { id: true },
+            }),
+            tx.class.findMany({
+              where: { id: { in: classIds }, schoolId },
+              select: { id: true },
+            }),
+          ]);
+
+          if (
+            subjects.length !== subjectIds.length ||
+            classes.length !== classIds.length
+          ) {
+            throw new Error("Invalid subject/class assignment detected.");
           }
 
           await tx.subjectTeacher.createMany({
@@ -156,10 +158,11 @@ export async function PUT(
       return teacher;
     });
 
-    /* =====================================================
-       6️⃣ Clerk Sync (Optional)
-    ===================================================== */
+    /* 6️⃣ Clerk sync */
+
     if (existingTeacher.clerk_id) {
+      const client = await clerkClient();
+
       await client.users.updateUser(existingTeacher.clerk_id, {
         firstName: data.name,
       });
@@ -173,11 +176,12 @@ export async function PUT(
     );
 
   } catch (error: any) {
+
     console.error("Teacher update error:", error);
 
     return NextResponse.json(
       { error: error.message || "Internal server error" },
-      { status: error.name === "ZodError" ? 400 : 500 }
+      { status: 500 }
     );
   }
 }
