@@ -63,6 +63,12 @@ export default clerkMiddleware(async (auth, req) => {
     segments[1] === "v1" &&
     segments[2] === "tenants"
   ) {
+
+    // 🔧 DEV LOAD TEST BYPASS
+    if (process.env.NODE_ENV === "development") {
+      return NextResponse.next();
+    }
+    
     const { userId } = await auth();
 
     if (!userId) {
@@ -92,42 +98,42 @@ export default clerkMiddleware(async (auth, req) => {
  * /{schoolId}/...
  */
 
-// Must have at least 1 segment
-if (segments.length === 0) {
-  return NextResponse.next();
-}
+  // Must have at least 1 segment
+  if (segments.length === 0) {
+    return NextResponse.next();
+  }
 
-const schoolSlug = segments[0];
+  const schoolSlug = segments[0];
 
-// Prevent system routes from being treated as tenant
-const SYSTEM_ROUTES = ["login", "auth", "features", "demo", "platform", "pricing", "unauthorized"];
+  // Prevent system routes from being treated as tenant
+  const SYSTEM_ROUTES = ["login", "auth", "features", "demo", "platform", "pricing", "unauthorized"];
 
-if (SYSTEM_ROUTES.includes(schoolSlug)) {
-  return NextResponse.next();
-}
+  if (SYSTEM_ROUTES.includes(schoolSlug)) {
+    return NextResponse.next();
+  }
 
-// Validate tenant
-const schoolExists = await prisma.schoolInfo.findUnique({
-  where: { schoolId: schoolSlug },
-  select: { id: true },
-});
+  // Validate tenant
+  const schoolExists = await prisma.schoolInfo.findUnique({
+    where: { schoolId: schoolSlug },
+    select: { id: true },
+  });
 
-if (!schoolExists) {
-  return NextResponse.redirect(new URL("/unauthorized", req.url));
-}
+  if (!schoolExists) {
+    return NextResponse.redirect(new URL("/unauthorized", req.url));
+  }
 
-const { userId } = await auth();
+  const { userId } = await auth();
 
-if (!userId) {
-  return NextResponse.redirect(
-    new URL(`/${schoolSlug}/login`, req.url)
-  );
-}
+  if (!userId) {
+    return NextResponse.redirect(
+      new URL(`/${schoolSlug}/login`, req.url)
+    );
+  }
 
-const response = NextResponse.next();
-response.headers.set("x-school-id", schoolSlug);
+  const response = NextResponse.next();
+  response.headers.set("x-school-id", schoolSlug);
 
-return response;
+  return response;
 });
 
 export const config = {

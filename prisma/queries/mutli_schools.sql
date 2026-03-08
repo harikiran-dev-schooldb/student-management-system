@@ -294,3 +294,11 @@ INSERT INTO "Admin" (
 );
 
 SELECT id,  role FROM "LinkedUser";
+
+SHOW max_connections;
+
+SELECT count(*) FROM pg_stat_activity;
+
+SELECT pid, state, query
+FROM pg_stat_activity
+WHERE datname = 'multi_schooldb';

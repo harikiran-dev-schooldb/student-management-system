@@ -152,6 +152,7 @@ model Class {
   @@unique([gradeId, section, schoolId], map: "Class_gradeId_section_key") // enforce uniqueness within grade
   @@index([gradeId], map: "Class_gradeId_idx")
   @@index([schoolId])
+  @@index([schoolId, gradeId])
   @@map("class")
 }
 
@@ -417,6 +418,7 @@ model Student {
   @@unique([username, schoolId])
   @@unique([admissionNo, schoolId])
   @@index([schoolId])
+  @@index([schoolId, createdAt])
   @@index([gender, status])
 }
 
@@ -502,6 +504,7 @@ model TeacherClassAssignment {
 
   @@unique([teacherId, classId, academicYearId, schoolId])
   @@index([classId, academicYearId])
+  @@index([schoolId, classId])
   @@index([schoolId])
 }
 
@@ -571,7 +574,8 @@ model FeeTransaction {
   @@index([academicYearId, receiptDate])
   @@index([studentId, academicYearId])
   @@index([studentId, term])
-@@index([studentId, receiptDate])
+
+@@index([schoolId, studentId, receiptDate])
 }
 
 model StudentFees {

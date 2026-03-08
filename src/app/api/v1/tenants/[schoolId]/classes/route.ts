@@ -6,6 +6,8 @@ import { resolveSchoolId, SchoolNotFoundError } from "@/lib/resolveSchool";
 import { classSchema } from "@/lib/formValidationSchemas";
 import { Prisma } from "@prisma/client";
 
+export const revalidate = 60;
+
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ schoolId: string }> },
@@ -145,7 +147,12 @@ export async function GET(
         { gradeId: "asc" },
         { section: "asc" },
       ],
-      include: {
+      select: {
+        id: true,
+        name: true,
+        section: true,
+        gradeId: true,
+
         Grade: {
           select: {
             id: true,
