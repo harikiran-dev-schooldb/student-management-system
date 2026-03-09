@@ -21,7 +21,7 @@ export async function PUT(
     const { schoolId: schoolSlug, id: teacherId } = await params;
     const schoolId = await resolveSchoolId(schoolSlug);
 
-    const currentUser = await fetchUserInfo(schoolId);
+    const currentUser = await fetchUserInfo(schoolSlug);
 
     if (!currentUser || currentUser.role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });

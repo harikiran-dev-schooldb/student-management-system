@@ -76,6 +76,14 @@ export async function POST(
       },
     });
 
+
+    if (!validated.subjectId || !validated.classId) {
+      return NextResponse.json(
+        { message: "classId and subjectId are required" },
+        { status: 400 }
+      );
+    }
+
     /* -----------------------------
        Create lesson (with schoolId)
     ------------------------------ */
@@ -121,7 +129,7 @@ export async function GET(
     const { schoolId: slug } = await params;
     const schoolId = await resolveSchoolId(slug);
 
-    const user = await fetchUserInfo(schoolId);
+    const user = await fetchUserInfo(slug);
     if (!user.userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

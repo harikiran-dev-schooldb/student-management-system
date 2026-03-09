@@ -14,7 +14,6 @@ import {
   AlertTriangle,
   Loader2,
 } from "lucide-react";
-import { useSchoolSlug } from "./hooks/getschool";
 import { useTenantApi } from "@/hooks/useTenantApi";
 
 // Mapping logical table names to API routes

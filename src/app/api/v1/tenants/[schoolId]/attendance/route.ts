@@ -72,6 +72,15 @@ export async function POST(
       return NextResponse.json({ error: "Invalid date" }, { status: 400 });
     }
 
+    const uniqueDates = [...new Set(payload.map(p => p.date))];
+
+    if (uniqueDates.length !== 1) {
+      return NextResponse.json(
+        { error: "All attendance entries must have the same date" },
+        { status: 400 }
+      );
+    }
+
     const dateOnly = new Date(
       Date.UTC(
         rawDate.getUTCFullYear(),
@@ -139,26 +148,27 @@ export async function POST(
       }
     }
 
+    /* ---------- Active Academic Year ---------- */
+    const activeYear = await prisma.academicYear.findFirst({
+      where: {
+        schoolId,
+        isActive: true,
+      },
+      select: { id: true },
+    });
+
+    if (!activeYear) {
+      throw new Error("No active academic year");
+    }
+
+    const academicYearId = activeYear.id;
+
     /* ================================
        Database Transaction
     ================================= */
 
     await prisma.$transaction(async (tx) => {
-      /* ---------- Active Academic Year ---------- */
 
-      const activeYear = await tx.academicYear.findFirst({
-        where: {
-          schoolId,
-          isActive: true,
-        },
-        select: { id: true },
-      });
-
-      if (!activeYear) {
-        throw new Error("No active academic year");
-      }
-
-      const academicYearId = activeYear.id;
 
       /* ---------- Prepare Attendance Data ---------- */
 
@@ -171,26 +181,25 @@ export async function POST(
         academicYearId,
       }));
 
-      /* ---------- Upsert Attendance ---------- */
+      const attendanceStudentIds = attendanceData.map((a) => a.studentId);
 
-      await Promise.all(
-        attendanceData.map((data) =>
-          tx.attendance.upsert({
-            where: {
-              studentId_date_academicYearId_schoolId: {
-                studentId: data.studentId,
-                date: data.date,
-                academicYearId: data.academicYearId,
-                schoolId: data.schoolId,
-              },
-            },
-            update: {
-              present: data.present,
-            },
-            create: data,
-          }),
-        ),
-      );
+      /* ---------- Remove Existing Attendance ---------- */
+
+      await tx.attendance.deleteMany({
+        where: {
+          studentId: { in: attendanceStudentIds },
+          date: dateOnly,
+          schoolId,
+          academicYearId,
+        },
+      });
+
+      /* ---------- Insert New Attendance (Bulk) ---------- */
+
+      await tx.attendance.createMany({
+        data: attendanceData,
+        skipDuplicates: true,
+      });
 
       /* ---------- Split Present / Absent ---------- */
 
@@ -291,19 +300,34 @@ export async function GET(
 
     const { searchParams } = new URL(req.url);
 
+    const dateParam = searchParams.get("date");
     const startParam = searchParams.get("start");
     const endParam = searchParams.get("end");
     const classIdParam = searchParams.get("classId");
 
-    if (!startParam || !endParam) {
+    let start: Date;
+    let end: Date;
+
+    /* ---------- Single Day ---------- */
+
+    if (dateParam) {
+      start = new Date(`${dateParam}T00:00:00.000Z`);
+      end = new Date(`${dateParam}T23:59:59.999Z`);
+    }
+
+    /* ---------- Date Range ---------- */
+
+    else if (startParam && endParam) {
+      start = new Date(`${startParam}T00:00:00.000Z`);
+      end = new Date(`${endParam}T23:59:59.999Z`);
+    }
+
+    else {
       return NextResponse.json(
-        { error: "Provide start and end date" },
+        { error: "Provide date OR start & end" },
         { status: 400 },
       );
     }
-
-    const start = new Date(`${startParam}T00:00:00.000Z`);
-    const end = new Date(`${endParam}T23:59:59.999Z`);
 
     /* ================================
        Attendance Filter
@@ -322,7 +346,14 @@ export async function GET(
     ================================= */
 
     if (access.role === "teacher") {
-      where.classId = access.classId ?? undefined;
+      if (!access.classId) {
+        return NextResponse.json(
+          { error: "Teacher has no class assigned" },
+          { status: 400 },
+        );
+      }
+
+      where.classId = access.classId;
     }
 
     if (access.role === "admin") {
@@ -332,55 +363,45 @@ export async function GET(
     }
 
     if (access.role === "student") {
-      where.studentId = access.studentId ?? undefined;
+      if (!access.studentId) {
+        return NextResponse.json(
+          { error: "Student access invalid" },
+          { status: 400 },
+        );
+      }
+
+      where.studentId = access.studentId;
     }
 
     /* ================================
-       Fetch Attendance
+       Fetch Attendance + Students
+       (Single Query Optimization)
     ================================= */
 
     const attendance = await prisma.attendance.findMany({
       where,
-      orderBy: {
-        date: "asc",
-      },
-    });
+      orderBy: { date: "asc" },
 
-    if (attendance.length === 0) {
-      return NextResponse.json({
-        attendance: [],
-        students: [],
-      });
-    }
-
-    /* ================================
-       Fetch Students
-    ================================= */
-
-    const studentIds = [...new Set(attendance.map((a) => a.studentId))];
-
-    const students = await prisma.student.findMany({
-      where: {
-        id: { in: studentIds },
-        schoolId,
-      },
-      select: {
-        id: true,
-        name: true,
-
-        enrollments: {
-          where: {
-            status: "ACTIVE",
-          },
+      include: {
+        Student: {
           select: {
-            class: {
+            id: true,
+            name: true,
+
+            enrollments: {
+              where: {
+                status: "ACTIVE",
+              },
+
               select: {
-                id: true,
-                name: true,
-                section: true,
-                Grade: {
+                class: {
                   select: {
-                    level: true,
+                    id: true,
+                    name: true,
+                    section: true,
+                    Grade: {
+                      select: { level: true },
+                    },
                   },
                 },
               },
@@ -392,8 +413,8 @@ export async function GET(
 
     return NextResponse.json({
       attendance,
-      students,
     });
+
   } catch (error) {
     console.error("Attendance GET error:", error);
 

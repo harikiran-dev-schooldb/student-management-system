@@ -6,8 +6,12 @@ import { lessonsSchema, LessonsSchema } from "@/lib/formValidationSchemas";
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
-import { useSchoolSlug } from "../hooks/getschool";
 import { useTenantApi } from "@/hooks/useTenantApi";
+
+type Subject = {
+  id: number;
+  name: string;
+};
 
 const LessonForm = ({
   type,
@@ -24,14 +28,7 @@ const LessonForm = ({
   const { classes = [], teachers = [], grades = [] } = relatedData || {};
 
   const [subjects, setSubjects] = useState<{ id: number; name: string }[]>([]);
-  const [selectedGradeId, setSelectedGradeId] = useState<number | null>(
-    data?.gradeId || null,
-  );
-  const [filteredClasses, setFilteredClasses] = useState(
-    data?.gradeId
-      ? classes.filter((cls: any) => cls.gradeId === data.gradeId)
-      : [],
-  );
+
 
   const [state, setState] = useState<{
     success: boolean;
@@ -55,38 +52,40 @@ const LessonForm = ({
     },
   });
 
-  const classIdWatch = watch("classId");
   const api = useTenantApi();
 
+  const gradeId = watch("gradeId");
+  const classId = watch("classId");
+
+  const filteredClasses = classes.filter(
+    (cls: any) => cls.gradeId === gradeId
+  );
+
   useEffect(() => {
-    if (!classIdWatch || !api) return;
+    setValue("classId", undefined);
+    setValue("subjectId", undefined);
+    setSubjects([]);
+  }, [gradeId, setValue]);
 
-    const fetchSubjects = async () => {
-      try {
-        const { data } = await api.get(`/classes/${classIdWatch}/subjects`);
-
-        setSubjects(Array.isArray(data) ? data : []);
-        setValue("subjectId", 0);
-      } catch (error: any) {
-        setSubjects([]);
-        toast.error(error.message || "Failed to fetch subjects");
-      }
-    };
-
-    fetchSubjects();
-  }, [classIdWatch, api, setValue]);
-
-  // Update filteredClasses when grade changes
   useEffect(() => {
-    if (selectedGradeId !== null) {
-      const related = classes.filter(
-        (cls: any) => cls.gradeId === selectedGradeId,
-      );
-      setFilteredClasses(related);
-    } else {
-      setFilteredClasses([]);
+  if (!classId) {
+    setSubjects([]);
+    return;
+  }
+
+  const fetchSubjects = async () => {
+    try {
+      const data = await api.get<Subject[]>(`/classes/${classId}/subjects`);
+      console.log("Subjects API:", data);
+      setSubjects(data);
+    } catch (err) {
+      console.error(err);
+      setSubjects([]);
     }
-  }, [selectedGradeId, classes]);
+  };
+
+  fetchSubjects();
+}, [classId, api]);
 
   // For edit case, reset form with existing data
   useEffect(() => {
@@ -100,7 +99,7 @@ const LessonForm = ({
 
   const onSubmit = async (formData: LessonsSchema) => {
     try {
-      if (!classIdWatch || !api) return;
+      if (!classId || !api) return;
 
       if (type === "create") {
         await api.post("/lessons", formData);
@@ -184,8 +183,6 @@ const LessonForm = ({
           <select
             className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm"
             {...register("gradeId", { valueAsNumber: true })}
-            defaultValue={data?.gradeId ?? ""}
-            onChange={(e) => setSelectedGradeId(parseInt(e.target.value))}
           >
             <option value="">Select Grade</option>
             {grades.map((grade: { id: number; level: number }) => (
@@ -205,7 +202,6 @@ const LessonForm = ({
           <select
             className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm"
             {...register("classId", { valueAsNumber: true })}
-            defaultValue={data?.classId ?? ""}
             disabled={filteredClasses.length === 0}
           >
             <option value="">Select Class</option>
@@ -228,11 +224,12 @@ const LessonForm = ({
             {...register("subjectId", { valueAsNumber: true })}
           >
             <option value="">Select Subject</option>
-            {subjects.map((sub) => (
-              <option key={sub.id} value={sub.id}>
-                {sub.name}
-              </option>
-            ))}
+            {Array.isArray(subjects) &&
+              subjects.map((sub) => (
+                <option key={sub.id} value={sub.id}>
+                  {sub.name}
+                </option>
+              ))}
           </select>
           {errors.subjectId?.message && (
             <p className="text-xs text-red-400">{errors.subjectId.message}</p>

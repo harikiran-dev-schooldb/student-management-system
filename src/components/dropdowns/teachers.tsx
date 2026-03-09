@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { dropdownUI } from "../../../types";
+import { useSchoolSlug } from "../hooks/getschool";
 
 export default function TeacherFilterDropdown({
   teachers,
@@ -10,6 +11,7 @@ export default function TeacherFilterDropdown({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const slug = useSchoolSlug();
 
   const selectedTeacherId = searchParams.get("teacherId") || "";
 
@@ -24,7 +26,7 @@ export default function TeacherFilterDropdown({
       params.delete("teacherId");
     }
 
-    router.push(`/list/lessons?${params.toString()}`);
+    router.push(`/${slug}/list/lessons?${params.toString()}`);
   };
 
 

@@ -56,7 +56,7 @@ export async function requireTenantAccess(): Promise<TenantAccess> {
     return {
       ...baseAccess,
       studentId: student?.id,
-      classId: student?.enrollments[0]?.classId,
+      classId: student?.enrollments?.[0]?.classId
     };
   }
 
@@ -78,9 +78,11 @@ export async function requireTenantAccess(): Promise<TenantAccess> {
       },
     });
 
+    const classId = teacher?.teacherClassAssignments?.[0]?.classId;
+
     return {
       ...baseAccess,
-      classId: teacher?.teacherClassAssignments[0].classId ?? undefined,
+      classId,
     };
   }
 

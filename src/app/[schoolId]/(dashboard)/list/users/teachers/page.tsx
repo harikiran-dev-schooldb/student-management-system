@@ -39,7 +39,7 @@ const renderRow = (item: TeachersWithSelect, role: string | null, schoolId: stri
         <h3 className="font-semibold text-darkMode dark:text-gray-100">
           {item.name}
         </h3>
-        <p className="text-xs text-darkMode dark:text-gray-300">{item.id}</p>
+        <p className="text-xs text-darkMode dark:text-gray-300">{item.username}</p>
       </div>
     </td>
 
@@ -153,11 +153,15 @@ const TeacherListPage = async ({
     ? resolvedSearchParams.sortKey[0]
     : resolvedSearchParams.sortKey || "id";
 
-  const query: Prisma.TeacherWhereInput = {
-    status: {
-      equals: (userStatus as $Enums.UserStatus) || "ACTIVE",
-    },
-  };
+  const statusValue = Array.isArray(userStatus) ? userStatus[0] : userStatus;
+
+  const query: Prisma.TeacherWhereInput = {};
+
+  if (statusValue && Object.values($Enums.UserStatus).includes(statusValue as $Enums.UserStatus)) {
+    query.status = statusValue as $Enums.UserStatus;
+  } else {
+    query.status = "ACTIVE";
+  }
 
   const normalize = (
     value: string | string[] | undefined,

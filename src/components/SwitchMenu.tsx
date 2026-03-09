@@ -13,7 +13,6 @@ export default function SwitchMenu({ roles, activeRoleId }: Props) {
   const router = useRouter();
   const { session } = useClerk();
   const schoolId = useSchoolSlug();
-  console.log("Current School:", schoolId);
 
   // ✅ Ensure unique roles by `role`
   const uniqueRoles = useMemo(() => {

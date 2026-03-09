@@ -6,15 +6,19 @@ export default async function FeesViewIndex({
 }: {
   params: Promise<{ schoolId: string }>;
 }) {
-  const { schoolId } = await params;
+  const { schoolId: schoolSlug } = await params;
 
-  const { role, studentId } = await fetchUserInfo(schoolId);
+  const { role, studentId } = await fetchUserInfo(schoolSlug).catch(() => ({ role: null, studentId: null }));
+
+  if (role !== "student") {
+    redirect(`/${schoolSlug}/logout`);
+  }
 
   // Student → go to own fee view
   if (role === "student" && studentId) {
-    redirect(`/${schoolId}/list/fees/view/${studentId}`);
+    redirect(`/${schoolSlug}/list/fees/view/${studentId}`);
   }
 
   // Admin / Teacher → go to collect page
-  redirect(`/${schoolId}/list/fees/collect`);
+  redirect(`/${schoolSlug}/list/fees/collect`);
 }

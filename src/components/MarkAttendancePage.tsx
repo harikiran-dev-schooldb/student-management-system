@@ -26,6 +26,12 @@ interface Props {
   teacherClassId?: number;
 }
 
+type StudentRow = {
+  id: string;
+  name: string;
+  classId: number;
+};
+
 export default function MarkAttendancePage({ role, teacherClassId }: Props) {
   const { register, handleSubmit, getValues, watch } = useForm();
   const today = new Date().toISOString().split("T")[0];
@@ -33,7 +39,7 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
   // --- Data State ---
   const [grades, setGrades] = useState<Grade[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
-  const [students, setStudents] = useState<Student[]>([]);
+  const [students, setStudents] = useState<StudentRow[]>([]);
 
   // --- UI State ---
   const [searchQuery, setSearchQuery] = useState("");
@@ -82,12 +88,17 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
   }, [role, schoolId]);
 
   useEffect(() => {
-    if (role === "admin" && selectedGrade) {
+    if (role === "admin" && selectedGrade != null) {
       tenantFetch<Class[]>(schoolId, `/grades/${selectedGrade}/classes`)
-        .then(setClasses)
-        .catch(console.error);
+        .then((data) => setClasses(Array.isArray(data) ? data : []))
+        .catch(() => setClasses([]));
     }
-  }, [role, selectedGrade]);
+  }, [role, selectedGrade, schoolId]);
+
+  useEffect(() => {
+    setSelectedClass(null);
+    setStudents([]);
+  }, [selectedGrade]);
 
   /* -------------------- Auto Load for Teacher -------------------- */
   useEffect(() => {
@@ -101,8 +112,6 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
     if (!schoolId) return;
 
     setLoading(true);
-
-
 
     try {
       const selectedDate = getValues("date") || today;
@@ -121,7 +130,7 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
         params.append("gradeId", selectedGrade.toString());
       }
 
-      const studentsData = await tenantFetch<Student[]>(
+      const studentsData = await tenantFetch<StudentRow[]>(
         schoolId,
         `/students?${params.toString()}`,
       );
@@ -146,12 +155,11 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
           if (historyRes.ok) {
             const historyData = await historyRes.json();
 
-            if (Array.isArray(historyData) && historyData.length > 0) {
-              historyData.forEach((rec: any) => {
-                existingMap[rec.studentId] = rec.present;
-              });
-              hasHistory = true;
-            }
+            historyData.attendance.forEach((rec: any) => {
+              existingMap[rec.studentId] = rec.present;
+            });
+
+
           }
         } catch (err) {
           console.error("Failed to fetch history", err);
@@ -201,6 +209,12 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
     setCurrentPage(1);
   }, [searchQuery]);
 
+  useEffect(() => {
+    if (role === "admin" && selectedDate) {
+      fetchStudents();
+    }
+  }, [selectedGrade, selectedClass, selectedDate]);
+
   // 3. Pagination Logic: Slices the FILTERED list
   const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
 
@@ -237,22 +251,35 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
 
   const onSubmit = async (data: any) => {
 
-    const classId = role === "teacher" ? teacherClassId : selectedClass;
+    if (role === "teacher" && !teacherClassId) {
+      toast.error("Teacher class not assigned");
+      return;
+    }
 
-    if (!classId) {
-      toast.error("Class not selected");
+    if (!students.length) {
+      toast.error("No students loaded");
+      return;
+    }
+
+    setSubmitting(true);
+
+    // 🔹 Remove students without classId (safety)
+    const validStudents = students.filter((s) => s.classId);
+
+    if (!validStudents.length) {
+      toast.error("No valid students found");
       setSubmitting(false);
       return;
     }
-    if (!students.length) return;
-    setSubmitting(true);
 
-    const payload = students.map((s) => ({
+    const payload = validStudents.map((s) => ({
       studentId: s.id,
-      classId,
+      classId: s.classId,
       date: data.date,
       present: attendance[s.id] ?? true,
     }));
+
+    console.log("Attendance payload:", payload);
 
     try {
       await tenantFetch(schoolId, "/attendance", {
@@ -266,6 +293,7 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
       setAttendance({});
       setAllAbsent(false);
       setSearchQuery("");
+
     } catch (error) {
       console.error(error);
       toast.error("Failed to submit attendance");
@@ -321,7 +349,9 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
                 <div className="relative">
                   <Filter className="absolute left-3 top-2.5 w-4 h-4 text-slate-400 pointer-events-none" />
                   <select
-                    onChange={(e) => setSelectedGrade(Number(e.target.value))}
+                    onChange={(e) =>
+                      setSelectedGrade(e.target.value ? Number(e.target.value) : null)
+                    }
                     className={`${inputClass} pl-9`}
                   >
                     <option value="">Select Grade</option>
@@ -339,11 +369,13 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
                 <div className="relative">
                   <Users className="absolute left-3 top-2.5 w-4 h-4 text-slate-400 pointer-events-none" />
                   <select
-                    onChange={(e) => setSelectedClass(Number(e.target.value))}
+                    onChange={(e) =>
+                      setSelectedClass(e.target.value ? Number(e.target.value) : null)
+                    }
                     className={`${inputClass} pl-9`}
                   >
                     <option value="">Select Class</option>
-                    {classes.map((c) => (
+                    {classes?.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.section}
                       </option>

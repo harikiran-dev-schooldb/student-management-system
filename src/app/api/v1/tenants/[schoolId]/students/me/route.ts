@@ -22,7 +22,7 @@ export async function GET(
 
     /* 2️⃣ Auth */
 
-    const user = await fetchUserInfo(schoolId);
+    const user = await fetchUserInfo(schoolSlug);
 
     if (!user || user.role !== "student" || !user.studentId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

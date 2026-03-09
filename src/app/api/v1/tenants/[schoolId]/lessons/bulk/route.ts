@@ -15,7 +15,7 @@ export async function POST(
     const { schoolId: slug } = await params;
     const schoolId = await resolveSchoolId(slug);
 
-    const user = await fetchUserInfo(schoolId);
+    const user = await fetchUserInfo(slug);
 
     if (!user.userId || user.role !== "admin") {
       return NextResponse.json(

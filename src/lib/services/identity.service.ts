@@ -7,41 +7,62 @@ type IdentityInput = {
   username: string;
   phone: string;
   name: string;
-  role: "student" | "teacher" | "admin";
+  role: "student" | "teacher" | "admin" | "principal" | "superadmin";
   schoolId: string;
+  password?: string;
 };
 
-export async function provisionIdentity({
+export async function createOrUpdateIdentity({
   username,
   phone,
   name,
   role,
   schoolId,
+  password,
 }: IdentityInput) {
 
   const client = await clerkClient();
   const phoneNumber = `+91${phone}`;
 
-  /* ---------- 1️⃣ Create / Get Clerk User ---------- */
+  /* ---------- 1️⃣ Find Clerk User ---------- */
+
   const existing = await client.users.getUserList({
     phoneNumber: [phoneNumber],
   });
 
-  const clerkUser =
-    existing.data[0] ??
-    (await client.users.createUser({
+  let clerkUser;
+
+  if (existing.data.length > 0) {
+    clerkUser = existing.data[0];
+
+    /* ---------- Update Clerk ---------- */
+
+    await client.users.updateUser(clerkUser.id, {
       username,
-      password: phone,
+      firstName: name,
+      publicMetadata: { role },
+    });
+
+  } else {
+
+    /* ---------- Create Clerk ---------- */
+
+    clerkUser = await client.users.createUser({
+      username,
+      password: password ?? phone,
       firstName: name,
       phoneNumber: [phoneNumber],
       publicMetadata: { role },
-    }));
+    });
 
-  /* ---------- 2️⃣ Create / Get Profile ---------- */
+  }
+
+  /* ---------- 2️⃣ Profile ---------- */
+
   const profile = await prisma.profile.upsert({
     where: { clerk_id: clerkUser.id },
     update: {
-      phone, // keep phone updated
+      phone,
     },
     create: {
       clerk_id: clerkUser.id,
@@ -49,7 +70,8 @@ export async function provisionIdentity({
     },
   });
 
-  /* ---------- 3️⃣ Create / Get LinkedUser (Tenant Role) ---------- */
+  /* ---------- 3️⃣ LinkedUser ---------- */
+
   const linkedUser = await prisma.linkedUser.upsert({
     where: {
       username_schoolId: {
@@ -59,17 +81,18 @@ export async function provisionIdentity({
     },
     update: {
       role,
-      profileId: profile.id, // ensure consistency
+      profileId: profile.id,
     },
     create: {
       username,
       role,
-      profileId: profile.id, // ✅ FIXED
+      profileId: profile.id,
       schoolId,
     },
   });
 
   /* ---------- 4️⃣ Activate Role ---------- */
+
   await prisma.profile.update({
     where: { id: profile.id },
     data: { activeUserId: linkedUser.id },

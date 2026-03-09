@@ -893,6 +893,7 @@ enum StudentStatus {
   INACTIVE
   TRANSFERRED
   SUSPENDED
+  NOT_COMING
 }
 
 enum Period {
@@ -928,6 +929,7 @@ enum UserStatus {
   SUSPENDED
   RESIGNED
   TERMINATED
+  TRANSFERRED
 }
 
 enum EnrollmentStatus {

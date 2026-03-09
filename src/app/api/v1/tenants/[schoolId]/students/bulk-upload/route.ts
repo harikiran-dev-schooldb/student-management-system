@@ -4,6 +4,7 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { resolveSchoolId } from "@/lib/resolveSchool";
+import { createOrUpdateIdentity } from "@/lib/services/identity.service";
 
 function parseDDMMYYYY(dob: string): Date | null {
   const [dd, mm, yyyy] = dob.split("-");
@@ -29,168 +30,152 @@ export async function POST(
       );
     }
 
-    let created = 0;
-    let updated = 0;
-    let feesMapped = 0;
-    const errors: string[] = [];
+    /* ---------- active academic year ---------- */
 
-    /* ---------- preload classes ---------- */
-
-    const classes = await prisma.class.findMany({
-      where: { schoolId },
-      include: { Grade: true },
+    const academicYear = await prisma.academicYear.findFirst({
+      where: { schoolId, isActive: true },
     });
 
-    const classMap = new Map(classes.map((c) => [c.id, c]));
-
-    /* ---------- preload fee structures ---------- */
-
-    const feeStructures = await prisma.feeStructure.findMany({
-      where: { schoolId },
-    });
-
-    const feeMap = new Map<string, typeof feeStructures>();
-
-    for (const fee of feeStructures) {
-      const key = `${fee.gradeId}-${fee.academicYearId}`;
-      if (!feeMap.has(key)) feeMap.set(key, []);
-      feeMap.get(key)!.push(fee);
+    if (!academicYear) {
+      return NextResponse.json(
+        { error: "No active academic year found" },
+        { status: 400 }
+      );
     }
 
-    /* ---------- process students ---------- */
+    let created = 0;
+    const errors: string[] = [];
 
     for (const s of students) {
       try {
         const {
-          id,
+          admissionNo,
           name,
           phone,
           address,
           gender,
           dob,
           classId,
-          academicYearId,
+          fatherName,
+          motherName,
+          email,
         } = s;
 
-        if (!id || !name || !phone || !dob || !classId || !academicYearId) {
-          errors.push(`Missing required fields for ${id}`);
+        if (!admissionNo || !name || !phone || !dob || !classId) {
+          errors.push(`Missing required fields for ${admissionNo}`);
           continue;
         }
 
         const parsedDob = parseDDMMYYYY(dob);
 
         if (!parsedDob) {
-          errors.push(`Invalid DOB for ${id}`);
+          errors.push(`Invalid DOB for ${admissionNo}`);
           continue;
         }
 
-        const cls = classMap.get(Number(classId));
+        const username = `s${admissionNo}`;
 
-        if (!cls) {
-          errors.push(`Invalid class for ${id}`);
+        const classData = await prisma.class.findFirst({
+          where: { id: Number(classId), schoolId },
+          select: { gradeId: true },
+        });
+
+        if (!classData) {
+          errors.push(`Invalid class for ${admissionNo}`);
           continue;
         }
+
+        const identity = await createOrUpdateIdentity({
+          username,
+          phone,
+          name,
+          role: "student",
+          schoolId,
+        });
 
         await prisma.$transaction(async (tx) => {
 
-          /* ---------- student upsert ---------- */
+          /* ---------- create student ---------- */
 
-          const existing = await tx.student.findUnique({
-            where: { id },
-          });
-
-          const student = await tx.student.upsert({
-            where: { id },
-            update: {
+          const student = await tx.student.create({
+            data: {
+              admissionNo,
+              username,
               name,
               phone,
               address,
               gender,
               dob: parsedDob,
-            },
-            create: {
-              id,
-              username: `s${id}`,
-              name,
-              phone,
-              address,
-              gender,
-              dob: parsedDob,
+              fatherName,
+              motherName,
+              email,
+              clerk_id: identity.clerkId,
+              profileId: identity.profileId,
+              linkedUserId: identity.linkedUserId,
               schoolId,
             },
           });
-
-          if (existing) updated++;
-          else created++;
 
           /* ---------- enrollment ---------- */
 
-          await tx.studentEnrollment.upsert({
-            where: {
-              studentId_academicYearId_schoolId: {
-                studentId: student.id,
-                academicYearId,
-                schoolId,
-              },
-            },
-            update: {
-              classId: Number(classId),
-            },
-            create: {
+          await tx.studentEnrollment.create({
+            data: {
               studentId: student.id,
               classId: Number(classId),
-              academicYearId,
+              academicYearId: academicYear.id,
               schoolId,
             },
           });
 
-          /* ---------- fee mapping ---------- */
+          /* ---------- fee structures ---------- */
 
-          const feeKey = `${cls.gradeId}-${academicYearId}`;
-          const fees = feeMap.get(feeKey);
+          const feeStructures = await tx.feeStructure.findMany({
+            where: {
+              gradeId: classData.gradeId,
+              academicYearId: academicYear.id,
+              schoolId,
+            },
+          });
 
-          if (!fees) {
-            errors.push(`No fee structure for ${id}`);
-            return;
-          }
-
-          for (const fee of fees) {
-            await tx.studentFees.upsert({
-              where: {
-                studentId_academicYear_term: {
-                  studentId: student.id,
-                  academicYearId,
-                  term: fee.term,
-                  schoolId,
-                },
-              },
-              update: {},
-              create: {
+          if (feeStructures.length > 0) {
+            await tx.studentFees.createMany({
+              data: feeStructures.map((f) => ({
                 studentId: student.id,
-                feeStructureId: fee.id,
-                academicYearId,
-                term: fee.term,
+                feeStructureId: f.id,
+                academicYearId: academicYear.id,
+                term: f.term,
                 paidAmount: 0,
                 discountAmount: 0,
                 fineAmount: 0,
+                abacusPaidAmount: 0,
+                paymentMode: "CASH",
                 schoolId,
-              },
+              })),
             });
           }
 
-          feesMapped++;
+          /* ---------- total fees row ---------- */
+
+          await tx.studentTotalFees.create({
+            data: {
+              studentId: student.id,
+              academicYearId: academicYear.id,
+              schoolId,
+            },
+          });
+
         });
 
+        created++;
+
       } catch (err: any) {
-        errors.push(`Student ${s.id}: ${err.message}`);
+        errors.push(`Student ${s.admissionNo}: ${err.message}`);
       }
     }
 
     return NextResponse.json({
       message: "Upload complete",
       created,
-      updated,
-      feesMapped,
       errors,
     });
 

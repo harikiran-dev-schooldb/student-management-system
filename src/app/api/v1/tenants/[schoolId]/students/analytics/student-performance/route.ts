@@ -31,7 +31,7 @@ export async function GET(
     const examId = url.searchParams.get("examId");
     const classId = url.searchParams.get("classId");
 
-    const user = await fetchUserInfo(schoolId);
+    const user = await fetchUserInfo(schoolSlug);
 
     if (!user?.role) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

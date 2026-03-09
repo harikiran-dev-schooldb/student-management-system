@@ -19,7 +19,7 @@ export async function GET(
     const schoolId = await resolveSchoolId(schoolSlug);
 
     /* 2️⃣ Auth */
-    const user = await fetchUserInfo(schoolId);
+    const user = await fetchUserInfo(schoolSlug);
 
     if (!user || !user.profileId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

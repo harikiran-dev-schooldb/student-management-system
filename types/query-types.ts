@@ -741,6 +741,7 @@ export type PermissionSlipWithStudent = Prisma.PermissionSlipGetPayload<{
 // -------------------------------
 export const TeachersSelect = {
   id: true,
+  username: true,
   name: true,
   gender: true,
   phone: true,

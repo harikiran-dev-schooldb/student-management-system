@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { resolveSchoolId } from "@/lib/resolveSchool";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
 import { studentschema } from "@/lib/formValidationSchemas";
-import { provisionIdentity } from "@/lib/services/identity.service";
+import { createOrUpdateIdentity } from "@/lib/services/identity.service";
 
 export const runtime = "nodejs";
 
@@ -101,7 +101,7 @@ export async function POST(
 
     const dob = new Date(data.dob);
 
-    const identity = await provisionIdentity({
+    const identity = await createOrUpdateIdentity({
       username,
       phone: data.phone,
       name: data.name,

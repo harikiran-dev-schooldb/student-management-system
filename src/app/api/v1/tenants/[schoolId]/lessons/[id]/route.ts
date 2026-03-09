@@ -19,7 +19,7 @@ export async function PUT(
     const { schoolId: slug, id: lessonIdStr } = await params;
     const schoolId = await resolveSchoolId(slug);
 
-    const user = await fetchUserInfo(schoolId);
+    const user = await fetchUserInfo(slug);
 
     if (!user.userId || user.role !== "admin") {
       return NextResponse.json(
@@ -146,7 +146,7 @@ export async function DELETE(
     const { schoolId: slug, id: lessonIdStr } = await params;
     const schoolId = await resolveSchoolId(slug);
 
-    const user = await fetchUserInfo(schoolId);
+    const user = await fetchUserInfo(slug);
 
     if (!user.userId || user.role !== "admin") {
       return NextResponse.json(

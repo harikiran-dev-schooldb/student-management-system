@@ -357,8 +357,8 @@ export const lessonsSchema = z.object({
     { message: "Period is required" }
   ),
   gradeId: z.coerce.number({ message: "Grade is required" }),
-  classId: z.coerce.number(),
-  subjectId: z.coerce.number(),
+  classId: z.coerce.number().optional(),
+  subjectId: z.coerce.number().optional(),
 
   teacherId: z.string().min(1),
 });

@@ -12,18 +12,14 @@ export async function GET(
 ) {
   try {
 
-    /* 1️⃣ Resolve Tenant */
-
     const { schoolId: schoolSlug } = await params;
-    const schoolId = await resolveSchoolId(schoolSlug);
+    const user = await fetchUserInfo(schoolSlug);
 
-    /* 2️⃣ Authenticate */
-
-    const user = await fetchUserInfo(schoolId);
-
-    if (!user || !user.role) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    const schoolId = user.schoolId;
 
     const { searchParams } = new URL(req.url);
 
@@ -117,7 +113,16 @@ export async function GET(
       },
     });
 
-    return NextResponse.json(students);
+    const result = students.map((s) => ({
+      id: s.id,
+      name: s.name,
+      classId: s.enrollments?.[0]?.class?.id ?? null,
+      className: s.enrollments?.[0]?.class?.name ?? null,
+      section: s.enrollments?.[0]?.class?.section ?? null,
+      grade: s.enrollments?.[0]?.class?.Grade?.level ?? null,
+    }));
+
+    return NextResponse.json(result);
 
   } catch (error: any) {
 

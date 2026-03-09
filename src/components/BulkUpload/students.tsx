@@ -17,8 +17,7 @@ import {
 import { useTenantApi } from "@/hooks/useTenantApi";
 
 type StudentCSV = {
-  id: string;
-  username: string;
+  admissionNo: string;
   name: string;
   fatherName?: string;
   email?: string;
@@ -69,14 +68,12 @@ export default function BulkStudentUpload() {
         parsed.forEach((row, index) => {
           const missing = [];
           // Required fields validation
-          if (!row.id) missing.push("id");
-          if (!row.username) missing.push("username");
+          if (!row.admissionNo) missing.push("admissionNo");
           if (!row.name) missing.push("name");
           if (!row.phone) missing.push("phone");
           if (!row.dob) missing.push("dob");
           if (!row.classId) missing.push("classId");
           if (!row.gender) missing.push("gender"); // Often required
-          if (!row.academicYear) missing.push("academicYear"); // Often required
 
           if (missing.length > 0) {
             err.push(`Row ${index + 2}: missing ${missing.join(", ")}`);
@@ -117,11 +114,14 @@ export default function BulkStudentUpload() {
 
   const handleUpload = async () => {
     setLoading(true);
+
     try {
-      const { data } = await api.post<BulkStudentUploadResponse>(
+      const data = await api.post<BulkStudentUploadResponse>(
         "/students/bulk-upload",
         { students }
       );
+
+      console.log("Uploading students:", students);
 
       if (data.errors?.length) {
         setErrors(data.errors);
@@ -130,9 +130,17 @@ export default function BulkStudentUpload() {
 
       setSuccess(true);
       setTimeout(resetForm, 3000);
-    } catch (error) {
+
+    } catch (error: any) {
       console.error(error);
-      setErrors(["Network error: Failed to upload data to the server."]);
+
+      if (error.response?.data?.error) {
+        setErrors([error.response.data.error]);
+      } else if (error.response?.data?.errors) {
+        setErrors(error.response.data.errors);
+      } else {
+        setErrors(["Upload failed. Check server logs."]);
+      }
     } finally {
       setLoading(false);
     }
@@ -201,8 +209,8 @@ export default function BulkStudentUpload() {
                 <div className="relative z-10 flex flex-col items-center gap-6 text-center p-6">
                   <div
                     className={`p-5 rounded-2xl shadow-sm transition-all duration-300 ${dragActive
-                        ? "bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600"
-                        : "bg-white dark:bg-darkMode text-zinc-400 group-hover:text-indigo-500 group-hover:scale-110"
+                      ? "bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600"
+                      : "bg-white dark:bg-darkMode text-zinc-400 group-hover:text-indigo-500 group-hover:scale-110"
                       }`}
                   >
                     <UploadCloud className="w-10 h-10" />

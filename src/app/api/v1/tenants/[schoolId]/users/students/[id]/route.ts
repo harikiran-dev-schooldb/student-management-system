@@ -6,6 +6,7 @@ import { studentschema } from "@/lib/formValidationSchemas";
 import { resolveSchoolId } from "@/lib/resolveSchool";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
 import { revalidatePath } from "next/cache";
+import { createOrUpdateIdentity } from "@/lib/services/identity.service";
 
 export const runtime = "nodejs";
 
@@ -18,13 +19,19 @@ export async function PUT(
 ) {
   try {
     const { schoolId: schoolSlug, id: studentId } = await params;
-    console.log("Updating student:", { schoolSlug, studentId });
+
+    /* ---------- Resolve School ---------- */
+
     const schoolId = await resolveSchoolId(schoolSlug);
+
+    /* ---------- Auth ---------- */
 
     const user = await fetchUserInfo(schoolSlug);
     if (!user || user.role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    /* ---------- Validate Body ---------- */
 
     const body = await req.json();
     const parsed = studentschema.safeParse({ ...body, id: studentId });
@@ -38,7 +45,8 @@ export async function PUT(
 
     const data = parsed.data;
 
-    /* ---- Validate student belongs to school ---- */
+    /* ---------- Get Student ---------- */
+
     const existingStudent = await prisma.student.findFirst({
       where: { id: studentId, schoolId },
       include: { enrollments: true },
@@ -48,7 +56,27 @@ export async function PUT(
       return NextResponse.json({ error: "Student not found" }, { status: 404 });
     }
 
-    /* ---- Get Active Academic Year ---- */
+    /* ---------- Identity Sync ---------- */
+
+    const phoneChanged = existingStudent.phone !== data.phone;
+
+    if (phoneChanged) {
+      const identity = await createOrUpdateIdentity({
+        username: existingStudent.username,
+        phone: data.phone,
+        name: data.name,
+        role: "student",
+        schoolId,
+      });
+
+      await prisma.student.update({
+        where: { id: studentId },
+        data: { clerk_id: identity.clerkId },
+      });
+    }
+
+    /* ---------- Active Academic Year ---------- */
+
     const academicYear = await prisma.academicYear.findFirst({
       where: { schoolId, isActive: true },
     });
@@ -69,12 +97,10 @@ export async function PUT(
 
     const dob = new Date(data.dob);
 
-    /* =========================================================
-       TRANSACTION
-    ========================================================= */
+    /* ---------- Transaction ---------- */
+
     const updatedStudent = await prisma.$transaction(async (tx) => {
 
-      /* ---- Update Student Core Fields ---- */
       const student = await tx.student.update({
         where: { id: studentId },
         data: {
@@ -95,13 +121,14 @@ export async function PUT(
         },
       });
 
-      /* ---- Update Enrollment (Class Change) ---- */
+      /* ---------- Enrollment Update ---------- */
+
       const currentEnrollment = existingStudent.enrollments.find(
         (e) => e.academicYearId === academicYear.id
       );
 
       if (!currentEnrollment) {
-        throw new Error("Enrollment record not found for active year");
+        throw new Error("Enrollment not found for active academic year");
       }
 
       if (data.classId && data.classId !== currentEnrollment.classId) {
@@ -114,6 +141,8 @@ export async function PUT(
       return student;
     });
 
+    /* ---------- Revalidate ---------- */
+
     revalidatePath(`/${schoolSlug}/list/users/students`);
 
     return NextResponse.json({
@@ -121,7 +150,7 @@ export async function PUT(
       data: updatedStudent,
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error("Student PUT error:", error);
 
     return NextResponse.json(
@@ -130,6 +159,7 @@ export async function PUT(
     );
   }
 }
+
 
 export async function DELETE(
   req: NextRequest,
@@ -199,25 +229,66 @@ export async function PATCH(
   try {
     const { schoolId: schoolSlug, id: studentId } = await params;
 
+    /* ---------- Resolve School ---------- */
+
+    const schoolId = await resolveSchoolId(schoolSlug);
+
+    /* ---------- Auth ---------- */
+
     const user = await fetchUserInfo(schoolSlug);
 
     if (!user || user.role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    /* ---------- Validate Body ---------- */
+
     const { status } = await req.json();
+
+    if (!status) {
+      return NextResponse.json(
+        { error: "Status is required" },
+        { status: 400 }
+      );
+    }
+
+    /* ---------- Ensure Student Belongs To School ---------- */
+
+    const student = await prisma.student.findFirst({
+      where: { id: studentId, schoolId },
+      select: { id: true },
+    });
+
+    if (!student) {
+      return NextResponse.json(
+        { error: "Student not found" },
+        { status: 404 }
+      );
+    }
+
+    /* ---------- Update Status ---------- */
 
     const updated = await prisma.student.update({
       where: { id: studentId },
       data: { status },
     });
 
-    return NextResponse.json({ success: true, data: updated });
+    /* ---------- Revalidate ---------- */
+
+    revalidatePath(`/${schoolSlug}/list/users/students`);
+
+    return NextResponse.json({
+      success: true,
+      data: updated,
+    });
+
   } catch (error) {
     console.error("Student PATCH error:", error);
+
     return NextResponse.json(
       { error: "Failed to update status" },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }
+

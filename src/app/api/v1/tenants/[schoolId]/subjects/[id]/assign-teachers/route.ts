@@ -22,7 +22,7 @@ export async function POST(
       );
     }
 
-    const user = await fetchUserInfo(schoolId);
+    const user = await fetchUserInfo(slug);
     if (!user || user.role !== "admin") {
       return NextResponse.json(
         { error: "Forbidden" },

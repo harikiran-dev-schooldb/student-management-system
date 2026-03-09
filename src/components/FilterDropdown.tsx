@@ -207,7 +207,10 @@ const TeacherStatusFilter = ({ basePath }: TeacherStatusFilterProps) => {
         <option value="ACTIVE">Active</option>
         <option value="INACTIVE">Inactive</option>
         <option value="TRANSFERRED">Transferred</option>
+        <option value="ON_LEAVE">On Leave</option>
         <option value="SUSPENDED">Suspended</option>
+        <option value="RESIGNED">Resigned</option>
+        <option value="TERMINATED">Terminated</option>
       </select>
     </div>
   );
@@ -242,6 +245,7 @@ const StudentStatusFilter = ({ basePath }: StudentStatusFilterProps) => {
         <option value="INACTIVE">Inactive</option>
         <option value="TRANSFERRED">Transferred</option>
         <option value="SUSPENDED">Suspended</option>
+        <option value="NOT_COMING">Not Coming</option>
       </select>
     </div>
   );

@@ -2,10 +2,10 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 import prisma from "@/lib/prisma";
-import { clerkClient } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { resolveSchoolId } from "@/lib/resolveSchool";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
+import { createOrUpdateIdentity } from "@/lib/services/identity.service";
 
 export async function POST(
   req: NextRequest,
@@ -18,7 +18,7 @@ export async function POST(
     const { schoolId: schoolSlug } = await params;
     const schoolId = await resolveSchoolId(schoolSlug);
 
-    const user = await fetchUserInfo(schoolId);
+    const user = await fetchUserInfo(schoolSlug);
 
     if (!user || user.role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -88,65 +88,20 @@ export async function POST(
       validatedClassId = cls.id;
     }
 
-    const client = await clerkClient();
+    /* 5️⃣ Identity (Clerk + Profile + LinkedUser) */
 
-    const phoneNumber = `+91${phone}`;
-
-    const finalPassword =
-      password && password !== "" ? password : phone;
-
-    /* 5️⃣ Clerk user */
-
-    const existingUsers = await client.users.getUserList({
-      phoneNumber: [phoneNumber],
+    const identity = await createOrUpdateIdentity({
+      username: username.trim(),
+      phone,
+      name,
+      role: "teacher",
+      schoolId,
+      password,
     });
-
-    let clerkUser;
-
-    if (existingUsers.data.length > 0) {
-      clerkUser = existingUsers.data[0];
-    } else {
-
-      clerkUser = await client.users.createUser({
-        username: username.trim(),
-        password: finalPassword,
-        firstName: name,
-        phoneNumber: [phoneNumber],
-      });
-
-      await client.users.updateUser(clerkUser.id, {
-        publicMetadata: { role: "teacher" },
-      });
-    }
 
     /* 6️⃣ Transaction */
 
     const result = await prisma.$transaction(async (tx) => {
-
-      const profile = await tx.profile.upsert({
-        where: { clerk_id: clerkUser.id },
-        update: {},
-        create: {
-          clerk_id: clerkUser.id,
-          phone,
-        },
-      });
-
-      const linkedUser = await tx.linkedUser.create({
-        data: {
-          username: username.trim(),
-          role: "teacher",
-          profileId: profile.id,
-          schoolId,
-        },
-      });
-
-      if (!profile.activeUserId) {
-        await tx.profile.update({
-          where: { id: profile.id },
-          data: { activeUserId: linkedUser.id },
-        });
-      }
 
       const teacher = await tx.teacher.create({
         data: {
@@ -160,9 +115,9 @@ export async function POST(
           gender,
           bloodType: bloodType ?? null,
           img: img ?? null,
-          clerk_id: clerkUser.id,
-          profileId: profile.id,
-          linkedUserId: linkedUser.id,
+          clerk_id: identity.clerkId,
+          profileId: identity.profileId,
+          linkedUserId: identity.linkedUserId,
           schoolId,
         },
       });

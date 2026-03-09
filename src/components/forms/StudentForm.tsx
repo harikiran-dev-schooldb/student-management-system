@@ -94,9 +94,16 @@ const StudentForm = ({
       setState({ success: true, error: null });
 
     } catch (error: any) {
+
+      if (error.errors) {
+        Object.entries(error.errors).forEach(([field, messages]: any) => {
+          messages.forEach((msg: string) => toast.error(msg));
+        });
+      }
+
       setState({
         success: false,
-        error: error?.message || "Request failed",
+        error: error.message || "Request failed",
       });
     }
   };

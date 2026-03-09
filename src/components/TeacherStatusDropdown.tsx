@@ -70,7 +70,6 @@ export default function TeacherStatusDropdown({
   }, [currentStatus]);
 
   const schoolId = useSchoolSlug();
-  console.log("Current School:", schoolId);
 
   const updateStatus = async (newStatus: string) => {
     // 1. Optimistic Check: Don't fire if clicking the same status

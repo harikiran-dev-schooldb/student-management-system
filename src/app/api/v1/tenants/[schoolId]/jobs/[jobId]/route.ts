@@ -11,9 +11,9 @@ export async function GET(
 ) {
   try {
 
-    const { schoolId: slug, jobId : jobIdStr } = await params;
+    const { schoolId: slug, jobId: jobIdStr } = await params;
+    const user = await fetchUserInfo(slug);
     const schoolId = await resolveSchoolId(slug);
-    const user = await fetchUserInfo(schoolId);
 
     if (!user || user.role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });

@@ -8,19 +8,18 @@ export default async function AttendanceViewIndex({
 }: {
   params: Promise<{ schoolId: string }>;
 }) {
-  const { schoolId } = await params;
-
-  const user = await fetchUserInfo(schoolId).catch(() => null);
+  const { schoolId: schoolSlug } = await params;
+  const user = await fetchUserInfo(schoolSlug).catch(() => null);
 
   if (!user) {
-    redirect(`/${schoolId}/logout`);
+    redirect(`/${schoolSlug}/logout`);
   }
 
   const { role, studentId } = user;
 
   if (role === "student" && studentId) {
-    redirect(`/${schoolId}/list/attendance/calendar/${studentId}`);
+    redirect(`/${schoolSlug}/list/attendance/calendar/${studentId}`);
   }
 
-  redirect(`/${schoolId}/logout`);
+  redirect(`/${schoolSlug}/logout`);
 }

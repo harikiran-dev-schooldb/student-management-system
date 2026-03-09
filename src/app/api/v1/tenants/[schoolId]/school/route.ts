@@ -61,7 +61,7 @@ export async function PUT(
     // Resolve to internal ID
     const schoolId = await resolveSchoolId(schoolSlug);
 
-    const user = await fetchUserInfo(schoolId);
+    const user = await fetchUserInfo(schoolSlug);
 
     if (!user || user.role !== "admin") {
       return NextResponse.json(

@@ -1,16 +1,14 @@
-import axios, { AxiosInstance } from "axios";
+import axios from "axios";
 
 export const createTenantApi = (schoolId: string) => {
   const api = axios.create({
     baseURL: `/api/v1/tenants/${schoolId}`,
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
     withCredentials: true,
   });
 
   api.interceptors.response.use(
-    (response) => response.data, // 🔥 return only data
+    (response) => response.data,
     (error) => {
       const message =
         error.response?.data?.error ||
@@ -23,12 +21,16 @@ export const createTenantApi = (schoolId: string) => {
   );
 
   return {
-    get: <T>(url: string, config?: any) => api.get<T>(url, config),
-    post: <T>(url: string, data?: any, config?: any) =>
-      api.post<T>(url, data, config),
-    put: <T>(url: string, data?: any, config?: any) =>
-      api.put<T>(url, data, config),
-    delete: <T>(url: string, config?: any) =>
-      api.delete<T>(url, config),
+    get: async <T>(url: string, config?: any): Promise<T> =>
+      api.get(url, config),
+
+    post: async <T>(url: string, data?: any, config?: any): Promise<T> =>
+      api.post(url, data, config),
+
+    put: async <T>(url: string, data?: any, config?: any): Promise<T> =>
+      api.put(url, data, config),
+
+    delete: async <T>(url: string, config?: any): Promise<T> =>
+      api.delete(url, config),
   };
 };

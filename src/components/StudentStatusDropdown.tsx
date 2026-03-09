@@ -63,7 +63,6 @@ export default function StudentStatusDropdown({
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { schoolId } = useParams<{ schoolId: string }>();
-  console.log("Current School:", schoolId);
 
   // Keep local state in sync if parent updates props
   useEffect(() => {

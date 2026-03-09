@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { resolveSchoolId } from "@/lib/resolveSchool";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
+import { slice } from "lodash";
 
 export const runtime = "nodejs";
 
@@ -23,7 +24,7 @@ export async function POST(
     /* -----------------------------
        2️⃣ Get Authenticated Profile
     ------------------------------ */
-    const user = await fetchUserInfo(schoolId);
+    const user = await fetchUserInfo(schoolSlug);
 
     if (!user || !user.profileId) {
       return NextResponse.json(
