@@ -23,7 +23,7 @@ export default function AcademicYearDropdown({ basePath }: { basePath: string })
     const loadYears = async () => {
       try {
         const res = await api.get<AcademicYear[]>("/academic-years");
-        setYears(res.data);
+        setYears(res);
       } catch (err) {
         console.error("Failed to load academic years", err);
       }

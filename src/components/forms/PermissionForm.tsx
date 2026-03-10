@@ -97,7 +97,7 @@ const PermissionForm = ({
     try {
       if (!api) return;
 
-      const { data } = await api.post<PermissionResponse>("/permissions", formData);
+      const data = await api.post<PermissionResponse>("/permissions", formData);
 
       toast.success("Permission slip created successfully!");
       setOpen(false);

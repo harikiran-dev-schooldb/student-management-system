@@ -123,7 +123,7 @@ export default function BulkTeacherUpload() {
         { teachers }
       );
 
-      const { inserted, updated } = response.data;
+      const { inserted, updated } = response;
 
       if (inserted > 0 || updated > 0) {
         setSuccess(true);

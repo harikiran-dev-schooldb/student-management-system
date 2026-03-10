@@ -225,7 +225,7 @@ const FeesTable: React.FC<FeesTableProps> = ({
 
     try {
       // 1. Create Order (Tenant-aware)
-      const { data } = await api.post<RazorpayOrderResponse>("/razorpay/order", {
+      const data = await api.post<RazorpayOrderResponse>("/razorpay/order", {
         amount: totalAmount,
       });
 

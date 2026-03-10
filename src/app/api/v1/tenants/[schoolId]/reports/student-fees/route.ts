@@ -14,26 +14,29 @@ export async function GET(
 ) {
   try {
     const { schoolId: schoolSlug } = await params;
+
     const schoolId = await resolveSchoolId(schoolSlug);
 
     const user = await fetchUserInfo(schoolSlug);
 
     if (!user || user.role !== "admin") {
-      return NextResponse.json(
-        { error: "Forbidden" },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const url = new URL(req.url);
-    const academicYear = url.searchParams.get("academicYear");
+
+    const academicYearParam = url.searchParams.get("academicYear");
+    const academicYearId = academicYearParam
+      ? Number(academicYearParam)
+      : undefined;
 
     const data = await getFullStudentFeesReport(
       schoolId,
-      academicYear ?? undefined
+      academicYearId
     );
 
     return NextResponse.json(data, { status: 200 });
+
   } catch (error) {
     console.error("Failed to fetch student fee report:", error);
 

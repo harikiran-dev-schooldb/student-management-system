@@ -113,6 +113,7 @@ export default function BulkFeeUpload() {
   const handleUpload = async () => {
     setLoading(true);
     setErrors([]);
+
     try {
       const formattedData = records.map((r) => {
         const amount = parseFloat(r.amount);
@@ -143,22 +144,23 @@ export default function BulkFeeUpload() {
         };
       });
 
-
       const res = await api.post<BulkFeeUploadResponse>(
-        "/fees/bulk",
-        formattedData
+        `/fees/bulk`,
+        {
+          schoolId,
+          records: formattedData,
+        }
       );
 
-      if (res.status === 200) {
-        const failed = res.data.results?.filter((r) => r.status === "error") || [];
+      const failed = res.results?.filter((r) => r.status === "error") || [];
 
-        if (failed.length > 0) {
-          setErrors(failed.map((r) => `ID ${r.studentId}: ${r.message}`));
-        } else {
-          setSuccess(true);
-          setTimeout(() => resetForm(), 3000);
-        }
+      if (failed.length > 0) {
+        setErrors(failed.map((r) => `ID ${r.studentId}: ${r.message}`));
+      } else {
+        setSuccess(true);
+        setTimeout(() => resetForm(), 3000);
       }
+
     } catch (err: any) {
       console.error("Upload error:", err);
       setErrors([

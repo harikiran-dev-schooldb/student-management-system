@@ -110,11 +110,11 @@ export default function BulkLessonsUpload() {
         lessons,
       });
 
-      if (!response.data.errors?.length) {
+      if (!response.errors?.length) {
         setSuccess(true);
         setTimeout(() => resetForm(), 3000);
       } else {
-        setErrors(response.data.errors);
+        setErrors(response.errors);
       }
     } catch (err) {
       console.error(err);

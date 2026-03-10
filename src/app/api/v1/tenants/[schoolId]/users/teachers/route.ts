@@ -88,6 +88,21 @@ export async function POST(
       validatedClassId = cls.id;
     }
 
+    const activeYear = await prisma.academicYear.findFirst({
+      where: {
+        schoolId,
+        isActive: true,
+      },
+      select: { id: true },
+    });
+
+    if (!activeYear) {
+      return NextResponse.json(
+        { error: "No active academic year found" },
+        { status: 400 }
+      );
+    }
+
     /* 5️⃣ Identity (Clerk + Profile + LinkedUser) */
 
     const identity = await createOrUpdateIdentity({
@@ -130,7 +145,7 @@ export async function POST(
             teacherId: teacher.id,
             classId: validatedClassId,
             schoolId,
-            academicYearId: "",
+            academicYearId: activeYear.id,
             role: "SUPERVISOR",
           },
         });

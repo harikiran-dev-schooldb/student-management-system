@@ -48,7 +48,7 @@ ALTER SEQUENCE "class_id_seq" RESTART WITH 1;
 -- Retrieve all records
 SELECT * FROM "Admin";
 SELECT * FROM "Student";
-SELECT * FROM "Teacher";
+SELECT * FROM "Teacher" WHERE "status" = 'TRANSFERRED';
 SELECT * FROM "class";
 SELECT * FROM "Grade";
 SELECT * FROM "FeeStructure";
@@ -63,6 +63,7 @@ SELECT * FROM "Lesson";
 SELECT * FROM "Result";
 SELECT * FROM "Attendance";
 SELECT * FROM "Messages";
+SELECT * FROM "AcademicYear";
 SELECT * FROM "Profile" WHERE clerk_id is not null;
 SELECT * FROM "LinkedUser";
 SELECT * FROM "StudentEnrollment";
@@ -223,7 +224,7 @@ INSERT INTO "SchoolInfo" (
   "id","name","address","phone","email","website","logo",
   "taxId","receiptHeader","receiptFooter","createdAt","updatedAt","schoolId"
 ) VALUES (
-  'cmju1hey9000104l54r6cmpsu',
+  'testing_school',
   'KOTAK SALESIAN SCHOOL',
   '17-309, Golla Veedhi, Old Gopalapatnam',
   '9949523412',
@@ -235,8 +236,10 @@ INSERT INTO "SchoolInfo" (
   'Fees once paid are not refundable.',
   NOW(),
   NOW(),
-  'kss_vizag'
+  'test'
 );
+
+SELECT * FROM "SchoolInfo";
 
 
 -- 2️⃣ Profile
@@ -249,6 +252,9 @@ INSERT INTO "Profile" (
   NULL
 );
 
+SELECT * FROM "Profile";
+
+
 
 -- 3️⃣ LinkedUser (ONLY ONCE)
 INSERT INTO "LinkedUser" (
@@ -258,9 +264,10 @@ INSERT INTO "LinkedUser" (
   'admin001',
   'admin',
   'cmjf4q3hm00006cjq2nnukul3',
-  'cmju1hey9000104l54r6cmpsu'
+  'testing_school'
 );
 
+SELECT * FROM "LinkedUser";
 
 -- 4️⃣ Update Profile activeUserId
 UPDATE "Profile"
@@ -290,7 +297,7 @@ INSERT INTO "Admin" (
   'user_34hDQUMuHoPtvaWMWsrnYaAYztu',
   'cmjf4q3hm00006cjq2nnukul3',
   'cmjf4q3hv00016cjqg8jf9op8',
-  'cmju1hey9000104l54r6cmpsu'
+  'testing_school'
 );
 
 SELECT id,  role FROM "LinkedUser";

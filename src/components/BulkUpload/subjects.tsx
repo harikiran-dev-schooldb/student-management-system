@@ -122,11 +122,11 @@ export default function BulkSubjectUpload() {
         { subjects }
       );
 
-      if (!response.data.errors?.length) {
+      if (!response.errors?.length) {
         setSuccess(true);
         setTimeout(() => resetForm(), 3000);
       } else {
-        setErrors(response.data.errors);
+        setErrors(response.errors);
       }
     } catch (error) {
       console.error(error);
@@ -199,8 +199,8 @@ export default function BulkSubjectUpload() {
                 <div className="relative z-10 flex flex-col items-center gap-6 text-center p-6">
                   <div
                     className={`p-5 rounded-2xl shadow-sm transition-all duration-300 ${dragActive
-                        ? "bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600"
-                        : "bg-white dark:bg-darkMode text-zinc-400 group-hover:text-indigo-500 group-hover:scale-110"
+                      ? "bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600"
+                      : "bg-white dark:bg-darkMode text-zinc-400 group-hover:text-indigo-500 group-hover:scale-110"
                       }`}
                   >
                     <UploadCloud className="w-10 h-10" />

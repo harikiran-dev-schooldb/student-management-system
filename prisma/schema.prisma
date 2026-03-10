@@ -229,7 +229,7 @@ model Exam {
   id                Int                @id @default(autoincrement())
   title             String
 
-  academicYearId    String
+  academicYearId Int
   academicYear      AcademicYear       @relation(fields: [academicYearId], references: [id])
 
   examGradeSubjects ExamGradeSubject[]
@@ -258,7 +258,7 @@ model ExamGradeSubject {
   grade          Grade        @relation(fields: [gradeId], references: [id], onDelete: Cascade)
   subject        Subject      @relation(fields: [subjectId], references: [id], onDelete: Cascade)
 
-  academicYearId String
+  academicYearId Int
   academicYear   AcademicYear @relation(fields: [academicYearId], references: [id])
 
   schoolId       String
@@ -280,7 +280,7 @@ model Result {
   examId         Int
   subjectId      Int
 
-  academicYearId String
+  academicYearId Int
   academicYear   AcademicYear @relation(fields: [academicYearId], references: [id])
 
   createdAt      DateTime     @default(now())
@@ -492,7 +492,7 @@ model TeacherClassAssignment {
   id             Int    @id @default(autoincrement())
   teacherId      String
   classId        Int
-  academicYearId String
+  academicYearId Int
   schoolId       String
 
   role ClassTeacherRole @default(SUBJECT)
@@ -530,7 +530,7 @@ model FeeStructure {
   termFees       Int
   abacusFees     Int?
   term           Term
-  academicYearId String
+  academicYearId Int
   academicYear   AcademicYear  @relation(fields: [academicYearId], references: [id])
   grade          Grade         @relation("GradeToFeesStructure", fields: [gradeId], references: [id])
   studentFees    StudentFees[]
@@ -556,7 +556,7 @@ model FeeTransaction {
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
   remarks         String?
-  academicYearId  String
+  academicYearId  Int
   academicYear    AcademicYear @relation(fields: [academicYearId], references: [id])
   transactionType String       @default("PAYMENT") // or "CANCELLED"
   updatedByName   String?
@@ -582,7 +582,7 @@ model StudentFees {
   id               Int          @id @default(autoincrement())
   studentId        String
   feeStructureId   Int
-  academicYearId   String
+  academicYearId   Int
   academicYear     AcademicYear @relation(fields: [academicYearId], references: [id])
   term             Term
   paidAmount       Int          @default(0)
@@ -623,7 +623,7 @@ model StudentTotalFees {
   student Student    @relation(fields: [studentId], references: [id])
   school  SchoolInfo @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
-  academicYearId String
+  academicYearId Int
   academicYear   AcademicYear @relation(fields: [academicYearId], references: [id])
 
   @@unique([studentId, academicYearId, schoolId])
@@ -640,7 +640,7 @@ model Attendance {
   Student        Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
   schoolId       String
   school         SchoolInfo   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  academicYearId String
+  academicYearId Int
   academicYear   AcademicYear @relation(fields: [academicYearId], references: [id])
 
   @@unique([studentId, date, academicYearId, schoolId])
@@ -768,7 +768,7 @@ model StudentEnrollment {
   id             Int              @id @default(autoincrement())
   studentId      String
   classId        Int
-  academicYearId String
+  academicYearId Int
   academicYear   AcademicYear     @relation(fields: [academicYearId], references: [id])
   status         EnrollmentStatus @default(ACTIVE)
   promotedFromId Int?
@@ -816,7 +816,7 @@ model SmsTemplate {
 }
 
 model AcademicYear {
-  id        String   @id @default(cuid())
+  id        Int   @id @default(autoincrement())
   name      String // "2025-2026"
   startDate DateTime
   endDate   DateTime
@@ -837,6 +837,7 @@ model AcademicYear {
   examGradeSubject        ExamGradeSubject[]
 
   @@unique([name, schoolId])
+  @@index([schoolId, isActive])
   @@index([schoolId])
 }
 

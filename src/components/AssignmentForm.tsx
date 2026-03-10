@@ -17,6 +17,11 @@ type AssignmentSchema = {
   maxMarks: number;
 };
 
+type Subject = {
+  id: number;
+  name: string;
+};
+
 const AssignmentForm = ({
   type,
   data,
@@ -67,8 +72,8 @@ const AssignmentForm = ({
 
     const fetchSubjects = async () => {
       try {
-        const res = await api.get(`/classes/${selectedClass}/subjects`);
-        setFilteredSubjects(res.data as any[]);
+        const res = await api.get<{ data: Subject[] }>(`/classes/${selectedClass}/subjects`);
+        setFilteredSubjects(res.data);
       } catch {
         setFilteredSubjects([]);
       }

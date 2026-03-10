@@ -2,7 +2,7 @@ import prisma from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { adminSchema } from "@/lib/formValidationSchemas";
 import { requireTenantAccess } from "@/lib/requireTenantAccess";
-import { provisionIdentity } from "@/lib/services/identity.service";
+import { createOrUpdateIdentity } from "@/lib/services/identity.service";
 
 export async function POST(req: NextRequest) {
   try {
@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
 
     /* 3️⃣ Create Identity */
 
-    const identity = await provisionIdentity({
+    const identity = await createOrUpdateIdentity({
       username: data.username,
       phone: data.phone,
       name: data.name,

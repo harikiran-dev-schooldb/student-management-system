@@ -14,10 +14,13 @@ export async function GET(
     // resolve internal ID
     const schoolId = await resolveSchoolId(slug);
 
-    const { searchParams } = new URL(req.url);
-    const academicYear = searchParams.get("academicYear") || undefined;
+    const url = new URL(req.url);
+    const academicYear = url.searchParams.get("academicYear") || undefined;
+    const academicYearId = academicYear
+      ? Number(academicYear)
+      : undefined;
 
-    const data = await getFullStudentFeesReport(schoolId, academicYear);
+    const data = await getFullStudentFeesReport(schoolId, academicYearId);
 
     return NextResponse.json(data);
   } catch (error) {

@@ -14,7 +14,7 @@ import {
 import { ClassSelect } from "./query-types";
 
 export type CurrentEnrollment = {
-  academicYearId: string;
+  academicYearId: number;
   class: {
     id: number;
     name: string | null;
@@ -171,11 +171,11 @@ export interface StudentFee {
 
   paymentMode: PaymentMode;
 
-  academicYearId: string;
+  academicYearId: number;
 
   // ✅ ADD THIS
   academicYear?: {
-    id: string;
+    id: number;
     name: string;
   };
 

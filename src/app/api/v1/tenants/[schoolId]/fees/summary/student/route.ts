@@ -34,8 +34,10 @@ export async function GET(
 
     const { searchParams } = new URL(req.url);
     const academicYearParam = searchParams.get("academicYear");
+    const academicYearId = academicYearParam ? Number(academicYearParam) : undefined;
 
-    if (!academicYearParam) {
+    if (!academicYearId) {
+
       return NextResponse.json(
         { error: "academicYear is required" },
         { status: 400 },
@@ -46,7 +48,7 @@ export async function GET(
 
     const year = await prisma.academicYear.findFirst({
       where: {
-        id: academicYearParam,
+        id: academicYearId,
         schoolId,
       },
     });

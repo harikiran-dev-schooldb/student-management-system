@@ -39,6 +39,8 @@ export async function POST(
     const { title, examDate, startTime, gradeId, subjectId, maxMarks, academicYearId } =
       parsed.data;
 
+    const academicYearIdNum = Number(academicYearId);
+
     /* ----- Validate Grade ----- */
     const grade = await db.grade.findFirst({
       where: { id: gradeId, schoolId },
@@ -54,7 +56,7 @@ export async function POST(
 
     const academicYear = await db.academicYear.findFirst({
       where: {
-        id: academicYearId,
+        id: academicYearIdNum,
         schoolId,
       },
       select: { id: true },
@@ -87,13 +89,13 @@ export async function POST(
     const exam = await db.$transaction(async (tx) => {
       let existingExam = await tx.exam.findUnique({
         where: {
-          title_academicYearId_schoolId: { title, schoolId, academicYearId },
+          title_academicYearId_schoolId: { title, schoolId, academicYearId: academicYearIdNum },
         },
       });
 
       if (!existingExam) {
         existingExam = await tx.exam.create({
-          data: { title, schoolId, academicYearId },
+          data: { title, schoolId, academicYearId: academicYearIdNum },
         });
       }
 
@@ -104,7 +106,7 @@ export async function POST(
             gradeId,
             subjectId,
             schoolId,
-            academicYearId,
+            academicYearId: academicYearIdNum,
           },
         },
         update: {
@@ -120,7 +122,7 @@ export async function POST(
           startTime,
           maxMarks,
           schoolId,
-          academicYearId,
+          academicYearId: academicYearIdNum,
         },
       });
 

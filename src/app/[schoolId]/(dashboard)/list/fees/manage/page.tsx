@@ -115,13 +115,17 @@ const FeesListPage = async ({
 
   const whereClause: Prisma.GradeWhereInput = {};
 
-  const academicYearId = Array.isArray(resolvedSearchParams.academicYear)
+  const academicYearParam = Array.isArray(resolvedSearchParams.academicYear)
     ? resolvedSearchParams.academicYear[0]
     : resolvedSearchParams.academicYear;
 
+  const academicYearId = academicYearParam ? Number(academicYearParam) : undefined;
+
+
+
   if (academicYearId) {
     whereClause.feestructure = {
-      some: { academicYearId },
+      some: { academicYearId: Number(academicYearId) },
     };
   }
 

@@ -2,7 +2,7 @@ import prisma from "../prisma";
 
 export const fetchStudentFeeSummary = async (
   studentId: string,
-  academicYearId: string
+  academicYearId: number
 ) => {
   /* ---------------- Payments ---------------- */
 

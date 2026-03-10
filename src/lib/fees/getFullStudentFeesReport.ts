@@ -3,7 +3,7 @@ import { calculateStudentFeeReport } from "@/lib/fees/feeUtils";
 
 export async function getFullStudentFeesReport(
   schoolId: string,
-  academicYearId?: string
+  academicYearId?: number
 ) {
   const students = await prisma.student.findMany({
     where: {
