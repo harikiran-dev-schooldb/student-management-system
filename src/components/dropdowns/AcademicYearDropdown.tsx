@@ -6,7 +6,7 @@ import { dropdownUI } from "../../../types";
 import { useTenantApi } from "@/hooks/useTenantApi";
 
 type AcademicYear = {
-  id: string;
+  id: number;
   name: string;
 };
 

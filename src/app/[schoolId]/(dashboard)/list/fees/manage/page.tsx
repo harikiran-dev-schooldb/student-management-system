@@ -115,11 +115,13 @@ const FeesListPage = async ({
 
   const whereClause: Prisma.GradeWhereInput = {};
 
-  const academicYearParam = Array.isArray(resolvedSearchParams.academicYear)
-    ? resolvedSearchParams.academicYear[0]
-    : resolvedSearchParams.academicYear;
+  const latestAcademicYear = await db.academicYear.findFirst({
+    orderBy: { id: "desc" },
+    select: { id: true },
+  });
 
-  const academicYearId = academicYearParam ? Number(academicYearParam) : undefined;
+  const academicYearId =
+    Number(resolvedSearchParams.academicYear) || latestAcademicYear?.id;
 
 
 
@@ -130,6 +132,11 @@ const FeesListPage = async ({
   }
 
   if (gradeId) whereClause.id = Number(gradeId);
+
+
+
+  console.log("resolvedSearchParams:", resolvedSearchParams);
+  console.log("academicYearId:", academicYearId);
 
   const [grades, totalCount] = await Promise.all([
     db.grade.findMany({
@@ -154,7 +161,7 @@ const FeesListPage = async ({
     select: { id: true, level: true },
   });
 
-  const Path = `/${slug}/list/fees/feemanagement`;
+  const Path = `/${slug}/list/fees/manage`;
 
   return (
     <div className="flex-1 p-4 bg-white dark:bg-gray-900 text-black dark:text-white">

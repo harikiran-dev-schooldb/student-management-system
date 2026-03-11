@@ -184,4 +184,15 @@ export function formatDate(date?: Date): string {
   }).format(date);
 }
 
+/* -----------------------------
+   Parse DOB (DD-MM-YYYY)
+--------------------------------*/
+export function parseDDMMYYYY(dob: string): Date | null {
+  const [dd, mm, yyyy] = dob.split("-");
+  if (!dd || !mm || !yyyy) return null;
+
+  const date = new Date(`${yyyy}-${mm}-${dd}`);
+  return isNaN(date.getTime()) ? null : date;
+}
+
 

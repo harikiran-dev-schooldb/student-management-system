@@ -48,6 +48,7 @@
     "cloudinary-react": "^1.8.1",
     "clsx": "^2.1.1",
     "critters": "^0.0.23",
+    "crypto": "^1.0.1",
     "csv-parse": "^6.1.0",
     "csv-parser": "^3.2.0",
     "date-fns-tz": "^3.2.0",

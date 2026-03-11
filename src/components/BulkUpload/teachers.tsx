@@ -114,6 +114,7 @@ export default function BulkTeacherUpload() {
   const api = useTenantApi();
 
   const handleUpload = async () => {
+    console.log("Uploading teachers:", teachers);
     setLoading(true);
     setErrors([]);
 
@@ -127,12 +128,21 @@ export default function BulkTeacherUpload() {
 
       if (inserted > 0 || updated > 0) {
         setSuccess(true);
+        setTimeout(() => resetForm(), 3000);
       } else {
         setErrors(["No records were inserted or updated."]);
       }
-    } catch (err) {
-      console.error(err);
-      setErrors(["Upload failed. Please try again."]);
+
+    } catch (err: any) {
+      console.error(err.response?.data || err);
+
+      if (err.response?.data?.errors) {
+        setErrors(err.response.data.errors);
+      } else if (err.response?.data?.error) {
+        setErrors([err.response.data.error]);
+      } else {
+        setErrors(["Upload failed. Check server logs."]);
+      }
     } finally {
       setLoading(false);
     }
@@ -351,7 +361,7 @@ export default function BulkTeacherUpload() {
                 </button>
                 <button
                   onClick={handleUpload}
-                  disabled={loading || errors.length > 0}
+                  disabled={loading || teachers.length === 0}
                   className="px-8 py-2.5 rounded-xl font-bold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 shadow-lg shadow-indigo-500/25 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none flex items-center gap-2"
                 >
                   {loading ? (

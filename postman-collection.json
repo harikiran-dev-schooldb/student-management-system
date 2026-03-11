@@ -121,6 +121,32 @@
       "name": "Other",
       "item": [
         {
+          "name": "Get Academic years",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/tenants/{{schoolId}}/academic-years/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tenants",
+                "{{schoolId}}",
+                "academic-years"
+              ]
+            }
+          }
+        },
+        {
           "name": "Get Announcements",
           "request": {
             "method": "GET",
@@ -1448,6 +1474,34 @@
                 "classes",
                 "{{id}}",
                 "subjects"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Classes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/tenants/{{schoolId}}/grades/{{id}}/classes/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tenants",
+                "{{schoolId}}",
+                "grades",
+                "{{id}}",
+                "classes"
               ]
             }
           }

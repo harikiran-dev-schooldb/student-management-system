@@ -17,7 +17,6 @@ import {
 import { useSchoolSlug } from "../hooks/getschool";
 
 type FeeStructureCSV = {
-  id: string;
   gradeId: string;
   abacusFees: string;
   termFees: string;
@@ -37,7 +36,7 @@ export default function BulkFeeStructureUpload() {
   const inputRef = useRef<HTMLInputElement>(null);
   const schoolId = useSchoolSlug();
   console.log("Current schoolId:", schoolId);
-  
+
   const resetForm = () => {
     setFeeStructures([]);
     setErrors([]);
@@ -60,7 +59,6 @@ export default function BulkFeeStructureUpload() {
 
         parsed.forEach((row, index) => {
           const missing = [];
-          if (!row.id) missing.push("id");
           if (!row.gradeId) missing.push("gradeId");
           if (!row.abacusFees) missing.push("abacusFees");
           if (!row.termFees) missing.push("termFees");
@@ -118,11 +116,16 @@ export default function BulkFeeStructureUpload() {
       } else {
         setErrors(response.data.errors);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      setErrors(["Network error: Failed to upload data to the server."]);
-    } finally {
-      setLoading(false);
+
+      if (error.response?.data?.errors) {
+        setErrors(error.response.data.errors);
+      } else if (error.response?.data?.error) {
+        setErrors([error.response.data.error]);
+      } else {
+        setErrors(["Unknown server error"]);
+      }
     }
   };
 

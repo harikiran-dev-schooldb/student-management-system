@@ -49,11 +49,14 @@ ALTER SEQUENCE "class_id_seq" RESTART WITH 1;
 SELECT * FROM "Admin";
 SELECT * FROM "Student";
 SELECT * FROM "Teacher" WHERE "status" = 'TRANSFERRED';
+SELECT * FROM "Teacher";
 SELECT * FROM "class";
 SELECT * FROM "Grade";
+SELECT * FROM "Branch";
 SELECT * FROM "FeeStructure";
 SELECT * FROM "FeesCollection";
 SELECT * FROM "StudentFees";
+SELECT * FROM "StudentTotalFees";
 SELECT * FROM "FeeTransaction";
 SELECT * FROM "Exam";
 SELECT * FROM "ExamSubject";
@@ -300,6 +303,11 @@ INSERT INTO "Admin" (
   'testing_school'
 );
 
+INSERT INTO "Branch" (id, name, type, "order", "schoolId") VALUES
+(1, 'Kinder Garten', 'KINDERGARTEN', 1, 'testing_school'),
+(2, 'Primary', 'PRIMARY', 2, 'testing_school'),
+(3, 'Secondary', 'HIGHER', 3, 'testing_school');
+
 SELECT id,  role FROM "LinkedUser";
 
 SHOW max_connections;
@@ -309,3 +317,5 @@ SELECT count(*) FROM pg_stat_activity;
 SELECT pid, state, query
 FROM pg_stat_activity
 WHERE datname = 'multi_schooldb';
+
+SELECT * FROM "SchoolInfo";
