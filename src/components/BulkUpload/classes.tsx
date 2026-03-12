@@ -97,7 +97,7 @@ export default function BulkClassUpload() {
   const handleUpload = async () => {
     setLoading(true);
     try {
-      const response = await axios.post(`/api/v1/tenants/${schoolId}/classes/bulk`, {
+      const response = await axios.post(`/api/v1/tenants/${schoolId}/classes`, {
         classes,
       });
 
@@ -174,11 +174,11 @@ export default function BulkClassUpload() {
                 />
 
                 {/* Decorative Icon Background */}
-                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 dark:bg-darkMode group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
                   <div className="w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl"></div>
                 </div>
 
-                <div className="relative z-10 flex flex-col items-center gap-6 text-center p-6">
+                <div className="relative z-10 flex flex-col items-center gap-6 text-center p-6 dark:bg-darkMode">
                   <div className={`p-5 rounded-2xl shadow-sm transition-all duration-300 ${dragActive ? 'bg-indigo-100 dark:bg-darkMode text-indigo-600' : 'bg-white dark:bg-darkMode text-zinc-400 group-hover:text-indigo-500 group-hover:scale-110'}`}>
                     <UploadCloud className="w-10 h-10" />
                   </div>

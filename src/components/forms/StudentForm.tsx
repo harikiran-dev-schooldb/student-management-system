@@ -251,6 +251,41 @@ const StudentForm = ({
             </p>
           )}
         </div>
+        <div className="flex flex-col w-full gap-2 md:w-1/4">
+          <label htmlFor="gender" className="text-xs text-gray-500">
+            Blood Group
+          </label>
+          <select
+            id="bloodType"
+            {...register("bloodType")}
+            defaultValue={data?.bloodType}
+            className="
+  p-2 rounded-md text-sm w-full
+  bg-gray-100 text-gray-900 border border-gray-300
+  dark:bg-[#1a2035] dark:text-gray-100 dark:border-white/10
+  focus:ring-2 focus:ring-LamaSky focus:border-transparent
+"          >
+            <option value="" disabled>
+              Select Blood Group
+            </option>
+            <option value="A_POS">A+</option>
+            <option value="A_NEG">A-</option>
+            <option value="B_POS">B+</option>
+            <option value="B_NEG">B-</option>
+            <option value="AB_POS">AB+</option>
+            <option value="AB_NEG">AB-</option>
+            <option value="O_POS">O+</option>
+            <option value="O_NEG">O-</option>
+            <option value="O_NEG">O-</option>
+            <option value="O_NEG">O-</option>
+            <option value="NA">Not Applicable</option>
+          </select>
+          {errors.bloodType?.message && (
+            <p className="text-xs text-red-400">
+              {errors.bloodType.message.toString()}
+            </p>
+          )}
+        </div>
 
 
 

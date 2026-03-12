@@ -65,10 +65,10 @@ export default function PaymentModal({
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-            <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
 
                 {/* Header */}
-                <div className="p-6 border-b flex justify-between items-center">
+                <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex items-start justify-between">
                     <div>
                         <h2 className="text-lg font-bold">Collect Payment</h2>
 
@@ -79,7 +79,10 @@ export default function PaymentModal({
                         </p>
                     </div>
 
-                    <button onClick={() => setIsModalOpen(false)}>
+                    <button
+                        onClick={() => setIsModalOpen(false)}
+                        className="p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800"
+                    >
                         <X size={20} />
                     </button>
                 </div>
@@ -87,7 +90,7 @@ export default function PaymentModal({
                 {/* Body */}
                 <div className="p-6 space-y-4">
 
-                    <div className="bg-indigo-50 rounded-lg p-4 text-center">
+                    <div className="bg-indigo-50 dark:bg-slate-800 rounded-lg p-4 text-center">
                         <span className="text-xs uppercase font-bold">
                             Total Payable
                         </span>
@@ -135,9 +138,10 @@ export default function PaymentModal({
                                 <button
                                     key={m}
                                     onClick={() => setSelectedPaymentMode(m)}
-                                    className={`text-xs py-2 rounded-lg border ${selectedPaymentMode === m
-                                            ? "bg-indigo-600 text-white"
-                                            : "bg-white"
+                                    className={`text-xs py-2 rounded-lg border transition
+${selectedPaymentMode === m
+                                            ? "bg-indigo-600 text-white border-indigo-600"
+                                            : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700"
                                         }`}
                                 >
                                     {m.replace("_", " ")}
@@ -172,11 +176,11 @@ export default function PaymentModal({
                 </div>
 
                 {/* Footer */}
-                <div className="p-6 border-t flex gap-3">
+                <div className="p-6 border-t border-slate-200 dark:border-slate-800 flex gap-3">
 
                     <button
                         onClick={() => setIsModalOpen(false)}
-                        className="flex-1 border rounded-xl py-2"
+                        className="flex-1 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl py-2 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
                     >
                         Cancel
                     </button>
@@ -184,7 +188,7 @@ export default function PaymentModal({
                     <button
                         onClick={handleManualFormSubmit}
                         disabled={isProcessing}
-                        className="flex-1 bg-indigo-600 text-white rounded-xl py-2"
+                        className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl py-2 transition"
                     >
                         {isProcessing ? "Processing..." : "Confirm Payment"}
                     </button>

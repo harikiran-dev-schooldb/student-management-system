@@ -1,65 +1,118 @@
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { resolveSchoolId, SchoolNotFoundError } from "@/lib/resolveSchool";
+import { resolveSchoolId } from "@/lib/resolveSchool";
 import { classSchema } from "@/lib/formValidationSchemas";
-import { Prisma } from "@prisma/client";
-
-export const revalidate = 60;
 
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ schoolId: string }> },
 ) {
   try {
-    const { schoolId: schoolSlug } = await params;
-    const schoolId = await resolveSchoolId(schoolSlug);
+    const { schoolId: slug } = await params;
+    const schoolId = await resolveSchoolId(slug);
 
     const body = await req.json();
+
+    /* -------------------------------
+       BULK INSERT
+    -------------------------------- */
+
+    if (Array.isArray(body.classes)) {
+
+      const classes = body.classes;
+
+      const grades = await prisma.grade.findMany({
+        where: { schoolId },
+        select: { id: true, level: true },
+      });
+
+      const gradeMap = new Map(grades.map(g => [g.id, g]));
+
+      const insertData = [];
+
+      for (const cls of classes) {
+
+        const grade = gradeMap.get(Number(cls.gradeId));
+        if (!grade) continue;
+
+        const section = cls.section?.trim().toUpperCase();
+        if (!section) continue;
+
+        insertData.push({
+          gradeId: grade.id,
+          schoolId,
+          section,
+          name: `${grade.level} - ${section}`,
+        });
+
+      }
+
+      const result = await prisma.class.createMany({
+        data: insertData,
+        skipDuplicates: true,
+      });
+
+      return NextResponse.json({
+        type: "bulk",
+        inserted: result.count,
+        received: classes.length,
+      });
+
+    }
+
+    /* -------------------------------
+       SINGLE UPSERT
+    -------------------------------- */
 
     const parsed = classSchema.safeParse(body);
 
     if (!parsed.success) {
       return NextResponse.json(
-        {
-          error: "Invalid data",
-          details: parsed.error.format(),
-        },
-        { status: 400 },
+        { error: parsed.error.format() },
+        { status: 400 }
       );
     }
 
     const { section, gradeId, supervisorId } = parsed.data;
 
     const grade = await prisma.grade.findFirst({
-      where: {
-        id: gradeId,
-        schoolId,
-      },
+      where: { id: gradeId, schoolId },
+      select: { id: true, level: true },
     });
 
     if (!grade) {
       return NextResponse.json(
-        { error: "Invalid grade ID" },
-        { status: 400 },
+        { error: "Invalid gradeId" },
+        { status: 400 }
       );
     }
 
-    const name = `${grade.level} - ${section}`;
+    const normalizedSection = section.trim().toUpperCase();
 
-    const newClass = await prisma.class.create({
-      data: {
-        section,
-        name,
+    const createdClass = await prisma.class.upsert({
+      where: {
+        gradeId_section_schoolId: {
+          gradeId,
+          section: normalizedSection,
+          schoolId,
+        },
+      },
+      update: {},
+      create: {
         gradeId,
         schoolId,
+        section: normalizedSection,
+        name: `${grade.level} - ${normalizedSection}`,
       },
     });
 
-    /* Assign Supervisor */
+    /* assign supervisor */
 
     if (supervisorId) {
+
       const activeYear = await prisma.academicYear.findFirst({
         where: {
           schoolId,
@@ -68,124 +121,89 @@ export async function POST(
         select: { id: true },
       });
 
-      if (!activeYear) {
-        return NextResponse.json(
-          { error: "No active academic year" },
-          { status: 400 },
-        );
+      if (activeYear) {
+
+        await prisma.teacherClassAssignment.upsert({
+          where: {
+            teacherId_classId_academicYearId_schoolId: {
+              teacherId: supervisorId,
+              classId: createdClass.id,
+              academicYearId: activeYear.id,
+              schoolId,
+            },
+          },
+          update: {},
+          create: {
+            teacherId: supervisorId,
+            classId: createdClass.id,
+            academicYearId: activeYear.id,
+            schoolId,
+            role: "SUPERVISOR",
+          },
+        });
+
       }
 
-      await prisma.teacherClassAssignment.create({
-        data: {
-          teacherId: supervisorId,
-          classId: newClass.id,
-          academicYearId: activeYear.id,
-          schoolId,
-          role: "SUPERVISOR",
-        },
-      });
     }
 
-    return NextResponse.json(newClass, { status: 201 });
-  } catch (error: any) {
-    if (error.code === "P2002") {
-      return NextResponse.json(
-        { error: "Class already exists" },
-        { status: 409 },
-      );
-    }
+    return NextResponse.json({
+      type: "single",
+      data: createdClass,
+    }, { status: 201 });
+
+  } catch (error) {
+
+    console.error(error);
 
     return NextResponse.json(
-      { error: "Failed to create class" },
-      { status: 500 },
+      { error: "Class creation failed" },
+      { status: 500 }
     );
+
   }
 }
 
+/* ======================================================
+   GET → Fetch Classes (Tenant Safe)
+====================================================== */
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ schoolId: string }> },
 ) {
   try {
-    const { schoolId: schoolSlug } = await params;
-    const schoolId = await resolveSchoolId(schoolSlug);
 
-    const { searchParams } = new URL(req.url);
-
-    const gradeIdParam = searchParams.get("gradeId");
-    const teacherIdParam = searchParams.get("teacherId");
-
-    const where: Prisma.ClassWhereInput = {
-      schoolId,
-    };
-
-    if (gradeIdParam) {
-      const parsed = Number(gradeIdParam);
-
-      if (Number.isNaN(parsed)) {
-        return NextResponse.json(
-          { error: "Invalid gradeId" },
-          { status: 400 },
-        );
-      }
-
-      where.gradeId = parsed;
-    }
-
-    if (teacherIdParam) {
-      where.teacherClassAssignments = {
-        some: {
-          teacherId: teacherIdParam,
-          role: "SUPERVISOR",
-        },
-      };
-    }
+    const { schoolId: slug } = await params;
+    const schoolId = await resolveSchoolId(slug);
 
     const classes = await prisma.class.findMany({
-      where,
-      orderBy: [
-        { gradeId: "asc" },
-        { section: "asc" },
-      ],
+      where: { schoolId },
       select: {
         id: true,
         name: true,
-        section: true,
         gradeId: true,
-
+        section: true,
         Grade: {
           select: {
             id: true,
-            level: true,
-          },
-        },
-
-        teacherClassAssignments: {
-          where: { role: "SUPERVISOR" },
-          select: {
-            teacher: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-          },
-        },
+            level: true
+          }
+        }
       },
+      orderBy: [
+        { gradeId: "asc" },
+        { section: "asc" }
+      ]
     });
 
-    return NextResponse.json(classes);
+    return NextResponse.json(classes, { status: 200 });
+
   } catch (error) {
-    if (error instanceof SchoolNotFoundError) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 404 },
-      );
-    }
+
+    console.error("GET classes error:", error);
 
     return NextResponse.json(
       { error: "Failed to fetch classes" },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }

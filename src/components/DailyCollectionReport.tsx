@@ -22,20 +22,24 @@ type TermKey = (typeof TERM_ORDER)[number];
 /* ================= TYPES ================= */
 
 type Transaction = {
-  id: number;
-  receiptNo?: string;
-  amount: number;
-  discountAmount?: number;
-  receiptDate: string;
-  remarks?: string;
-  term?: TermKey;
-  paymentMode?: "CASH" | "UPI" | "CARD" | "CHEQUE" | "NET_BANKING";
+  id: number
+  receiptNo?: string
+  amount: number
+  discountAmount?: number
+  receiptDate: string
+  remarks?: string
+  term?: TermKey
+  paymentMode?: "CASH" | "UPI" | "CARD" | "CHEQUE" | "NET_BANKING"
+
   student: {
-    id: string;
-    name: string;
-    Class: { name: string } | null;
-  } | null;
-};
+    id: string
+    admissionNo: string | null
+    name: string | null
+    Class: {
+      name: string | null
+    } | null
+  } | null
+}
 
 /* ================= COMPONENT ================= */
 
@@ -45,6 +49,13 @@ export default function DailyCollectionReport() {
   const [activeTerm, setActiveTerm] = useState<TermKey | null>(null);
   const [flipped, setFlipped] = useState<TermKey | null>(null);
   const { schoolId } = useParams<{ schoolId: string }>();
+  const [summary, setSummary] = useState({
+    totalTransactions: 0,
+    totalCollected: 0,
+    totalDiscount: 0,
+  });
+  const [termSummary, setTermSummary] = useState<any[]>([])
+  const [paymentModeSummary, setPaymentModeSummary] = useState<any[]>([])
 
   // -- PAGINATION STATE --
   const [page, setPage] = useState(1);
@@ -68,9 +79,19 @@ export default function DailyCollectionReport() {
 
         const data = await tenantFetch(
           schoolId,
-          `/fees/transactions?${qs}`,
+          `/fees/collection?${qs}`,
         );
-        setTransactions(data?.data ?? []);
+
+        setTransactions(data?.transactions ?? []);
+        setSummary(data?.summary ?? {
+          totalTransactions: 0,
+          totalCollected: 0,
+          totalDiscount: 0
+        });
+
+        setTermSummary(data?.termSummary ?? [])
+        setPaymentModeSummary(data?.paymentModeSummary ?? [])
+
         setPage(1);
       } catch (err) {
         console.error(err);
@@ -81,61 +102,24 @@ export default function DailyCollectionReport() {
     fetchTransactions();
   }, [from, to]);
 
-  /* ---------------- SUMMARIES ---------------- */
+  /* ---------------- PAYMENT MODE SUMMARY ---------------- */
+  const paymentModes = {
+    CASH: 0,
+    UPI: 0,
+    BANK: 0
+  }
 
-  const summary = useMemo(() => {
-    const totalCollected = transactions.reduce((s, t) => s + t.amount, 0);
-    const totalDiscount = transactions.reduce(
-      (s, t) => s + (t.discountAmount ?? 0),
-      0,
-    );
-    return {
-      count: transactions.length,
-      totalCollected,
-      totalDiscount,
-    };
-  }, [transactions]);
+  paymentModeSummary.forEach((p: any) => {
+    if (p.mode === "CASH") paymentModes.CASH = p.amount
+    else if (p.mode === "UPI") paymentModes.UPI = p.amount
+    else paymentModes.BANK += p.amount
+  })
 
-  // Payment Mode Breakdown
-  const paymentModeSummary = useMemo(() => {
-    const modes = {
-      CASH: 0,
-      UPI: 0,
-      BANK: 0, // Card + Cheque + Net Banking
-    };
-
-    transactions.forEach((t) => {
-      const mode = t.paymentMode || "CASH";
-      if (mode === "CASH") {
-        modes.CASH += t.amount;
-      } else if (mode === "UPI") {
-        modes.UPI += t.amount;
-      } else {
-        modes.BANK += t.amount;
-      }
-    });
-
-    return modes;
-  }, [transactions]);
-
-  const termSummary = useMemo(() => {
-    const map: Record<TermKey, number> = {
-      TERM_1: 0,
-      TERM_2: 0,
-      TERM_3: 0,
-      TERM_4: 0,
-    };
-    transactions.forEach((t) => t.term && (map[t.term] += t.amount));
-
-    // Avoid division by zero
-    const total = summary.totalCollected || 1;
-
-    return TERM_ORDER.filter((t) => map[t] > 0).map((t) => ({
-      term: t,
-      amount: map[t],
-      percent: Math.round((map[t] / total) * 100),
-    }));
-  }, [transactions, summary.totalCollected]);
+  const termData = termSummary.map((t: any) => ({
+    term: t.term,
+    amount: t.amount,
+    percent: Math.round((t.amount / (summary.totalCollected || 1)) * 100)
+  }))
 
   /* ---------------- SORT & FILTER ---------------- */
 
@@ -191,7 +175,7 @@ export default function DailyCollectionReport() {
     filteredTransactions.forEach((t) => {
       worksheet.addRow({
         date: new Date(t.receiptDate).toLocaleDateString(),
-        admNo: t.student?.id || "-",
+        admNo: t.student?.admissionNo || "-",
         student: t.student?.name || "Unknown",
         class: t.student?.Class?.name || "-",
         term: t.term || "-",
@@ -259,7 +243,7 @@ export default function DailyCollectionReport() {
 
       {/* SUMMARY CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <Summary3D title="Total Transactions" value={summary.count} />
+        <Summary3D title="Total Transactions" value={summary.totalTransactions} />
         <Summary3D
           title="Total Discount"
           value={`₹ ${summary.totalDiscount}`}
@@ -277,7 +261,7 @@ export default function DailyCollectionReport() {
               <Banknote size={14} /> Cash
             </span>
             <span className="font-semibold dark:text-white">
-              ₹{paymentModeSummary.CASH}
+              ₹{paymentModes.CASH}
             </span>
           </div>
           <div className="flex justify-between items-center text-sm">
@@ -285,7 +269,7 @@ export default function DailyCollectionReport() {
               <Wallet size={14} /> UPI
             </span>
             <span className="font-semibold dark:text-white">
-              ₹{paymentModeSummary.UPI}
+              ₹{paymentModes.UPI}
             </span>
           </div>
           <div className="flex justify-between items-center text-sm">
@@ -293,7 +277,7 @@ export default function DailyCollectionReport() {
               <CreditCard size={14} /> Bank
             </span>
             <span className="font-semibold dark:text-white">
-              ₹{paymentModeSummary.BANK}
+              ₹{paymentModes.BANK}
             </span>
           </div>
         </div>
@@ -301,16 +285,15 @@ export default function DailyCollectionReport() {
 
       {/* TERM BREAKDOWN */}
       <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {termSummary.map(({ term, amount, percent }) => (
+        {termData.map(({ term, amount, percent }) => (
           <div key={term} className="[perspective:1200px]">
             <div
               onClick={() => {
                 setActiveTerm(term === activeTerm ? null : term);
                 setFlipped(term === flipped ? null : term);
               }}
-              className={`relative rounded-xl border p-5 cursor-pointer bg-white dark:bg-darkMode border-gray-200 dark:border-white/10 transition-all duration-500 transform-gpu [transform-style:preserve-3d] ${
-                term === activeTerm ? "ring-2 ring-yellow-400" : ""
-              } ${term === flipped ? "[transform:rotateY(180deg)]" : ""}`}
+              className={`relative rounded-xl border p-5 cursor-pointer bg-white dark:bg-darkMode border-gray-200 dark:border-white/10 transition-all duration-500 transform-gpu [transform-style:preserve-3d] ${term === activeTerm ? "ring-2 ring-yellow-400" : ""
+                } ${term === flipped ? "[transform:rotateY(180deg)]" : ""}`}
             >
               <div className="[backface-visibility:hidden]">
                 <p className="text-xs uppercase text-gray-500">
@@ -318,7 +301,7 @@ export default function DailyCollectionReport() {
                 </p>
                 <p className="text-2xl font-semibold mt-2">₹ {amount}</p>
               </div>
-              <div className="absolute inset-0 p-5 rounded-xl bg-yellow-100 dark:bg-yellow-900/50 text-black dark:text-white [transform:rotateY(180deg)] [backface-visibility:hidden]">
+              <div className="absolute inset-0 p-5 rounded-xl bg-LamaBLue dark:bg-LamaBLue text-black dark:text-white [transform:rotateY(180deg)] [backface-visibility:hidden]">
                 <p className="text-sm font-semibold">Contribution</p>
                 <p className="text-2xl font-bold mt-2">{percent}%</p>
               </div>
@@ -385,7 +368,7 @@ export default function DailyCollectionReport() {
                     <div className="flex flex-col">
                       <span className="font-medium">{t.student?.name}</span>
                       <span className="text-xs text-gray-400">
-                        {t.student?.id}
+                        {t.student?.admissionNo}
                       </span>
                     </div>
                   </Td>
@@ -397,13 +380,12 @@ export default function DailyCollectionReport() {
                   </Td>
                   <Td>
                     <span
-                      className={`text-xs font-medium px-2 py-1 rounded ${
-                        t.paymentMode === "UPI"
-                          ? "bg-blue-100 text-blue-700"
-                          : t.paymentMode === "CASH"
+                      className={`text-xs font-medium px-2 py-1 rounded ${t.paymentMode === "UPI"
+                        ? "bg-blue-100 text-blue-700"
+                        : t.paymentMode === "CASH"
                           ? "bg-green-100 text-green-700"
                           : "bg-gray-100 text-gray-700"
-                      }`}
+                        }`}
                     >
                       {t.paymentMode || "CASH"}
                     </span>
@@ -490,9 +472,8 @@ const Summary3D = ({
 }) => (
   <div className="[perspective:1200px]">
     <div
-      className={`rounded-xl border p-5 transform-gpu transition-all h-full flex flex-col justify-center bg-white dark:bg-darkMode border-gray-200 dark:border-white/10 hover:-translate-y-1 hover:shadow-xl ${
-        highlight ? "ring-2 ring-blue-500" : ""
-      }`}
+      className={`rounded-xl border p-5 transform-gpu transition-all h-full flex flex-col justify-center bg-white dark:bg-darkMode border-gray-200 dark:border-white/10 hover:-translate-y-1 hover:shadow-xl ${highlight ? "ring-2 ring-blue-500" : ""
+        }`}
     >
       <p className="text-xs uppercase text-gray-500 font-bold">{title}</p>
       <p className="text-2xl font-bold mt-1 text-gray-900 dark:text-white">

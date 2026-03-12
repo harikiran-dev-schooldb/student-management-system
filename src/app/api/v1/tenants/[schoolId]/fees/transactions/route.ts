@@ -8,6 +8,8 @@ import { currentUser } from "@clerk/nextjs/server";
 import { tenantPrisma } from "@/lib/tenant-prisma";
 import { calculateDueAmount, getAssignedFee } from "@/lib/fees/fees";
 import { getMessageContent } from "@/lib/utils/messageUtils";
+import { buildReceiptNumber } from "@/lib/fees/generateReceipt";
+import { generateFeeRemark } from "@/lib/fees/generateRemark";
 
 export async function POST(
   req: NextRequest,
@@ -36,7 +38,6 @@ export async function POST(
       discountAmount = 0,
       fineAmount = 0,
       receiptDate,
-      receiptNo,
       remarks,
       paymentMode = PaymentMode.CASH,
     } = body;
@@ -53,7 +54,48 @@ export async function POST(
         ? new Date(receiptDate)
         : new Date();
 
+
+    const autoRemark = remarks || generateFeeRemark(term, parsedReceiptDate);
+
+    const academicYear = await db.academicYear.findUnique({
+      where: { id: academicYearId },
+      select: { name: true },
+    });
+
+    if (!academicYear) {
+      throw new Error("Academic year not found");
+    }
+
+
+
+
     const result = await db.$transaction(async (tx) => {
+
+      // 1️⃣ increment receipt sequence safely
+      const seq = await tx.receiptSequence.upsert({
+        where: {
+          schoolId_academicYearId: {
+            schoolId,
+            academicYearId,
+          },
+        },
+        update: {
+          currentNo: { increment: 1 },
+        },
+        create: {
+          schoolId,
+          academicYearId,
+          currentNo: 1,
+        },
+        select: {
+          currentNo: true,
+        },
+      });
+
+      const generatedReceiptNo = buildReceiptNumber(
+        academicYear.name,
+        seq.currentNo
+      );
 
       /* ===============================
          Fetch StudentFees
@@ -95,8 +137,7 @@ export async function POST(
           fineAmount: { increment: fineAmount },
           receiptDate: parsedReceiptDate,
           paymentMode,
-          remarks,
-          ...(receiptNo && { receiptNo: String(receiptNo) }),
+          remarks: autoRemark,
         },
       });
 
@@ -154,9 +195,9 @@ export async function POST(
           discountAmount,
           fineAmount,
           receiptDate: parsedReceiptDate,
-          receiptNo: String(receiptNo || ""),
+          receiptNo: generatedReceiptNo,
           paymentMode,
-          remarks,
+          remarks: autoRemark,
           updatedByName,
           schoolId,
         },
@@ -224,6 +265,89 @@ export async function POST(
     return NextResponse.json(
       { message: error.message || "Payment failed" },
       { status: 400 },
+    );
+  }
+}
+
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ schoolId: string }> }
+) {
+  try {
+    const { schoolId: slug } = await params;
+    const schoolId = await resolveSchoolId(slug);
+    const db = tenantPrisma(schoolId);
+
+    const { searchParams } = new URL(req.url);
+
+    const from = searchParams.get("from");
+    const to = searchParams.get("to");
+
+    const where: any = {
+      schoolId,
+    };
+
+    if (from || to) {
+      where.receiptDate = {};
+
+      if (from) {
+        where.receiptDate.gte = new Date(from);
+      }
+
+      if (to) {
+        const end = new Date(to);
+        end.setHours(23, 59, 59, 999);
+        where.receiptDate.lte = end;
+      }
+    }
+
+    const transactions = await db.feeTransaction.findMany({
+      where,
+      include: {
+        student: {
+          select: {
+            id: true,
+            name: true,
+            enrollments: {
+              select: {
+                class: {
+                  select: { name: true },
+                },
+              },
+              take: 1,
+            },
+          },
+        },
+      },
+      orderBy: {
+        receiptDate: "desc",
+      },
+    });
+
+    const formatted = transactions.map((t) => ({
+      ...t,
+      student: t.student
+        ? {
+            id: t.student.id,
+            name: t.student.name,
+            Class: {
+              name:
+                t.student.enrollments?.[0]?.class?.name ?? null,
+            },
+          }
+        : null,
+    }));
+
+    return NextResponse.json({
+      data: formatted,
+    });
+
+  } catch (error: any) {
+    console.error("Fetch transactions error:", error);
+
+    return NextResponse.json(
+      { message: error.message || "Failed to fetch transactions" },
+      { status: 500 }
     );
   }
 }

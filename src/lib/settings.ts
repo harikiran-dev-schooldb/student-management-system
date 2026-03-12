@@ -195,4 +195,15 @@ export function parseDDMMYYYY(dob: string): Date | null {
   return isNaN(date.getTime()) ? null : date;
 }
 
+// export function generateReceiptNo(
+//   slug: string,
+//   sequence: number,
+//   date: Date
+// ) {
+//   const datePart = date.toISOString().slice(0,10).replace(/-/g,"");
+//   const seq = sequence.toString().padStart(5,"0");
+
+//   return `${slug}-${seq}-${datePart}`;
+// }
+
 

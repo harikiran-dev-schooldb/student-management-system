@@ -22,55 +22,123 @@ export async function createOrUpdateIdentity({
 }: IdentityInput) {
 
   const client = await clerkClient();
-  const phoneNumber = `+91${phone}`;
 
-  /* ---------- 1️⃣ Find Clerk User ---------- */
+  /* ---------- Normalize Phone ---------- */
 
-  const existing = await client.users.getUserList({
-    phoneNumber: [phoneNumber],
+  const normalizedPhone = phone.startsWith("+")
+    ? phone
+    : `+91${phone}`;
+
+  /* =====================================================
+     1️⃣ Find profile by phone
+  ===================================================== */
+
+  let profile = await prisma.profile.findFirst({
+    where: { phone },
   });
 
-  let clerkUser;
+  let clerkId: string;
 
-  if (existing.data.length > 0) {
-    clerkUser = existing.data[0];
+  /* =====================================================
+     2️⃣ Update existing Clerk user
+  ===================================================== */
 
-    /* ---------- Update Clerk ---------- */
+  if (profile?.clerk_id) {
 
-    await client.users.updateUser(clerkUser.id, {
-      username,
+    clerkId = profile.clerk_id;
+
+    const clerkUser = await client.users.getUser(clerkId);
+
+    const currentPhone =
+      clerkUser.phoneNumbers.find(
+        (p) => p.id === clerkUser.primaryPhoneNumberId
+      )?.phoneNumber ?? null;
+
+    /* ---------- Update phone if changed ---------- */
+
+    if (currentPhone !== normalizedPhone) {
+
+      try {
+
+        const newPhone = await client.phoneNumbers.createPhoneNumber({
+          userId: clerkId,
+          phoneNumber: normalizedPhone,
+        });
+
+        await client.phoneNumbers.updatePhoneNumber(newPhone.id, {
+          verified: true,
+        });
+
+        await client.users.updateUser(clerkId, {
+          primaryPhoneNumberID: newPhone.id,
+        });
+
+      } catch (err: any) {
+
+        console.error("Clerk phone update error:", err.errors || err);
+
+        if (err.errors?.[0]?.code === "form_identifier_exists") {
+          throw new Error("Phone number already exists in Clerk");
+        }
+
+        throw err;
+      }
+    }
+
+    /* ---------- Update name ---------- */
+
+    await client.users.updateUser(clerkId, {
       firstName: name,
-      publicMetadata: { role },
+      publicMetadata: {
+        role,
+        schoolId,
+      },
     });
 
   } else {
 
-    /* ---------- Create Clerk ---------- */
+    /* =====================================================
+       3️⃣ Create Clerk user
+    ===================================================== */
 
-    clerkUser = await client.users.createUser({
-      username,
-      password: password ?? phone,
+    const clerkUser = await client.users.createUser({
       firstName: name,
-      phoneNumber: [phoneNumber],
-      publicMetadata: { role },
+      password: password ?? `Stu@${phone}`,
+      phoneNumber: [normalizedPhone],
+      publicMetadata: {
+        role,
+        schoolId,
+      },
     });
 
+    clerkId = clerkUser.id;
+
+    /* ---------- Create or update profile ---------- */
+
+    if (profile) {
+
+      profile = await prisma.profile.update({
+        where: { id: profile.id },
+        data: {
+          clerk_id: clerkId,
+        },
+      });
+
+    } else {
+
+      profile = await prisma.profile.create({
+        data: {
+          phone,
+          clerk_id: clerkId,
+        },
+      });
+
+    }
   }
 
-  /* ---------- 2️⃣ Profile ---------- */
-
-  const profile = await prisma.profile.upsert({
-    where: { clerk_id: clerkUser.id },
-    update: {
-      phone,
-    },
-    create: {
-      clerk_id: clerkUser.id,
-      phone,
-    },
-  });
-
-  /* ---------- 3️⃣ LinkedUser ---------- */
+  /* =====================================================
+     4️⃣ Link user to school
+  ===================================================== */
 
   const linkedUser = await prisma.linkedUser.upsert({
     where: {
@@ -91,15 +159,23 @@ export async function createOrUpdateIdentity({
     },
   });
 
-  /* ---------- 4️⃣ Activate Role ---------- */
+  /* =====================================================
+     5️⃣ Set active role
+  ===================================================== */
 
   await prisma.profile.update({
     where: { id: profile.id },
-    data: { activeUserId: linkedUser.id },
+    data: {
+      activeUserId: linkedUser.id,
+    },
   });
 
+  /* =====================================================
+     6️⃣ Return identity
+  ===================================================== */
+
   return {
-    clerkId: clerkUser.id,
+    clerkId,
     profileId: profile.id,
     linkedUserId: linkedUser.id,
   };

@@ -38,7 +38,7 @@ const renderRow = (item: MessageList, role: string | null) => (
                   {item.Student.name}
                 </h3>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {item.studentId}
+                  {item.Student.admissionNo}
                 </p>
               </>
             ) : (

@@ -103,9 +103,9 @@ export const studentschema = z.object({
 
   bloodType: z
     .enum([
-      "A+","A-","B+","B-","AB+","AB-","O+","O-","Under Investigation",
+      "A_POS","A_NEG","B_POS","B_NEG","AB_POS","AB_NEG","O_POS","O_NEG","NA",
     ])
-    .default("Under Investigation"),
+    .default("NA"),
 });
 
 // Infer the form data type from schema

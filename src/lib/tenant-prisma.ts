@@ -24,7 +24,7 @@ export function tenantPrisma(schoolId: string) {
       const original = (target as any)[key];
 
       // Skip prisma internals
-      if (key.startsWith("$")) {
+      if (typeof key === "string" && key.startsWith("$")) {
         return original;
       }
 

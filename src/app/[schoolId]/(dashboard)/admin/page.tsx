@@ -5,8 +5,8 @@ import AttendanceChartContainer from "@/components/AttendanceChartContainer";
 import CountChartContainer from "@/components/CountChartContainer";
 import FinanceChartContainer from "@/components/FinanceChartContainer";
 import EventCalendarContainer from "@/components/EventCalendarContainer";
-import { getAdminDashboardData } from "@/lib/dashboard";
 import { PageProps } from "../../../../../types";
+import { getAdminDashboardData } from "@/lib/dashboard";
 
 /* -----------------------------
    UI Tokens
@@ -53,8 +53,8 @@ export default async function AdminPage({ searchParams, params }: PageProps) {
     typeof resolvedSearchParams.date === "string"
       ? resolvedSearchParams.date
       : Array.isArray(resolvedSearchParams.date)
-      ? resolvedSearchParams.date[0]
-      : undefined;
+        ? resolvedSearchParams.date[0]
+        : undefined;
 
   const date = dateParam ? new Date(dateParam) : new Date();
 

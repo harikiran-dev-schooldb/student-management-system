@@ -1,0 +1,2 @@
+Get project structure:
+tree src\app /F /A > app-structure.txt

@@ -19,7 +19,7 @@ export default function FinanceChartContainer({
   // --- UI: Premium "No Data" State ---
   if (!data || data.length === 0) {
     return (
-      <div className="flex h-full w-full flex-col items-center justify-center gap-2 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-black">
+      <div className="flex h-full w-full flex-col items-center justify-center gap-2 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-darkMode">
         <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-50 dark:bg-gray-900">
           <AlertCircle className="h-6 w-6 text-gray-400" />
         </div>

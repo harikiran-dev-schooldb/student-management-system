@@ -5,6 +5,7 @@ import {
   Attendance,
   Exam,
   FeeTransaction,
+  Gender,
   Grade,
   Messages,
   PaymentMode,
@@ -37,6 +38,36 @@ export type FeeStructure = {
   abacusFees: number | null;
   term: string; // Or enum Term if you have it
   academicYear: string; // Or enum if defined
+};
+
+
+
+export type GenderStat = {
+  gender: Gender;
+  _count: number;
+};
+
+export type AttendanceRecord = {
+  date: string;
+  present: number;
+};
+
+export type FinanceRecord = {
+  date: string;
+  collected: number;
+};
+
+export type UserCounts = {
+  adminCount: number;
+  teacherCount: number;
+  studentCount: number;
+};
+
+export type AdminDashboardData = UserCounts & {
+  genderStats: GenderStat[];
+  attendance: AttendanceRecord[];
+  finance: FinanceRecord[];
+  events: any[];
 };
 
 // Define individual StudentFees entry
@@ -376,6 +407,7 @@ export type Homeworks = {
 export type MessageList = Messages & {
   Student: {
     id: string;
+    admissionNo: String;
     name: string;
     enrollments: CurrentEnrollment[];
   } | null;

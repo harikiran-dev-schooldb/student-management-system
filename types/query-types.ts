@@ -459,6 +459,7 @@ export const MessagesSelect = {
   Student: {
     select: {
       id: true,
+      admissionNo: true,
       name: true,
 
       enrollments: {
