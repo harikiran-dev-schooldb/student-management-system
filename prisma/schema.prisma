@@ -857,6 +857,15 @@ model AcademicYear {
   @@index([schoolId])
 }
 
+model Otp {
+  id        String   @id @default(cuid())
+  phone     String
+  otp       String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  @@index([phone])
+}
+
 enum LessonDay {
   MONDAY
   TUESDAY

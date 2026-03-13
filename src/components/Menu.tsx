@@ -176,7 +176,7 @@ const menuSections: MenuSection[] = [
       {
         label: "Permissions",
         href: "/list/permissions",
-        icon: HeartPulse ,
+        icon: HeartPulse,
         visible: ["admin"],
       },
       {
@@ -218,8 +218,14 @@ const menuSections: MenuSection[] = [
       },
       {
         label: "Students",
-        href: "/student/performance",
+        href: "/list/performance",
         icon: Activity,
+        visible: ["admin"],
+      },
+      {
+        label: "Promote Students",
+        href: "/list/promote",
+        icon: School,
         visible: ["admin"],
       },
       {
@@ -227,12 +233,7 @@ const menuSections: MenuSection[] = [
         icon: Upload,
         visible: ["admin"],
         dropdown: [
-          {
-            label: "Promote Students",
-            href: "/student/promote",
-            icon: School,
-            visible: ["admin"],
-          },
+
           {
             label: "Grades",
             href: "/list/reports/bulk-import/grades",
@@ -343,117 +344,116 @@ export default function Menu({ role }: { role: Role }) {
   };
 
   return (
-  <nav className="mt-4 flex flex-col gap-2 px-2">
-    {menuSections.map((section, idx) => {
-      const filteredItems = section.items
-        .map((item) => {
-          /* ---------- DROPDOWN ITEMS ---------- */
-          if (item.dropdown) {
-            const filteredDropdown = item.dropdown
-              .map((d) => {
-                const rawHref =
-                  typeof d.href === "function" ? d.href(role) : d.href!;
+    <nav className="mt-4 flex flex-col gap-2 px-2">
+      {menuSections.map((section, idx) => {
+        const filteredItems = section.items
+          .map((item) => {
+            /* ---------- DROPDOWN ITEMS ---------- */
+            if (item.dropdown) {
+              const filteredDropdown = item.dropdown
+                .map((d) => {
+                  const rawHref =
+                    typeof d.href === "function" ? d.href(role) : d.href!;
 
-                // RBAC check (without tenant prefix)
-                if (!isRouteAllowed(rawHref, role)) return null;
+                  // RBAC check (without tenant prefix)
+                  if (!isRouteAllowed(rawHref, role)) return null;
 
-                return {
-                  ...d,
-                  href: `/${schoolId}${rawHref}`,
-                };
-              })
-              .filter(Boolean);
+                  return {
+                    ...d,
+                    href: `/${schoolId}${rawHref}`,
+                  };
+                })
+                .filter(Boolean);
 
-            if (filteredDropdown.length === 0) return null;
+              if (filteredDropdown.length === 0) return null;
+
+              return {
+                ...item,
+                dropdown: filteredDropdown,
+              };
+            }
+
+            /* ---------- NORMAL ITEMS ---------- */
+            const rawHref =
+              typeof item.href === "function" ? item.href(role) : item.href!;
+
+            if (!isRouteAllowed(rawHref, role)) return null;
 
             return {
               ...item,
-              dropdown: filteredDropdown,
+              resolvedHref: `/${schoolId}${rawHref}`,
             };
-          }
+          })
+          .filter(Boolean);
 
-          /* ---------- NORMAL ITEMS ---------- */
-          const rawHref =
-            typeof item.href === "function" ? item.href(role) : item.href!;
+        if (filteredItems.length === 0) return null;
 
-          if (!isRouteAllowed(rawHref, role)) return null;
+        return (
+          <div key={idx} className="flex flex-col gap-1">
+            {section.title && !isCollapsed && (
+              <span className="px-4 py-2 text-[11px] font-semibold uppercase text-gray-400">
+                {t(section.title)}
+              </span>
+            )}
 
-          return {
-            ...item,
-            resolvedHref: `/${schoolId}${rawHref}`,
-          };
-        })
-        .filter(Boolean);
+            {filteredItems.map((item: any) => {
+              const Icon = item.icon;
 
-      if (filteredItems.length === 0) return null;
+              /* ---------- DROPDOWN RENDER ---------- */
+              if (item.dropdown) {
+                return (
+                  <Dropdown
+                    key={item.label}
+                    icon={<Icon size={18} />}
+                    label={item.label}
+                    items={item.dropdown}
+                    isCollapsed={isCollapsed}
+                  />
+                );
+              }
 
-      return (
-        <div key={idx} className="flex flex-col gap-1">
-          {section.title && !isCollapsed && (
-            <span className="px-4 py-2 text-[11px] font-semibold uppercase text-gray-400">
-              {t(section.title)}
-            </span>
-          )}
+              /* ---------- NORMAL LINK RENDER ---------- */
+              const resolvedHref = item.resolvedHref;
+              const active = pathname.startsWith(resolvedHref);
 
-          {filteredItems.map((item: any) => {
-            const Icon = item.icon;
-
-            /* ---------- DROPDOWN RENDER ---------- */
-            if (item.dropdown) {
               return (
-                <Dropdown
+                <Link
                   key={item.label}
-                  icon={<Icon size={18} />}
-                  label={item.label}
-                  items={item.dropdown}
-                  isCollapsed={isCollapsed}
-                />
-              );
-            }
-
-            /* ---------- NORMAL LINK RENDER ---------- */
-            const resolvedHref = item.resolvedHref;
-            const active = pathname.startsWith(resolvedHref);
-
-            return (
-              <Link
-                key={item.label}
-                href={resolvedHref}
-                onClick={handleClick}
-                className={`group relative flex items-center rounded-md py-2 transition-colors
+                  href={resolvedHref}
+                  onClick={handleClick}
+                  className={`group relative flex items-center rounded-md py-2 transition-colors
                   ${isCollapsed ? "justify-center px-2" : "gap-3 px-4"}
-                  ${
-                    active
+                  ${active
                       ? "bg-gray-100 text-gray-900 dark:bg-darkMode dark:text-white"
                       : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-800 dark:hover:text-white"
-                  }`}
-              >
-                <Icon size={18} />
+                    }`}
+                >
+                  <Icon size={18} />
 
-                {!isCollapsed && (
-                  <span className="text-sm font-medium whitespace-nowrap">
-                    {t(item.label)}
-                  </span>
-                )}
+                  {!isCollapsed && (
+                    <span className="text-sm font-medium whitespace-nowrap">
+                      {t(item.label)}
+                    </span>
+                  )}
 
-                {isCollapsed && (
-                  <span
-                    className="
+                  {isCollapsed && (
+                    <span
+                      className="
                       pointer-events-none absolute left-full top-1/2 ml-3 -translate-y-1/2
                       whitespace-nowrap rounded-md bg-darkMode px-2 py-1 text-xs
                       text-white opacity-0 group-hover:opacity-100
                       transition-opacity z-[9999]
                     "
-                  >
-                    {t(item.label)}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
-        </div>
-      );
-    })}
-  </nav>
-);
+                    >
+                      {t(item.label)}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+        );
+      })}
+    </nav>
+  );
 }
