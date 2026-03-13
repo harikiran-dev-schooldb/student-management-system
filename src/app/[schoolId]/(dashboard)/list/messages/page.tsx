@@ -227,7 +227,7 @@ const MessagesList = async ({
       OR: [
         { message: { contains: searchValue, mode: "insensitive" } },
         { Student: { name: { contains: searchValue, mode: "insensitive" } } },
-        { Student: { id: { contains: searchValue, mode: "insensitive" } } },
+        { Student: { admissionNo: { contains: searchValue, mode: "insensitive" } } },
       ],
     };
   }

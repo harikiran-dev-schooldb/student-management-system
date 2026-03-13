@@ -381,27 +381,21 @@ export async function GET(
     const attendance = await prisma.attendance.findMany({
       where,
       orderBy: { date: "asc" },
-
       include: {
         Student: {
           select: {
             id: true,
             name: true,
-
+            admissionNo: true,
             enrollments: {
-              where: {
-                status: "ACTIVE",
-              },
-
+              where: { status: "ACTIVE" },
               select: {
                 class: {
                   select: {
                     id: true,
                     name: true,
                     section: true,
-                    Grade: {
-                      select: { level: true },
-                    },
+                    Grade: { select: { level: true } },
                   },
                 },
               },
@@ -411,8 +405,11 @@ export async function GET(
       },
     });
 
+    const students = attendance.map((a) => a.Student);
+
     return NextResponse.json({
       attendance,
+      students,
     });
 
   } catch (error) {

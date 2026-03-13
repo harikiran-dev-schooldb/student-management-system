@@ -101,17 +101,37 @@ export async function createOrUpdateIdentity({
        3️⃣ Create Clerk user
     ===================================================== */
 
-    const clerkUser = await client.users.createUser({
-      firstName: name,
-      password: password ?? `Stu@${phone}`,
+    let clerkUser;
+
+    const existingClerk = await client.users.getUserList({
       phoneNumber: [normalizedPhone],
-      publicMetadata: {
-        role,
-        schoolId,
-      },
     });
 
+    if (existingClerk.data.length > 0) {
+
+      // phone already exists in Clerk
+      clerkUser = existingClerk.data[0];
+
+      console.log("Reusing existing Clerk user:", clerkUser.id);
+
+    } else {
+
+      // create new Clerk user
+      clerkUser = await client.users.createUser({
+        firstName: name,
+        password: password ?? `Stu@${phone}`,
+        phoneNumber: [normalizedPhone],
+        skipPasswordChecks: true,
+        publicMetadata: {
+          role,
+          schoolId,
+        },
+      });
+
+    }
+
     clerkId = clerkUser.id;
+
 
     /* ---------- Create or update profile ---------- */
 

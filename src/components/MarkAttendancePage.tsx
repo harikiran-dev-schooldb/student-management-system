@@ -29,6 +29,7 @@ interface Props {
 type StudentRow = {
   id: string;
   name: string;
+  admissionNo: string;
   classId: number;
 };
 
@@ -148,8 +149,9 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
         historyParams.append("classId", queryClassId.toString());
 
         try {
-          const historyRes = await fetch(
-            `/api/v1/tenants/${schoolId}/attendance?${historyParams.toString()}`,
+          const historyRes = await tenantFetch(
+            schoolId,
+            `/attendance?${historyParams.toString()}`
           );
 
           if (historyRes.ok) {
@@ -169,16 +171,15 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
       // 🔹 Initialize Attendance State
       const initialAttendance: Record<string, boolean> = {};
 
+
+
       studentsData.forEach((s) => {
-        initialAttendance[s.id] =
-          s.id in existingMap ? existingMap[s.id] : true;
+        initialAttendance[s.id] = existingMap[s.id] ?? true;
       });
 
       setAttendance(initialAttendance);
 
-      const isEveryoneAbsent = Object.values(initialAttendance).every(
-        (val) => val === false,
-      );
+      const isEveryoneAbsent = students.every((s) => attendance[s.id] === false);
 
       setAllAbsent(isEveryoneAbsent);
     } catch (error) {
@@ -196,11 +197,13 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
   // 1. Filter Logic: Runs on the ENTIRE list first
   const filteredStudents = useMemo(() => {
     if (!searchQuery) return students;
+
     const lowerQuery = searchQuery.toLowerCase();
+
     return students.filter(
       (s) =>
         s.name.toLowerCase().includes(lowerQuery) ||
-        s.id.toString().includes(lowerQuery),
+        s.admissionNo.toLowerCase().includes(lowerQuery)
     );
   }, [students, searchQuery]);
 
@@ -274,6 +277,7 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
 
     const payload = validStudents.map((s) => ({
       studentId: s.id,
+      admissionNo: s.admissionNo,
       classId: s.classId,
       date: data.date,
       present: attendance[s.id] ?? true,
@@ -499,7 +503,7 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
                       {s.name}
                     </p>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                      ID: {s.id}
+                      ID: {s.admissionNo}
                     </p>
                   </div>
 

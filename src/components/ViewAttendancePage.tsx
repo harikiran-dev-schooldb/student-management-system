@@ -15,8 +15,7 @@ import {
   Loader2,
   Users,
 } from "lucide-react";
-import { AttendanceRangeResponse, AttendanceResponse } from "../../types";
-import { useParams } from "next/navigation";
+import {  AttendanceResponse } from "../../types";
 import { tenantFetch } from "@/lib/tenantFetch";
 import { useSchoolSlug } from "./hooks/getschool";
 
@@ -35,11 +34,10 @@ const getStudentClassName = (student: any) => {
 // --- Reusable Components for Consistency ---
 const StatusBadge = ({ present }: { present: boolean }) => (
   <span
-    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
-      present
+    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${present
         ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20"
         : "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20"
-    }`}
+      }`}
   >
     {present ? "Present" : "Absent"}
   </span>
@@ -164,7 +162,7 @@ export default function ViewAttendancePage({ role, teacherClassId }: Props) {
 
   const studentMap = useMemo(() => {
     const map = new Map();
-    records.students.forEach((s) => map.set(s.id, s));
+    (records.students ?? []).forEach((s) => map.set(s.id, s));
     return map;
   }, [records.students]);
 
@@ -330,10 +328,9 @@ export default function ViewAttendancePage({ role, teacherClassId }: Props) {
               onClick={fetchAttendance}
               disabled={loading}
               className={`w-full h-10 inline-flex items-center justify-center gap-2 rounded-lg font-medium text-white transition-all
-                ${
-                  loading
-                    ? "bg-indigo-400 cursor-not-allowed"
-                    : "bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] shadow-sm hover:shadow"
+                ${loading
+                  ? "bg-indigo-400 cursor-not-allowed"
+                  : "bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] shadow-sm hover:shadow"
                 }`}
             >
               {loading ? (

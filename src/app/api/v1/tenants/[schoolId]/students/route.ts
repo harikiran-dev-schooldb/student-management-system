@@ -115,6 +115,7 @@ export async function GET(
 
     const result = students.map((s) => ({
       id: s.id,
+      admissionNo: s.admissionNo,
       name: s.name,
       classId: s.enrollments?.[0]?.class?.id ?? null,
       className: s.enrollments?.[0]?.class?.name ?? null,

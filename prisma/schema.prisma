@@ -226,17 +226,17 @@ model Event {
 }
 
 model Exam {
-  id                Int                @id @default(autoincrement())
-  title             String
+  id    Int    @id @default(autoincrement())
+  title String
 
   academicYearId Int
-  academicYear      AcademicYear       @relation(fields: [academicYearId], references: [id])
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id])
 
   examGradeSubjects ExamGradeSubject[]
   results           Result[]
 
-  schoolId          String
-  school            SchoolInfo         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolId String
+  school   SchoolInfo @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@unique([title, academicYearId, schoolId])
   @@index([schoolId])
@@ -244,25 +244,25 @@ model Exam {
 }
 
 model ExamGradeSubject {
-  id             Int          @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  examId         Int
-  gradeId        Int
-  subjectId      Int
+  examId    Int
+  gradeId   Int
+  subjectId Int
 
-  date           DateTime
-  startTime      String
-  maxMarks       Int
+  date      DateTime
+  startTime String
+  maxMarks  Int
 
-  exam           Exam         @relation(fields: [examId], references: [id], onDelete: Cascade)
-  grade          Grade        @relation(fields: [gradeId], references: [id], onDelete: Cascade)
-  subject        Subject      @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  exam    Exam    @relation(fields: [examId], references: [id], onDelete: Cascade)
+  grade   Grade   @relation(fields: [gradeId], references: [id], onDelete: Cascade)
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
 
   academicYearId Int
   academicYear   AcademicYear @relation(fields: [academicYearId], references: [id])
 
-  schoolId       String
-  school         SchoolInfo   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolId String
+  school   SchoolInfo @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@unique([examId, gradeId, subjectId, academicYearId, schoolId])
   @@index([schoolId])
@@ -272,28 +272,27 @@ model ExamGradeSubject {
 }
 
 model Result {
-  id             Int          @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  marks          Float
+  marks Float
 
-  studentId      String
-  examId         Int
-  subjectId      Int
+  studentId String
+  examId    Int
+  subjectId Int
 
   academicYearId Int
   academicYear   AcademicYear @relation(fields: [academicYearId], references: [id])
 
-  createdAt      DateTime     @default(now())
+  createdAt DateTime @default(now())
 
-  exam           Exam         @relation(fields: [examId], references: [id], onDelete: Cascade)
-  student        Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  subject        Subject      @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  exam    Exam    @relation(fields: [examId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
 
-  schoolId       String
-  school         SchoolInfo   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolId String
+  school   SchoolInfo @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@unique([studentId, examId, subjectId, academicYearId, schoolId])
-
   @@index([examId, schoolId, studentId])
   @@index([academicYearId])
 }
@@ -371,8 +370,8 @@ model Homework {
 }
 
 model Student {
-  id String @id @default(cuid()) 
-  admissionNo String?
+  id            String        @id @default(cuid())
+  admissionNo   String?
   username      String
   name          String
   motherName    String?
@@ -440,7 +439,7 @@ model Subject {
 }
 
 model Teacher {
-  id String @id @default(cuid())
+  id         String     @id @default(cuid())
   username   String
   name       String
   parentName String?
@@ -520,9 +519,9 @@ model SubjectTeacher {
 
   @@id([subjectId, teacherId, classId, schoolId])
   @@index([schoolId])
-@@index([teacherId, schoolId])
-@@index([classId, schoolId])
-@@index([subjectId, schoolId])
+  @@index([teacherId, schoolId])
+  @@index([classId, schoolId])
+  @@index([subjectId, schoolId])
 }
 
 model FeeStructure {
@@ -549,9 +548,9 @@ model FeeTransaction {
   studentId       String
   studentFeesId   Int
   term            Term
-  amount          Decimal @db.Decimal(12,2)      @default(0)
-  discountAmount  Decimal @db.Decimal(12,2)      @default(0)
-  fineAmount      Decimal @db.Decimal(12,2)      @default(0)
+  amount          Decimal      @default(0) @db.Decimal(12, 2)
+  discountAmount  Decimal      @default(0) @db.Decimal(12, 2)
+  fineAmount      Decimal      @default(0) @db.Decimal(12, 2)
   receiptDate     DateTime
   receivedDate    DateTime?    @default(now())
   receiptNo       String
@@ -570,15 +569,14 @@ model FeeTransaction {
   schoolId    String
   school      SchoolInfo  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
+  @@unique([receiptNo, schoolId])
   @@index([schoolId])
   @@index([studentFeesId])
   @@index([schoolId, receiptDate])
-  @@unique([receiptNo, schoolId])
   @@index([academicYearId, receiptDate])
   @@index([studentId, academicYearId])
   @@index([studentId, term])
-
-@@index([schoolId, studentId, receiptDate])
+  @@index([schoolId, studentId, receiptDate])
 }
 
 model StudentFees {
@@ -616,12 +614,12 @@ model StudentTotalFees {
   studentId String
   schoolId  String
 
-  totalPaidAmount     Decimal @db.Decimal(12,2) @default(0)
-  totalDiscountAmount Decimal @db.Decimal(12,2) @default(0)
-  totalFineAmount     Decimal @db.Decimal(12,2) @default(0)
-  totalAbacusAmount   Decimal @db.Decimal(12,2) @default(0)
-  totalFeeAmount      Decimal @db.Decimal(12,2) @default(0)
-  dueAmount           Decimal @db.Decimal(12,2) @default(0)
+  totalPaidAmount     Decimal @default(0) @db.Decimal(12, 2)
+  totalDiscountAmount Decimal @default(0) @db.Decimal(12, 2)
+  totalFineAmount     Decimal @default(0) @db.Decimal(12, 2)
+  totalAbacusAmount   Decimal @default(0) @db.Decimal(12, 2)
+  totalFeeAmount      Decimal @default(0) @db.Decimal(12, 2)
+  dueAmount           Decimal @default(0) @db.Decimal(12, 2)
 
   student Student    @relation(fields: [studentId], references: [id])
   school  SchoolInfo @relation(fields: [schoolId], references: [id], onDelete: Cascade)
@@ -665,10 +663,10 @@ model CancelledReceipt {
   cancelledBy       String? // Optional: name or user ID of admin who cancelled
   reason            String? // Optional: why it was cancelled
 
-  cancelledAmount   Decimal @db.Decimal(12,2)    @default(0)
-  cancelledDiscount Decimal @db.Decimal(12,2)    @default(0)
-  cancelledFine     Decimal @db.Decimal(12,2)    @default(0)
-  cancelledTotal    Decimal @db.Decimal(12,2)    @default(0) // can also be computed as sum of above
+  cancelledAmount   Decimal    @default(0) @db.Decimal(12, 2)
+  cancelledDiscount Decimal    @default(0) @db.Decimal(12, 2)
+  cancelledFine     Decimal    @default(0) @db.Decimal(12, 2)
+  cancelledTotal    Decimal    @default(0) @db.Decimal(12, 2) // can also be computed as sum of above
   schoolId          String
   school            SchoolInfo @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
@@ -705,11 +703,11 @@ model Profile {
   clerk_id String? @unique
   phone    String?
 
-  users        LinkedUser[]
-  activeUserId String?      @unique
-  activeUser   LinkedUser?  @relation("ActiveUser", fields: [activeUserId], references: [id])
+  users LinkedUser[] @relation("ProfileUsers")
 
-  // Opposite sides for Admin, Student, Teacher
+  activeUserId String?
+  activeUser   LinkedUser? @relation("ActiveUser", fields: [activeUserId], references: [id])
+
   admin   Admin[]
   student Student[]
   teacher Teacher[]
@@ -719,13 +717,15 @@ model Profile {
 }
 
 model LinkedUser {
-  id        String  @id @default(cuid())
-  username  String
-  role      String
-  profileId String
-  profile   Profile @relation(fields: [profileId], references: [id])
+  id       String @id @default(cuid())
+  username String
+  role     String
 
-  activeFor Profile? @relation("ActiveUser")
+  profileId String
+  profile   Profile @relation("ProfileUsers", fields: [profileId], references: [id])
+
+  // ⬇️ required opposite side
+  activeFor Profile[] @relation("ActiveUser")
 
   schoolId String
   school   SchoolInfo @relation(fields: [schoolId], references: [id], onDelete: Cascade)
@@ -741,7 +741,7 @@ model LinkedUser {
 model FeePayment {
   id Int @id @default(autoincrement())
 
-  amount   Decimal @db.Decimal(12,2)
+  amount   Decimal @db.Decimal(12, 2)
   currency String  @default("INR")
 
   paymentDate DateTime @default(now())
@@ -787,29 +787,29 @@ model StudentEnrollment {
 }
 
 model ReceiptSequence {
-  id              Int      @id @default(autoincrement())
-  schoolId        String
-  academicYearId  Int
-  currentNo       Int      @default(0)
-  updatedAt       DateTime @updatedAt
+  id             Int      @id @default(autoincrement())
+  schoolId       String
+  academicYearId Int
+  currentNo      Int      @default(0)
+  updatedAt      DateTime @updatedAt
 
-  school SchoolInfo   @relation(fields: [schoolId], references: [id])
+  school       SchoolInfo   @relation(fields: [schoolId], references: [id])
   academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
 
   @@unique([schoolId, academicYearId])
 }
 
 model IdentityJob {
-  id        String   @id @default(uuid())
-  username  String
-  phone     String
-  name      String
-  role      String
-  schoolId  String
+  id       String @id @default(uuid())
+  username String
+  phone    String
+  name     String
+  role     String
+  schoolId String
 
-  status    String   @default("pending") // pending | processing | done | failed
-  attempts  Int      @default(0)
-  error     String?
+  status   String  @default("pending") // pending | processing | done | failed
+  attempts Int     @default(0)
+  error    String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -831,7 +831,7 @@ model SmsTemplate {
 }
 
 model AcademicYear {
-  id        Int   @id @default(autoincrement())
+  id        Int      @id @default(autoincrement())
   name      String // "2025-2026"
   startDate DateTime
   endDate   DateTime
