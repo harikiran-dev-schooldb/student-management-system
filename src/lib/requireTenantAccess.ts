@@ -8,6 +8,7 @@ export async function requireTenantAccess(): Promise<TenantAccess> {
   const { userId } = await auth();
 
   if (!userId) {
+    console.log("No Clerk user found");
     throw new Error("Unauthorized");
   }
 
@@ -34,7 +35,6 @@ export async function requireTenantAccess(): Promise<TenantAccess> {
     profileId: profile.id,
   };
 
-  /* ---------------- STUDENT ---------------- */
   /* ---------------- STUDENT ---------------- */
   if (activeUser.role === "student") {
     const student = await prisma.student.findFirst({

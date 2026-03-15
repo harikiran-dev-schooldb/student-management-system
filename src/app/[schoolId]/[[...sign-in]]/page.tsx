@@ -112,7 +112,8 @@ export default function Page() {
 
   useEffect(() => {
     const resolveRole = async () => {
-      if (!isSignedIn) return;
+      if (hasRedirected) return;
+      setHasRedirected(true);
 
       try {
         const res = await fetch(
@@ -154,64 +155,102 @@ export default function Page() {
     else localStorage.removeItem("rememberedPhone");
   }, [phoneNumber, rememberMe]);
 
+
   /* ---------------- Handlers ---------------- */
   const handleSendOTP = async () => {
-    if (!isSignInLoaded || !signIn) return;
+    if (phoneNumber.length !== 10) {
+      toast.error("Enter valid phone number");
+      return;
+    }
+
+    console.log({
+      isSignInLoaded,
+      signIn,
+      setActive
+    })
+
     try {
       setIsSending(true);
-      const result = await signIn.create({
-        identifier: `+91${phoneNumber}`,
-        strategy: "phone_code",
-      });
-      if (result.status === "needs_first_factor") {
-        setPendingVerification(true);
-        setResendTimer(30);
-        toast.success("OTP sent to your phone.");
-      } else {
-        throw new Error("OTP generation failed.");
+
+      const res = await fetch(
+        `/api/v1/tenants/${schoolId}/auth/send-otp`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            phone: phoneNumber,
+          }),
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error);
       }
+
+      setPendingVerification(true);
+      setResendTimer(30);
+
+      toast.success("OTP sent");
     } catch (err: any) {
-      toast.error(err?.message || "Failed to send OTP.");
+      toast.error(err.message);
     } finally {
       setIsSending(false);
     }
   };
 
+  if (!isSignInLoaded) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Spinner />
+      </div>
+    );
+  }
+
   const handleSignIn = async () => {
-    if (!isSignInLoaded || !signIn) return;
+
+
     try {
       setIsSending(true);
 
-      if (loginMethod === "password") {
-        const result = await signIn.create({
-          identifier: `+91${phoneNumber}`,
-          password,
-        });
-        if (result.status === "complete") {
-          await setActive({ session: result.createdSessionId });
-          // ❌ REMOVED: router.refresh() - This was conflicting with the redirect
-          return;
+      const res = await fetch(
+        `/api/v1/tenants/${schoolId}/auth/verify-otp`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            phone: phoneNumber,
+            otp: otpCode,
+          }),
         }
-        toast.error("Invalid credentials.");
-        return;
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error);
       }
 
-      if (!pendingVerification) {
-        toast.error("Please request an OTP first.");
-        return;
-      }
-      const result = await signIn.attemptFirstFactor({
-        strategy: "phone_code",
-        code: otpCode,
+      const result = await signIn.create({
+        strategy: "ticket",
+        ticket: data.token,
       });
+
       if (result.status === "complete") {
-        await setActive({ session: result.createdSessionId });
-        // ❌ REMOVED: router.refresh() - This was conflicting with the redirect
-        return;
+        await setActive({
+          session: result.createdSessionId,
+        });
+
+        router.replace(`/${schoolId}`);
       }
-      toast.error("Invalid OTP.");
+
     } catch (err: any) {
-      toast.error(err?.message || "Sign-in failed.");
+      toast.error(err.message);
     } finally {
       setIsSending(false);
     }
@@ -286,9 +325,8 @@ export default function Page() {
             {/* Inputs Container */}
             <motion.div
               layout
-              className={`relative overflow-hidden ${
-                loginMethod === "otp" ? "min-h-0" : "min-h-[140px]"
-              }`}
+              className={`relative overflow-hidden ${loginMethod === "otp" ? "min-h-0" : "min-h-[140px]"
+                }`}
             >
               <AnimatePresence mode="wait">
                 {loginMethod === "password" ? (
@@ -346,8 +384,8 @@ export default function Page() {
                 {loginMethod === "password"
                   ? "Sign In"
                   : pendingVerification
-                  ? "Verify & Login"
-                  : "Send OTP"}
+                    ? "Verify & Login"
+                    : "Send OTP"}
                 {!isSending && (
                   <ChevronRight
                     size={16}
@@ -453,11 +491,10 @@ export default function Page() {
               <button
                 key={idx}
                 onClick={() => setCurrentFeature(idx)}
-                className={`h-1.5 rounded-full transition-all duration-500 ${
-                  idx === currentFeature
-                    ? "w-12 bg-white"
-                    : "w-2 bg-zinc-800 hover:bg-zinc-700"
-                }`}
+                className={`h-1.5 rounded-full transition-all duration-500 ${idx === currentFeature
+                  ? "w-12 bg-white"
+                  : "w-2 bg-zinc-800 hover:bg-zinc-700"
+                  }`}
               />
             ))}
           </div>

@@ -61,11 +61,12 @@ export default function DailyCollectionReport() {
   const [page, setPage] = useState(1);
   const [rowsPerPage] = useState(25);
 
-  const searchParams = useSearchParams();
   const router = useRouter();
 
-  const [from, setFrom] = useState(searchParams.get("from") || "");
-  const [to, setTo] = useState(searchParams.get("to") || "");
+  const today = new Date().toISOString().split("T")[0];
+
+  const [from, setFrom] = useState(today);
+  const [to, setTo] = useState(today);
 
   /* ---------------- FETCH ---------------- */
 

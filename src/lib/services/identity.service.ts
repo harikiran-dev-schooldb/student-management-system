@@ -23,14 +23,8 @@ export async function createOrUpdateIdentity({
 
   const client = await clerkClient();
 
-  /* ---------- Normalize Phone ---------- */
-
-  const normalizedPhone = phone.startsWith("+")
-    ? phone
-    : `+91${phone}`;
-
   /* =====================================================
-     1️⃣ Find profile by phone
+     1️⃣ Find profile by phone (parent identity)
   ===================================================== */
 
   let profile = await prisma.profile.findFirst({
@@ -40,88 +34,80 @@ export async function createOrUpdateIdentity({
   let clerkId: string;
 
   /* =====================================================
-     2️⃣ Update existing Clerk user
+     2️⃣ Existing parent (reuse Clerk user)
   ===================================================== */
 
   if (profile?.clerk_id) {
 
     clerkId = profile.clerk_id;
 
-    const clerkUser = await client.users.getUser(clerkId);
+    try {
 
-    const currentPhone =
-      clerkUser.phoneNumbers.find(
-        (p) => p.id === clerkUser.primaryPhoneNumberId
-      )?.phoneNumber ?? null;
+      await client.users.getUser(clerkId);
 
-    /* ---------- Update phone if changed ---------- */
+      await client.users.updateUser(clerkId, {
+        firstName: name,
+        publicMetadata: {
+          role,
+          schoolId,
+        },
+      });
 
-    if (currentPhone !== normalizedPhone) {
+    } catch (err: any) {
 
-      try {
+      // Clerk user no longer exists → recreate
+      if (err.status === 404) {
 
-        const newPhone = await client.phoneNumbers.createPhoneNumber({
-          userId: clerkId,
-          phoneNumber: normalizedPhone,
+        const newUser = await client.users.createUser({
+          username: `s${phone}`,
+          password: password ?? phone,
+          firstName: name,
+          skipPasswordChecks: true,
+          publicMetadata: {
+            role,
+            schoolId,
+          },
         });
 
-        await client.phoneNumbers.updatePhoneNumber(newPhone.id, {
-          verified: true,
+        clerkId = newUser.id;
+
+        await prisma.profile.update({
+          where: { id: profile.id },
+          data: { clerk_id: clerkId },
         });
 
-        await client.users.updateUser(clerkId, {
-          primaryPhoneNumberID: newPhone.id,
-        });
-
-      } catch (err: any) {
-
-        console.error("Clerk phone update error:", err.errors || err);
-
-        if (err.errors?.[0]?.code === "form_identifier_exists") {
-          throw new Error("Phone number already exists in Clerk");
-        }
-
+      } else {
         throw err;
       }
+
     }
-
-    /* ---------- Update name ---------- */
-
-    await client.users.updateUser(clerkId, {
-      firstName: name,
-      publicMetadata: {
-        role,
-        schoolId,
-      },
-    });
-
   } else {
 
     /* =====================================================
-       3️⃣ Create Clerk user
+       3️⃣ Check if Clerk user exists by username (phone)
     ===================================================== */
 
     let clerkUser;
 
     const existingClerk = await client.users.getUserList({
-      phoneNumber: [normalizedPhone],
+      username: [phone],
     });
 
     if (existingClerk.data.length > 0) {
 
-      // phone already exists in Clerk
       clerkUser = existingClerk.data[0];
 
       console.log("Reusing existing Clerk user:", clerkUser.id);
 
     } else {
 
-      // create new Clerk user
+      /* ---------- Create new Clerk user ---------- */
+
       clerkUser = await client.users.createUser({
-        firstName: name,
-        password: password ?? `Stu@${phone}`,
-        phoneNumber: [normalizedPhone],
+        username: phone, // phone used as login username
+        password: password ?? phone,
         skipPasswordChecks: true,
+        firstName: name,
         publicMetadata: {
           role,
           schoolId,
@@ -132,8 +118,9 @@ export async function createOrUpdateIdentity({
 
     clerkId = clerkUser.id;
 
-
-    /* ---------- Create or update profile ---------- */
+    /* =====================================================
+       4️⃣ Create parent profile
+    ===================================================== */
 
     if (profile) {
 
@@ -157,7 +144,7 @@ export async function createOrUpdateIdentity({
   }
 
   /* =====================================================
-     4️⃣ Link user to school
+     5️⃣ Link user to school
   ===================================================== */
 
   const linkedUser = await prisma.linkedUser.upsert({
@@ -180,7 +167,7 @@ export async function createOrUpdateIdentity({
   });
 
   /* =====================================================
-     5️⃣ Set active role
+     6️⃣ Set active role
   ===================================================== */
 
   await prisma.profile.update({
@@ -191,7 +178,7 @@ export async function createOrUpdateIdentity({
   });
 
   /* =====================================================
-     6️⃣ Return identity
+     7️⃣ Return identity
   ===================================================== */
 
   return {
