@@ -2,9 +2,8 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
-import { resolveSchoolId } from "@/lib/resolveSchool";
-import { requireTenantAccess } from "@/lib/requireTenantAccess";
 import { tenantPrisma } from "@/lib/tenant-prisma";
+import { tenantGuard, tenantSlugGuard } from "@/lib/tenantGuard";
 
 export async function POST(
   req: NextRequest,
@@ -13,15 +12,14 @@ export async function POST(
   try {
     const { schoolId: slug } = await params;
 
-    const schoolId = await resolveSchoolId(slug);
-    const access = await requireTenantAccess();
+    const { access, error } = await tenantSlugGuard(slug);
+    if (error) return error;
 
-    if (
-      access.schoolId !== schoolId ||
-      !["admin", "teacher"].includes(access.role)
-    ) {
+    if (!["admin", "teacher"].includes(access.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    const schoolId = access.schoolId;
 
     const db = tenantPrisma(schoolId);
 
@@ -186,12 +184,14 @@ export async function GET(
   try {
     const { schoolId: slug } = await params;
 
-    const schoolId = await resolveSchoolId(slug);
-    const access = await requireTenantAccess();
+    const { access, error } = await tenantSlugGuard(slug);
+    if (error) return error;
 
-    if (access.schoolId !== schoolId) {
+    if (!["admin", "teacher"].includes(access.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    const schoolId = access.schoolId;
 
     const db = tenantPrisma(schoolId);
 

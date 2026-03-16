@@ -87,7 +87,6 @@ const AdminForm = ({
       const payload = {
         username: data.username,
         name: data.name,
-        password: data.password,
         parentName: data.parentName ?? null,
         gender: data.gender,
         email: data.email ?? null,
@@ -153,13 +152,6 @@ const AdminForm = ({
           name="email"
           register={register}
           error={errors?.email}
-        />
-        <InputField
-          label="Password"
-          name="password"
-          type="password"
-          register={register}
-          error={errors?.password}
         />
       </div>
 

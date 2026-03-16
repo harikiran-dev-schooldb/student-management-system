@@ -3,8 +3,8 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { homeworkSchema } from "@/lib/formValidationSchemas";
-import { resolveSchoolId } from "@/lib/resolveSchool";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
+import { tenantSlugGuard } from "@/lib/tenantGuard";
 
 /* ===================================================
    PUT → Update Homework (Single or Group)
@@ -15,7 +15,10 @@ export async function PUT(
 ) {
   try {
     const { schoolId: slug, id: homeworkIdStr } = await params;
-    const schoolId = await resolveSchoolId(slug);
+    const { access, error } = await tenantSlugGuard(slug);
+    if (error) return error;
+
+    const schoolId = access.schoolId;
 
     const user = await fetchUserInfo(slug);
     if (!user.userId || !["admin", "teacher"].includes(user.role!)) {
@@ -103,9 +106,12 @@ export async function DELETE(
 ) {
   try {
     const { schoolId: slug, id: homeworkIdStr } = await params;
-    const schoolId = await resolveSchoolId(slug);
+    const { access, error } = await tenantSlugGuard(slug);
+    if (error) return error;
 
-    const user = await fetchUserInfo(schoolId);
+    const schoolId = access.schoolId;
+
+    const user = await fetchUserInfo(slug);
     if (!user.userId || !["admin", "teacher"].includes(user.role!)) {
       return NextResponse.json(
         { error: "Unauthorized" },

@@ -3,29 +3,30 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { homeworkSchema } from "@/lib/formValidationSchemas";
-import { resolveSchoolId } from "@/lib/resolveSchool";
-import { fetchUserInfo } from "@/lib/utils/server-utils";
 import { v4 as uuidv4 } from "uuid";
+import { tenantSlugGuard } from "@/lib/tenantGuard";
 
 /* ===================================================
    POST  → Create Homework (Single or Grade Bulk)
 =================================================== */
 export async function POST(
   req: NextRequest,
-  { params }: { params: Promise<{ schoolId: string;}> },
+  { params }: { params: Promise<{ schoolId: string }> },
 ) {
   try {
     const { schoolId: slug } = await params;
-    const schoolId = await resolveSchoolId(slug);
 
-    const user = await fetchUserInfo(slug);
+    const { access, error } = await tenantSlugGuard(slug);
+    if (error) return error;
 
-    if (!user.userId || !["admin", "teacher"].includes(user.role!)) {
+    if (!["admin", "teacher"].includes(access.role)) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 403 }
       );
     }
+
+    const schoolId = access.schoolId;
 
     const body = await req.json();
     const parsed = homeworkSchema.safeParse(body);
@@ -40,6 +41,7 @@ export async function POST(
     const { description, gradeId, classId, date } = parsed.data;
 
     const parsedDate = new Date(date);
+
     if (isNaN(parsedDate.getTime())) {
       return NextResponse.json(
         { error: "Invalid date" },
@@ -47,7 +49,8 @@ export async function POST(
       );
     }
 
-    /* ---------------- Validate Grade ---------------- */
+    /* -------- Validate Grade -------- */
+
     const grade = await prisma.grade.findFirst({
       where: { id: gradeId, schoolId },
     });
@@ -59,10 +62,10 @@ export async function POST(
       );
     }
 
-    /* ----------------------------------
-       SINGLE CLASS HOMEWORK
-    -----------------------------------*/
+    /* -------- SINGLE CLASS HOMEWORK -------- */
+
     if (classId) {
+
       const cls = await prisma.class.findFirst({
         where: {
           id: classId,
@@ -78,6 +81,28 @@ export async function POST(
         );
       }
 
+      /* --- Teacher restriction --- */
+
+      if (access.role === "teacher") {
+
+        const allowed = await prisma.teacherClassAssignment.findFirst({
+          where: {
+            classId,
+            schoolId,
+            teacher: {
+              linkedUserId: access.profileId,
+            },
+          },
+        });
+
+        if (!allowed) {
+          return NextResponse.json(
+            { error: "Teacher not assigned to this class" },
+            { status: 403 }
+          );
+        }
+      }
+
       const hw = await prisma.homework.create({
         data: {
           description,
@@ -91,31 +116,55 @@ export async function POST(
       return NextResponse.json({ success: true, data: hw });
     }
 
-    /* ----------------------------------
-       BULK CREATE FOR GRADE
-    -----------------------------------*/
+    /* -------- BULK CREATE FOR GRADE -------- */
+
     const groupId = uuidv4();
 
     await prisma.$transaction(async (tx) => {
-      const classes = await tx.class.findMany({
-        where: { gradeId, schoolId },
-        select: { id: true },
-      });
+
+      let classes;
+
+      if (access.role === "teacher") {
+
+        classes = await tx.teacherClassAssignment.findMany({
+          where: {
+            teacher: {
+              linkedUserId: access.profileId,
+            },
+            schoolId,
+            class: {
+              gradeId,
+            },
+          },
+          select: {
+            classId: true,
+          },
+        });
+
+      } else {
+
+        classes = await tx.class.findMany({
+          where: { gradeId, schoolId },
+          select: { id: true },
+        });
+
+      }
 
       if (!classes.length) {
         throw new Error("No classes found for this grade");
       }
 
       await tx.homework.createMany({
-        data: classes.map((cls) => ({
+        data: classes.map((cls: any) => ({
           description,
           gradeId,
-          classId: cls.id,
+          classId: cls.classId ?? cls.id,
           date: parsedDate,
           groupId,
           schoolId,
         })),
       });
+
     });
 
     return NextResponse.json({
@@ -124,6 +173,7 @@ export async function POST(
     });
 
   } catch (err: any) {
+
     console.error("Homework POST error:", err);
 
     return NextResponse.json(
@@ -138,32 +188,51 @@ export async function POST(
 =================================================== */
 export async function GET(
   req: NextRequest,
-  { params }: { params: Promise<{ schoolId: string; }> },
+  { params }: { params: Promise<{ schoolId: string }> },
 ) {
   try {
     const { schoolId: slug } = await params;
-    const schoolId = await resolveSchoolId(slug);
+
+    const { access, error } = await tenantSlugGuard(slug);
+    if (error) return error;
+
+    const schoolId = access.schoolId;
 
     const { searchParams } = new URL(req.url);
+
     const classId = searchParams.get("classId");
     const gradeId = searchParams.get("gradeId");
     const date = searchParams.get("date");
 
     const where: any = { schoolId };
 
-    if (classId) {
-      where.classId = Number(classId);
-    }
-
-    if (gradeId) {
-      where.gradeId = Number(gradeId);
-    }
+    if (classId) where.classId = Number(classId);
+    if (gradeId) where.gradeId = Number(gradeId);
 
     if (date) {
       const parsed = new Date(date);
       if (!isNaN(parsed.getTime())) {
         where.date = parsed;
       }
+    }
+
+    /* --- Teacher restriction --- */
+
+    if (access.role === "teacher") {
+
+      const classes = await prisma.teacherClassAssignment.findMany({
+        where: {
+          teacher: {
+            linkedUserId: access.profileId,
+          },
+          schoolId,
+        },
+        select: { classId: true },
+      });
+
+      where.classId = {
+        in: classes.map((c) => c.classId),
+      };
     }
 
     const homeworks = await prisma.homework.findMany({
@@ -182,6 +251,7 @@ export async function GET(
     return NextResponse.json(homeworks);
 
   } catch (error) {
+
     console.error("Homework GET error:", error);
 
     return NextResponse.json(

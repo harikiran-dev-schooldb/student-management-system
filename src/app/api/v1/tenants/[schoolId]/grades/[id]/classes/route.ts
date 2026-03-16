@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { resolveSchoolId } from "@/lib/resolveSchool";
-import { requireTenantAccess } from "@/lib/requireTenantAccess";
+import { tenantSlugGuard } from "@/lib/tenantGuard";
 
 export async function GET(
   req: NextRequest,
@@ -11,14 +10,12 @@ export async function GET(
 
     const { schoolId: slug, id: gradeIdStr } = await params;
     /* 🔐 Tenant Access */
-    const access = await requireTenantAccess();
+    const { access, error } = await tenantSlugGuard(slug);
 
-    if (access.schoolSlug !== slug) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    if (error) return error;
 
     /* Resolve internal schoolId */
-    const schoolId = await resolveSchoolId(slug);
+    const schoolId = access.schoolId;
 
     const gradeId = Number(gradeIdStr);
 
@@ -28,9 +25,9 @@ export async function GET(
         gradeId,
         schoolId,
       },
-      orderBy: {
-        section: "asc",
-      },
+      orderBy: [
+        { name: "asc" },
+      ],
       select: {
         id: true,
         name: true,

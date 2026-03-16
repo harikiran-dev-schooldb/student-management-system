@@ -1,46 +1,35 @@
 import prisma from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
-import { resolveSchoolId } from "@/lib/resolveSchool";
-import { fetchUserInfo } from "@/lib/utils/server-utils";
-
-export const runtime = "nodejs";
+import { tenantSlugGuard } from "@/lib/tenantGuard";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: Promise<{ schoolId: string; id: string }> },
+  { params }: { params: Promise<{ schoolId: string, id: string }> },
 ) {
   try {
-    /* -----------------------------
-       1️⃣ Resolve Tenant
-    ------------------------------ */
-    const { schoolId: slug, id: gradeId } = await params;
-    const schoolId = await resolveSchoolId(slug);
+    /* ================================
+       Resolve Tenant
+    ================================= */
 
-    if (!gradeId || gradeId.trim() === "") {
+    const { schoolId: slug, id } = await params;
+
+    const { access, error } = await tenantSlugGuard(slug);
+    if (error) return error;
+
+    const schoolId = access.schoolId;
+    const gradeId = Number(id);
+
+    if (isNaN(gradeId)) {
       return NextResponse.json(
         { error: "Invalid grade ID" },
         { status: 400 }
       );
     }
 
-    /* -----------------------------
-       2️⃣ Authenticate
-    ------------------------------ */
-    const user = await fetchUserInfo(slug);
-
-    if (!user || !user.role) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-
-    /* -----------------------------
-       3️⃣ Validate Grade (Tenant Safe)
-    ------------------------------ */
+    /* 1️⃣ Validate Grade (Tenant Safe) */
     const grade = await prisma.grade.findFirst({
       where: {
-        id: Number(gradeId),
+        id: gradeId,
         schoolId,
       },
       select: { id: true },
@@ -53,23 +42,18 @@ export async function GET(
       );
     }
 
-    /* -----------------------------
-       4️⃣ Fetch Subjects
-    ------------------------------ */
+    /* 2️⃣ Fetch Subjects */
     const subjects = await prisma.subject.findMany({
       where: {
         schoolId,
         grades: {
-          some: { id: Number(gradeId) },
+          some: { id: gradeId },
         },
       },
       orderBy: { name: "asc" },
     });
 
-    return NextResponse.json(
-      { subjects },
-      { status: 200 }
-    );
+    return NextResponse.json({ subjects }, { status: 200 });
 
   } catch (error) {
     console.error("Fetch grade subjects error:", error);

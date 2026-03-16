@@ -54,6 +54,8 @@ const FEATURES = [
 export default function Page() {
   const params = useParams();
   const schoolId = params.schoolId as string;
+
+
   if (process.env.NEXT_PUBLIC_DISABLE_AUTH === "true") {
     redirect("/");
   }
@@ -158,40 +160,35 @@ export default function Page() {
 
   /* ---------------- Handlers ---------------- */
   const handleSendOTP = async () => {
-    if (phoneNumber.length !== 10) {
+    if (isSending) return;
+
+    if (!/^[6-9]\d{9}$/.test(phoneNumber)) {
       toast.error("Enter valid phone number");
       return;
     }
 
-    console.log({
-      isSignInLoaded,
-      signIn,
-      setActive
-    })
-
     try {
       setIsSending(true);
 
-      const res = await fetch(
-        `/api/v1/tenants/${schoolId}/auth/send-otp`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            phone: phoneNumber,
-          }),
-        }
-      );
+      const res = await fetch("/api/v1/public/auth/send-otp", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          phone: phoneNumber,
+          schoolId,
+        }),
+      });
 
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error);
+        throw new Error(data?.error || "Failed to send OTP");
       }
 
       setPendingVerification(true);
+      setOtpCode("");
       setResendTimer(30);
 
       toast.success("OTP sent");
@@ -211,29 +208,27 @@ export default function Page() {
   }
 
   const handleSignIn = async () => {
-
+    if (isSending) return;
 
     try {
       setIsSending(true);
 
-      const res = await fetch(
-        `/api/v1/tenants/${schoolId}/auth/verify-otp`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            phone: phoneNumber,
-            otp: otpCode,
-          }),
-        }
-      );
+      const res = await fetch("/api/v1/public/auth/verify-otp", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          phone: phoneNumber,
+          otp: otpCode,
+          schoolId,
+        }),
+      });
 
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error);
+        throw new Error(data?.error || "OTP verification failed");
       }
 
       const result = await signIn.create({
@@ -247,6 +242,8 @@ export default function Page() {
         });
 
         router.replace(`/${schoolId}`);
+      } else {
+        toast.error("Authentication failed");
       }
 
     } catch (err: any) {

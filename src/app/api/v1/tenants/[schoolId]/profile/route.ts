@@ -1,8 +1,8 @@
 export const runtime = "nodejs";
+
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { auth } from "@clerk/nextjs/server";
-import { requireTenantAccess } from "@/lib/requireTenantAccess";
+import { tenantGuard, tenantSlugGuard } from "@/lib/tenantGuard";
 
 /* =======================================================
    GET  /api/v1/tenants/[schoolId]/profile
@@ -15,24 +15,13 @@ export async function GET(
   try {
     const { schoolId: slug } = await params;
 
-    /* 🔐 Clerk Authentication */
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    /* 🔐 Tenant Validation */
-    const access = await requireTenantAccess();
-
-    if (access.schoolSlug !== slug) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const { access, error } = await tenantSlugGuard(slug);
+    if (error) return error;
 
     const schoolId = access.schoolId;
 
-    /* 🔎 Fetch Profile + Roles (Tenant Scoped) */
     const profile = await prisma.profile.findUnique({
-      where: { clerk_id: userId },
+      where: { clerk_id: access.userId },
       include: {
         users: {
           where: { schoolId },
@@ -48,7 +37,10 @@ export async function GET(
     });
 
     if (!profile) {
-      return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Profile not found" },
+        { status: 404 }
+      );
     }
 
     return NextResponse.json({
@@ -58,12 +50,13 @@ export async function GET(
       activeRoleId: profile.activeUserId,
       roles: profile.users,
     });
+
   } catch (error) {
     console.error("GET /profile error:", error);
 
     return NextResponse.json(
       { error: "Internal Server Error" },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }

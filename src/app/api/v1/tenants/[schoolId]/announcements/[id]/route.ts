@@ -3,7 +3,7 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { announcementSchema } from "@/lib/formValidationSchemas";
 import prisma from "@/lib/prisma";
-import { requireTenantAccess } from "@/lib/requireTenantAccess";
+import { tenantGuard, tenantSlugGuard } from "@/lib/tenantGuard";
 
 /* =======================================================
    PUT  /api/v1/tenants/[schoolId]/announcements/[id]
@@ -16,17 +16,9 @@ export async function PUT(
   try {
     const { schoolId: slug, id } = await params;
 
-    const access = await requireTenantAccess();
+    const { access, error } = await tenantSlugGuard(slug);
 
-    // 🔐 Tenant validation
-    if (access.schoolId !== slug) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    // 🔐 RBAC
-    if (access.role !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    if (error) return error;
 
     const parsedId = Number(id);
     if (isNaN(parsedId)) {
@@ -116,17 +108,9 @@ export async function DELETE(
   try {
     const { schoolId: slug, id } = await context.params;
 
-    const access = await requireTenantAccess();
+    const { access, error } = await tenantSlugGuard(slug);
 
-    // 🔐 Tenant validation
-    if (access.schoolId !== slug) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    // 🔐 RBAC
-    if (access.role !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    if (error) return error;
 
     const parsedId = Number(id);
     if (isNaN(parsedId)) {

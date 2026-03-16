@@ -1,15 +1,26 @@
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-import { resolveSchoolId } from "@/lib/resolveSchool";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { tenantSlugGuard } from "@/lib/tenantGuard";
 
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ schoolId: string }> },
 ) {
   const { schoolId: schoolSlug } = await params;
-  const resolvedSchoolId = await resolveSchoolId(schoolSlug);
+  const { access, error } = await tenantSlugGuard(schoolSlug);
+
+  if (error) return error;
+
+  if (!["admin", "teacher"].includes(access.role)) {
+    return NextResponse.json(
+      { error: "Forbidden" },
+      { status: 403 }
+    );
+  }
+
+  const schoolId = access.schoolId;
 
   const body = await req.json();
 
@@ -17,7 +28,7 @@ export async function POST(
     data: {
       title: body.title,
       description: body.description,
-      schoolId: resolvedSchoolId,
+      schoolId,
       assignmentGradeSubjects: {
         create: {
           gradeId: body.gradeId,
@@ -25,7 +36,7 @@ export async function POST(
           subjectId: body.subjectId,
           dueDate: new Date(body.dueDate),
           maxMarks: body.maxMarks,
-          schoolId: resolvedSchoolId,
+          schoolId,
         },
       },
     },

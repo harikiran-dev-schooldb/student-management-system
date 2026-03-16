@@ -104,12 +104,6 @@ export default clerkMiddleware(async (auth, req) => {
   }
 
   const schoolSlug = segments[0];
-  const subRoute = segments[4];
-
-  // ✅ Allow OTP routes without auth
-  if (subRoute === "auth") {
-    return NextResponse.next();
-  }
 
   // Prevent system routes from being treated as tenant
   const SYSTEM_ROUTES = ["login", "auth", "features", "demo", "platform", "pricing", "unauthorized"];

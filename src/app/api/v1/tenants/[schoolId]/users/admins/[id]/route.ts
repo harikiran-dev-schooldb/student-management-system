@@ -5,6 +5,8 @@ import { adminSchema } from "@/lib/formValidationSchemas";
 import prisma from "@/lib/prisma";
 import { clerkClient } from "@clerk/nextjs/server";
 import { requireTenantAccess } from "@/lib/requireTenantAccess";
+import { tenantGuard } from "@/lib/tenantGuard";
+import { createOrUpdateIdentity } from "@/lib/services/identity.service";
 
 /* =======================================================
    PUT  /api/v1/tenants/{schoolId}/users/admins/{id}
@@ -14,26 +16,35 @@ const client = await clerkClient();
 
 export async function PUT(
   req: NextRequest,
-  context: { params: Promise<{ id: string }> },
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    /* ---------------- PARAMS ---------------- */
+
+    /* 1️⃣ PARAMS */
+
     const { id } = await context.params;
 
-    /* ---------------- TENANT + RBAC ---------------- */
-    const access = await requireTenantAccess();
+    /* 2️⃣ VALIDATE INPUT */
+
+    const body = await req.json();
+    const data = adminSchema.parse(body);
+
+    /* 3️⃣ TENANT ACCESS */
+
+    const { access, error } = await tenantGuard();
+    if (error) return error;
 
     if (access.role !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return NextResponse.json(
+        { error: "Forbidden" },
+        { status: 403 }
+      );
     }
 
     const schoolId = access.schoolId;
 
-    /* ---------------- BODY VALIDATION ---------------- */
-    const body = await req.json();
-    const data = adminSchema.parse(body);
+    /* 4️⃣ VERIFY ADMIN EXISTS */
 
-    /* ---------------- ADMIN VALIDATION ---------------- */
     const existingAdmin = await prisma.admin.findFirst({
       where: {
         id,
@@ -41,69 +52,24 @@ export async function PUT(
       },
     });
 
-    if (!existingAdmin || !existingAdmin.clerk_id) {
+    if (!existingAdmin) {
       return NextResponse.json(
         { error: "Admin not found in this tenant" },
-        { status: 404 },
+        { status: 404 }
       );
     }
 
-    /* ---------------- CLERK UPDATE ---------------- */
+    /* 5️⃣ SYNC IDENTITY */
 
-    const rawPhone = data.phone.replace(/\D/g, "");
-    const formattedPhone = rawPhone.startsWith("91")
-      ? `+${rawPhone}`
-      : `+91${rawPhone}`;
-
-    const clerkUser = await client.users.getUser(existingAdmin.clerk_id);
-
-    // Check if already attached
-    const existingPhone = clerkUser.phoneNumbers.find(
-      (p) => p.phoneNumber === formattedPhone,
-    );
-
-    if (!existingPhone) {
-      try {
-        const newPhone = await client.phoneNumbers.createPhoneNumber({
-          userId: existingAdmin.clerk_id,
-          phoneNumber: formattedPhone,
-        });
-
-        await client.phoneNumbers.updatePhoneNumber(newPhone.id, {
-          verified: true,
-        });
-
-        await client.users.updateUser(existingAdmin.clerk_id, {
-          primaryPhoneNumberID: newPhone.id,
-        });
-      } catch (err: any) {
-        console.error("Phone creation error:", err?.errors || err);
-
-        // If phone already exists elsewhere → return 409
-        if (err.status === 422) {
-          return NextResponse.json(
-            { error: "Phone number already in use" },
-            { status: 409 },
-          );
-        }
-
-        throw err; // rethrow unexpected errors
-      }
-    }
-
-    // ✅ Never send undefined or empty password to Clerk
-    const clerkUpdatePayload: any = {
-      firstName: data.name,
+    const identity = await createOrUpdateIdentity({
       username: data.username,
-    };
+      phone: data.phone,
+      name: data.name,
+      role: "admin",
+      schoolId,
+    });
 
-    if (data.password && data.password.trim().length >= 5) {
-      clerkUpdatePayload.password = data.password;
-    }
-
-    await client.users.updateUser(existingAdmin.clerk_id, clerkUpdatePayload);
-
-    /* ---------------- DB UPDATE ---------------- */
+    /* 6️⃣ UPDATE ADMIN ENTITY */
 
     const updatedAdmin = await prisma.admin.update({
       where: { id },
@@ -116,20 +82,28 @@ export async function PUT(
         address: data.address,
         bloodType: data.bloodType,
         dob: data.dob,
-        img: data.img,
+        img: data.img ?? null,
         phone: data.phone,
+        clerk_id: identity.clerkId,
+        profileId: identity.profileId,
+        linkedUserId: identity.linkedUserId,
       },
     });
 
-    return NextResponse.json({ success: true, updatedAdmin }, { status: 200 });
+    return NextResponse.json(
+      { success: true, updatedAdmin },
+      { status: 200 }
+    );
+
   } catch (error: any) {
+
     console.error("Admin update error:", error);
 
     return NextResponse.json(
       {
         error: error?.errors || error?.message || "Internal Server Error",
       },
-      { status: error.name === "ZodError" ? 400 : 500 },
+      { status: error.name === "ZodError" ? 400 : 500 }
     );
   }
 }
@@ -140,21 +114,29 @@ export async function PUT(
 
 export async function DELETE(
   req: NextRequest,
-  context: { params: Promise<{ id: string }> },
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+
     const { id } = await context.params;
 
-    const access = await requireTenantAccess();
+    /* 1️⃣ Tenant Access */
+
+    const { access, error } = await tenantGuard();
+    if (error) return error;
 
     if (access.role !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return NextResponse.json(
+        { error: "Forbidden" },
+        { status: 403 }
+      );
     }
 
     const schoolId = access.schoolId;
 
-    // 1️⃣ Fetch admin securely
-    const admin = await prisma.admin.findUnique({
+    /* 2️⃣ Fetch admin */
+
+    const admin = await prisma.admin.findFirst({
       where: {
         id,
         schoolId,
@@ -162,37 +144,69 @@ export async function DELETE(
     });
 
     if (!admin) {
-      return NextResponse.json({ error: "Admin not found" }, { status: 404 });
-    }
-
-    // 2️⃣ Prevent deleting yourself (optional but recommended)
-    if (admin.clerk_id === access.userId) {
       return NextResponse.json(
-        { error: "You cannot delete yourself" },
-        { status: 400 },
+        { error: "Admin not found" },
+        { status: 404 }
       );
     }
 
-    // 3️⃣ Delete Clerk user first
-    if (admin.clerk_id) {
-      await client.users.deleteUser(admin.clerk_id);
+    /* 3️⃣ Prevent deleting yourself */
+
+    if (admin.clerk_id === access.userId) {
+      return NextResponse.json(
+        { error: "You cannot delete yourself" },
+        { status: 400 }
+      );
     }
 
-    // 4️⃣ Delete DB record (tenant-safe)
-    await prisma.admin.deleteMany({
+    /* 4️⃣ Validate required fields */
+
+    if (!admin.profileId || !admin.linkedUserId) {
+      return NextResponse.json(
+        { error: "Admin identity is corrupted" },
+        { status: 500 }
+      );
+    }
+
+    /* 5️⃣ Check if other roles exist */
+
+    const otherUsers = await prisma.linkedUser.findMany({
       where: {
-        id,
-        schoolId,
+        profileId: admin.profileId,
+        NOT: {
+          id: admin.linkedUserId,
+        },
       },
     });
 
+    /* 6️⃣ Delete admin entity */
+
+    await prisma.admin.delete({
+      where: { id },
+    });
+
+    /* 7️⃣ Delete linkedUser */
+
+    await prisma.linkedUser.delete({
+      where: { id: admin.linkedUserId },
+    });
+
+    /* 8️⃣ Delete Clerk user if no other roles */
+
+    if (otherUsers.length === 0 && admin.clerk_id) {
+      const client = await clerkClient();
+      await client.users.deleteUser(admin.clerk_id);
+    }
+
     return NextResponse.json({ success: true });
+
   } catch (error: any) {
+
     console.error("Delete admin error:", error);
 
     return NextResponse.json(
       { error: error.message || "Internal server error" },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }

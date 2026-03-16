@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { announcementSchema } from "@/lib/formValidationSchemas";
 import { requireTenantAccess } from "@/lib/requireTenantAccess";
+import { tenantGuard, tenantSlugGuard } from "@/lib/tenantGuard";
 
 /* =======================================================
    POST  /api/v1/tenants/[schoolId]/announcements
@@ -16,17 +17,8 @@ export async function POST(
   try {
     const { schoolId: slug } = await params;
 
-    const access = await requireTenantAccess();
-
-    // 🔐 Tenant validation
-    if (access.schoolId !== slug) {
-      return NextResponse.json({ message: "Forbidden" }, { status: 403 });
-    }
-
-    // 🔐 Role validation
-    if (access.role !== "admin") {
-      return NextResponse.json({ message: "Forbidden" }, { status: 403 });
-    }
+    const { access, error } = await tenantSlugGuard(slug);
+    if (error) { return error; }
 
     // 🔎 Ensure school exists
     const schoolExists = await prisma.schoolInfo.findUnique({
@@ -103,13 +95,8 @@ export async function GET(
   try {
     const { schoolId: slug } = await params;
 
-    const access = await requireTenantAccess();
-
-    // 🔐 Tenant validation
-    if (access.schoolId !== slug) {
-      return NextResponse.json({ message: "Forbidden" }, { status: 403 });
-    }
-
+    const { access, error } = await tenantSlugGuard(slug);
+    if (error) { return error; }
     // 🔐 Role validation
     if (!["admin", "teacher", "student"].includes(access.role)) {
       return NextResponse.json({ message: "Forbidden" }, { status: 403 });

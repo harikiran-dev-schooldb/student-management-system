@@ -3,6 +3,7 @@ import { fetchUserInfo } from "@/lib/utils/server-utils";
 import { NextRequest, NextResponse } from "next/server";
 import { resolveSchoolId, SchoolNotFoundError } from "@/lib/resolveSchool";
 import { revalidatePath } from "next/cache";
+import { getSchool } from "@/lib/server/school-cache";
 
 export const runtime = "nodejs";
 
@@ -16,20 +17,14 @@ export async function GET(
   try {
     const { schoolId: schoolSlug } = await params;
 
-    const school = await prisma.schoolInfo.findUnique({
-      where: { schoolId: schoolSlug }, // slug lookup
-      select: {
-        name: true,
-        logo: true,
-        address: true,
-        phone: true,
-        email: true,
-        website: true,
-        taxId: true,
-        receiptHeader: true,
-        receiptFooter: true,
-      },
-    });
+    if (!schoolSlug) {
+      return NextResponse.json(
+        { error: "School slug missing" },
+        { status: 400 }
+      );
+    }
+
+    const school = await getSchool(schoolSlug);
 
     if (!school) {
       return NextResponse.json(
@@ -53,7 +48,7 @@ export async function GET(
 ====================================================== */
 export async function PUT(
   req: NextRequest,
-  { params }: { params: Promise<{ schoolId: string}> }
+  { params }: { params: Promise<{ schoolId: string }> }
 ) {
   try {
     const { schoolId: schoolSlug } = await params;
@@ -73,15 +68,15 @@ export async function PUT(
     const body = await req.json();
 
     const payload = {
-      name: body.name,
-      address: body.address,
-      phone: body.phone,
-      email: body.email,
-      website: body.website,
-      logo: body.logo,
-      taxId: body.taxId,
-      receiptHeader: body.receiptHeader,
-      receiptFooter: body.receiptFooter,
+      ...(body.name && { name: body.name }),
+      ...(body.address && { address: body.address }),
+      ...(body.phone && { phone: body.phone }),
+      ...(body.email && { email: body.email }),
+      ...(body.website && { website: body.website }),
+      ...(body.logo && { logo: body.logo }),
+      ...(body.taxId && { taxId: body.taxId }),
+      ...(body.receiptHeader && { receiptHeader: body.receiptHeader }),
+      ...(body.receiptFooter && { receiptFooter: body.receiptFooter }),
     };
 
     const updatedSchool = await prisma.schoolInfo.update({

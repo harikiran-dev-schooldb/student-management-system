@@ -20,7 +20,7 @@ import { useTenantApi } from "@/hooks/useTenantApi";
 const deleteActionMap: Record<string, string> = {
   subject: "subject",
   class: "classes",
-  admin: "users/admin",
+  admin: "users/admins",
   student: "users/student",
   teacher: "users/teacher",
   exams: "exams",
@@ -31,7 +31,7 @@ const deleteActionMap: Record<string, string> = {
   announcement: "announcement",
   fees: "fees",
   fees_structure: "fees",
-  homework: "homework",
+  homework: "homeworks",
   messages: "messages",
   permissions: "permissions",
 };

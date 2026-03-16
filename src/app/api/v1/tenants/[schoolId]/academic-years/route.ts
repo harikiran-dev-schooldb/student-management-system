@@ -1,16 +1,18 @@
 import prisma from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
-import { resolveSchoolId } from "@/lib/resolveSchool";
+import { tenantSlugGuard } from "@/lib/tenantGuard";
 
 export async function GET(req: NextRequest,
     { params }: { params: Promise<{ schoolId: string; }> }) {
     try {
 
         const { schoolId: slug } = await params;
-        const schoolId = await resolveSchoolId(slug);
+        const { access, error } = await tenantSlugGuard(slug);
+
+        if (error) return error;
 
         const years = await prisma.academicYear.findMany({
-            where: { schoolId },
+            where: { schoolId: access.schoolId },
             orderBy: { id: "asc" },
         });
 

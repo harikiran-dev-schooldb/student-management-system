@@ -115,9 +115,6 @@ export const adminSchema = z.object({
   id: z.string().optional(),
   username: z.string().min(1, { message: "Username is required!" }),
   name: z.string().min(1, { message: "Full Name is required!" }),
-  password: z
-    .string()
-    .min(5, { message: "Password must be at least 5 characters!" }),
   parentName: z.string(),
   gender: z.enum(["Male", "Female"], { message: "Gender is required!" }),
   email: z.string().email({ message: "Invalid email!" }).optional(),

@@ -17,7 +17,12 @@ const HomeworkForm = ({
   type: "create" | "update";
   data?: Partial<HomeworkSchema> & { id?: number };
   setOpen: Dispatch<SetStateAction<boolean>>;
-  relatedData?: { grades: any[]; classes: any[] };
+  relatedData?: {
+    grades: any[];
+    classes: any[];
+    teacherClassIds?: number[];
+    role?: string;
+  };
 }) => {
   const [selectedGrade, setSelectedGrade] = useState<number | null>(
     data?.gradeId || null,
@@ -84,12 +89,20 @@ const HomeworkForm = ({
     }
   };
 
-  const { classes = [], grades = [] } = relatedData || {};
+
+  const { classes = [], grades = [], teacherClassIds = [], role } = relatedData || {};
 
   const filteredClasses = selectedGrade
-    ? classes.filter(
-        (cls: { id: number; gradeId: number }) => cls.gradeId === selectedGrade,
-      )
+    ? classes.filter((cls: { id: number; gradeId: number }) => {
+      if (role === "teacher") {
+        return (
+          cls.gradeId === selectedGrade &&
+          teacherClassIds.includes(cls.id)
+        );
+      }
+
+      return cls.gradeId === selectedGrade;
+    })
     : [];
 
   return (

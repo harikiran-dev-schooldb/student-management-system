@@ -9,7 +9,7 @@ import {
 } from "@/lib/formValidationSchemas";
 import React, { Dispatch, SetStateAction, useEffect, useState } from "react";
 import { toast } from "react-toastify";
-import { useParams, useRouter } from "next/navigation";
+import {  useRouter } from "next/navigation";
 import { useTenantApi } from "@/hooks/useTenantApi";
 
 // Custom hook for API calls

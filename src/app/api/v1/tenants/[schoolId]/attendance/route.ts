@@ -3,10 +3,9 @@ export const runtime = "nodejs";
 import prisma from "@/lib/prisma";
 import { getMessageContent } from "@/lib/utils/messageUtils";
 import { NextRequest, NextResponse } from "next/server";
-import { requireTenantAccess } from "@/lib/requireTenantAccess";
 import { MessageType, Prisma } from "@prisma/client";
-import { resolveSchoolId } from "@/lib/resolveSchool";
 import { SingleStudentSelect } from "../../../../../../../types/query-types";
+import { tenantSlugGuard } from "@/lib/tenantGuard";
 
 /* =======================================================
    POST  /attendance  (Bulk Upsert)
@@ -22,15 +21,10 @@ export async function POST(
     ================================= */
 
     const { schoolId: slug } = await params;
-    const resolvedSchoolId = await resolveSchoolId(slug);
-    const access = await requireTenantAccess();
+    const { access, error } = await tenantSlugGuard(slug);
 
-    if (
-      access.schoolId !== resolvedSchoolId ||
-      !["admin", "teacher"].includes(access.role)
-    ) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    if (error) return error;
+
 
     const schoolId = access.schoolId;
 
@@ -286,13 +280,10 @@ export async function GET(
     ================================= */
 
     const { schoolId: slug } = await params;
-    const access = await requireTenantAccess();
+    const { access, error } = await tenantSlugGuard(slug);
 
-    if (access.schoolSlug !== slug) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    if (error) return error;
 
-    const schoolId = access.schoolId;
 
     /* ================================
        Query Params
@@ -334,7 +325,7 @@ export async function GET(
     ================================= */
 
     const where: Prisma.AttendanceWhereInput = {
-      schoolId,
+      schoolId: access.schoolId,
       date: {
         gte: start,
         lte: end,

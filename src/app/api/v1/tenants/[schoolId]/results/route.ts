@@ -2,9 +2,9 @@ export const runtime = "nodejs";
 
 import prisma from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
-import { resolveSchoolId, SchoolNotFoundError } from "@/lib/resolveSchool";
-import { requireTenantAccess } from "@/lib/requireTenantAccess";
+import { SchoolNotFoundError } from "@/lib/resolveSchool";
 import { Prisma } from "@prisma/client";
+import { tenantGuard, tenantSlugGuard } from "@/lib/tenantGuard";
 
 /* ======================================================
    GET → Fetch Results (Tenant + Role Safe)
@@ -17,7 +17,6 @@ export async function GET(
   try {
     /* 1️⃣ Resolve tenant */
     const { schoolId: schoolSlug } = await params;
-    const schoolId = await resolveSchoolId(schoolSlug);
 
     const url = new URL(req.url);
 
@@ -26,11 +25,11 @@ export async function GET(
     const classId = url.searchParams.get("classId");
     const studentId = url.searchParams.get("studentId");
 
-    const access = await requireTenantAccess();
+    const { access, error } = await tenantSlugGuard(schoolSlug);
+    if (error) return error;
 
-    if (access.schoolId !== schoolId) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const schoolId = access.schoolId;
+
 
     const where: Prisma.ResultWhereInput = { schoolId };
 
@@ -155,8 +154,8 @@ export async function GET(
     const examGradeSubjects =
       triplets.length > 0
         ? await prisma.examGradeSubject.findMany({
-            where: { OR: triplets },
-          })
+          where: { OR: triplets },
+        })
         : [];
 
     const maxMarksMap = new Map<string, number>();

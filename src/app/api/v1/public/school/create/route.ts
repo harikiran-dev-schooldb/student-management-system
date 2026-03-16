@@ -99,7 +99,6 @@ export async function POST(req: NextRequest) {
       const admin = await tx.admin.create({
         data: {
           username: adminUsername,
-          password: hashedPassword,
           name: adminName,
           parentName: adminParentName,
           gender: adminGender ?? "Male",

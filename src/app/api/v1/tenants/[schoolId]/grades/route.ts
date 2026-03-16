@@ -4,6 +4,7 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { resolveSchoolId } from "@/lib/resolveSchool";
 import { tenantPrisma } from "@/lib/tenant-prisma";
+import { tenantSlugGuard } from "@/lib/tenantGuard";
 
 export async function POST(
   req: NextRequest,
@@ -12,7 +13,10 @@ export async function POST(
   try {
     const { schoolId: slug } = await params;
 
-    const schoolId = await resolveSchoolId(slug);
+    const { access, error } = await tenantSlugGuard(slug);
+    if (error) return error;
+
+    const schoolId = access.schoolId;
     const db = tenantPrisma(schoolId);
 
     const { grades } = await req.json();

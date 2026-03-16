@@ -40,7 +40,6 @@ export async function POST(
       bloodType,
       img,
       classId,
-      password,
     } = body;
 
     if (!username || !name || !phone || !address || !gender) {
@@ -111,7 +110,6 @@ export async function POST(
       name,
       role: "teacher",
       schoolId,
-      password,
     });
 
     /* 6️⃣ Transaction */

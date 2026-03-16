@@ -10,7 +10,13 @@ export async function NavbarServer({
   schoolId: string;
   onToggleSidebar?: () => void;
 }) {
-  const user = await currentUser();
+  let user = null;
+
+  try {
+    user = await currentUser();
+  } catch (error) {
+    console.error("Clerk error:", error);
+  }
 
   if (!user) {
     return (

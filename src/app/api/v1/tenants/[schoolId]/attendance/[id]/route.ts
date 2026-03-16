@@ -2,8 +2,8 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 import prisma from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
-import { requireTenantAccess } from "@/lib/requireTenantAccess";
 import { resolveSchoolId } from "@/lib/resolveSchool";
+import { tenantSlugGuard } from "@/lib/tenantGuard";
 
 /* =======================================================
    PUT  /attendance/{id}
@@ -16,14 +16,10 @@ export async function PUT(
   try {
     const { schoolId: slug, id } = await params;
 
-    const access = await requireTenantAccess();
+    const { access, error } = await tenantSlugGuard(slug);
+    if (error) return error;
 
-    // Resolve slug to internal ID
     const resolvedSchoolId = await resolveSchoolId(slug);
-
-    if (access.schoolId !== resolvedSchoolId) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
 
     if (!["admin", "teacher"].includes(access.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -37,16 +33,24 @@ export async function PUT(
     const { present } = await req.json();
 
     const updated = await prisma.attendance.update({
-      where: { id: parsedId, schoolId: resolvedSchoolId },
+      where: {
+        id: parsedId,
+        schoolId: resolvedSchoolId,
+      },
       data: { present },
     });
 
-    return NextResponse.json({ success: true, attendance: updated });
+    return NextResponse.json({
+      success: true,
+      attendance: updated,
+    });
+
   } catch (error) {
     console.error("Attendance PUT error:", error);
+
     return NextResponse.json(
       { error: "Failed to update attendance" },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }

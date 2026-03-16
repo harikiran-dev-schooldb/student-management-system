@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { resolveSchoolId, SchoolNotFoundError } from "@/lib/resolveSchool";
 import { tenantPrisma } from "@/lib/tenant-prisma";
+import { tenantSlugGuard } from "@/lib/tenantGuard";
 
 /* =======================
    GET SINGLE GRADE
@@ -15,13 +16,21 @@ export async function GET(
 ) {
   try {
     const { schoolId: slug, id } = await params;
+
+    const { access, error } = await tenantSlugGuard(slug);
+    if (error) return error;
+
+    const schoolId = access.schoolId;
     const gradeId = Number(id);
 
-    if (Number.isNaN(gradeId)) {
-      return NextResponse.json({ error: "Invalid grade ID" }, { status: 400 });
+    if (isNaN(gradeId)) {
+      return NextResponse.json(
+        { error: "Invalid grade ID" },
+        { status: 400 }
+      );
     }
 
-    const schoolId = await resolveSchoolId(slug);
+
     const db = tenantPrisma(schoolId);
 
     const grade = await db.grade.findFirst({

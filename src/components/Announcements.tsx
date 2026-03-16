@@ -1,5 +1,6 @@
 import prisma from "@/lib/prisma";
 import { requireTenantAccess } from "@/lib/requireTenantAccess";
+import { tenantGuard } from "@/lib/tenantGuard";
 import { Prisma } from "@prisma/client";
 import clsx from "clsx";
 import { CalendarDays, Megaphone, ArrowRight, AlertCircle } from "lucide-react";
@@ -31,9 +32,13 @@ const Messages = async ({
   type?: "ANNOUNCEMENT" | "GENERAL";
 }) => {
   try {
-    const access = await requireTenantAccess();
-    const { schoolId, role, classId } = access;
+    const result = await tenantGuard();
 
+    if ("error" in result) {
+      return <ErrorState message="Unauthorized" />;
+    }
+
+    const { schoolId, role, classId } = result.access;
     const whereCondition: Prisma.MessagesWhereInput = {
       type,
       schoolId,

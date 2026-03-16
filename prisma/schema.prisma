@@ -59,7 +59,6 @@ model SchoolInfo {
 model Admin {
   id           String      @id @default(cuid())
   username     String
-  password     String
   name         String
   parentName   String
   gender       Gender      @default(Male)
@@ -641,7 +640,7 @@ model PermissionSlip {
 model Profile {
   id           String       @id @default(cuid())
   clerk_id     String?      @unique
-  phone        String?
+  phone        String      @unique
   activeUserId String?
   admin        Admin[]
   users        LinkedUser[] @relation("ProfileUsers")
@@ -650,7 +649,6 @@ model Profile {
   teacher      Teacher[]
 
   @@index([clerk_id])
-  @@index([phone])
 }
 
 model LinkedUser {

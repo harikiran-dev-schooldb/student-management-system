@@ -1,26 +1,46 @@
 import prisma from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { adminSchema } from "@/lib/formValidationSchemas";
-import { requireTenantAccess } from "@/lib/requireTenantAccess";
 import { createOrUpdateIdentity } from "@/lib/services/identity.service";
+import { tenantGuard } from "@/lib/tenantGuard";
 
-export async function POST(req: NextRequest) {
+export async function POST(req: NextRequest
+) {
   try {
-
+ 
+    const body = await req.json();
+    const data = adminSchema.parse(body);
+ 
     /* 1️⃣ Tenant Access */
-
-    const access = await requireTenantAccess();
+    const { access, error } = await tenantGuard();
+    if (error) return error;
 
     if (access.role !== "admin") {
-      return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+      return NextResponse.json(
+        { error: "Forbidden" },
+        { status: 403 }
+      );
     }
 
     const schoolId = access.schoolId;
 
     /* 2️⃣ Validate Input */
 
-    const body = await req.json();
-    const data = adminSchema.parse(body);
+    
+
+    const existingAdmin = await prisma.admin.findFirst({
+      where: {
+        username: data.username,
+        schoolId,
+      },
+    });
+
+    if (existingAdmin) {
+      return NextResponse.json(
+        { error: "Admin with this username already exists" },
+        { status: 409 }
+      );
+    }
 
     /* 3️⃣ Create Identity */
 
@@ -30,7 +50,6 @@ export async function POST(req: NextRequest) {
       name: data.name,
       role: "admin",
       schoolId,
-      password: data.password,
     });
 
     /* 4️⃣ Create Admin Entity */
@@ -38,7 +57,6 @@ export async function POST(req: NextRequest) {
     const admin = await prisma.admin.create({
       data: {
         username: data.username,
-        password: data.password,
         name: data.name,
         parentName: data.parentName,
         gender: data.gender,

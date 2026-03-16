@@ -2,40 +2,52 @@ import prisma from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
 import { TenantAccess } from "../../types/tenant";
 
+type Role = "admin" | "teacher" | "student";
 
-
-export async function requireTenantAccess(): Promise<TenantAccess> {
+export async function requireTenantAccess(): Promise<TenantAccess | null> {
   const { userId } = await auth();
 
   if (!userId) {
     console.log("No Clerk user found");
-    throw new Error("Unauthorized");
+    return null;
   }
 
   const profile = await prisma.profile.findUnique({
     where: { clerk_id: userId },
-    include: {
+    select: {
+      id: true,
       activeUser: {
-        include: { school: true },
+        select: {
+          id: true,
+          role: true,
+          schoolId: true,
+          school: {
+            select: { schoolId: true },
+          },
+        },
       },
     },
   });
 
   if (!profile?.activeUser) {
-    throw new Error("No active school selected");
+    return null;
+  }
+
+  if (process.env.NODE_ENV === "development") {
+    console.log("ROLE:", profile?.activeUser?.role);
   }
 
   const { activeUser } = profile;
-
-  const baseAccess = {
+  const baseAccess: TenantAccess = {
     schoolId: activeUser.schoolId,
     schoolSlug: activeUser.school.schoolId,
-    role: activeUser.role as "admin" | "teacher" | "student",
+    role: activeUser.role as Role,
     userId,
     profileId: profile.id,
   };
 
   /* ---------------- STUDENT ---------------- */
+
   if (activeUser.role === "student") {
     const student = await prisma.student.findFirst({
       where: {
@@ -44,9 +56,7 @@ export async function requireTenantAccess(): Promise<TenantAccess> {
       },
       include: {
         enrollments: {
-          where: {
-            academicYear: { isActive: true },
-          },
+          where: { academicYear: { isActive: true } },
           select: { classId: true },
           take: 1,
         },
@@ -56,11 +66,12 @@ export async function requireTenantAccess(): Promise<TenantAccess> {
     return {
       ...baseAccess,
       studentId: student?.id,
-      classId: student?.enrollments?.[0]?.classId
+      classId: student?.enrollments?.[0]?.classId,
     };
   }
 
   /* ---------------- TEACHER ---------------- */
+
   if (activeUser.role === "teacher") {
     const teacher = await prisma.teacher.findFirst({
       where: {
@@ -69,23 +80,18 @@ export async function requireTenantAccess(): Promise<TenantAccess> {
       },
       include: {
         teacherClassAssignments: {
-          where: {
-            academicYear: { isActive: true },
-          },
+          where: { academicYear: { isActive: true } },
           select: { classId: true },
           take: 1,
         },
       },
     });
 
-    const classId = teacher?.teacherClassAssignments?.[0]?.classId;
-
     return {
       ...baseAccess,
-      classId,
+      classId: teacher?.teacherClassAssignments?.[0]?.classId,
     };
   }
 
-  /* ---------------- ADMIN ---------------- */
   return baseAccess;
 }

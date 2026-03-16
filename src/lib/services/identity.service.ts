@@ -9,7 +9,6 @@ type IdentityInput = {
   name: string;
   role: "student" | "teacher" | "admin" | "principal" | "superadmin";
   schoolId: string;
-  password?: string;
 };
 
 export async function createOrUpdateIdentity({
@@ -18,134 +17,62 @@ export async function createOrUpdateIdentity({
   name,
   role,
   schoolId,
-  password,
 }: IdentityInput) {
 
   const client = await clerkClient();
 
-  /* =====================================================
-     1️⃣ Find profile by phone (parent identity)
-  ===================================================== */
+  /* =========================================
+     1️⃣ Resolve Clerk user
+  ========================================= */
 
-  let profile = await prisma.profile.findFirst({
-    where: { phone },
+  let clerkUser;
+
+  const existing = await client.users.getUserList({
+    externalId: [phone],
   });
 
-  let clerkId: string;
-
-  /* =====================================================
-     2️⃣ Existing parent (reuse Clerk user)
-  ===================================================== */
-
-  if (profile?.clerk_id) {
-
-    clerkId = profile.clerk_id;
-
-    try {
-
-      await client.users.getUser(clerkId);
-
-      await client.users.updateUser(clerkId, {
-        firstName: name,
-        publicMetadata: {
-          role,
-          schoolId,
-        },
-      });
-
-    } catch (err: any) {
-
-      // Clerk user no longer exists → recreate
-      if (err.status === 404) {
-
-        const newUser = await client.users.createUser({
-          username: `s${phone}`,
-          password: password ?? phone,
-          firstName: name,
-          skipPasswordChecks: true,
-          publicMetadata: {
-            role,
-            schoolId,
-          },
-        });
-
-        clerkId = newUser.id;
-
-        await prisma.profile.update({
-          where: { id: profile.id },
-          data: { clerk_id: clerkId },
-        });
-
-      } else {
-        throw err;
-      }
-
-    }
+  if (existing.data.length > 0) {
+    clerkUser = existing.data[0];
+    console.log("Reusing existing Clerk user:", clerkUser.id);
   } else {
-
-    /* =====================================================
-       3️⃣ Check if Clerk user exists by username (phone)
-    ===================================================== */
-
-    let clerkUser;
-
-    const existingClerk = await client.users.getUserList({
-      username: [phone],
-    });
-
-    if (existingClerk.data.length > 0) {
-
-      clerkUser = existingClerk.data[0];
-
-      console.log("Reusing existing Clerk user:", clerkUser.id);
-
-    } else {
-
-      /* ---------- Create new Clerk user ---------- */
-
+    try {
       clerkUser = await client.users.createUser({
-        username: phone, // phone used as login username
-        password: password ?? phone,
+        externalId: phone,
+        emailAddress: [`${phone}@schooldb.com`],
+        firstName: name || "User",
         skipPasswordChecks: true,
-        firstName: name,
-        publicMetadata: {
-          role,
-          schoolId,
-        },
+      });
+    } catch (err: any) {
+      console.error("Clerk createUser error:", err?.errors);
+
+      const retry = await client.users.getUserList({
+        externalId: [phone],
       });
 
-    }
+      if (retry.data.length === 0) throw err;
 
-    clerkId = clerkUser.id;
-
-    /* =====================================================
-       4️⃣ Create parent profile
-    ===================================================== */
-
-    if (profile) {
-
-      profile = await prisma.profile.update({
-        where: { id: profile.id },
-        data: {
-          clerk_id: clerkId,
-        },
-      });
-
-    } else {
-
-      profile = await prisma.profile.create({
-        data: {
-          phone,
-          clerk_id: clerkId,
-        },
-      });
-
+      clerkUser = retry.data[0];
     }
   }
 
-  /* =====================================================
-     5️⃣ Link user to school
-  ===================================================== */
+  const clerkId = clerkUser.id;
+
+  /* =========================================
+     2️⃣ Ensure profile exists
+  ========================================= */
+
+  const profile = await prisma.profile.upsert({
+    where: { phone },
+    update: { clerk_id: clerkId },
+    create: {
+      phone,
+      clerk_id: clerkId,
+    },
+  });
+
+  /* =========================================
+     3️⃣ Link user to school
+  ========================================= */
 
   const linkedUser = await prisma.linkedUser.upsert({
     where: {
@@ -166,9 +93,9 @@ export async function createOrUpdateIdentity({
     },
   });
 
-  /* =====================================================
-     6️⃣ Set active role
-  ===================================================== */
+  /* =========================================
+     4️⃣ Set active role
+  ========================================= */
 
   await prisma.profile.update({
     where: { id: profile.id },
@@ -177,9 +104,22 @@ export async function createOrUpdateIdentity({
     },
   });
 
-  /* =====================================================
-     7️⃣ Return identity
-  ===================================================== */
+  /* =========================================
+     5️⃣ Sync metadata to Clerk
+  ========================================= */
+  await client.users.updateUserMetadata(clerkId, {
+    publicMetadata: {
+      role,
+      schoolId,
+      username,
+      activeRoleId: linkedUser.id,
+    },
+  });
+
+
+  /* =========================================
+     5️⃣ Return identity
+  ========================================= */
 
   return {
     clerkId,
