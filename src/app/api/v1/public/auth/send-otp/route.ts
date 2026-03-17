@@ -83,10 +83,35 @@ export async function POST(req: Request) {
         body: JSON.stringify({
           messaging_product: "whatsapp",
           to: `91${normalizedPhone}`,
-          type: "text",
-          text: {
-            body: `SchoolDB OTP: ${otp}\nValid for 5 minutes.`,
-          },
+          type: "template",
+          template: {
+            name: "otp_login",
+            language: {
+              code: "en"
+            },
+            components: [
+              {
+                type: "body",
+                parameters: [
+                  {
+                    type: "text",
+                    text: otp
+                  }
+                ]
+              },
+              {
+                type: "button",
+                sub_type: "url",
+                index: "0",
+                parameters: [
+                  {
+                    type: "text",
+                    text: otp
+                  }
+                ]
+              }
+            ]
+          }
         }),
       }
     );
