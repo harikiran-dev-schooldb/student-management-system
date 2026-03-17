@@ -6,6 +6,7 @@ export const runtime = "nodejs";
 
 const PUBLIC_ROUTES = [
   "/",
+  "/select-school",
   "/features",
   "/demo",
   "/platform",
