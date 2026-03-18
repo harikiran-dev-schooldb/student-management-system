@@ -21,6 +21,9 @@ export async function createOrUpdateIdentity({
 
   const client = await clerkClient();
 
+  const normalizedPhone = phone.replace(/\D/g, "").slice(-10);
+  const fullPhone = `+91${normalizedPhone}`;
+
   /* =========================================
      1️⃣ Resolve Clerk user
   ========================================= */
@@ -28,7 +31,7 @@ export async function createOrUpdateIdentity({
   let clerkUser;
 
   const existing = await client.users.getUserList({
-    externalId: [phone],
+    externalId: [normalizedPhone],
   });
 
   if (existing.data.length > 0) {
@@ -37,8 +40,8 @@ export async function createOrUpdateIdentity({
   } else {
     try {
       clerkUser = await client.users.createUser({
-        externalId: phone,
-        emailAddress: [`${phone}@schooldb.com`],
+        externalId: normalizedPhone,
+        emailAddress: [`${normalizedPhone}@schooldb.com`],
         firstName: name || "User",
         skipPasswordChecks: true,
       });
@@ -46,7 +49,7 @@ export async function createOrUpdateIdentity({
       console.error("Clerk createUser error:", err?.errors);
 
       const retry = await client.users.getUserList({
-        externalId: [phone],
+        externalId: [normalizedPhone],
       });
 
       if (retry.data.length === 0) throw err;
@@ -62,10 +65,10 @@ export async function createOrUpdateIdentity({
   ========================================= */
 
   const profile = await prisma.profile.upsert({
-    where: { phone },
+    where: { phone: normalizedPhone },
     update: { clerk_id: clerkId },
     create: {
-      phone,
+      phone: normalizedPhone,
       clerk_id: clerkId,
     },
   });
