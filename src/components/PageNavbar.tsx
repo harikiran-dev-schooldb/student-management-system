@@ -9,7 +9,7 @@ export default function PageNavbar({
   onToggleSidebar?: () => void;
 }) {
   return (
-    <header className="sticky top-0 z-30">
+    <header className="sticky top-0 z-30 pt-[calc(env(safe-area-inset-top)+6px)]">
       <Suspense fallback={null}>
         <NavbarServer
           schoolId={schoolId}
