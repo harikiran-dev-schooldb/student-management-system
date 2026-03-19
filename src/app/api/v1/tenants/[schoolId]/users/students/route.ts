@@ -112,6 +112,12 @@ export async function POST(
     const normalize = (val?: string | null) =>
       val && val.trim() !== "" ? val : null;
 
+    console.log("Identity result:", {
+      clerk_id: identity.clerkId,
+      profileId: identity.profileId,
+      linkedUserId: identity.linkedUserId,
+    });
+
     /* -------------------------------------------------------
        7️⃣ Atomic Transaction
     ------------------------------------------------------- */

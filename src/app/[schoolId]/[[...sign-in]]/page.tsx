@@ -18,9 +18,7 @@ import { useTheme } from "next-themes";
 import { Sun, Moon } from "lucide-react";
 import { toast, Toaster } from "sonner";
 
-import PasswordLogin from "@/components/auth/PasswordLogin";
 import OTPLogin from "@/components/auth/OTPLogin";
-import LoginMethodToggle from "@/components/auth/LoginMethodToggle";
 import Spinner from "@/components/ui/Spinner";
 
 // --- Features aligned with your Student Management System README ---
@@ -71,7 +69,6 @@ export default function Page() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [password, setPassword] = useState("");
   const [otpCode, setOtpCode] = useState("");
-  const [loginMethod, setLoginMethod] = useState<"password" | "otp">("otp");
   const [pendingVerification, setPendingVerification] = useState(false);
   const [resendTimer, setResendTimer] = useState(0);
   const [isSending, setIsSending] = useState(false);
@@ -294,78 +291,37 @@ export default function Page() {
           </div>
 
           <form
+            className="mt-6 space-y-5"
             onSubmit={(e) => {
               e.preventDefault();
-              if (loginMethod === "otp" && !pendingVerification)
-                handleSendOTP();
+              if (!pendingVerification) handleSendOTP();
               else handleSignIn();
             }}
-            className={loginMethod === "otp" ? "space-y-3" : "space-y-6"}
           >
-            {/* Toggle */}
-
-            <div className="rounded-xl bg-white justify-center items-center dark:bg-darkMode">
-              <LoginMethodToggle
-                loginMethod={loginMethod}
-                setLoginMethod={setLoginMethod}
-                setPendingVerification={setPendingVerification}
-                setError={(msg) => {
-                  if (!msg || msg.trim() === "") {
-                    toast.dismiss(); // This removes the red box immediately
-                  } else {
-                    toast.error(msg);
-                  }
-                }}
-              />
-            </div>
 
             {/* Inputs Container */}
-            <motion.div
-              layout
-              className={`relative overflow-hidden ${loginMethod === "otp" ? "min-h-0" : "min-h-[140px]"
-                }`}
-            >
-              <AnimatePresence mode="wait">
-                {loginMethod === "password" ? (
-                  <motion.div
-                    key="pass"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <PasswordLogin
-                      phoneNumber={phoneNumber}
-                      password={password}
-                      setPhoneNumber={setPhoneNumber}
-                      setPassword={setPassword}
-                      rememberMe={rememberMe}
-                      setRememberMe={setRememberMe}
-                    />
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key="otp"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <OTPLogin
-                      phoneNumber={phoneNumber}
-                      otpCode={otpCode}
-                      setPhoneNumber={setPhoneNumber}
-                      setOtpCode={setOtpCode}
-                      pendingVerification={pendingVerification}
-                      otpInputRef={otpInputRef}
-                      isSending={isSending}
-                      resendTimer={resendTimer}
-                      handleSendOTP={handleSendOTP}
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.div>
+
+            <AnimatePresence mode="wait">
+              <motion.div
+                key="otp"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+              >
+                <OTPLogin
+                  phoneNumber={phoneNumber}
+                  otpCode={otpCode}
+                  setPhoneNumber={setPhoneNumber}
+                  setOtpCode={setOtpCode}
+                  pendingVerification={pendingVerification}
+                  otpInputRef={otpInputRef}
+                  isSending={isSending}
+                  resendTimer={resendTimer}
+                  handleSendOTP={handleSendOTP}
+                />
+              </motion.div>
+            </AnimatePresence>
 
             {/* Submit Button */}
             <motion.button
@@ -374,15 +330,11 @@ export default function Page() {
               whileTap={{ scale: 0.99 }}
               type="submit"
               disabled={isSending}
-              className="group relative w-full overflow-hidden rounded-xl bg-zinc-900 py-3.5 text-sm font-semibold text-white shadow-lg transition-all hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-70 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
+              className="group relative w-full overflow-hidden rounded-xl bg-zinc-900 py-4 text-sm font-semibold text-white shadow-lg transition-all hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-70 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
             >
               <div className="flex items-center justify-center gap-2">
                 {isSending && <Spinner />}
-                {loginMethod === "password"
-                  ? "Sign In"
-                  : pendingVerification
-                    ? "Verify & Login"
-                    : "Send OTP"}
+                {pendingVerification ? "Verify & Login" : "Send OTP"}
                 {!isSending && (
                   <ChevronRight
                     size={16}
@@ -394,7 +346,7 @@ export default function Page() {
           </form>
 
           {/* Footer Info */}
-          <div className="mt-12 border-t border-zinc-100 dark:border-zinc-800 pt-6">
+          <div className="mt-14 border-t border-zinc-100 dark:border-zinc-800 pt-6">
             <div className="flex items-center justify-between">
               <p className="text-xs text-zinc-400">
                 Powered by{" "}
