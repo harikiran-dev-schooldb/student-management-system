@@ -30,9 +30,12 @@ async function retry(fn: any, retries = 3) {
 
 export async function GET(
   req: Request,
-  { params }: { params: { schoolId: string } }
+  { params }: { params: Promise<{ schoolId: string }> },
 ) {
-  const schoolId = await resolveSchoolId(params.schoolId);
+
+  const { schoolId: slug } = await params;
+
+  const schoolId = await resolveSchoolId(slug);
 
   const job = await prisma.identityBackfillJob.findFirst({
     where: { schoolId, status: "pending" },

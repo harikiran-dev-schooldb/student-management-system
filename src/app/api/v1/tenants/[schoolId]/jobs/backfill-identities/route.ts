@@ -6,10 +6,12 @@ import { resolveSchoolId } from "@/lib/resolveSchool";
 
 export async function POST(
   req: Request,
-  { params }: { params: { schoolId: string } }
+    { params }: { params: Promise<{ schoolId: string }> },
 ) {
   try {
-    const schoolId = await resolveSchoolId(params.schoolId);
+    const { schoolId: slug } = await params;
+
+    const schoolId = await resolveSchoolId(slug);
 
     const job = await prisma.identityBackfillJob.create({
       data: {
