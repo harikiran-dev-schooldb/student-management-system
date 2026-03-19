@@ -22,7 +22,6 @@ export async function createOrUpdateIdentity({
   const client = await clerkClient();
 
   const normalizedPhone = phone.replace(/\D/g, "").slice(-10);
-  const fullPhone = `+91${normalizedPhone}`;
 
   /* =========================================
      1️⃣ Resolve Clerk user
