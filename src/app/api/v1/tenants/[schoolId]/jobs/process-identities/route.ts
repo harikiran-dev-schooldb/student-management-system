@@ -10,7 +10,9 @@ const CONCURRENCY = 2;
 const BATCH_SIZE = 50;
 const DELAY = 150;
 const TEST_LIMIT = 200;
-let createdCount = 0;
+const MAX_PER_RUN = 50;
+
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL!;
 
 function sleep(ms: number) {
   return new Promise((res) => setTimeout(res, ms));
@@ -30,20 +32,18 @@ async function retry(fn: any, retries = 3) {
 
 export async function GET(
   req: Request,
-  { params }: { params: Promise<{ schoolId: string }> },
+  { params }: { params: Promise<{ schoolId: string }> }
 ) {
-
   const { schoolId: slug } = await params;
-
   const schoolId = await resolveSchoolId(slug);
 
   const job = await prisma.identityBackfillJob.findFirst({
-    where: { schoolId, status: "pending" },
+    where: { schoolId, status: { in: ["pending", "processing"] } },
     orderBy: { createdAt: "asc" },
   });
 
   if (!job) {
-    return Response.json({ message: "No pending jobs" });
+    return Response.json({ message: "No job found" });
   }
 
   await prisma.identityBackfillJob.update({
@@ -53,13 +53,15 @@ export async function GET(
 
   const total = await prisma.student.count({ where: { schoolId } });
 
-  let processed = 0;
-  let success = 0;
-  let failed = 0;
+  let processedThisRun = 0;
+  let createdThisRun = 0;
 
   const limit = pLimit(CONCURRENCY);
 
-  for (let skip = 0; skip < total; skip += BATCH_SIZE) {
+  for (let skip = job.processed; skip < total; skip += BATCH_SIZE) {
+
+    if (processedThisRun >= MAX_PER_RUN) break;
+    if (job.success >= TEST_LIMIT) break;
 
     const students = await prisma.student.findMany({
       where: { schoolId },
@@ -77,8 +79,8 @@ export async function GET(
       students.map((s) =>
         limit(async () => {
 
-          // 🔥 stop creating more
-          if (createdCount >= TEST_LIMIT) return;
+          if (processedThisRun >= MAX_PER_RUN) return;
+          if (job.success + createdThisRun >= TEST_LIMIT) return;
 
           const username = `s${s.admissionNo}`;
           const phone = s.phone?.replace(/\D/g, "").slice(-10);
@@ -91,7 +93,6 @@ export async function GET(
               select: { clerk_id: true },
             });
 
-            // skip existing users
             if (existing?.clerk_id) return;
 
             await retry(() =>
@@ -104,28 +105,44 @@ export async function GET(
               })
             );
 
-            createdCount++; // ✅ only count successful creations
+            createdThisRun++;
 
           } catch (err: any) {
             console.error("❌", username, err?.message);
           }
 
+          processedThisRun++;
           await sleep(DELAY);
         })
       )
     );
   }
 
-  await prisma.identityBackfillJob.update({
+  // 🔄 update progress
+  const updatedJob = await prisma.identityBackfillJob.update({
     where: { id: job.id },
     data: {
-      status: "completed",
-      processed,
-      success,
-      failed,
+      processed: { increment: processedThisRun },
+      success: { increment: createdThisRun },
       total,
+      status:
+        job.success + createdThisRun >= TEST_LIMIT ||
+        job.processed + processedThisRun >= total
+          ? "completed"
+          : "processing",
     },
   });
 
-  return Response.json({ message: "Job completed" });
+  // 🔁 trigger next run ONLY if needed
+  if (updatedJob.status !== "completed") {
+    fetch(
+      `${BASE_URL}/api/v1/tenants/${slug}/jobs/process-identities`
+    ).catch(() => {});
+  }
+
+  return Response.json({
+    message: "Processed batch",
+    processedThisRun,
+    createdThisRun,
+  });
 }

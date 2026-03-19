@@ -3,7 +3,7 @@ export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
 import { tenantPrisma } from "@/lib/tenant-prisma";
-import { tenantGuard, tenantSlugGuard } from "@/lib/tenantGuard";
+import { tenantSlugGuard } from "@/lib/tenantGuard";
 
 export async function POST(
   req: NextRequest,
