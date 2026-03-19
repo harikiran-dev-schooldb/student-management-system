@@ -65,6 +65,10 @@ export default clerkMiddleware(async (auth, req) => {
     segments[2] === "tenants"
   ) {
 
+    if (segments[4] === "jobs") {
+      return NextResponse.next();
+    }
+
     // 🔧 DEV LOAD TEST BYPASS
     if (process.env.NODE_ENV === "development") {
       return NextResponse.next();
