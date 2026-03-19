@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/v1/tenants/testing_school/jobs/process-identities",
+      "schedule": "*/1 * * * *"
+    }
+  ]
+}
