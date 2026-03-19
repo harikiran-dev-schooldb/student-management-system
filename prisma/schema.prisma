@@ -640,7 +640,7 @@ model PermissionSlip {
 model Profile {
   id           String       @id @default(cuid())
   clerk_id     String?      @unique
-  phone        String      @unique
+  phone        String       @unique
   activeUserId String?
   admin        Admin[]
   users        LinkedUser[] @relation("ProfileUsers")
@@ -719,17 +719,26 @@ model ReceiptSequence {
 }
 
 model IdentityJob {
-  id        String   @id @default(uuid())
-  username  String
-  phone     String
-  name      String
-  role      String
-  schoolId  String
-  status    String   @default("pending")
-  attempts  Int      @default(0)
-  error     String?
+  id String @id @default(uuid())
+
+  username String
+  phone    String
+  name     String
+  role     String
+  schoolId String
+
+  status   String  @default("pending") // pending | processing | done | failed
+  attempts Int     @default(0)
+  error    String?
+
+  nextRunAt DateTime? // for retry backoff
+  lockedAt  DateTime? // detect stuck jobs
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@unique([username, schoolId]) // 🔥 CRITICAL
+  @@index([status, nextRunAt])
 }
 
 model SmsTemplate {
@@ -776,6 +785,7 @@ model Otp {
   otp       String
   expiresAt DateTime
   createdAt DateTime @default(now())
+
   @@index([phone])
 }
 
