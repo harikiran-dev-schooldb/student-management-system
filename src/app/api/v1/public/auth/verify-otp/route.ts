@@ -151,11 +151,11 @@ export async function POST(req: Request) {
       token,
     });
 
-  } catch (error) {
-    console.error("OTP verification error:", error);
+  } catch (error: any) {
+    console.error("FULL ERROR:", error);
 
     return Response.json(
-      { error: "Internal server error" },
+      { error: error?.message || "Internal server error" },
       { status: 500 }
     );
   }

@@ -43,6 +43,7 @@ export async function createOrUpdateIdentity({
         externalId: normalizedPhone,
         emailAddress: [`${normalizedPhone}@schooldb.com`],
         firstName: name || "User",
+        password: crypto.randomUUID(),
         skipPasswordChecks: true,
       });
     } catch (err: any) {
