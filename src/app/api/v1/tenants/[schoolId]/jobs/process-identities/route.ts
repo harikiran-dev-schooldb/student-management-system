@@ -9,7 +9,6 @@ import { createOrUpdateIdentityScript } from "@/lib/services/identity.script";
 const CONCURRENCY = 2;
 const BATCH_SIZE = 50;
 const DELAY = 150;
-const TEST_LIMIT = 200;
 const MAX_PER_RUN = 50;
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL!;
@@ -61,7 +60,6 @@ export async function GET(
   for (let skip = job.processed; skip < total; skip += BATCH_SIZE) {
 
     if (processedThisRun >= MAX_PER_RUN) break;
-    if (job.success >= TEST_LIMIT) break;
 
     const students = await prisma.student.findMany({
       where: { schoolId },
@@ -80,7 +78,6 @@ export async function GET(
         limit(async () => {
 
           if (processedThisRun >= MAX_PER_RUN) return;
-          if (job.success + createdThisRun >= TEST_LIMIT) return;
 
           const username = `s${s.admissionNo}`;
           const phone = s.phone?.replace(/\D/g, "").slice(-10);
@@ -88,15 +85,7 @@ export async function GET(
           if (!phone || phone.length !== 10) return;
 
           try {
-            const existing = await prisma.profile.findUnique({
-              where: { phone },
-              select: { clerk_id: true },
-            });
 
-            if (existing?.clerk_id) {
-              console.log("⏭️ SKIPPED (already exists):", phone);
-              return;
-            }
 
             await retry(() =>
               createOrUpdateIdentityScript({
@@ -108,15 +97,11 @@ export async function GET(
               })
             );
 
-            console.log("✅ CREATED:", username); // ✅ ADD THIS
+            console.log("✅ CREATED:", username);
             createdThisRun++;
 
           } catch (err: any) {
-            console.error("❌ FAILED USER:", {   // ✅ REPLACE THIS
-              username,
-              phone,
-              error: err,
-            });
+            console.error("❌ FAILED:", username, err?.message);
           }
 
           processedThisRun++;
@@ -134,8 +119,7 @@ export async function GET(
       success: { increment: createdThisRun },
       total,
       status:
-        job.success + createdThisRun >= TEST_LIMIT ||
-          job.processed + processedThisRun >= total
+        job.processed + processedThisRun >= total
           ? "completed"
           : "processing",
     },
