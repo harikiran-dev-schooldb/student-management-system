@@ -1,5 +1,5 @@
-import prisma from "../prisma";
-import { createClerkClient } from "@clerk/clerk-sdk-node";
+import prisma from "@/lib/prisma";
+import { createClerkClient } from "@clerk/backend";
 
 const clerk = createClerkClient({
   secretKey: process.env.CLERK_SECRET_KEY!,
@@ -9,7 +9,7 @@ type IdentityInput = {
   username: string;
   phone: string;
   name: string;
-  role: "student";
+  role: "student" | "teacher" | "admin" | "principal" | "superadmin";
   schoolId: string;
 };
 
@@ -25,27 +25,29 @@ export async function createOrUpdateIdentityScript({
 
   let clerkUser;
 
+  // 🔍 Find existing Clerk user
   const existing = await clerk.users.getUserList({
     externalId: [normalizedPhone],
   });
 
   if (existing.data.length > 0) {
     clerkUser = existing.data[0];
-    console.log("Reusing Clerk user:", clerkUser.id);
+    console.log("Reusing Clerk:", clerkUser.id);
   } else {
     clerkUser = await clerk.users.createUser({
       externalId: normalizedPhone,
-      emailAddress: [`${name}@schooldb.com`],
+      emailAddress: [`${normalizedPhone}@schooldb.com`],
       firstName: name || "User",
       password: crypto.randomUUID(),
       skipPasswordChecks: true,
     });
 
-    console.log("Created Clerk user:", clerkUser.id);
+    console.log("Created Clerk:", clerkUser.id);
   }
 
   const clerkId = clerkUser.id;
 
+  // ✅ Profile
   const profile = await prisma.profile.upsert({
     where: { phone: normalizedPhone },
     update: { clerk_id: clerkId },
@@ -55,6 +57,7 @@ export async function createOrUpdateIdentityScript({
     },
   });
 
+  // ✅ Linked User
   const linkedUser = await prisma.linkedUser.upsert({
     where: {
       username_schoolId: {
@@ -74,6 +77,7 @@ export async function createOrUpdateIdentityScript({
     },
   });
 
+  // ✅ Active role
   await prisma.profile.update({
     where: { id: profile.id },
     data: {
@@ -81,6 +85,7 @@ export async function createOrUpdateIdentityScript({
     },
   });
 
+  // ✅ Metadata
   await clerk.users.updateUserMetadata(clerkId, {
     publicMetadata: {
       role,
@@ -90,5 +95,9 @@ export async function createOrUpdateIdentityScript({
     },
   });
 
-  return { clerkId };
+  return {
+    clerkId,
+    profileId: profile.id,
+    linkedUserId: linkedUser.id,
+  };
 }

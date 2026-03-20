@@ -93,7 +93,10 @@ export async function GET(
               select: { clerk_id: true },
             });
 
-            if (existing?.clerk_id) return;
+            if (existing?.clerk_id) {
+              console.log("⏭️ SKIPPED (already exists):", phone);
+              return;
+            }
 
             await retry(() =>
               createOrUpdateIdentityScript({
@@ -105,10 +108,15 @@ export async function GET(
               })
             );
 
+            console.log("✅ CREATED:", username); // ✅ ADD THIS
             createdThisRun++;
 
           } catch (err: any) {
-            console.error("❌", username, err?.message);
+            console.error("❌ FAILED USER:", {   // ✅ REPLACE THIS
+              username,
+              phone,
+              error: err,
+            });
           }
 
           processedThisRun++;
@@ -127,7 +135,7 @@ export async function GET(
       total,
       status:
         job.success + createdThisRun >= TEST_LIMIT ||
-        job.processed + processedThisRun >= total
+          job.processed + processedThisRun >= total
           ? "completed"
           : "processing",
     },
@@ -137,7 +145,7 @@ export async function GET(
   if (updatedJob.status !== "completed") {
     fetch(
       `${BASE_URL}/api/v1/tenants/${slug}/jobs/process-identities`
-    ).catch(() => {});
+    ).catch(() => { });
   }
 
   return Response.json({

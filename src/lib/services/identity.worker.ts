@@ -1,5 +1,5 @@
 import prisma from "@/lib/prisma";
-import { createOrUpdateIdentity } from "@/lib/services/identity.service";
+import { createOrUpdateIdentityScript } from "@/lib/services/identity.script";
 import pLimit from "p-limit";
 
 export async function processIdentityJobs() {
@@ -40,7 +40,7 @@ export async function processIdentityJobs() {
             throw new Error("Invalid phone");
           }
 
-          await createOrUpdateIdentity({
+          await createOrUpdateIdentityScript({
             username: job.username,
             phone: normalizedPhone,
             name: job.name,
