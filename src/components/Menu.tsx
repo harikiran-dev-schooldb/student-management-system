@@ -31,9 +31,7 @@ import {
   Edit,
   Settings,
   Activity,
-  Clipboard,
   ClipboardCheck,
-  Stethoscope,
   HeartPulse,
 } from "lucide-react";
 
@@ -41,7 +39,7 @@ type Role = "admin" | "teacher" | "student";
 
 interface MenuItem {
   label: string;
-  href?: string | ((role: Role) => string); // ✅ optional
+  href?: string | ((role: Role) => string);
   icon: ElementType;
   visible: Role[];
   dropdown?: MenuItem[];
@@ -132,6 +130,12 @@ const menuSections: MenuSection[] = [
           {
             label: "Fee Collection",
             href: "/list/fees/collect",
+            icon: IndianRupee,
+            visible: ["admin", "teacher"],
+          },
+          {
+            label: "Fee Defaulters",
+            href: "/list/reports/fees/defaulters",
             icon: IndianRupee,
             visible: ["admin", "teacher"],
           },

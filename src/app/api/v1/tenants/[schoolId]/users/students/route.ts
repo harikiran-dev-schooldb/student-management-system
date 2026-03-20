@@ -5,6 +5,7 @@ import { resolveSchoolId } from "@/lib/resolveSchool";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
 import { studentschema } from "@/lib/formValidationSchemas";
 import { createOrUpdateIdentity } from "@/lib/services/identity.service";
+import { assignFeesToStudent } from "@/lib/services/fee.service";
 
 export const runtime = "nodejs";
 
@@ -160,38 +161,11 @@ export async function POST(
       });
 
       /* ---- Fee Structures ---- */
-      const feeStructures = await tx.feeStructure.findMany({
-        where: {
-          gradeId: classData.gradeId,
-          academicYearId: academicYear.id,
-          schoolId,
-        },
-      });
-
-      if (feeStructures.length > 0) {
-        await tx.studentFees.createMany({
-          data: feeStructures.map((f) => ({
-            studentId: newStudent.id,
-            feeStructureId: f.id,
-            academicYearId: academicYear.id,
-            term: f.term,
-            paidAmount: 0,
-            discountAmount: 0,
-            fineAmount: 0,
-            abacusPaidAmount: 0,
-            paymentMode: "CASH",
-            schoolId,
-          })),
-        });
-      }
-
-      /* ---- StudentTotalFees Row ---- */
-      await tx.studentTotalFees.create({
-        data: {
-          studentId: newStudent.id,
-          academicYearId: academicYear.id,
-          schoolId,
-        },
+      await assignFeesToStudent(tx, {
+        studentId: newStudent.id,
+        gradeId: classData.gradeId,
+        academicYearId: academicYear.id,
+        schoolId,
       });
 
       console.log("Student created: ", newStudent);

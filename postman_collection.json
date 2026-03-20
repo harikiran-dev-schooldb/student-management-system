@@ -11,6 +11,68 @@
   ],
   "item": [
     {
+      "name": "POST /api/v1/public/auth/send-otp/",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Cookie",
+            "value": "__session={{CLERK_SESSION}}"
+          }
+        ],
+        "url": {
+          "raw": "https://schooldb.co.in/api/v1/public/auth/send-otp/",
+          "host": [
+            "schooldb",
+            "co",
+            "in"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "public",
+            "auth",
+            "send-otp"
+          ]
+        }
+      }
+    },
+    {
+      "name": "POST /api/v1/public/auth/verify-otp/",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Cookie",
+            "value": "__session={{CLERK_SESSION}}"
+          }
+        ],
+        "url": {
+          "raw": "https://schooldb.co.in/api/v1/public/auth/verify-otp/",
+          "host": [
+            "schooldb",
+            "co",
+            "in"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "public",
+            "auth",
+            "verify-otp"
+          ]
+        }
+      }
+    },
+    {
       "name": "GET /api/v1/public/health/",
       "request": {
         "method": "GET",
@@ -67,6 +129,37 @@
             "public",
             "school",
             "create"
+          ]
+        }
+      }
+    },
+    {
+      "name": "GET /api/v1/public/school/search/",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Cookie",
+            "value": "__session={{CLERK_SESSION}}"
+          }
+        ],
+        "url": {
+          "raw": "https://schooldb.co.in/api/v1/public/school/search/",
+          "host": [
+            "schooldb",
+            "co",
+            "in"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "public",
+            "school",
+            "search"
           ]
         }
       }
@@ -130,6 +223,37 @@
             "public",
             "school",
             "test"
+          ]
+        }
+      }
+    },
+    {
+      "name": "GET /api/v1/tenants/test/academic-years/",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Cookie",
+            "value": "__session={{CLERK_SESSION}}"
+          }
+        ],
+        "url": {
+          "raw": "https://schooldb.co.in/api/v1/tenants/test/academic-years/",
+          "host": [
+            "schooldb",
+            "co",
+            "in"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "tenants",
+            "test",
+            "academic-years"
           ]
         }
       }
@@ -287,6 +411,70 @@
             "tenants",
             "test",
             "assignments"
+          ]
+        }
+      }
+    },
+    {
+      "name": "PUT /api/v1/tenants/test/assignments/1/",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Cookie",
+            "value": "__session={{CLERK_SESSION}}"
+          }
+        ],
+        "url": {
+          "raw": "https://schooldb.co.in/api/v1/tenants/test/assignments/1/",
+          "host": [
+            "schooldb",
+            "co",
+            "in"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "tenants",
+            "test",
+            "assignments",
+            "1"
+          ]
+        }
+      }
+    },
+    {
+      "name": "DELETE /api/v1/tenants/test/assignments/1/",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Cookie",
+            "value": "__session={{CLERK_SESSION}}"
+          }
+        ],
+        "url": {
+          "raw": "https://schooldb.co.in/api/v1/tenants/test/assignments/1/",
+          "host": [
+            "schooldb",
+            "co",
+            "in"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "tenants",
+            "test",
+            "assignments",
+            "1"
           ]
         }
       }
@@ -895,6 +1083,38 @@
       }
     },
     {
+      "name": "GET /api/v1/tenants/test/fees/collection/",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Cookie",
+            "value": "__session={{CLERK_SESSION}}"
+          }
+        ],
+        "url": {
+          "raw": "https://schooldb.co.in/api/v1/tenants/test/fees/collection/",
+          "host": [
+            "schooldb",
+            "co",
+            "in"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "tenants",
+            "test",
+            "fees",
+            "collection"
+          ]
+        }
+      }
+    },
+    {
       "name": "GET /api/v1/tenants/test/fees/daily-summary/",
       "request": {
         "method": "GET",
@@ -1120,6 +1340,38 @@
       }
     },
     {
+      "name": "GET /api/v1/tenants/test/fees/transactions/",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Cookie",
+            "value": "__session={{CLERK_SESSION}}"
+          }
+        ],
+        "url": {
+          "raw": "https://schooldb.co.in/api/v1/tenants/test/fees/transactions/",
+          "host": [
+            "schooldb",
+            "co",
+            "in"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "tenants",
+            "test",
+            "fees",
+            "transactions"
+          ]
+        }
+      }
+    },
+    {
       "name": "POST /api/v1/tenants/test/fees/transactions/",
       "request": {
         "method": "POST",
@@ -1241,6 +1493,39 @@
             "tenants",
             "test",
             "grades"
+          ]
+        }
+      }
+    },
+    {
+      "name": "GET /api/v1/tenants/test/grades/1/classes/",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Cookie",
+            "value": "__session={{CLERK_SESSION}}"
+          }
+        ],
+        "url": {
+          "raw": "https://schooldb.co.in/api/v1/tenants/test/grades/1/classes/",
+          "host": [
+            "schooldb",
+            "co",
+            "in"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "tenants",
+            "test",
+            "grades",
+            "1",
+            "classes"
           ]
         }
       }
@@ -1501,7 +1786,39 @@
       }
     },
     {
-      "name": "GET /api/v1/tenants/test/jobs/1/",
+      "name": "POST /api/v1/tenants/test/jobs/backfill-identities/",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Cookie",
+            "value": "__session={{CLERK_SESSION}}"
+          }
+        ],
+        "url": {
+          "raw": "https://schooldb.co.in/api/v1/tenants/test/jobs/backfill-identities/",
+          "host": [
+            "schooldb",
+            "co",
+            "in"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "tenants",
+            "test",
+            "jobs",
+            "backfill-identities"
+          ]
+        }
+      }
+    },
+    {
+      "name": "GET /api/v1/tenants/test/jobs/backfill-identities/1/",
       "request": {
         "method": "GET",
         "header": [
@@ -1515,7 +1832,7 @@
           }
         ],
         "url": {
-          "raw": "https://schooldb.co.in/api/v1/tenants/test/jobs/1/",
+          "raw": "https://schooldb.co.in/api/v1/tenants/test/jobs/backfill-identities/1/",
           "host": [
             "schooldb",
             "co",
@@ -1527,7 +1844,40 @@
             "tenants",
             "test",
             "jobs",
+            "backfill-identities",
             "1"
+          ]
+        }
+      }
+    },
+    {
+      "name": "GET /api/v1/tenants/test/jobs/process-identities/",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Cookie",
+            "value": "__session={{CLERK_SESSION}}"
+          }
+        ],
+        "url": {
+          "raw": "https://schooldb.co.in/api/v1/tenants/test/jobs/process-identities/",
+          "host": [
+            "schooldb",
+            "co",
+            "in"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "tenants",
+            "test",
+            "jobs",
+            "process-identities"
           ]
         }
       }
@@ -2796,6 +3146,38 @@
             "tenants",
             "test",
             "switch-role"
+          ]
+        }
+      }
+    },
+    {
+      "name": "GET /api/v1/tenants/test/upload-status/[sessionId]/",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Cookie",
+            "value": "__session={{CLERK_SESSION}}"
+          }
+        ],
+        "url": {
+          "raw": "https://schooldb.co.in/api/v1/tenants/test/upload-status/[sessionId]/",
+          "host": [
+            "schooldb",
+            "co",
+            "in"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "tenants",
+            "test",
+            "upload-status",
+            "[sessionId]"
           ]
         }
       }

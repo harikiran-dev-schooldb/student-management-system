@@ -3,8 +3,7 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { announcementSchema } from "@/lib/formValidationSchemas";
-import { requireTenantAccess } from "@/lib/requireTenantAccess";
-import { tenantGuard, tenantSlugGuard } from "@/lib/tenantGuard";
+import { tenantSlugGuard } from "@/lib/tenantGuard";
 
 /* =======================================================
    POST  /api/v1/tenants/[schoolId]/announcements
