@@ -83,7 +83,7 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
   useEffect(() => {
     if (role !== "admin" || !schoolId) return;
 
-    tenantFetch<Grade[]>(schoolId, "/grades")
+    tenantFetch(schoolId, "/grades")
       .then(setGrades)
       .catch(console.error);
   }, [role, schoolId]);
@@ -463,6 +463,22 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
                   Mark All Absent
                 </button>
               )}
+
+              {/* Sticky Submit Footer */}
+              <div className="sticky bottom-4 flex justify-end">
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-xl shadow-lg shadow-emerald-600/20 font-medium transition-all transform hover:-translate-y-1 active:scale-95 disabled:opacity-70 disabled:transform-none"
+                >
+                  {submitting ? "Saving..." : "Save Attendance"}
+                  {submitting ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <Save className="w-5 h-5" />
+                  )}
+                </button>
+              </div>
             </div>
           </div>
 
@@ -560,21 +576,7 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
             </div>
           )}
 
-          {/* Sticky Submit Footer */}
-          <div className="sticky bottom-4 flex justify-end">
-            <button
-              type="submit"
-              disabled={submitting}
-              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-xl shadow-lg shadow-emerald-600/20 font-medium transition-all transform hover:-translate-y-1 active:scale-95 disabled:opacity-70 disabled:transform-none"
-            >
-              {submitting ? "Saving..." : "Save Attendance"}
-              {submitting ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <Save className="w-5 h-5" />
-              )}
-            </button>
-          </div>
+
         </div>
       )}
     </form>

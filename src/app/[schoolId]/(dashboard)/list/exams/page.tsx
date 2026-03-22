@@ -91,6 +91,7 @@ const ExamsList = async ({
     page,
     date,
     gradeId: searchGradeId,
+    branchId: rawBranchId,
     ...queryParams
   } = resolvedSearchParams;
   const p = page ? (Array.isArray(page) ? page[0] : page) : "1";
@@ -104,6 +105,9 @@ const ExamsList = async ({
   const db = tenantPrisma(school.id);
   const query: Prisma.ExamWhereInput = { schoolId: school.id };
   const examGradeSubjectsWhere: Prisma.ExamGradeSubjectWhereInput = {};
+  const branchId = Array.isArray(resolvedSearchParams.branchId)
+      ? resolvedSearchParams.branchId[0]
+      : resolvedSearchParams.branchId;
 
   if (role === "teacher" && teacherId) {
     const teacherSubjects = await db.subjectTeacher.findMany({
@@ -119,6 +123,7 @@ const ExamsList = async ({
 
     const subjectIds = [...new Set(teacherSubjects.map((s) => s.subjectId))];
     const gradeIds = [...new Set(teacherSubjects.map((s) => s.class.gradeId))];
+
 
     if (subjectIds.length === 0 || gradeIds.length === 0) {
       return <p className="text-center text-red-500">⚠️ No subjects assigned.</p>;
@@ -144,15 +149,26 @@ const ExamsList = async ({
     );
   }
 
-  // Grade filter from query params (safe)
+  const gradeFilter: any = {};
+
   if (searchGradeId) {
     const parsed = Number(
       Array.isArray(searchGradeId) ? searchGradeId[0] : searchGradeId
     );
-
     if (!Number.isNaN(parsed)) {
-      examGradeSubjectsWhere.gradeId = parsed;
+      gradeFilter.id = parsed;
     }
+  }
+
+  if (branchId) {
+    const parsedBranch = Number(branchId);
+    if (!Number.isNaN(parsedBranch)) {
+      gradeFilter.branchId = parsedBranch;
+    }
+  }
+
+  if (Object.keys(gradeFilter).length > 0) {
+    examGradeSubjectsWhere.grade = gradeFilter;
   }
 
   // Date filter
@@ -212,6 +228,7 @@ const ExamsList = async ({
 
   const classes = await db.class.findMany();
   const grades = await db.grade.findMany();
+  const branches = await db.branch.findMany();
   const Path = `/${slug}/list/exams`;
 
   return (
@@ -227,6 +244,7 @@ const ExamsList = async ({
             <ClassFilterDropdown
               classes={classes}
               grades={grades}
+              branches={branches}
               basePath={Path}
               showClassFilter={false}
             />
@@ -247,6 +265,8 @@ const ExamsList = async ({
         columns={columns}
         renderRow={(item) => renderRow(item, role)}
         data={data}
+        sortKey={sortKey}
+        sortOrder={sortOrder}
       />
 
       {/* PAGINATION */}

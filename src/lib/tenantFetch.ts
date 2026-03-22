@@ -19,21 +19,20 @@ export async function tenantFetch<T = any>(
     }
   );
 
-  const data = await response.json().catch(() => null);
+  const json = await response.json().catch(() => null);
 
   if (!response.ok) {
     const message =
-      data?.message ||
-      data?.error ||
+      json?.message ||
+      json?.error ||
       `Request failed (${response.status})`;
 
     const error = new Error(message);
-
-    // attach API errors (optional but powerful)
-    (error as any).errors = data?.errors;
+    (error as any).errors = json?.errors;
 
     throw error;
   }
 
-  return data as T;
+  // ✅ KEY FIX HERE
+  return (json?.data ?? json) as T;
 }

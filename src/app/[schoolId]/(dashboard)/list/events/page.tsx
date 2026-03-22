@@ -222,6 +222,8 @@ const EventsList = async ({
         columns={columns}
         renderRow={(item) => renderRow(item, role)}
         data={data}
+        sortKey="startTime"
+        sortOrder="asc"
       />
       {/* PAGINATION: Description */}
       <Pagination page={p} count={count} />

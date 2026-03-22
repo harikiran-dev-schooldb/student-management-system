@@ -171,12 +171,32 @@ export async function GET(
   { params }: { params: Promise<{ schoolId: string }> },
 ) {
   try {
-
     const { schoolId: slug } = await params;
     const schoolId = await resolveSchoolId(slug);
 
+    const { searchParams } = new URL(req.url);
+
+    const gradeId = searchParams.get("gradeId");
+    const branchId = searchParams.get("branchId");
+
+    const where: any = {
+      schoolId,
+    };
+
+    /* ---------------- FILTER BY GRADE ---------------- */
+    if (gradeId) {
+      where.gradeId = Number(gradeId);
+    }
+
+    /* ---------------- FILTER BY BRANCH ---------------- */
+    if (branchId) {
+      where.Grade = {
+        branchId: Number(branchId),
+      };
+    }
+
     const classes = await prisma.class.findMany({
-      where: { schoolId },
+      where,
       select: {
         id: true,
         name: true,
@@ -185,20 +205,22 @@ export async function GET(
         Grade: {
           select: {
             id: true,
-            level: true
-          }
-        }
+            level: true,
+            branchId: true,
+          },
+        },
       },
       orderBy: [
         { gradeId: "asc" },
-        { section: "asc" }
-      ]
+        { section: "asc" },
+      ],
     });
 
-    return NextResponse.json(classes, { status: 200 });
+    return NextResponse.json({
+      data: classes,
+    });
 
   } catch (error) {
-
     console.error("GET classes error:", error);
 
     return NextResponse.json(

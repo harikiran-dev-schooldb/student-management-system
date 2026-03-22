@@ -64,9 +64,11 @@ const MessageForm = ({
       type: data?.type || "",
       studentId: data?.studentId || "",
       gradeId: data?.gradeId || "",
+      branchId: data?.branchId || "",
     },
   });
 
+  const selectedBranchId = watch("branchId");
   const selectedGradeId = watch("gradeId");
   const selectedClassId = watch("classId");
   const selectedStudentId = watch("studentId");
@@ -77,17 +79,34 @@ const MessageForm = ({
   const { makeRequest } = useApiRequest();
   const schoolId = useSchoolSlug();
 
-  const { classes = [], grades = [], students = [] } = relatedData || {};
+  const { classes = [], grades = [], students = [], branches = [] } = relatedData || {};
+
+  console.log("branches from DB:", branches);
 
   // Filter classes based on selected gradeId
+  const filteredGrades = selectedGradeId
+    ? grades.filter((gr: any) => gr.branchId === Number(selectedBranchId))
+    : grades;
+
+    // Filter classes based on selected gradeId
   const filteredClasses = selectedGradeId
-    ? classes.filter((cls: any) => cls.gradeId === Number(selectedGradeId))
-    : classes;
+  ? classes.filter((cls: any) => cls.gradeId === Number(selectedGradeId))
+  : selectedBranchId
+  ? classes.filter((cls: any) =>
+      grades
+        .filter((g: any) => g.branchId === Number(selectedBranchId))
+        .map((g: any) => g.id)
+        .includes(cls.gradeId)
+    )
+  : classes;
+
+  
 
   useEffect(() => {
+    setValue("gradeId", undefined);
     setValue("classId", undefined);
     setValue("studentId", undefined);
-  }, [selectedGradeId, setValue]);
+  }, [selectedBranchId, setValue]);
 
   // Final filtered students: only from selected class
   const filteredStudents = selectedClassId
@@ -203,6 +222,29 @@ const MessageForm = ({
         error={errors?.date}
       />
 
+      {/* Branch Select */}
+      <div className="flex flex-col gap-2">
+        <label className="text-sm font-medium text-gray-500">Branch</label>
+        <select
+          className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
+          {...register("branchId", {
+            setValueAs: (v) => (v === "" ? undefined : Number(v)),
+          })}
+        >
+          <option value="">Select Branch</option>
+          {branches.map((branch: { id: number; name: string }) => (
+            <option key={branch.id} value={branch.id}>
+              {branch.name}
+            </option>
+          ))}
+        </select>
+        {errors?.branchId && (
+          <p className="text-xs text-red-400">
+            {errors.branchId.message?.toString()}
+          </p>
+        )}
+      </div>
+
       {/* Grade Select */}
       <div className="flex flex-col gap-2">
         <label className="text-sm font-medium text-gray-500">Grade</label>
@@ -213,7 +255,7 @@ const MessageForm = ({
           })}
         >
           <option value="">Select Grade</option>
-          {grades.map((gr: { id: number; level: string }) => (
+          {filteredGrades.map((gr: { id: number; level: string }) => (
             <option key={gr.id} value={gr.id}>
               {gr.level}
             </option>

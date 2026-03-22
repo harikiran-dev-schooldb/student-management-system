@@ -5,22 +5,24 @@ import ClassFilterDropdown, {
 import FormContainer from "@/components/FormContainer";
 import Pagination from "@/components/Pagination";
 import SortButton from "@/components/SortButton";
-import Table from "@/components/Table";
 import TableSearch from "@/components/TableSearch";
 import prisma from "@/lib/prisma";
 import { ITEM_PER_PAGE } from "@/lib/settings";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
 import { $Enums, Prisma } from "@prisma/client";
-import Link from "next/link";
 import ResetFiltersButton from "@/components/ResetFiltersButton";
-import StudentStatusDropdown from "@/components/StudentStatusDropdown";
 import { Eye, Filter } from "lucide-react";
-import Avatar from "@/components/Avatar";
 import { notFound } from "next/navigation";
 import IconButton from "@/components/IconButton";
 import { SearchParams, StudentsList } from "../../../../../../../types";
 import { StudentSelect } from "../../../../../../../types/query-types";
 import { tenantPrisma } from "@/lib/tenant-prisma";
+import StudentCard from "@/components/StudentCard";
+import { buildClassHierarchyFilter, buildEnrollmentFilter } from "@/lib/filters/buildHierarchyFilter";
+import Table from "@/components/Table";
+import StudentStatusDropdown from "@/components/StudentStatusDropdown";
+import Avatar from "@/components/Avatar";
+import Link from "next/link";
 
 // --- 1. Render Row (Ultimate UI) ---
 const renderRow = (
@@ -99,17 +101,32 @@ const renderRow = (
 
 // --- 2. Dynamic Columns ---
 const getColumns = (role: string | null) => [
-  { header: "Student Name", accessor: "name" },
-  ...(role === "admin" ? [{ header: "Class", accessor: "class" }] : []),
+  { header: "Student", accessor: "name", sortable: true },
+  ...(role === "admin"
+    ? [{ header: "Class", accessor: "class", sortable: true }]
+    : []),
   {
     header: "Parent",
     accessor: "fatherName",
     className: "hidden md:table-cell",
   },
-  { header: "Birth Date", accessor: "dob", className: "hidden lg:table-cell" },
-  { header: "Phone", accessor: "phone", className: "hidden lg:table-cell" },
-  { header: "Actions", accessor: "action", className: "text-right pr-8" },
+  {
+    header: "Birth Date",
+    accessor: "dob",
+    className: "hidden lg:table-cell",
+    sortable: true,
+  },
+  {
+    header: "Phone",
+    accessor: "phone",
+    className: "hidden lg:table-cell",
+  },
+  {
+    header: "Actions",
+    accessor: "action",
+  },
 ];
+
 
 const StudentListPage = async ({
   searchParams,
@@ -152,15 +169,6 @@ const StudentListPage = async ({
   const search = Array.isArray(queryParams.search)
     ? queryParams.search[0]
     : queryParams.search;
-  const teacher = Array.isArray(teacherFilterId)
-    ? teacherFilterId[0]
-    : teacherFilterId;
-  const grade = Array.isArray(gradeId) ? gradeId[0] : gradeId;
-  const classIdNum = Array.isArray(classId)
-    ? Number(classId[0])
-    : classId
-    ? Number(classId)
-    : undefined;
 
   if (role === "student") {
     return notFound();
@@ -168,32 +176,28 @@ const StudentListPage = async ({
 
   const db = tenantPrisma(school.id);
 
-  let finalClassId = classIdNum;
 
-  const enrollmentFilter: Prisma.StudentEnrollmentWhereInput = {
-    ...(finalClassId && { classId: finalClassId }),
-
-    ...(grade && {
-      class: {
-        gradeId: Number(grade),
-      },
+  const classes = await db.class.findMany({
+    where: buildClassHierarchyFilter({
+      branchId: resolvedSearchParams.branchId,
+      gradeId,
+      classId,
     }),
+  });
 
-    ...(teacher && {
-      class: {
-        teacherClassAssignments: {
-          some: {
-            teacherId: teacher,
-            academicYear: { isActive: true },
-            schoolId: school.id,
-          },
-        },
-      },
-    }),
-  };
+  const branches = await db.branch.findMany();
+
+  const enrollmentFilter = buildEnrollmentFilter({
+    branchId: resolvedSearchParams.branchId,
+    gradeId,
+    classId,
+  });
+
 
   if (role === "teacher" && activeTeacherId) {
     enrollmentFilter.class = {
+      ...(enrollmentFilter.class ?? {}),
+
       teacherClassAssignments: {
         some: {
           teacherId: activeTeacherId,
@@ -201,7 +205,7 @@ const StudentListPage = async ({
           schoolId: school.id,
         },
       },
-    };
+    } as Prisma.ClassWhereInput;
   }
 
   const query: Prisma.StudentWhereInput = {
@@ -228,19 +232,18 @@ const StudentListPage = async ({
     ...(gender ? { gender: gender as $Enums.Gender } : {}),
   };
 
-  const classes = await db.class.findMany({
-    where: gradeId ? { gradeId: Number(gradeId) } : {},
-  });
+
 
   const grades = await db.grade.findMany();
 
-  const allowedSortKeys = ["id", "name", "gender"];
-  const safeSortKey = allowedSortKeys.includes(sortKey) ? sortKey : "name";
+  const allowedSortKeys = ["admissionNo", "name", "gender"];
+  const safeSortKey = allowedSortKeys.includes(sortKey) ? sortKey : "admissionNo";
 
   const [data, count] = await db.$transaction([
     db.student.findMany({
       orderBy: [
         { [safeSortKey]: sortOrder },
+        { admissionNo: "asc" },
         { gender: "desc" },
         { name: "asc" },
       ],
@@ -266,8 +269,10 @@ const StudentListPage = async ({
           <TableSearch />
           {role === "admin" && (
             <ClassFilterDropdown
+
               classes={classes}
               grades={grades}
+              branches={branches}
               basePath={Path}
             />
           )}
@@ -286,12 +291,31 @@ const StudentListPage = async ({
         </div>
       </div>
 
-      {/* Table View */}
-      <Table
-        columns={columns}
-        renderRow={(item) => renderRow(item, role, slug)}
-        data={data}
-      />
+      {data.length === 0 ? (
+        <div className="p-10 text-center text-slate-500">
+          No students found
+        </div>
+      ) : (
+        <>
+          {/* Desktop Table */}
+          <div className="hidden md:block mt-4">
+            <Table
+              columns={columns}
+              renderRow={(item) => renderRow(item, role, slug)}
+              data={data}
+              sortKey={sortKey}
+              sortOrder={sortOrder}
+            />
+          </div>
+
+          {/* Mobile Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:hidden mt-4">
+            {data.map((item) => (
+              <StudentCard key={item.id} item={item} slug={slug} />
+            ))}
+          </div>
+        </>
+      )}
 
       {/* Footer */}
       <Pagination page={parseInt(p)} count={count} />

@@ -13,7 +13,13 @@ type ClassType = {
 
 type GradeType = {
   id: number;
-  level: string;
+  level: number | string;
+  branchId: number;
+  branch?: {
+    id: number;
+    name: string;
+    type: string;
+  };
 };
 
 type DayFilterProps = { basePath: string };
@@ -32,15 +38,36 @@ interface ClassFilterProps {
 const ClassFilterDropdown = ({
   classes,
   grades,
+  branches, // ✅ NEW
   basePath,
   showClassFilter = true,
-}: ClassFilterProps) => {
+}: ClassFilterProps & { branches: any[] }) => {
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  const selectedBranchId = searchParams.get("branchId"); // ✅ NEW
   const selectedGradeId = searchParams.get("gradeId");
   const selectedClassId = searchParams.get("classId");
 
+  /* ---------------- BRANCH ---------------- */
+  const handleBranchChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const branchId = e.target.value;
+    const params = new URLSearchParams(searchParams.toString());
+
+    if (branchId) {
+      params.set("branchId", branchId);
+      params.delete("gradeId"); // reset hierarchy
+      params.delete("classId");
+    } else {
+      params.delete("branchId");
+      params.delete("gradeId");
+      params.delete("classId");
+    }
+
+    router.push(`${basePath}?${params.toString()}`);
+  };
+
+  /* ---------------- GRADE ---------------- */
   const handleGradeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const gradeId = e.target.value;
     const params = new URLSearchParams(searchParams.toString());
@@ -56,6 +83,7 @@ const ClassFilterDropdown = ({
     router.push(`${basePath}?${params.toString()}`);
   };
 
+  /* ---------------- CLASS ---------------- */
   const handleClassChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const classId = e.target.value;
     const params = new URLSearchParams(searchParams.toString());
@@ -69,23 +97,47 @@ const ClassFilterDropdown = ({
     router.push(`${basePath}?${params.toString()}`);
   };
 
+  /* ---------------- FILTERS ---------------- */
+
+  // ✅ Filter grades by branch
+  const filteredGrades = selectedBranchId
+    ? grades.filter((g) => g.branchId.toString() === selectedBranchId)
+    : grades;
+
+  // ✅ Filter classes by grade
   const filteredClasses = selectedGradeId
-    ? classes.filter((cls) => cls.gradeId.toString() === selectedGradeId)
+    ? classes.filter((c) => c.gradeId.toString() === selectedGradeId)
     : [];
 
   return (
     <div className="flex flex-col gap-4 md:flex-row md:items-center">
-      {/* Grade Dropdown */}
+
+      {/* 🔥 BRANCH */}
+      <div className="relative w-full md:w-auto">
+        <select
+          className={dropdownUI}
+          onChange={handleBranchChange}
+          value={selectedBranchId || ""}
+        >
+          <option value="">Select Branch</option>
+          {branches.map((b) => (
+            <option key={b.id} value={b.id}>
+              {b.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* 🔥 GRADE */}
       <div className="relative w-full md:w-auto">
         <select
           className={dropdownUI}
           onChange={handleGradeChange}
           value={selectedGradeId || ""}
+          disabled={!selectedBranchId}
         >
-          <option value="" disabled>
-            Select Grade
-          </option>
-          {grades.map((grade) => (
+          <option value="">Select Grade</option>
+          {filteredGrades.map((grade) => (
             <option key={grade.id} value={grade.id}>
               {grade.level}
             </option>
@@ -93,7 +145,7 @@ const ClassFilterDropdown = ({
         </select>
       </div>
 
-      {/* Class Dropdown */}
+      {/* 🔥 CLASS */}
       {showClassFilter && (
         <div className="relative w-full md:w-auto">
           <select
@@ -102,9 +154,7 @@ const ClassFilterDropdown = ({
             value={selectedClassId || ""}
             disabled={!selectedGradeId}
           >
-            <option value="" disabled>
-              Select Class
-            </option>
+            <option value="">Select Class</option>
             {filteredClasses
               .sort((a, b) => (a.section ?? "").localeCompare(b.section ?? ""))
               .map((cls) => (
@@ -144,7 +194,6 @@ const StatusFilter = ({ basePath }: StatusFilterProps) => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const currentStatus = searchParams.get("status") || "Status";
-  const feeStatus = searchParams.get("status");
 
   useEffect(() => {
     if (!searchParams.get("status")) {

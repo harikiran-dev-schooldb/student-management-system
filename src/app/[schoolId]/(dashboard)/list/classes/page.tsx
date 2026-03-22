@@ -145,6 +145,8 @@ const ClassesList = async ({
         columns={getColumns(role)}
         renderRow={(item) => renderRow(item, role)}
         data={data}
+        sortKey={sortKey}
+        sortOrder={sortOrder}
       />
 
       {/* Pagination */}

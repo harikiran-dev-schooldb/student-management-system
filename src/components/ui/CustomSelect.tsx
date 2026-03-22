@@ -48,7 +48,7 @@ export default function CustomSelect({
   return (
     <div
       ref={containerRef}
-      className={`relative ${
+      className={`relative w-full md:w-56 lg:w-64 ${
         disabled ? "opacity-50 pointer-events-none" : ""
       }`}
     >

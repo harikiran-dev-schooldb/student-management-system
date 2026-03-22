@@ -3,23 +3,23 @@ import FormModal from "./FormModal";
 
 export type FormContainerProps = {
   table:
-    | "teacher"
-    | "student"
-    | "permissions"
-    | "subject"
-    | "class"
-    | "lesson"
-    | "exams"
-    | "assignment"
-    | "attendance"
-    | "event"
-    | "announcement"
-    | "fees"
-    | "admin"
-    | "fees_structure"
-    | "messages"
-    | "results"
-    | "homework";
+  | "teacher"
+  | "student"
+  | "permissions"
+  | "subject"
+  | "class"
+  | "lesson"
+  | "exams"
+  | "assignment"
+  | "attendance"
+  | "event"
+  | "announcement"
+  | "fees"
+  | "admin"
+  | "fees_structure"
+  | "messages"
+  | "results"
+  | "homework";
   type: "create" | "update" | "delete";
   data?: any;
   id?: number | string;
@@ -197,9 +197,16 @@ const FormContainer = async ({ table, type, data, id }: FormContainerProps) => {
         break;
 
       case "messages":
+
+        // 🔥 BRANCHES
+
+        const branchMessages = await prisma.branch.findMany({
+          select: { id: true, name: true },
+        });
+
         // 1️⃣ Grades
         const gradeMessages = await prisma.grade.findMany({
-          
+
           select: { id: true, level: true },
         });
 
@@ -207,7 +214,7 @@ const FormContainer = async ({ table, type, data, id }: FormContainerProps) => {
         const studentMessages = await prisma.student.findMany({
           where: {
             status: "ACTIVE",
-            
+
             enrollments: {
               some: {
                 status: "ACTIVE",
@@ -232,7 +239,7 @@ const FormContainer = async ({ table, type, data, id }: FormContainerProps) => {
 
         // 3️⃣ Classes + Active Student Count
         const classMessages = await prisma.class.findMany({
-          
+
           include: {
             _count: {
               select: {
@@ -254,6 +261,7 @@ const FormContainer = async ({ table, type, data, id }: FormContainerProps) => {
         });
 
         relatedData = {
+          branches: branchMessages,
           grades: gradeMessages,
           classes: classMessages,
           students: studentMessages,
@@ -263,13 +271,13 @@ const FormContainer = async ({ table, type, data, id }: FormContainerProps) => {
       case "permissions":
         // 1️⃣ Grades (school scoped)
         const gradepermissions = await prisma.grade.findMany({
-          
+
           select: { id: true, level: true },
         });
 
         // 2️⃣ Classes (school scoped)
         const classpermissions = await prisma.class.findMany({
-          
+
           select: {
             id: true,
             gradeId: true,
@@ -278,10 +286,9 @@ const FormContainer = async ({ table, type, data, id }: FormContainerProps) => {
         });
 
         // 3️⃣ Students (ACTIVE + current academic year)
-        const studentpermissions = await prisma.student.findMany({
+        const studentpermissionsRaw = await prisma.student.findMany({
           where: {
             status: "ACTIVE",
-            
             enrollments: {
               some: {
                 status: "ACTIVE",
@@ -303,6 +310,13 @@ const FormContainer = async ({ table, type, data, id }: FormContainerProps) => {
             },
           },
         });
+
+        // ✅ FIX: flatten structure
+        const studentpermissions = studentpermissionsRaw.map((s) => ({
+          id: s.id,
+          name: s.name,
+          classId: s.enrollments[0]?.classId, // 🔥 KEY FIX
+        }));
 
         relatedData = {
           grades: gradepermissions,
@@ -339,7 +353,7 @@ const FormContainer = async ({ table, type, data, id }: FormContainerProps) => {
         const studentResults = await prisma.student.findMany({
           where: {
             status: "ACTIVE",
-            
+
             enrollments: {
               some: {
                 status: "ACTIVE",

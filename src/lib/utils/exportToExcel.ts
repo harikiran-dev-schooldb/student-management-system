@@ -43,7 +43,7 @@ export const exportStudentReportToExcel = async (data: any[]) => {
   data.forEach((item, index) => {
     sheet.addRow([
       index + 1,
-      item.id,
+      item.admissionNo,
       item.name,
       item.className,
       item.totalFees,

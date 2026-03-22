@@ -152,6 +152,8 @@ const SubjectList = async ({
     ];
   }
 
+  const branches = await db.branch.findMany({});
+  
   const classes =
     role === "admin"
       ? await db.class.findMany({
@@ -162,6 +164,7 @@ const SubjectList = async ({
       : [];
 
   const grades = role === "admin" ? await db.grade.findMany() : [];
+  
 
   const [data, count] = await db.$transaction([
     db.subject.findMany({
@@ -189,6 +192,7 @@ const SubjectList = async ({
         <div className="flex flex-col items-center w-full gap-4 md:flex-row md:w-auto">
           {role === "admin" && (
             <ClassFilterDropdown
+              branches={branches}
               classes={classes}
               grades={grades}
               basePath={Path}
@@ -213,6 +217,8 @@ const SubjectList = async ({
         columns={columns}
         renderRow={(item) => renderRow(item, role)}
         data={data}
+        sortKey={sortKey}
+        sortOrder={sortOrder}
       />
 
       {/* Pagination */}

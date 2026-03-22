@@ -16,6 +16,7 @@ import IconButton from "@/components/IconButton";
 import { FeesList, SearchParams } from "../../../../../../../types";
 import { FeeGradeSelect } from "../../../../../../../types/query-types";
 import { tenantPrisma } from "@/lib/tenant-prisma";
+import { buildClassHierarchyFilter, buildGradeFilter } from "@/lib/filters/buildHierarchyFilter";
 
 // Row Renderer
 const renderRow = (grade: FeesList, role: string | null) => {
@@ -99,9 +100,7 @@ const FeesListPage = async ({
       : resolvedSearchParams.page || "1"
   );
 
-  const gradeId = Array.isArray(resolvedSearchParams.gradeId)
-    ? resolvedSearchParams.gradeId[0]
-    : resolvedSearchParams.gradeId;
+
 
   const sortOrder =
     resolvedSearchParams.sort === "desc" ? "desc" : "asc";
@@ -113,8 +112,6 @@ const FeesListPage = async ({
   const { role } = await fetchUserInfo(slug);
   const columns = getColumns(role);
 
-  const whereClause: Prisma.GradeWhereInput = {};
-
   const latestAcademicYear = await db.academicYear.findFirst({
     orderBy: { id: "desc" },
     select: { id: true },
@@ -124,19 +121,18 @@ const FeesListPage = async ({
     Number(resolvedSearchParams.academicYear) || latestAcademicYear?.id;
 
 
+  const branchId = resolvedSearchParams.branchId;
+  const gradeId = resolvedSearchParams.gradeId;
 
-  if (academicYearId) {
-    whereClause.feestructure = {
-      some: { academicYearId: Number(academicYearId) },
-    };
-  }
+  const whereClause: Prisma.GradeWhereInput = {
+    ...buildGradeFilter({ branchId, gradeId }),
 
-  if (gradeId) whereClause.id = Number(gradeId);
-
-
-
-  console.log("resolvedSearchParams:", resolvedSearchParams);
-  console.log("academicYearId:", academicYearId);
+    ...(academicYearId && {
+      feestructure: {
+        some: { academicYearId: Number(academicYearId) },
+      },
+    }),
+  };
 
   const [grades, totalCount] = await Promise.all([
     db.grade.findMany({
@@ -158,8 +154,10 @@ const FeesListPage = async ({
   ]);
 
   const allGrades = await db.grade.findMany({
-    select: { id: true, level: true },
+    select: { id: true, level: true, branchId: true },
   });
+
+  const branches = await db.branch.findMany();
 
   const Path = `/${slug}/list/fees/manage`;
 
@@ -178,6 +176,7 @@ const FeesListPage = async ({
           <ClassFilterDropdown
             classes={[]}
             grades={allGrades}
+            branches={branches}
             basePath={Path}
             showClassFilter={false}
           />
@@ -197,6 +196,8 @@ const FeesListPage = async ({
         columns={columns}
         renderRow={(item) => renderRow(item, role)}
         data={grades}
+        sortKey={sortKey}
+        sortOrder={sortOrder}
       />
 
       {/* Pagination */}

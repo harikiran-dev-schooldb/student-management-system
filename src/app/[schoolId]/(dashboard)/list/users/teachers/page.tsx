@@ -14,12 +14,14 @@ import ResetFiltersButton from "@/components/ResetFiltersButton";
 import { GenderFilter, TeacherStatusFilter } from "@/components/FilterDropdown";
 import TeacherStatusDropdown from "@/components/TeacherStatusDropdown";
 import { Eye, Filter } from "lucide-react";
-import Avatar from "@/components/Avatar";
 import IconButton from "@/components/IconButton";
 import { notFound } from "next/navigation";
 import { SearchParams } from "../../../../../../../types";
 import { TeachersSelect, TeachersWithSelect } from "../../../../../../../types/query-types";
 import { tenantPrisma } from "@/lib/tenant-prisma";
+import TeacherCard from "@/components/TeacherCard";
+import Avatar from "@/components/Avatar";
+
 
 // -------------------- Table Row --------------------
 const renderRow = (item: TeachersWithSelect, role: string | null, schoolId: string) => (
@@ -151,7 +153,7 @@ const TeacherListPage = async ({
   const sortOrder = resolvedSearchParams.sort === "desc" ? "desc" : "asc";
   const sortKey = Array.isArray(resolvedSearchParams.sortKey)
     ? resolvedSearchParams.sortKey[0]
-    : resolvedSearchParams.sortKey || "id";
+    : resolvedSearchParams.sortKey || "name";
 
   const statusValue = Array.isArray(userStatus) ? userStatus[0] : userStatus;
 
@@ -209,7 +211,7 @@ const TeacherListPage = async ({
   const [data, count] = await db.$transaction([
     db.teacher.findMany({
       where: query,
-      orderBy: [{ [sortKey]: sortOrder }, { id: "asc" }],
+      orderBy: [{ [sortKey]: sortOrder }],
       select: TeachersSelect,
       take: ITEM_PER_PAGE,
       skip: ITEM_PER_PAGE * (parseInt(p) - 1),
@@ -248,11 +250,43 @@ const TeacherListPage = async ({
       </div>
 
       {/* Table */}
-      <Table
-        columns={columns}
-        renderRow={(item) => renderRow(item, role, slug)}
-        data={data}
-      />
+      <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500 mt-4">
+
+        {/* Empty */}
+        {data.length === 0 && (
+          <div className="p-10 text-center text-slate-500">
+            No teachers found
+          </div>
+        )}
+
+        {data.length === 0 ? (
+          <div className="p-10 text-center text-slate-500">
+            No teachers found
+          </div>
+        ) : (
+          <>
+            {/* Desktop Table */}
+            <div className="hidden md:block mt-4">
+              <div className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden shadow-sm">
+                <Table
+                  columns={columns}
+                  renderRow={(item) => renderRow(item, role, slug)}
+                  data={data}
+                  sortKey={sortKey}
+                  sortOrder={sortOrder}
+                />
+              </div>
+            </div>
+
+            {/* Mobile Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:hidden mt-4">
+              {data.map((item) => (
+                <TeacherCard key={item.id} item={item} slug={slug} />
+              ))}
+            </div>
+          </>
+        )}
+      </div>
 
       {/* Pagination */}
       <Pagination page={parseInt(p)} count={count} />

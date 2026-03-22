@@ -75,14 +75,37 @@ export async function GET(
     const schoolId = await resolveSchoolId(slug);
     const db = tenantPrisma(schoolId);
 
+    const { searchParams } = new URL(req.url);
+
+    const branchId = searchParams.get("branchId");
+    const search = searchParams.get("search");
+
+    const where: any = {
+      schoolId,
+    };
+
+    /* ---------------- FILTER: BRANCH ---------------- */
+    if (branchId) {
+      where.branchId = Number(branchId);
+    }
+
+    /* ---------------- FILTER: SEARCH ---------------- */
+    if (search) {
+      where.level = {
+        contains: search,
+        mode: "insensitive",
+      };
+    }
+
     const grades = await db.grade.findMany({
-      where: {
-        schoolId,
-      },
-      orderBy: {
-        id: "asc",
-      },
-      include: {
+      where,
+      orderBy: [
+        { id: "asc" }, // 🔥 better than id
+      ],
+      select: {
+        id: true,
+        level: true,
+        branchId: true,
         branch: {
           select: {
             id: true,
@@ -93,7 +116,9 @@ export async function GET(
       },
     });
 
-    return NextResponse.json(grades);
+    return NextResponse.json({
+      data: grades,
+    });
 
   } catch (error: any) {
     console.error("Fetch grades error:", error);

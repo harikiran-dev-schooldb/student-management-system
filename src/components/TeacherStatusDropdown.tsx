@@ -5,6 +5,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuPortal,
   DropdownMenuTrigger,
 } from "@radix-ui/react-dropdown-menu";
 import {
@@ -20,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import clsx from "clsx";
 import { useSchoolSlug } from "./hooks/getschool";
+import { toast } from "react-toastify";
 
 // --- Premium Status Configuration ---
 const STATUS_CONFIG: Record<string, any> = {
@@ -71,13 +73,14 @@ export default function TeacherStatusDropdown({
 
   const schoolId = useSchoolSlug();
 
+
   const updateStatus = async (newStatus: string) => {
-    // 1. Optimistic Check: Don't fire if clicking the same status
     if (newStatus === status) return;
 
-    const oldStatus = status; // Backup for rollback
+    const oldStatus = status;
+
+    setStatus(newStatus); // ⚡ instant UI update
     setLoading(true);
-    setStatus(newStatus); // ⚡ Update UI Immediately
 
     try {
       const res = await fetch(
@@ -86,18 +89,49 @@ export default function TeacherStatusDropdown({
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ status: newStatus }),
-        },
+        }
       );
 
-      if (res.ok) {
-        router.refresh();
-      } else {
-        throw new Error("Failed to update");
-      }
+      if (!res.ok) throw new Error("Failed");
+
+      router.refresh();
+
+      // 🔥 TOAST WITH UNDO
+      toast.success(
+        <div className="flex items-center justify-between gap-3">
+          <span>
+            Status changed to{" "}
+            <b>{STATUS_CONFIG[newStatus].label}</b>
+          </span>
+
+          <button
+            onClick={async () => {
+              setStatus(oldStatus);
+
+              await fetch(
+                `/api/v1/tenants/${schoolId}/users/teachers/${id}`,
+                {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ status: oldStatus }),
+                }
+              );
+
+              router.refresh();
+              toast.dismiss();
+            }}
+            className="text-indigo-600 font-semibold hover:underline"
+          >
+            Undo
+          </button>
+        </div>,
+        { autoClose: 4000 }
+      );
+
     } catch (error) {
       console.error(error);
-      setStatus(oldStatus); // Revert on failure
-      alert("Something went wrong. Please try again.");
+      setStatus(oldStatus);
+      toast.error("Failed to update status");
     } finally {
       setLoading(false);
     }
@@ -121,62 +155,69 @@ export default function TeacherStatusDropdown({
           </Button>
         </DropdownMenuTrigger>
 
-        <DropdownMenuContent
-          side="left"
-          align="start"
-          sideOffset={5}
-          // ✅ Native CSS Animations (Guarantees Clicks Work)
-          className="z-50 min-w-[180px] overflow-hidden rounded-xl border border-gray-100 bg-white p-1 shadow-xl shadow-gray-200/50 
-          data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2
-          dark:border-gray-800 dark:bg-gray-900 dark:shadow-black/50"
-        >
-          {/* Header Label */}
-          <div className="px-2 py-1.5 text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-            Change Status
-          </div>
+        <DropdownMenuPortal>
+          <DropdownMenuContent
+            side="right"
+            align="center"
+            sideOffset={15}
+            className="z-50 min-w-[180px] overflow-hidden rounded-xl border border-gray-100 bg-white p-1 shadow-xl shadow-gray-200/50 
+    data-[state=open]:animate-in data-[state=closed]:animate-out 
+    data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 
+    data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 
+    data-[side=bottom]:slide-in-from-top-2 
+    data-[side=left]:slide-in-from-right-2 
+    data-[side=right]:slide-in-from-left-2 
+    data-[side=top]:slide-in-from-bottom-2
+    dark:border-gray-800 dark:bg-gray-900 dark:shadow-black/50"
+          >
+            {/* Header Label */}
+            <div className="px-2 py-1.5 text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+              Change Status
+            </div>
 
-          {Object.keys(STATUS_CONFIG).map((key) => {
-            const config = STATUS_CONFIG[key];
-            const Icon = config.icon;
-            const isActive = status === key;
+            {Object.keys(STATUS_CONFIG).map((key) => {
+              const config = STATUS_CONFIG[key];
+              const Icon = config.icon;
+              const isActive = status === key;
 
-            return (
-              <DropdownMenuItem
-                key={key}
-                onSelect={() => updateStatus(key)} // ✅ Standard Radix Event
-                disabled={loading}
-                className={clsx(
-                  "relative flex cursor-pointer select-none items-center gap-3 rounded-lg px-2 py-2 text-sm font-medium outline-none transition-all",
-                  isActive
-                    ? `${config.bgColor} ${config.color}` // Active Style
-                    : "text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800",
-                )}
-              >
-                {/* Icon Box */}
-                <div
+              return (
+                <DropdownMenuItem
+                  key={key}
+                  onSelect={() => updateStatus(key)} // ✅ Standard Radix Event
+                  disabled={loading}
                   className={clsx(
-                    "flex h-8 w-8 items-center justify-center rounded-md",
+                    "relative flex cursor-pointer select-none items-center gap-3 rounded-lg px-2 py-2 text-sm font-medium outline-none transition-all",
                     isActive
-                      ? "bg-white/50 dark:bg-black/20"
-                      : "bg-gray-100 dark:bg-gray-800",
+                      ? `${config.bgColor} ${config.color}` // Active Style
+                      : "text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800",
                   )}
                 >
-                  <Icon className={clsx("h-4 w-4", config.color)} />
-                </div>
-
-                {/* Label */}
-                <span className="flex-1">{config.label}</span>
-
-                {/* Checkmark */}
-                {isActive && (
-                  <div className={config.checkColor}>
-                    <Check className="h-4 w-4" />
+                  {/* Icon Box */}
+                  <div
+                    className={clsx(
+                      "flex h-8 w-8 items-center justify-center rounded-md",
+                      isActive
+                        ? "bg-white/50 dark:bg-black/20"
+                        : "bg-gray-100 dark:bg-gray-800",
+                    )}
+                  >
+                    <Icon className={clsx("h-4 w-4", config.color)} />
                   </div>
-                )}
-              </DropdownMenuItem>
-            );
-          })}
-        </DropdownMenuContent>
+
+                  {/* Label */}
+                  <span className="flex-1">{config.label}</span>
+
+                  {/* Checkmark */}
+                  {isActive && (
+                    <div className={config.checkColor}>
+                      <Check className="h-4 w-4" />
+                    </div>
+                  )}
+                </DropdownMenuItem>
+              );
+            })}
+          </DropdownMenuContent>
+        </DropdownMenuPortal>
       </DropdownMenu>
     </div>
   );

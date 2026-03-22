@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { tenantFetch } from "@/lib/tenantFetch";
 import { useSchoolSlug } from "@/components/hooks/getschool";
+import { Summary3D } from "@/components/ui/summaryCards";
+import CustomSelect from "@/components/ui/CustomSelect";
 
 type Defaulter = {
   id: number;
@@ -13,6 +15,8 @@ type Defaulter = {
     id: string;
     name: string;
     phone?: string;
+    className?: string;
+    admissionNumber?: string;
   };
 };
 
@@ -26,20 +30,65 @@ export default function DefaultersPage() {
   const [totalPages, setTotalPages] = useState(1);
 
   const [search, setSearch] = useState("");
+  const [branchId, setBranchId] = useState("");
+  const [gradeId, setGradeId] = useState("");
   const [classId, setClassId] = useState("");
+
+  const [branches, setBranches] = useState<any[]>([]);
+  const [grades, setGrades] = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
 
-  const limit = 10;
+  const [summary, setSummary] = useState({
+    totalStudents: 0,
+    totalDue: 0,
+    halfPaid: 0,
+    severe: 0,
+  });
 
-  /* ---------------- FETCH CLASSES ---------------- */
+  const limit = 50;
+
+  /* ---------------- FETCH ---------------- */
+
   useEffect(() => {
-    async function loadClasses() {
-      const res = await tenantFetch(schoolId, "/classes");
-      setClasses(res?.data || []);
+    async function loadBranches() {
+      const res = await tenantFetch(schoolId, "/branches");
+      setBranches(res?.data || []);
     }
 
-    if (schoolId) loadClasses();
+    if (schoolId) loadBranches();
   }, [schoolId]);
+
+  useEffect(() => {
+    if (!branchId) return;
+
+    async function loadGrades() {
+      const res = await tenantFetch(
+        schoolId,
+        `/grades?branchId=${branchId}`
+      );
+
+      setGrades(res?.data || []);
+      setGradeId("");
+      setClasses([]);
+    }
+
+    loadGrades();
+  }, [branchId]);
+
+  useEffect(() => {
+    if (!gradeId) return;
+
+    async function loadClasses() {
+      const res = await tenantFetch(
+        schoolId,
+        `/classes?gradeId=${gradeId}`
+      );
+      setClasses(res?.data || []);
+      setClassId("");
+    }
+
+    loadClasses();
+  }, [gradeId]);
 
   /* ---------------- FETCH DATA ---------------- */
   useEffect(() => {
@@ -51,6 +100,8 @@ export default function DefaultersPage() {
           page: String(page),
           limit: String(limit),
           ...(search && { search }),
+          ...(branchId && { branchId }),
+          ...(gradeId && { gradeId }),
           ...(classId && { classId }),
         });
 
@@ -61,6 +112,7 @@ export default function DefaultersPage() {
 
         setData(res?.data || []);
         setTotalPages(res?.pagination?.totalPages || 1);
+        setSummary(res?.summary || {});
       } catch (err) {
         console.error(err);
       } finally {
@@ -69,7 +121,8 @@ export default function DefaultersPage() {
     }
 
     if (schoolId) fetchData();
-  }, [schoolId, page, search, classId]);
+  }, [schoolId, page, search, branchId, gradeId, classId]);
+
 
   /* ---------------- UI ---------------- */
 
@@ -85,6 +138,8 @@ export default function DefaultersPage() {
 
       {/* FILTERS */}
       <div className="flex flex-col md:flex-row gap-4 p-4 border rounded-xl bg-white dark:bg-darkMode">
+
+        {/* SEARCH */}
         <input
           type="text"
           placeholder="Search student..."
@@ -96,21 +151,85 @@ export default function DefaultersPage() {
           className="h-10 px-3 border rounded-md w-full md:w-64"
         />
 
-        <select
-          value={classId}
-          onChange={(e) => {
+        {/* BRANCH */}
+        <CustomSelect
+          label="Branch"
+          value={branchId}
+          onChange={(v) => {
             setPage(1);
-            setClassId(e.target.value);
+            setBranchId(v);
+            setGradeId("");   // 🔥 RESET
+  setClassId("");
           }}
-          className="h-10 px-3 border rounded-md w-full md:w-48"
-        >
-          <option value="">All Classes</option>
-          {classes.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
+          options={[
+            { value: "", label: "All Branches" },
+            ...branches.map((b) => ({
+              value: b.id,
+              label: b.name,
+            })),
+          ]}
+        />
+
+        {/* GRADE */}
+        <CustomSelect
+          label="Grade"
+          value={gradeId}
+          onChange={(v) => {
+            setPage(1);
+            setGradeId(v);
+            setClassId("");
+
+          }}
+          options={[
+            { value: "", label: "All Grades" },
+            ...grades.map((g) => ({
+              value: g.id,
+              label: g.level,
+            })),
+          ]}
+        />
+
+        {/* CLASS */}
+        <CustomSelect
+          label="Class"
+          value={classId}
+          onChange={(v) => {
+            setPage(1);
+            setClassId(v);
+          }}
+          options={[
+            { value: "", label: "All Classes" },
+            ...classes.map((c) => ({
+              value: c.id,
+              label: c.section,
+            })),
+          ]}
+        />
+
+      </div>
+
+      {/* SUMMARY CARDS */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <Summary3D
+          title="Total Defaulters"
+          value={summary.totalStudents}
+        />
+
+        <Summary3D
+          title="Total Due Amount"
+          value={`₹ ${summary.totalDue ?? 0}`}
+          highlight
+        />
+
+        <Summary3D
+          title="Half Paid Students"
+          value={summary.halfPaid}
+        />
+
+        <Summary3D
+          title="Severe Pending"
+          value={summary.severe}
+        />
       </div>
 
       {/* LOADING */}
@@ -125,7 +244,9 @@ export default function DefaultersPage() {
             <table className="min-w-full text-sm">
               <thead className="bg-gray-100 dark:bg-white/5">
                 <tr>
+                  <Th>Adm No</Th>
                   <Th>Student</Th>
+                  <Th>Class</Th>
                   <Th>Phone</Th>
                   <Th>Total Fee</Th>
                   <Th>Paid</Th>
@@ -141,13 +262,14 @@ export default function DefaultersPage() {
                     return (
                       <tr
                         key={row.id}
-                        className={`border-t ${
-                          isSevere
-                            ? "bg-red-50 dark:bg-red-900/20"
-                            : "hover:bg-gray-50 dark:hover:bg-white/5"
-                        }`}
+                        className={`border-t ${isSevere
+                          ? "bg-red-50 dark:bg-red-900/20"
+                          : "hover:bg-gray-50 dark:hover:bg-white/5"
+                          }`}
                       >
+                        <Td>{row.student?.admissionNumber}</Td>
                         <Td>{row.student?.name}</Td>
+                        <Td>{row.student?.className || "-"}</Td>
                         <Td>{row.student?.phone || "-"}</Td>
                         <Td>₹ {row.totalFeeAmount}</Td>
                         <Td className="text-green-600">

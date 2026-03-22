@@ -31,6 +31,13 @@ export const StudentSelect = {
           Grade: {
             select: {
               level: true,
+              branch: {
+                select: {
+                  id: true,
+                  name: true,
+                  type: true,
+                },
+              },
             },
           },
         },
@@ -702,6 +709,7 @@ export const PermissionSlipSelect = {
     select: {
       id: true,
       name: true,
+      admissionNo: true,
 
       /* -------- CURRENT ENROLLMENT -------- */
       enrollments: {

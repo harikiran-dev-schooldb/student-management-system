@@ -11,12 +11,18 @@ export async function getFullStudentFeesReport(
       status: "ACTIVE",
     },
 
-    include: {
+    select: {
+      id: true,
+      name: true,
+      admissionNo: true,
+      fatherName: true,
+      phone: true,
+
       enrollments: {
         where: academicYearId
           ? { academicYearId }
           : undefined,
-        include: {
+        select: {
           class: {
             select: {
               name: true,
@@ -31,19 +37,20 @@ export async function getFullStudentFeesReport(
         },
         take: 1,
       },
-
-      totalFees: academicYearId
-        ? {
-            where: { academicYearId },
-          }
-        : true,
-
       studentFees: {
         where: academicYearId
           ? { academicYearId }
           : undefined,
-        include: {
-          feeStructure: true,
+        select: {
+          paidAmount: true,
+          discountAmount: true,
+          fineAmount: true,
+          feeStructure: {
+            select: {
+              termFees: true,
+              abacusFees: true,
+            },
+          },
         },
       },
     },
@@ -57,8 +64,8 @@ export async function getFullStudentFeesReport(
 
       Class: enrollment
         ? {
-            name: `${enrollment.class.Grade.level}-${enrollment.class.section}`,
-          }
+          name: `${enrollment.class.Grade.level}-${enrollment.class.section}`,
+        }
         : { name: "-" },
     });
   });

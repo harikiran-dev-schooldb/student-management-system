@@ -10,6 +10,7 @@ import TableSearch from "@/components/TableSearch";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
 import { tenantPrisma } from "@/lib/tenant-prisma";
 import { SearchParams } from "../../../../../../types";
+import { buildEnrollmentFilter } from "@/lib/filters/buildHierarchyFilter";
 
 const LessonsListPage = async ({
   searchParams,
@@ -38,7 +39,7 @@ const LessonsListPage = async ({
   // 3️⃣ Tenant-scoped Prisma
   const db = tenantPrisma(school.id);
 
-  // Normalize query params
+  // Normalize params
   const selectedTeacherId = Array.isArray(resolvedSearchParams.teacherId)
     ? resolvedSearchParams.teacherId[0]
     : resolvedSearchParams.teacherId;
@@ -46,17 +47,43 @@ const LessonsListPage = async ({
   const selectedClassId = Array.isArray(resolvedSearchParams.classId)
     ? Number(resolvedSearchParams.classId[0])
     : resolvedSearchParams.classId
-    ? Number(resolvedSearchParams.classId)
-    : undefined;
+      ? Number(resolvedSearchParams.classId)
+      : undefined;
 
-  // Fetch data for dropdowns
+  const gradeId = Array.isArray(resolvedSearchParams.gradeId)
+    ? Number(resolvedSearchParams.gradeId[0])
+    : resolvedSearchParams.gradeId
+      ? Number(resolvedSearchParams.gradeId)
+      : undefined;
+
+  // Build filter
+  const enrollmentFilter = buildEnrollmentFilter({
+    branchId: resolvedSearchParams.branchId,
+    gradeId,
+    classId: selectedClassId,
+  });
+
+  // Fetch dropdown data (filtered logically)
   const classes = await db.class.findMany({
+    where: {
+      ...(gradeId && { gradeId }),
+    },
     select: { id: true, section: true, gradeId: true },
   });
+
   const grades = await db.grade.findMany({
-    select: { id: true, level: true },
+    where: {
+      ...(resolvedSearchParams.branchId && {
+        branchId: Number(resolvedSearchParams.branchId),
+      }),
+    },
+    select: { id: true, level: true, branchId: true },
   });
+
   const teachers = await db.teacher.findMany({
+    select: { id: true, name: true },
+  });
+  const branches = await db.branch.findMany({
     select: { id: true, name: true },
   });
 
@@ -66,8 +93,9 @@ const LessonsListPage = async ({
     gradeId: cls.gradeId ?? 0,
   }));
 
-  const gradeData = grades.map((g) => ({ id: g.id, level: g.level }));
+  const gradeData = grades.map((g) => ({ id: g.id, level: g.level, branchId: g.branchId }));
   const teacherData = teachers.map((t) => ({ id: t.id, name: t.name }));
+  const branchData = branches.map((b) => ({ id: b.id, name: b.name }));
 
   const Path = `/${slug}/list/lessons`;
 
@@ -97,6 +125,7 @@ const LessonsListPage = async ({
                 <ClassFilterDropdown
                   classes={classData}
                   grades={gradeData}
+                  branches={branchData}
                   basePath={Path}
                 />
               </div>

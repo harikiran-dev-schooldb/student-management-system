@@ -15,7 +15,7 @@ import { MessageList, SearchParams } from "../../../../../../types";
 import { MessagesSelect } from "../../../../../../types/query-types";
 import { tenantPrisma } from "@/lib/tenant-prisma";
 
-const renderRow = (item: MessageList, role: string | null) => (
+const renderRow = (item: MessageList, role: string | null, schoolId: string) => (
   <tr
     key={item.id}
     className="text-sm border-b border-gray-200 dark:border-gray-700 even:bg-slate-50 dark:even:bg-gray-800 hover:bg-LamaPurpleLight dark:hover:bg-gray-700 transition-colors"
@@ -29,6 +29,7 @@ const renderRow = (item: MessageList, role: string | null) => (
         <td className="hidden md:table-cell capitalize w-32 text-gray-700 dark:text-gray-200">
           {item.type.toLowerCase()}
         </td>
+        
 
         <td>
           <div className="flex flex-col">
@@ -260,6 +261,8 @@ const MessagesList = async ({
 
   const grades = await db.grade.findMany();
 
+  const branches = await db.branch.findMany();
+
   return (
     <div className="flex-1 p-4 bg-white dark:bg-gray-900 dark:text-gray-100 transition-colors duration-300">
       <div className="flex items-center justify-between">
@@ -271,6 +274,7 @@ const MessagesList = async ({
           {role === "admin" && (
             <>
               <ClassFilterDropdown
+                branches={branches}
                 classes={classes}
                 grades={grades}
                 basePath={Path}
@@ -290,8 +294,10 @@ const MessagesList = async ({
 
       <Table
         columns={columns}
-        renderRow={(item) => renderRow(item, role)}
+        renderRow={(item) => renderRow(item, role, slug)}
         data={data}
+        sortKey={sortKey}
+        sortOrder={sortOrder}
       />
 
       <Pagination page={parseInt(p)} count={count} />

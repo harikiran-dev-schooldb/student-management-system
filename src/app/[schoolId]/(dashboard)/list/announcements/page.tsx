@@ -12,6 +12,7 @@ import { AnnouncementList, SearchParams } from "../../../../../../types";
 import { AnnouncementSelect } from "../../../../../../types/query-types";
 import { tenantPrisma } from "@/lib/tenant-prisma";
 import prisma from "@/lib/prisma";
+import { sortBy } from "lodash";
 
 // --- Utility: Modern Date Formatter ---
 const formatDate = (date: Date) => {
@@ -87,7 +88,7 @@ const AnnouncementsList = async ({
 }) => {
   const resolvedParams = await params;
   const resolvedSearchParams = await searchParams;
-  
+
   const { schoolId: slug } = resolvedParams;
 
   const school = await prisma.schoolInfo.findUnique({
@@ -108,6 +109,12 @@ const AnnouncementsList = async ({
   const page = resolvedSearchParams.page;
   const pageValue = Array.isArray(page) ? page[0] : page;
   const p = pageValue ? parseInt(pageValue) : 1;
+
+  // Sorting
+  const sortOrder = resolvedSearchParams.sort === "desc" ? "desc" : "asc";
+  const sortKey = Array.isArray(resolvedSearchParams.sortKey)
+    ? resolvedSearchParams.sortKey[0]
+    : resolvedSearchParams.sortKey || "id";
 
   // Query
   const query: Prisma.AnnouncementWhereInput = {
@@ -177,6 +184,8 @@ const AnnouncementsList = async ({
               columns={columns}
               renderRow={(item) => renderRow(item, role)}
               data={data}
+              sortKey={sortKey}
+              sortOrder={sortOrder}
             />
             {/* Pagination Container */}
             <div className="border-t border-gray-200 dark:border-gray-800 p-4">

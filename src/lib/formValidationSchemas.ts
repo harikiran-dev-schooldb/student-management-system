@@ -242,6 +242,7 @@ export const messageSchema = z.object({
     "HOMEWORK", "EXAM_RESULT", "EVENT", "FEE_COLLECTION"
   ]),
   studentId: z.string().optional(),
+  branchId: z.number().optional(),
   classId: z.number().optional(),
   gradeId: z.number().optional(), // Used for UI filtering only
   date: z.string().min(1, "Date is required"),

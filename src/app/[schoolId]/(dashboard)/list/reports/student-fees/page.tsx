@@ -13,7 +13,6 @@ import SortButton from "@/components/SortButton";
 import Table from "@/components/Table";
 import TableSearch from "@/components/TableSearch";
 import ResetFiltersButton from "@/components/ResetFiltersButton";
-
 import { getGroupedStudentFees } from "@/lib/fees";
 import prisma from "@/lib/prisma";
 import { ITEM_PER_PAGE } from "@/lib/settings";
@@ -23,9 +22,9 @@ import {
   StudentsFeeReportList,
 } from "../../../../../../../types";
 import { tenantPrisma } from "@/lib/tenant-prisma";
+import Avatar from "@/components/Avatar";
 
 // --- Types & Interfaces ---
-
 interface StudentFeeData {
   totalPaidAmount: number;
   totalDiscountAmount: number;
@@ -82,14 +81,11 @@ const renderRow = (
         <div className="flex items-center gap-3 md:gap-4">
           {/* Avatar - Slightly smaller on mobile */}
           <div className="relative h-9 w-9 md:h-10 md:w-10 min-w-[2.25rem] overflow-hidden rounded-full ring-2 ring-gray-100 dark:ring-gray-800">
-            <Image
-              src={
-                item.img ||
-                (item.gender === "Male" ? "/male.png" : "/female.png")
-              }
-              alt={item.name}
-              fill
-              className="object-cover"
+            <Avatar
+              src={item.img}
+              name={item.name}
+              gender={item.gender}
+              className="rounded-full object-cover"
             />
           </div>
           <div className="flex flex-col">
@@ -181,11 +177,12 @@ const StudentListPage = async ({
       : queryParams.search;
     query.OR = [
       { name: { contains: searchValue, mode: "insensitive" } },
-      { id: { contains: searchValue } },
+      { admissionNo: { contains: searchValue } },
     ];
   }
 
   // Fetch Data
+  const branches = await db.branch.findMany();
   const classes = await db.class.findMany({
     where: gradeId ? { gradeId: Number(gradeId) } : {},
   });
@@ -282,9 +279,11 @@ const StudentListPage = async ({
           {/* Filters Area - Scrollable on very small screens if needed */}
           <div className="flex flex-wrap items-center gap-2 md:gap-3">
             <ClassFilterDropdown
+              branches={branches}
               classes={classes}
               grades={grades}
               basePath={Path}
+
             />
             <StudentStatusFilter basePath={Path} />
             <div className="h-8 w-px bg-gray-200 dark:bg-gray-700 mx-1 hidden md:block" />
@@ -302,6 +301,8 @@ const StudentListPage = async ({
             columns={columns}
             renderRow={(item) => renderRow(item, role, feeMap)}
             data={data}
+            sortKey={sortKey}
+            sortOrder={sortOrder}
           />
         </div>
 

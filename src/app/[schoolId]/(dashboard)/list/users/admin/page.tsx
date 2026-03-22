@@ -201,6 +201,8 @@ const AdminListPage = async ({
         columns={columns}
         data={data}
         renderRow={(item) => renderRow(item, role)}
+        sortKey={sortKey}
+        sortOrder={sortOrder}
       />
 
       {/* Pagination */}

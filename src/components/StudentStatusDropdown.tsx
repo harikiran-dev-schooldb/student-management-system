@@ -5,6 +5,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuPortal,
   DropdownMenuTrigger,
 } from "@radix-ui/react-dropdown-menu";
 import {
@@ -63,6 +64,7 @@ export default function StudentStatusDropdown({
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { schoolId } = useParams<{ schoolId: string }>();
+  const [pendingStatus, setPendingStatus] = useState<string | null>(null);
 
   // Keep local state in sync if parent updates props
   useEffect(() => {
@@ -98,6 +100,18 @@ export default function StudentStatusDropdown({
     }
   };
 
+  const handleStatusChange = (newStatus: string) => {
+    if (newStatus === status) return;
+
+    const confirmChange = window.confirm(
+      `Change status to "${STATUS_CONFIG[newStatus].label}"?\n\nThis action will update the student record.`
+    );
+
+    if (!confirmChange) return;
+
+    updateStatus(newStatus);
+  };
+
   return (
     <div className="flex justify-end">
 
@@ -117,62 +131,64 @@ export default function StudentStatusDropdown({
           </Button>
         </DropdownMenuTrigger>
 
-        <DropdownMenuContent
-          side="left"
-          align="start"
-          sideOffset={5}
-          // ✅ Native CSS Animations (Guarantees Clicks Work)
-          className="z-50 min-w-[180px] overflow-hidden rounded-xl border border-gray-100 bg-white p-1 shadow-xl shadow-gray-200/50 
+        <DropdownMenuPortal>
+          <DropdownMenuContent
+            side="right"
+            align="center"
+            sideOffset={15}
+            // ✅ Native CSS Animations (Guarantees Clicks Work)
+            className="z-50 min-w-[180px] overflow-hidden rounded-xl border border-gray-100 bg-white p-1 shadow-xl shadow-gray-200/50 
         data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2
         dark:border-gray-800 dark:bg-gray-900 dark:shadow-black/50"
-        >
-          {/* Header Label */}
-          <div className="px-2 py-1.5 text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-            Change Status
-          </div>
+          >
+            {/* Header Label */}
+            <div className="px-2 py-1.5 text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+              Change Status
+            </div>
 
-          {Object.keys(STATUS_CONFIG).map((key) => {
-            const config = STATUS_CONFIG[key];
-            const Icon = config.icon;
-            const isActive = status === key;
+            {Object.keys(STATUS_CONFIG).map((key) => {
+              const config = STATUS_CONFIG[key];
+              const Icon = config.icon;
+              const isActive = status === key;
 
-            return (
-              <DropdownMenuItem
-                key={key}
-                onSelect={() => updateStatus(key)} // ✅ Standard Radix Event
-                disabled={loading}
-                className={clsx(
-                  "relative flex cursor-pointer select-none items-center gap-3 rounded-lg px-2 py-2 text-sm font-medium outline-none transition-all",
-                  isActive
-                    ? `${config.bgColor} ${config.color}` // Active Style
-                    : "text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
-                )}
-              >
-                {/* Icon Box */}
-                <div
+              return (
+                <DropdownMenuItem
+                  key={key}
+                  onSelect={() => handleStatusChange(key)} // ✅ Standard Radix Event
+                  disabled={loading}
                   className={clsx(
-                    "flex h-8 w-8 items-center justify-center rounded-md",
+                    "relative flex cursor-pointer select-none items-center gap-3 rounded-lg px-2 py-2 text-sm font-medium outline-none transition-all",
                     isActive
-                      ? "bg-white/50 dark:bg-black/20"
-                      : "bg-gray-100 dark:bg-gray-800"
+                      ? `${config.bgColor} ${config.color}` // Active Style
+                      : "text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
                   )}
                 >
-                  <Icon className={clsx("h-4 w-4", config.color)} />
-                </div>
-
-                {/* Label */}
-                <span className="flex-1">{config.label}</span>
-
-                {/* Checkmark */}
-                {isActive && (
-                  <div className={config.checkColor}>
-                    <Check className="h-4 w-4" />
+                  {/* Icon Box */}
+                  <div
+                    className={clsx(
+                      "flex h-8 w-8 items-center justify-center rounded-md",
+                      isActive
+                        ? "bg-white/50 dark:bg-black/20"
+                        : "bg-gray-100 dark:bg-gray-800"
+                    )}
+                  >
+                    <Icon className={clsx("h-4 w-4", config.color)} />
                   </div>
-                )}
-              </DropdownMenuItem>
-            );
-          })}
-        </DropdownMenuContent>
+
+                  {/* Label */}
+                  <span className="flex-1">{config.label}</span>
+
+                  {/* Checkmark */}
+                  {isActive && (
+                    <div className={config.checkColor}>
+                      <Check className="h-4 w-4" />
+                    </div>
+                  )}
+                </DropdownMenuItem>
+              );
+            })}
+          </DropdownMenuContent>
+        </DropdownMenuPortal>
       </DropdownMenu>
     </div>
   );

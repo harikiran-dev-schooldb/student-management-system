@@ -20,6 +20,7 @@ import IconButton from "@/components/IconButton";
 import { FeeColectList, SearchParams } from "../../../../../../../types";
 import { StudentFeeSelect } from "../../../../../../../types/query-types";
 import { tenantPrisma } from "@/lib/tenant-prisma";
+import FeeStudentCard from "@/components/FeeStudentCard";
 
 const renderRow = (
   item: FeeColectList,
@@ -130,7 +131,7 @@ const renderRow = (
 };
 
 const getColumns = (role: string | null) => [
-  { header: "Student Name", accessor: "name" },
+  { header: "Student Name", accessor: "name", sortable: true },
   {
     header: "Parent Name",
     accessor: "parentName",
@@ -147,7 +148,7 @@ const getColumns = (role: string | null) => [
     accessor: "paidAmount",
     className: "hidden md:table-cell",
   },
-  { header: "Status", accessor: "status", className: "" },
+  { header: "Status", accessor: "status", className: "", sortable: true },
   ...(role === "admin" ? [{ header: "Actions", accessor: "action" }] : []),
 ];
 
@@ -179,7 +180,7 @@ const StudentFeeListPage = async ({
   const columns = getColumns(role);
 
   // 5️⃣ Extract filters from searchParams
-  const { page, gradeId, classId, studentStatus, ...queryParams } =
+  const { page, gradeId, classId, studentStatus, branchId: rawBranchId, ...queryParams } =
     resolvedSearchParams;
 
   const p = page ? (Array.isArray(page) ? page[0] : page) : "1";
@@ -190,23 +191,35 @@ const StudentFeeListPage = async ({
     ? resolvedSearchParams.sortKey[0]
     : resolvedSearchParams.sortKey || "admissionNo";
 
+  const branchId = Array.isArray(rawBranchId)
+    ? rawBranchId[0]
+    : rawBranchId;
+
   const classIdNum = classId ? Number(classId) : undefined;
 
   // 6️⃣ Build where clause (NO nested "where")
   const query: Prisma.StudentWhereInput = {
+    schoolId: school.id,
+
     status: {
       equals: (studentStatus as $Enums.StudentStatus) || "ACTIVE",
     },
 
-    ...(role === "teacher" && teacherClassId
-      ? { classId: teacherClassId }
-      : classIdNum
-        ? { classId: classIdNum }
-        : {}),
+    enrollments: {
+      some: {
+        ...(classId && { classId: Number(classId) }),
 
-    ...(gradeId && {
-      Class: { gradeId: Number(gradeId) },
-    }),
+        class: {
+          ...(gradeId && { gradeId: Number(gradeId) }),
+
+          ...(branchId && {
+            Grade: {
+              branchId: Number(branchId),
+            },
+          }),
+        },
+      },
+    },
 
     ...(queryParams.search && {
       OR: [
@@ -219,21 +232,10 @@ const StudentFeeListPage = async ({
           },
         },
         {
-          id: {
+          admissionNo: {
             contains: Array.isArray(queryParams.search)
               ? queryParams.search[0]
               : queryParams.search,
-          },
-        },
-        {
-          feeTransactions: {
-            some: {
-              receiptNo: {
-                contains: Array.isArray(queryParams.search)
-                  ? queryParams.search[0]
-                  : queryParams.search,
-              },
-            },
           },
         },
       ],
@@ -256,15 +258,28 @@ const StudentFeeListPage = async ({
     db.student.count({ where: query }),
   ]);
 
-  // 8️⃣ Tenant-safe class & grade filters
-  const classes =
-    role === "admin"
-      ? await db.class.findMany({
-        where: gradeId ? { gradeId: Number(gradeId) } : {},
-      })
-      : [];
+  const branches = role === "admin" ? await db.branch.findMany() : [];
 
-  const grades = role === "admin" ? await db.grade.findMany() : [];
+  const grades = role === "admin"
+    ? await db.grade.findMany({
+      where: {
+        ...(branchId && { branchId: Number(branchId) }),
+      },
+    })
+    : [];
+
+  const classes = role === "admin"
+    ? await db.class.findMany({
+      where: {
+        ...(gradeId && { gradeId: Number(gradeId) }),
+        ...(branchId && {
+          Grade: {
+            branchId: Number(branchId),
+          },
+        }),
+      },
+    })
+    : [];
 
   // 9️⃣ Fetch grouped fees
   const studentIds = data.map((s) => s.id);
@@ -288,6 +303,7 @@ const StudentFeeListPage = async ({
           <div className="flex flex-col items-center w-full gap-4 md:flex-row md:w-auto">
             <TableSearch />
             <ClassFilterDropdown
+              branches={branches}
               classes={classes}
               grades={grades}
               basePath={Path}
@@ -305,12 +321,58 @@ const StudentFeeListPage = async ({
         )}
       </div>
 
-      {/* Table */}
-      <Table
-        columns={columns}
-        renderRow={(item) => renderRow(item, role, feeMap, slug)}
-        data={data}
-      />
+      {data.length === 0 ? (
+        <div className="p-10 text-center text-slate-500">
+          No students found
+        </div>
+      ) : (
+        <>
+          {/* ================= DESKTOP TABLE ================= */}
+          <div className="hidden lg:block mt-4">
+            <div className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden shadow-sm">
+              <Table
+                columns={columns}
+                renderRow={(item) => renderRow(item, role, feeMap, slug)}
+                data={data}
+                sortKey={sortKey}
+                sortOrder={sortOrder}
+              />
+            </div>
+          </div>
+
+          {/* ================= MOBILE + TABLET CARDS ================= */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 lg:hidden mt-4">
+            {data.map((item) => {
+              const studentFee = feeMap.get(item.id);
+
+              const paidAmount = Number(studentFee?.totalPaidAmount ?? 0);
+              const totalFeeAmount = Number(studentFee?.totalFeeAmount ?? 0);
+
+              const discountAmount = Number(
+                item.totalFees?.[0]?.totalDiscountAmount ?? 0
+              );
+
+              const dueAmount = totalFeeAmount - paidAmount - discountAmount;
+
+              const safeItem = {
+                id: item.id,
+                name: item.name,
+                admissionNo: item.admissionNo,
+              };
+
+              return (
+                <FeeStudentCard
+                  key={item.id}
+                  item={safeItem}
+                  slug={slug}
+                  dueAmount={dueAmount}
+                  paidAmount={paidAmount}
+                />
+              );
+            })}
+          </div>
+        </>
+      )}
 
       {/* Pagination */}
       <Pagination page={parseInt(p)} count={count} />

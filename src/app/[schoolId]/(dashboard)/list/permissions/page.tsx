@@ -16,6 +16,7 @@ import { tenantPrisma } from "@/lib/tenant-prisma";
 import IconButton from "@/components/IconButton";
 import { Filter } from "lucide-react";
 import Avatar from "@/components/Avatar";
+import { buildStudentWhereFromEnrollment } from "@/lib/filters/buildHierarchyFilter";
 
 // 🔹 Render Table Row
 const renderRow = (item: PermissionSlipWithStudent, role: string | null) => {
@@ -28,7 +29,7 @@ const renderRow = (item: PermissionSlipWithStudent, role: string | null) => {
 
   const className =
     item.student.enrollments?.[0]?.class?.name ?? "N/A";
-    
+
   return (
     <tr
       key={item.id}
@@ -43,7 +44,7 @@ const renderRow = (item: PermissionSlipWithStudent, role: string | null) => {
             {item.student.name}
           </h3>
           <p className="text-xs text-darkMode dark:text-gray-300">
-            {item.studentId}
+            {item.student.admissionNo}
           </p>
         </div>
       </td>
@@ -153,32 +154,28 @@ const PermissionSlipListPage = async ({
 
   // Student/Class/Grade/Search filters
   query.student = {
-    ...(classId ? { classId: Number(classId) } : {}),
-    ...(gradeId
-      ? {
-        Class: {
-          gradeId: Number(gradeId),
+    ...buildStudentWhereFromEnrollment({
+      branchId: resolvedSearchParams.branchId,
+      gradeId,
+      classId,
+    }),
+
+    ...(search && {
+      OR: [
+        {
+          name: {
+            contains: String(search),
+            mode: "insensitive",
+          },
         },
-      }
-      : {}),
-    ...(search
-      ? {
-        OR: [
-          {
-            name: {
-              contains: String(search),
-              mode: "insensitive",
-            },
+        {
+          id: {
+            contains: String(search),
+            mode: "insensitive",
           },
-          {
-            id: {
-              contains: String(search),
-              mode: "insensitive",
-            },
-          },
-        ],
-      }
-      : {}),
+        },
+      ],
+    }),
   };
 
   if (userClassIds.length > 0) {
@@ -186,7 +183,9 @@ const PermissionSlipListPage = async ({
       ...(query.student || {}),
       enrollments: {
         some: {
-          classId: classId ? Number(classId) : { in: userClassIds },
+          ...(classId
+            ? { classId: Number(classId) }
+            : { classId: { in: userClassIds } }),
         },
       },
     };
@@ -208,11 +207,15 @@ const PermissionSlipListPage = async ({
 
   // 🔹 For filters
   const grades = await db.grade.findMany({
-    select: { id: true, level: true },
+    select: { id: true, level: true, branchId: true },
   });
 
   const classes = await db.class.findMany({
     select: { id: true, section: true, gradeId: true },
+  });
+
+  const branches = await db.branch.findMany({
+    select: { id: true, name: true },
   });
 
   const Path = `/${slug}/list/permissions`;
@@ -229,6 +232,7 @@ const PermissionSlipListPage = async ({
           <DateFilter basePath={Path} />
           {(role === "admin" || role === "teacher") && (
             <ClassFilterDropdown
+              branches={branches}
               classes={classes}
               grades={grades}
               basePath={Path}
@@ -251,6 +255,8 @@ const PermissionSlipListPage = async ({
         columns={columns}
         renderRow={(item) => renderRow(item, role)}
         data={data}
+        sortKey={sortKey}
+        sortOrder={sortOrder}
       />
 
       {/* 🔹 PAGINATION */}

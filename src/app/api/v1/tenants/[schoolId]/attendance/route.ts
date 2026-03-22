@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { MessageType, Prisma } from "@prisma/client";
 import { SingleStudentSelect } from "../../../../../../../types/query-types";
 import { tenantSlugGuard } from "@/lib/tenantGuard";
+import { buildStudentFilter } from "@/lib/filters/studentFilter";
 
 /* =======================================================
    POST  /attendance  (Bulk Upsert)
@@ -295,6 +296,7 @@ export async function GET(
     const startParam = searchParams.get("start");
     const endParam = searchParams.get("end");
     const classIdParam = searchParams.get("classId");
+    const gradeIdParam = searchParams.get("gradeId");
 
     let start: Date;
     let end: Date;
@@ -350,6 +352,10 @@ export async function GET(
     if (access.role === "admin") {
       if (classIdParam) {
         where.classId = Number(classIdParam);
+      } else if (gradeIdParam) {
+        where.Student = buildStudentFilter({
+          gradeId: gradeIdParam,
+        });
       }
     }
 
@@ -396,7 +402,15 @@ export async function GET(
       },
     });
 
-    const students = attendance.map((a) => a.Student);
+    const studentMap = new Map();
+
+    attendance.forEach((a) => {
+      if (a.Student) {
+        studentMap.set(a.Student.id, a.Student);
+      }
+    });
+
+    const students = Array.from(studentMap.values());
 
     return NextResponse.json({
       attendance,

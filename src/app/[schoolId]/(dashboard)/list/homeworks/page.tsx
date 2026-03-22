@@ -15,6 +15,7 @@ import { Homeworks, SearchParams } from "../../../../../../types";
 import { HomeworkSelect } from "../../../../../../types/query-types";
 import { tenantPrisma } from "@/lib/tenant-prisma";
 import { resolveSchoolId } from "@/lib/resolveSchool";
+import { buildClassHierarchyFilter } from "@/lib/filters/buildHierarchyFilter";
 
 // Render a single table row
 const renderRow = (item: Homeworks, role: string | null) => (
@@ -77,7 +78,7 @@ const HomeworkListPage = async ({
 
   const resolvedParams = await searchParams;
 
-  const { page, gradeId, date, classId, ...queryParams } = resolvedParams;
+  const { page, gradeId, classId, branchId, date, ...queryParams } = resolvedParams;
   const p = page ? (Array.isArray(page) ? page[0] : page) : "1";
 
   // ✅ Pass schoolId
@@ -131,37 +132,45 @@ const HomeworkListPage = async ({
     }
   }
 
+  const classHierarchyFilter = buildClassHierarchyFilter({
+    branchId,
+    gradeId,
+    classId,
+  });
+
   const filters: Prisma.HomeworkWhereInput = {
     date: { gte: startDate, lt: endDate },
+
     ...(userClassIds.length > 0
       ? { classId: { in: userClassIds } }
-      : classId
-        ? { classId: Number(classId) }
+      : Object.keys(classHierarchyFilter).length
+        ? {
+          Class: classHierarchyFilter,
+        }
         : {}),
-    ...(gradeId ? { Class: { gradeId: Number(gradeId) } } : {}),
-  };
 
-  if (queryParams.search) {
-    filters.OR = [
-      {
-        description: {
-          contains: queryParams.search as string,
-          mode: "insensitive",
-        },
-      },
-      {
-        Class: {
-          name: {
+    ...(queryParams.search && {
+      OR: [
+        {
+          description: {
             contains: queryParams.search as string,
             mode: "insensitive",
           },
         },
-      },
-    ];
-  }
-
+        {
+          Class: {
+            name: {
+              contains: queryParams.search as string,
+              mode: "insensitive",
+            },
+          },
+        },
+      ],
+    }),
+  };
   const classes = await db.class.findMany();
   const grades = await db.grade.findMany();
+  const branches = await db.branch.findMany();
 
   const [data, count] = await db.$transaction([
     db.homework.findMany({
@@ -174,7 +183,7 @@ const HomeworkListPage = async ({
     db.homework.count({ where: filters }),
   ]);
 
-  const Path = `/${schoolId}/list/homeworks`;
+  const Path = `/${schoolSlug}/list/homeworks`;
 
   return (
     <div className="flex-1 p-4 bg-white dark:bg-darkbg text-black dark:text-white">
@@ -189,6 +198,7 @@ const HomeworkListPage = async ({
           <DateFilter basePath={Path} />
           {(role === "admin" || role === "teacher") && (
             <ClassFilterDropdown
+              branches={branches}
               classes={classes}
               grades={grades}
               basePath={Path}
@@ -211,6 +221,8 @@ const HomeworkListPage = async ({
         columns={columns}
         renderRow={(item) => renderRow(item, role)}
         data={data}
+        sortKey={sortKey}
+        sortOrder={sortOrder}
       />
 
       {/* Pagination */}
