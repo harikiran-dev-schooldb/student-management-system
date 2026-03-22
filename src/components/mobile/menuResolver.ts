@@ -1,32 +1,49 @@
-import type { ElementType } from "react";
+
 
 type Role = "admin" | "teacher" | "student";
 
-interface MenuItem {
+export interface BottomNavItem {
   label: string;
-  href?: string | ((role: Role) => string);
-  icon: ElementType;
+  icon: any;
   visible: Role[];
-  dropdown?: MenuItem[];
+  href?: string | ((role: Role) => string);
+  dropdown?: BottomNavItem[];
 }
 
 export function resolveMobileItems(
-  item: MenuItem,
+  item: BottomNavItem,
   role: Role,
   schoolId: string
 ) {
   if (!item.dropdown) return [];
 
   return item.dropdown
-    .filter((d) => d.visible.includes(role))
+    .filter((d) => d.visible.includes(role) && d.href)
     .map((d) => {
+      if (!d.href) return null;
+
       const rawHref =
-        typeof d.href === "function" ? d.href(role) : d.href!;
+        typeof d.href === "function"
+          ? d.href(role)
+          : d.href;
+
+      // 🔥 SPECIAL CASE: Home
+      if (rawHref === "/") {
+        return {
+          label: d.label,
+          icon: d.icon,
+          href: `/${schoolId}`,
+        };
+      }
+
+      const normalizedHref = rawHref.startsWith("/")
+        ? rawHref
+        : `/${rawHref}`;
 
       return {
         label: d.label,
         icon: d.icon,
-        href: `/${schoolId}${rawHref}`,
+        href: `/${schoolId}${normalizedHref}`,
       };
     });
 }

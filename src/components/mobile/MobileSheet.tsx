@@ -128,7 +128,7 @@ export default function MobileSheet({
             return (
               <li key={item.label}>
                 <Link
-                  href={`/${schoolId}${item.href}`}
+                  href={item.href}
                   onClick={close}
                   className="
                     flex items-center gap-2

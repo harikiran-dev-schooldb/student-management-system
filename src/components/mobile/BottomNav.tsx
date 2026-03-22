@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
 import type { ElementType } from "react";
 
 import { bottomNavItems } from "./BottomNav.config";
@@ -29,13 +29,24 @@ type SheetState = {
 function resolveHref(
   href: string | ((role: Role) => string),
   role: Role,
+  schoolId: string
 ): string {
-  return typeof href === "function" ? href(role) : href;
+  const rawHref =
+    typeof href === "function" ? href(role) : href;
+
+  const normalized = rawHref.startsWith("/")
+    ? rawHref
+    : `/${rawHref}`;
+
+  return `/${schoolId}${normalized}`;
 }
 
 export default function BottomNav({ role }: { role: Role }) {
   const pathname = usePathname();
   const [sheet, setSheet] = useState<SheetState | null>(null);
+  const params = useParams();
+  const schoolId =
+    typeof params.schoolId === "string" ? params.schoolId : "";
 
   return (
     <>
@@ -62,7 +73,7 @@ export default function BottomNav({ role }: { role: Role }) {
                     .map((child) => ({
                       label: child.label,
                       icon: child.icon,
-                      href: resolveHref(child.href!, role),
+                      href: resolveHref(child.href!, role, schoolId),
                     })) || [];
 
                 // Do not render parent if nothing is visible
@@ -99,7 +110,7 @@ export default function BottomNav({ role }: { role: Role }) {
               }
 
               /* ================= DIRECT LINK ITEMS ================= */
-              const resolvedHref = resolveHref(item.href!, role);
+              const resolvedHref = resolveHref(item.href!, role, schoolId);
               const isActive = pathname.startsWith(resolvedHref);
 
               return (
@@ -108,10 +119,9 @@ export default function BottomNav({ role }: { role: Role }) {
                     href={resolvedHref}
                     className={`
                       flex flex-col items-center gap-1 text-[11px]
-                      ${
-                        isActive
-                          ? "text-LamaPurple"
-                          : "text-gray-500 dark:text-gray-400"
+                      ${isActive
+                        ? "text-LamaPurple"
+                        : "text-gray-500 dark:text-gray-400"
                       }
                     `}
                   >
