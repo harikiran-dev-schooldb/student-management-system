@@ -33,20 +33,25 @@ const formatDateTime = (date: Date, time: string) => {
 const renderRow = (item: Exams, role: string | null) =>
   item.examGradeSubjects.map((egs, idx) => (
     <tr
-      key={egs.id}
+      key={`${item.id}-${egs.id}`}
       className="text-sm border-b border-gray-200 dark:border-gray-700 even:bg-slate-50 dark:even:bg-gray-800 hover:bg-LamaPurpleLight dark:hover:bg-grey-olive-950"
     >
       <td className="hidden md:table-cell">
         {formatDateTime(new Date(egs.date), egs.startTime)}
       </td>
-      <td className="p-4">{egs.Grade.level}</td>
-      <td className="p-4">{egs.Subject.name}</td>
+      <td className="p-4">{egs.grade.level}</td>
+      <td className="p-4">{egs.subject.name}</td>
       <td className="p-4">{egs.maxMarks}</td>
       <td>
         <div className="flex items-center gap-2">
           {(role === "admin" || role === "teacher") && (
             <>
               <FormContainer table="exams" type="update" data={item} />
+              <FormContainer
+                table="examGradeSubjects"
+                type="delete"
+                id={egs.id}
+              />
               <FormContainer table="exams" type="delete" id={item.id} />
             </>
           )}
@@ -54,6 +59,7 @@ const renderRow = (item: Exams, role: string | null) =>
       </td>
     </tr>
   ));
+
 
 const getColumns = (role: string | null) => [
   { header: "Date", accessor: "date", className: "hidden md:table-cell" },
@@ -106,8 +112,8 @@ const ExamsList = async ({
   const query: Prisma.ExamWhereInput = { schoolId: school.id };
   const examGradeSubjectsWhere: Prisma.ExamGradeSubjectWhereInput = {};
   const branchId = Array.isArray(resolvedSearchParams.branchId)
-      ? resolvedSearchParams.branchId[0]
-      : resolvedSearchParams.branchId;
+    ? resolvedSearchParams.branchId[0]
+    : resolvedSearchParams.branchId;
 
   if (role === "teacher" && teacherId) {
     const teacherSubjects = await db.subjectTeacher.findMany({
@@ -226,6 +232,7 @@ const ExamsList = async ({
     db.exam.count({ where: query }),
   ]);
 
+  console.log("EXAMS QUERY:", JSON.stringify({ data, examGradeSubjectsWhere }, null, 2));
   const classes = await db.class.findMany();
   const grades = await db.grade.findMany();
   const branches = await db.branch.findMany();

@@ -4,7 +4,7 @@ import prisma from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { SchoolNotFoundError } from "@/lib/resolveSchool";
 import { Prisma } from "@prisma/client";
-import { tenantGuard, tenantSlugGuard } from "@/lib/tenantGuard";
+import { tenantSlugGuard } from "@/lib/tenantGuard";
 
 /* ======================================================
    GET → Fetch Results (Tenant + Role Safe)
@@ -123,6 +123,7 @@ export async function GET(
           select: {
             id: true,
             name: true,
+            admissionNo: true,
             enrollments: {
               where: { status: "ACTIVE" },
               include: {

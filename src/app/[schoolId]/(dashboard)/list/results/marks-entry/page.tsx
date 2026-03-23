@@ -11,10 +11,8 @@ import {
   Minimize2,
   LayoutGrid,
   Save,
-  Search,
   BookOpen,
   CheckCircle2,
-  AlertCircle,
   GraduationCap,
   Users,
 } from "lucide-react";
@@ -76,7 +74,7 @@ export default function MarksEntryForm() {
   useEffect(() => {
     const initFetch = async () => {
       try {
-        
+
         const userRes = await axios.get(`/api/v1/tenants/${schoolId}/users/me`);
         const { role, classId, gradeId } = userRes.data;
 
@@ -95,7 +93,12 @@ export default function MarksEntryForm() {
         ]);
 
         setExams(examRes.data.exams || []);
-        setGrades(gradeRes.data || []);
+        setGrades(
+          Array.isArray(gradeRes.data)
+            ? gradeRes.data
+            : gradeRes.data?.grades || gradeRes.data?.data || []
+        );
+        console.log("GRADE RESPONSE:", gradeRes.data);
       } catch {
         toast.error("Failed to load initial data");
       }
@@ -113,7 +116,13 @@ export default function MarksEntryForm() {
     }
     axios
       .get(`/api/v1/tenants/${schoolId}/classes?gradeId=${selectedGradeId}`)
-      .then((res) => setClasses(res.data))
+      .then((res) =>
+        setClasses(
+          Array.isArray(res.data)
+            ? res.data
+            : res.data?.classes || res.data?.data || []
+        )
+      )
       .catch(() => toast.error("Could not load sections"));
   }, [selectedGradeId]);
 
@@ -226,11 +235,10 @@ export default function MarksEntryForm() {
 
   return (
     <div
-      className={`flex flex-col bg-zinc-50 dark:bg-darkMode text-zinc-900 dark:text-zinc-100 transition-colors duration-300 ${
-        isFullScreen
-          ? "h-screen w-screen overflow-hidden"
-          : "min-h-screen w-full"
-      }`}
+      className={`flex flex-col bg-zinc-50 dark:bg-darkMode text-zinc-900 dark:text-zinc-100 transition-colors duration-300 ${isFullScreen
+        ? "h-screen w-screen overflow-hidden"
+        : "min-h-screen w-full"
+        }`}
     >
       {/* Decorative Background Gradients */}
       <div className="fixed inset-0 pointer-events-none z-0">
@@ -281,11 +289,10 @@ export default function MarksEntryForm() {
                   disabled={submitting || !hasUnsavedChanges}
                   className={`
           relative group flex items-center gap-2 px-5 py-2.5 rounded-lg font-medium text-sm transition-all duration-300
-          ${
-            hasUnsavedChanges
-              ? "bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:-translate-y-0.5 active:translate-y-0"
-              : "bg-emerald-50 dark:bg-darkMode text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 cursor-default"
-          }
+          ${hasUnsavedChanges
+                      ? "bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:-translate-y-0.5 active:translate-y-0"
+                      : "bg-emerald-50 dark:bg-darkMode text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 cursor-default"
+                    }
         `}
                 >
                   {submitting ? (
@@ -300,8 +307,8 @@ export default function MarksEntryForm() {
                     {submitting
                       ? "Saving..."
                       : hasUnsavedChanges
-                      ? "Save Changes"
-                      : "All Saved"}
+                        ? "Save Changes"
+                        : "All Saved"}
                   </span>
 
                   {/* Optional: Visual ping when there are unsaved changes */}
@@ -456,20 +463,18 @@ function CustomSelect({
            bg-zinc-50 dark:bg-darkMode hover:bg-zinc-100 dark:hover:bg-zinc-800/50 
            border border-transparent hover:border-zinc-200 dark:hover:border-zinc-700
            rounded-xl cursor-pointer transition-all duration-200
-           ${
-             isOpen ? "ring-2 ring-indigo-500/20 bg-white dark:bg-darkMode" : ""
-           }
+           ${isOpen ? "ring-2 ring-indigo-500/20 bg-white dark:bg-darkMode" : ""
+          }
          `}
       >
         <div className="flex items-center gap-3 overflow-hidden">
           <div
             className={`
              p-2 rounded-lg transition-colors
-             ${
-               value
-                 ? "bg-indigo-100 dark:bg-darkMode text-indigo-600 dark:text-indigo-400"
-                 : "bg-zinc-200 dark:bg-darkMode text-zinc-500"
-             }
+             ${value
+                ? "bg-indigo-100 dark:bg-darkMode text-indigo-600 dark:text-indigo-400"
+                : "bg-zinc-200 dark:bg-darkMode text-zinc-500"
+              }
            `}
           >
             {icon}
@@ -479,18 +484,16 @@ function CustomSelect({
               {label}
             </span>
             <span
-              className={`text-sm font-semibold truncate ${
-                value ? "text-zinc-900 dark:text-white" : "text-zinc-400"
-              }`}
+              className={`text-sm font-semibold truncate ${value ? "text-zinc-900 dark:text-white" : "text-zinc-400"
+                }`}
             >
               {selectedLabel || placeholder}
             </span>
           </div>
         </div>
         <ChevronDown
-          className={`w-4 h-4 text-zinc-400 transition-transform duration-300 ${
-            isOpen ? "rotate-180" : ""
-          }`}
+          className={`w-4 h-4 text-zinc-400 transition-transform duration-300 ${isOpen ? "rotate-180" : ""
+            }`}
         />
       </div>
 
@@ -507,11 +510,10 @@ function CustomSelect({
                 }}
                 className={`
                    px-4 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-colors flex items-center justify-between
-                   ${
-                     String(value) === String(opt.value)
-                       ? "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300"
-                       : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-darkbg"
-                   }
+                   ${String(value) === String(opt.value)
+                    ? "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300"
+                    : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-darkbg"
+                  }
                  `}
               >
                 {opt.label}

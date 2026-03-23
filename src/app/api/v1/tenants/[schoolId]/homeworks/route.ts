@@ -106,6 +106,7 @@ export async function POST(
       const hw = await prisma.homework.create({
         data: {
           description,
+          branchId: grade.branchId,
           gradeId,
           classId,
           date: parsedDate,
@@ -157,6 +158,7 @@ export async function POST(
       await tx.homework.createMany({
         data: classes.map((cls: any) => ({
           description,
+          branchId: grade.branchId,
           gradeId,
           classId: cls.classId ?? cls.id,
           date: parsedDate,

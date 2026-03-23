@@ -86,6 +86,9 @@ export async function POST(
       );
     }
 
+    const normalizedDate = new Date(examDate);
+    normalizedDate.setHours(0, 0, 0, 0);
+
     const exam = await db.$transaction(async (tx) => {
       let existingExam = await tx.exam.findUnique({
         where: {
@@ -110,7 +113,7 @@ export async function POST(
           },
         },
         update: {
-          date: new Date(examDate),
+          date: normalizedDate,
           startTime,
           maxMarks,
         },
@@ -118,7 +121,7 @@ export async function POST(
           examId: existingExam.id,
           gradeId,
           subjectId,
-          date: new Date(examDate),
+          date: normalizedDate,
           startTime,
           maxMarks,
           schoolId,
@@ -154,12 +157,15 @@ export async function GET(
 ) {
   try {
     const { schoolId: slug } = await params;
+
+    // Resolve tenant
     const schoolId = await resolveSchoolId(slug);
     const db = tenantPrisma(schoolId);
 
     const { searchParams } = new URL(req.url);
     const onlyTitles = searchParams.get("titles") === "true";
 
+    // ✅ 1. Only Titles Mode (lightweight)
     if (onlyTitles) {
       const titles = await db.exam.findMany({
         where: { schoolId },
@@ -174,20 +180,35 @@ export async function GET(
       return NextResponse.json({ titles });
     }
 
+    // ✅ 2. Full Exams Data (optimized select)
     const exams = await db.exam.findMany({
       where: { schoolId },
       orderBy: { id: "desc" },
-      include: {
+      select: {
+        id: true,
+        title: true,
+        academicYearId: true,
+
         examGradeSubjects: {
           where: { schoolId },
           select: {
             date: true,
             startTime: true,
             maxMarks: true,
-          },
-          include: {
-            grade: { select: { id: true, level: true } },
-            subject: { select: { id: true, name: true } },
+
+            grade: {
+              select: {
+                id: true,
+                level: true,
+              },
+            },
+
+            subject: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
           },
         },
       },
@@ -195,6 +216,9 @@ export async function GET(
 
     return NextResponse.json({ exams });
   } catch (error) {
+    // 🔴 CRITICAL: log full error for debugging
+    console.error("❌ EXAMS API ERROR:", error);
+
     if (error instanceof SchoolNotFoundError) {
       return NextResponse.json(
         { error: error.message },

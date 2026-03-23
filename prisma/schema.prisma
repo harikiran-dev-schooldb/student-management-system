@@ -173,6 +173,8 @@ model Announcement {
   title       String
   description String
   date        DateTime
+  branchId Int?
+  gradeId  Int?
   classId     Int?
   schoolId    String
   Class       Class?     @relation(fields: [classId], references: [id])
@@ -190,6 +192,8 @@ model Messages {
   date      DateTime    @default(now())
   classId   Int?
   schoolId  String
+  branchId Int?
+  gradeId  Int?
   Class     Class?      @relation(fields: [classId], references: [id])
   school    SchoolInfo  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   Student   Student?    @relation(fields: [studentId], references: [id], onDelete: Cascade)
@@ -203,6 +207,8 @@ model Event {
   description String
   startTime   DateTime
   endTime     DateTime
+  branchId Int?
+  gradeId  Int?
   classId     Int?
   schoolId    String
   Class       Class?     @relation(fields: [classId], references: [id])
@@ -323,8 +329,9 @@ model Homework {
   groupId     String?
   description String
   date        DateTime   @default(now()) @db.Timestamptz(6)
-  classId     Int
+  branchId    Int
   gradeId     Int
+  classId     Int
   schoolId    String
   Class       Class      @relation(fields: [classId], references: [id], onDelete: Cascade)
   Grade       Grade      @relation(fields: [gradeId], references: [id])

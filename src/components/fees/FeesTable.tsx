@@ -41,16 +41,6 @@ interface FeesTableProps {
   studentMobile?: string;
 }
 
-// --- Helper Functions ---
-function formatDate(value?: string | Date | null) {
-  if (!value) return "-";
-  return new Date(value).toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-}
-
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",

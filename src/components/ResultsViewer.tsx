@@ -1,18 +1,14 @@
 "use client";
 
 import { useEffect, useState, useMemo, useRef } from "react";
-import axios from "axios";
 import {
   Loader2,
   AlertCircle,
-  LayoutGrid,
   CheckCircle2,
-  Filter,
   Search,
   School,
   Maximize2,
   Minimize2,
-  User,
   ChevronDown,
   BookOpen,
   GraduationCap,
@@ -29,8 +25,8 @@ type Result = {
   id: number;
   marks: number;
   maxMarks: number;
-  Student: { id: string; name: string };
-  Subject: { id: number; name: string };
+  student: { id: string; name: string; admissionNo: string; };
+  subject: { id: number; name: string };
   Exam: { id: number; title: string };
 };
 
@@ -205,20 +201,35 @@ export default function ResultsViewer() {
 
   // --- Data Processing ---
   const subjects = useMemo(
-    () => Array.from(new Set(results.map((r) => r.Subject.name))).sort(),
+    () => Array.from(new Set(results.map((r) => r.subject.name))).sort(),
     [results],
   );
 
   const studentMap = useMemo(() => {
     const map = new Map<
       string,
-      { name: string; marks: Record<string, number> }
+      { name: string; admissionNo: string; marks: Record<string, number> }
     >();
+
     results.forEach((r) => {
-      if (!map.has(r.Student.id))
-        map.set(r.Student.id, { name: r.Student.name, marks: {} });
-      map.get(r.Student.id)!.marks[r.Subject.name] = r.marks;
+      if (!map.has(r.student.id)) {
+        map.set(r.student.id, {
+          name: r.student.name,
+          admissionNo: r.student.admissionNo || "",
+          marks: {},
+        });
+      }
+
+      const existing = map.get(r.student.id)!;
+
+      // ✅ update admissionNo if missing
+      if (!existing.admissionNo && r.student.admissionNo) {
+        existing.admissionNo = r.student.admissionNo;
+      }
+
+      existing.marks[r.subject.name] = r.marks;
     });
+
     return map;
   }, [results]);
 
@@ -230,7 +241,7 @@ export default function ResultsViewer() {
   const subjectMaxMap = useMemo(() => {
     const map = new Map<string, number>();
     results.forEach((r) => {
-      if (!map.has(r.Subject.name)) map.set(r.Subject.name, r.maxMarks);
+      if (!map.has(r.subject.name)) map.set(r.subject.name, r.maxMarks);
     });
     return map;
   }, [results]);
@@ -238,11 +249,10 @@ export default function ResultsViewer() {
   // --- UI ---
   return (
     <div
-      className={`flex flex-col bg-gray-50 dark:bg-darkMode text-zinc-900 dark:text-zinc-100 transition-all duration-300 ${
-        isFullScreen
+      className={`flex flex-col bg-gray-50 dark:bg-darkMode text-zinc-900 dark:text-zinc-100 transition-all duration-300 ${isFullScreen
           ? "fixed inset-0 z-[100] h-screen w-screen"
           : "relative min-h-[calc(100vh-4rem)] w-full"
-      }`}
+        }`}
     >
       {/* 1. Premium Header */}
       <header className="bg-white/80 dark:bg-darkMode backdrop-blur-xl border-b border-zinc-200 dark:border-darkfg top-0 z-30 shadow-sm px-4 md:px-6 py-4 transition-all">
@@ -440,7 +450,7 @@ export default function ResultsViewer() {
                               {student.name}
                             </span>
                             <span className="text-[10px] uppercase tracking-wider text-zinc-400 font-mono">
-                              ID: {id}
+                              ID: {student.admissionNo}
                             </span>
                           </div>
                         </td>
@@ -582,20 +592,18 @@ function CustomSelect({
            bg-zinc-50 dark:bg-darkMode hover:bg-zinc-100 dark:hover:bg-zinc-800/50 
            border border-transparent hover:border-zinc-200 dark:hover:border-zinc-700
            rounded-xl cursor-pointer transition-all duration-200
-           ${
-             isOpen ? "ring-2 ring-indigo-500/20 bg-white dark:bg-darkMode" : ""
-           }
+           ${isOpen ? "ring-2 ring-indigo-500/20 bg-white dark:bg-darkMode" : ""
+          }
          `}
       >
         <div className="flex items-center gap-3 overflow-hidden">
           <div
             className={`
              p-2 rounded-lg transition-colors
-             ${
-               value
-                 ? "bg-indigo-100 dark:bg-darkMode text-indigo-600 dark:text-indigo-400"
-                 : "bg-zinc-200 dark:bg-darkMode text-zinc-500"
-             }
+             ${value
+                ? "bg-indigo-100 dark:bg-darkMode text-indigo-600 dark:text-indigo-400"
+                : "bg-zinc-200 dark:bg-darkMode text-zinc-500"
+              }
            `}
           >
             {icon}
@@ -605,18 +613,16 @@ function CustomSelect({
               {label}
             </span>
             <span
-              className={`text-sm font-semibold truncate ${
-                value ? "text-zinc-900 dark:text-white" : "text-zinc-400"
-              }`}
+              className={`text-sm font-semibold truncate ${value ? "text-zinc-900 dark:text-white" : "text-zinc-400"
+                }`}
             >
               {selectedLabel || placeholder}
             </span>
           </div>
         </div>
         <ChevronDown
-          className={`w-4 h-4 text-zinc-400 transition-transform duration-300 ${
-            isOpen ? "rotate-180" : ""
-          }`}
+          className={`w-4 h-4 text-zinc-400 transition-transform duration-300 ${isOpen ? "rotate-180" : ""
+            }`}
         />
       </div>
 
@@ -633,11 +639,10 @@ function CustomSelect({
                 }}
                 className={`
                    px-4 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-colors flex items-center justify-between
-                   ${
-                     String(value) === String(opt.value)
-                       ? "bg-indigo-50 dark:bg-darkMode text-indigo-700 dark:text-indigo-300"
-                       : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-darkbg"
-                   }
+                   ${String(value) === String(opt.value)
+                    ? "bg-indigo-50 dark:bg-darkMode text-indigo-700 dark:text-indigo-300"
+                    : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-darkbg"
+                  }
                  `}
               >
                 {opt.label}

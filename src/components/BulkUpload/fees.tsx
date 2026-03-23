@@ -116,27 +116,21 @@ export default function BulkFeeUpload() {
 
     try {
       const formattedData = records.map((r) => {
-        const amount = parseFloat(r.amount);
-        const academicYear = r.academicYear.trim();
-        const discountAmount = parseFloat(r.discountAmount) || 0;
-        const fineAmount = parseFloat(r.fineAmount) || 0;
-
         let parsedDate: string | null = null;
 
         if (r.receiptDate) {
           const d = new Date(r.receiptDate);
+
           if (!isNaN(d.getTime())) {
             parsedDate = d.toISOString();
           }
         }
-
         return {
           studentId: r.studentId.trim(),
           term: r.term.trim(),
-          amount,
-          academicYear,
-          discountAmount,
-          fineAmount,
+          amount: parseFloat(r.amount || "0"),
+          discountAmount: parseFloat(r.discountAmount || "0"),
+          fineAmount: parseFloat(r.fineAmount || "0"),
           receiptDate: parsedDate,
           receiptNo: r.receiptNo?.trim() || null,
           remarks: r.remarks?.trim() || null,

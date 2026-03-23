@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
+import { tenantPrisma } from "@/lib/tenant-prisma";
 import { resolveSchoolId } from "@/lib/resolveSchool";
 
 export async function GET(
@@ -11,6 +11,8 @@ export async function GET(
   try {
     const { schoolId: schoolSlug } = await params;
     const schoolId = await resolveSchoolId(schoolSlug);
+
+    const db = tenantPrisma(schoolId);
 
     const { searchParams } = new URL(req.url);
     const date = searchParams.get("date");
@@ -36,7 +38,7 @@ export async function GET(
     const end = new Date(parsedDate);
     end.setHours(23, 59, 59, 999);
 
-    const exams = await prisma.exam.findMany({
+    const exams = await db.exam.findMany({
       where: {
         schoolId,
         examGradeSubjects: {

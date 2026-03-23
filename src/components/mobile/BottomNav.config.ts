@@ -113,7 +113,7 @@ export const bottomNavItems: BottomNavItem[] = [
       },
       {
         label: "Fee Management",
-        href: "/list/fees/feemanagement",
+        href: "/list/fees/manage",
         icon: Edit,
         visible: ["admin"],
       },

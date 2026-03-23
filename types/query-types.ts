@@ -577,6 +577,7 @@ export const ExamListSelect = {
 
   examGradeSubjects: {
     select: {
+      id: true,
       date: true,
       startTime: true,
       maxMarks: true,

@@ -300,8 +300,8 @@ export type Exams = Exam & {
     date: Date;
     startTime: string;
     maxMarks: number;
-    Grade: { id: number; level: string };
-    Subject: { id: number; name: string };
+    grade: { id: number; level: string };
+    subject: { id: number; name: string };
   }[];
 };
 

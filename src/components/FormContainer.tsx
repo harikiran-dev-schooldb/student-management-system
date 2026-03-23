@@ -19,7 +19,8 @@ export type FormContainerProps = {
   | "fees_structure"
   | "messages"
   | "results"
-  | "homework";
+  | "homework"
+  | "examGradeSubjects";
   type: "create" | "update" | "delete";
   data?: any;
   id?: number | string;
@@ -112,6 +113,22 @@ const FormContainer = async ({ table, type, data, id }: FormContainerProps) => {
         });
 
         relatedData = { grades: examGrades, subjects: examSubjects };
+        break;
+
+      case "examGradeSubjects":
+        const grades = await prisma.grade.findMany({
+          select: { id: true, level: true },
+        });
+
+        const subjects = await prisma.subject.findMany({
+          select: { id: true, name: true },
+        });
+
+        const exams = await prisma.exam.findMany({
+          select: { id: true, title: true },
+        });
+
+        relatedData = { grades, subjects, exams };
         break;
 
       case "lesson":
@@ -345,6 +362,7 @@ const FormContainer = async ({ table, type, data, id }: FormContainerProps) => {
                 maxMarks: true,
                 date: true,
                 startTime: true,
+                academicYearId: true,
               },
             },
           }, // Including gradeId to associate exams with grades

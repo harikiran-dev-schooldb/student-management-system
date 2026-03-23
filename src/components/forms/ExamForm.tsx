@@ -58,6 +58,7 @@ const ExamForm = ({
         gradeId: data?.examGradeSubjects?.[0]?.gradeId || "",
         subjectId: data?.examGradeSubjects?.[0]?.subjectId || "",
         maxMarks: data?.examGradeSubjects?.[0]?.maxMarks || "",
+        academicYearId: data?.examGradeSubjects?.[0]?.academicYearId || "",
       });
       setSelectedGradeId(data?.examGradeSubjects?.[0]?.gradeId || null);
     }
@@ -68,6 +69,24 @@ const ExamForm = ({
     document.addEventListener("click", handleClickOutside);
     return () => document.removeEventListener("click", handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (!schoolId) return;
+
+    const fetchAcademicYear = async () => {
+      try {
+        const data = await tenantFetch<{
+          academicYear: { id: number; name: string };
+        }>(schoolId, "/academic-years/active");
+
+        setValue("academicYearId", data.academicYear.id);
+      } catch (err) {
+        console.error("Failed to fetch academic year", err);
+      }
+    };
+
+    fetchAcademicYear();
+  }, [schoolId, setValue]);
 
   useEffect(() => {
     if (!selectedGradeId || !schoolId) {
@@ -140,7 +159,10 @@ const ExamForm = ({
   }, [schoolId]);
 
   const onSubmit = async (formData: ExamSchema) => {
+    console.log("Form Data:", formData);
     if (!schoolId) return;
+
+    const activeAcademicYearId = 1;
 
     try {
       const path = type === "create" ? "/exams" : `/exams/${formData.id}`;
@@ -149,7 +171,8 @@ const ExamForm = ({
 
       await tenantFetch(schoolId, path, {
         method,
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ ...formData, academicYearId: activeAcademicYearId }),
+
       });
 
       toast.success(

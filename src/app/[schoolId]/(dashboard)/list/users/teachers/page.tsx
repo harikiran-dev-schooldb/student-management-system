@@ -115,8 +115,8 @@ const renderRow = (item: TeachersWithSelect, role: string | null, schoolId: stri
 
 // -------------------- Columns --------------------
 const getColumns = (role: string | null) => [
-  { header: "Teacher Name", accessor: "info" },
-  { header: "Class", accessor: "class", className: "hidden md:table-cell" },
+  { header: "Teacher Name", accessor: "name", sortable: true },
+  { header: "Class", accessor: "class", className: "hidden md:table-cell", sortable: true },
   { header: "Phone", accessor: "phone", className: "hidden md:table-cell" },
   { header: "Gender", accessor: "gender", className: "hidden md:table-cell" },
   { header: "DOB", accessor: "dob", className: "hidden md:table-cell" },
@@ -151,9 +151,29 @@ const TeacherListPage = async ({
   const { page, userStatus, ...queryParams } = resolvedSearchParams;
   const p = page ? (Array.isArray(page) ? page[0] : page) : "1";
   const sortOrder = resolvedSearchParams.sort === "desc" ? "desc" : "asc";
-  const sortKey = Array.isArray(resolvedSearchParams.sortKey)
+  const sortKeyMap: Record<string, string> = {
+    info: "name",   // UI "info" → DB "name"
+    class: "name",  // optional fallback (can't sort relation directly)
+  };
+  const rawSortKey = Array.isArray(resolvedSearchParams.sortKey)
     ? resolvedSearchParams.sortKey[0]
     : resolvedSearchParams.sortKey || "name";
+
+  const validSortKeys = [
+    "id",
+    "username",
+    "name",
+    "gender",
+    "phone",
+    "dob",
+    "status",
+  ];
+
+  const mappedSortKey = sortKeyMap[rawSortKey] || rawSortKey;
+
+  const safeSortKey = validSortKeys.includes(mappedSortKey)
+    ? mappedSortKey
+    : "name";
 
   const statusValue = Array.isArray(userStatus) ? userStatus[0] : userStatus;
 
@@ -211,7 +231,7 @@ const TeacherListPage = async ({
   const [data, count] = await db.$transaction([
     db.teacher.findMany({
       where: query,
-      orderBy: [{ [sortKey]: sortOrder }],
+      orderBy: [{ [safeSortKey]: sortOrder }],
       select: TeachersSelect,
       take: ITEM_PER_PAGE,
       skip: ITEM_PER_PAGE * (parseInt(p) - 1),
@@ -272,7 +292,7 @@ const TeacherListPage = async ({
                   columns={columns}
                   renderRow={(item) => renderRow(item, role, slug)}
                   data={data}
-                  sortKey={sortKey}
+                  sortKey={safeSortKey}
                   sortOrder={sortOrder}
                 />
               </div>

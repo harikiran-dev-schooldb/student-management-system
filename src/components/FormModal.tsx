@@ -34,6 +34,7 @@ const deleteActionMap: Record<string, string> = {
   homework: "homeworks",
   messages: "messages",
   permissions: "permissions",
+  examGradeSubjects: "exam-grade-subjects",
 };
 
 // Dynamic form imports (kept as is)
