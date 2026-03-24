@@ -67,7 +67,7 @@ export default function RootLayout({
             <ClientProviders>{children}</ClientProviders>
           </I18nProvider>
 
-          <Analytics />
+          {/* <Analytics /> */}
           {/* <SpeedInsights /> */}
         </body>
       </html>
