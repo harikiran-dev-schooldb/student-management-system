@@ -2,11 +2,16 @@
 
 import CustomSelect from "@/components/ui/CustomSelect";
 import { useEffect, useState } from "react";
-import { Class, Grade, Student, AcademicYear } from "@prisma/client";
+import { Class, Grade, Student } from "@prisma/client";
 import { toast } from "react-toastify";
 import { Users, ArrowRight, Loader2, GraduationCap } from "lucide-react";
 import { useParams } from "next/navigation";
 import { tenantFetch } from "@/lib/tenantFetch";
+
+type AcademicYear = {
+  id: number;
+  name: string;
+};
 
 export default function PromoteStudentsPage() {
   const [grades, setGrades] = useState<Grade[]>([]);
@@ -16,7 +21,7 @@ export default function PromoteStudentsPage() {
   const [toGrade, setToGrade] = useState<number>();
   const [fromClass, setFromClass] = useState<number>();
   const [toClass, setToClass] = useState<number>();
-  const [newAcademicYear, setNewAcademicYear] = useState<string>("Y2025_2026");
+  const [newAcademicYear, setNewAcademicYear] = useState<number>();
   const [fromClasses, setFromClasses] = useState<Class[]>([]);
   const [toClasses, setToClasses] = useState<Class[]>([]);
 
@@ -25,6 +30,7 @@ export default function PromoteStudentsPage() {
 
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   const { schoolId } = useParams<{ schoolId: string }>();
+  const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
 
   /* ---------------- Load Grades (Sorted Once) ---------------- */
 
@@ -85,6 +91,14 @@ export default function PromoteStudentsPage() {
     }
   }, [fromClass, toClasses]);
 
+  useEffect(() => {
+    if (!schoolId) return;
+
+    tenantFetch<AcademicYear[]>(schoolId, "/academic-years")
+      .then(setAcademicYears)
+      .catch(console.error);
+  }, [schoolId]);
+
   /* ---------------- Load Students ---------------- */
   const loadStudents = async () => {
     if (!schoolId || !fromClass) return;
@@ -119,7 +133,8 @@ export default function PromoteStudentsPage() {
           studentIds: selectedStudents,
           fromClassId: fromClass,
           toClassId: toClass,
-          academicYear: newAcademicYear,
+          fromAcademicYearId: academicYears[0]?.id,
+          toAcademicYearId: newAcademicYear,
         }),
       });
 
@@ -224,12 +239,11 @@ export default function PromoteStudentsPage() {
           label="Academic Year"
           icon={<GraduationCap className="w-4 h-4" />}
           value={newAcademicYear}
-          onChange={(val) => setNewAcademicYear(val)}
-          options={[
-            { value: "Y2024_2025", label: "2024-2025" },
-            { value: "Y2025_2026", label: "2025-2026" },
-            { value: "Y2026_2027", label: "2026-2027" },
-          ]}
+          onChange={(val) => setNewAcademicYear(Number(val))}
+          options={academicYears.map((y) => ({
+            value: y.id,          // ✅ number
+            label: y.name,        // "2025-2026"
+          }))}
         />
       </div>
 
@@ -282,8 +296,8 @@ export default function PromoteStudentsPage() {
                     <tr
                       key={s.id}
                       className={`border-t transition-colors ${isSelected
-                          ? "bg-indigo-50/40 dark:bg-zinc-800/40"
-                          : "hover:bg-indigo-50/40 dark:hover:bg-zinc-800/50"
+                        ? "bg-indigo-50/40 dark:bg-zinc-800/40"
+                        : "hover:bg-indigo-50/40 dark:hover:bg-zinc-800/50"
                         }`}
                     >
                       <td className="p-4">

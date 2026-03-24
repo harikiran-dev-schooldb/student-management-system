@@ -299,6 +299,7 @@ export type GradeWithFees = Prisma.GradeGetPayload<{
 
 export const SingleStudentFeeSelect = {
   id: true,
+  admissionNo: true,
   name: true,
   img: true,
   gender: true,

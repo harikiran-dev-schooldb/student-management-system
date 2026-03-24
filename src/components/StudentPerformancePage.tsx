@@ -61,42 +61,70 @@ export default function StudentPerformancePage({
 
   /* ---------------- Fetch Performance ---------------- */
   const loadPerformance = async () => {
-  if (!schoolId) return;
+    if (!schoolId) return;
 
-  setLoading(true);
+    setLoading(true);
 
-  try {
-    let query = "";
+    try {
+      let query = "";
 
-    if (role === "teacher" && teacherClassId) {
-      query = `?classId=${teacherClassId}`;
-    } else if (selectedClass) {
-      query = `?classId=${selectedClass}`;
+      if (role === "teacher" && teacherClassId) {
+        query = `?classId=${teacherClassId}`;
+      } else if (selectedClass) {
+        query = `?classId=${selectedClass}`;
+      }
+
+      const data = await tenantFetch<StudentPerformance[]>(
+        schoolId,
+        `/students/analytics/student-performance${query}`
+      );
+
+      console.log("FETCHED DATA:", data);
+
+      setStudents(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
-
-    const data = await tenantFetch<StudentPerformance[]>(
-      schoolId,
-      `/analytics/student-performance${query}`
-    );
-
-    setStudents(Array.isArray(data) ? data : []);
-  } catch (err) {
-    console.error(err);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   /* ---------------- Search Filter ---------------- */
   const filteredStudents = useMemo(() => {
-    if (!searchQuery) return students;
-    const q = searchQuery.toLowerCase();
-    return students.filter(
-      (s) =>
-        s.student.name.toLowerCase().includes(q) ||
-        s.student.id.toLowerCase().includes(q),
+    let data = students;
+
+    // 🔍 Search filter
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      data = data.filter(
+        (s) =>
+          s.student.name.toLowerCase().includes(q) ||
+          s.student.admissionNo?.toLowerCase().includes(q)
+      );
+    }
+
+    // 📊 Sort by performance (DESC)
+    return [...data].sort(
+      (a, b) => b.overallPercentage - a.overallPercentage
     );
   }, [students, searchQuery]);
+
+  const rankedStudents = useMemo(() => {
+    let lastScore = -1;
+    let rank = 0;
+
+    return filteredStudents.map((s, index) => {
+      if (s.overallPercentage !== lastScore) {
+        rank = index + 1;
+        lastScore = s.overallPercentage;
+      }
+
+      return {
+        ...s,
+        rank,
+      };
+    });
+  }, [filteredStudents]);
 
   /* ---------------- Styles ---------------- */
   const inputClass =
@@ -180,25 +208,51 @@ export default function StudentPerformancePage({
 
       {/* Performance Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {filteredStudents.map(
-          ({
+        {rankedStudents.map((item) => {
+          const {
             student,
             overallPercentage,
             attendancePercentage,
             grade,
             subjects,
             atRisk,
-          }) => (
+            rank,
+          } = item;
+
+
+          // 🏆 Medal display
+          const rankLabel =
+            rank === 1
+              ? "🥇 Rank 1"
+              : rank === 2
+                ? "🥈 Rank 2"
+                : rank === 3
+                  ? "🥉 Rank 3"
+                  : `Rank #${rank}`;
+
+          return (
             <div
               key={student.id}
-              className="bg-white dark:bg-darkfg p-5 rounded-xl border shadow-sm space-y-3"
+              className={`p-5 rounded-xl border shadow-sm space-y-3 ${rank === 1
+                ? "border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20"
+                : "bg-white dark:bg-darkfg"
+                }`}
             >
-              {/* Student Header */}
+              {/* Header */}
               <div className="flex justify-between items-center">
                 <div>
                   <h3 className="font-bold">{student.name}</h3>
-                  <p className="text-xs text-slate-500">ID: {student.id}</p>
+                  <p className="text-xs text-slate-500">
+                    Adm No: {student.admissionNo ?? "—"}
+                  </p>
                 </div>
+
+                <div className="text-right">
+                  <p className="text-xs font-semibold text-indigo-600">
+                    {rankLabel}
+                  </p>
+                </div>
+
                 {atRisk && <AlertTriangle className="text-rose-500" />}
               </div>
 
@@ -206,14 +260,18 @@ export default function StudentPerformancePage({
               <div className="grid grid-cols-3 gap-2 text-center">
                 <div>
                   <p className="text-xs text-slate-500">Overall</p>
-                  <p className="font-bold">{overallPercentage.toFixed(1)}%</p>
+                  <p className="font-bold">
+                    {overallPercentage.toFixed(1)}%
+                  </p>
                 </div>
+
                 <div>
                   <p className="text-xs text-slate-500">Attendance</p>
                   <p className="font-bold">
-                    {attendancePercentage.toFixed(1)}%
+                    {(attendancePercentage ?? 0).toFixed(1)}%
                   </p>
                 </div>
+
                 <div>
                   <p className="text-xs text-slate-500">Grade</p>
                   <p className="font-bold">{grade}</p>
@@ -227,7 +285,9 @@ export default function StudentPerformancePage({
                     <span>{s.subject}</span>
                     <span
                       className={
-                        s.percentage < 50 ? "text-rose-600" : "text-emerald-600"
+                        s.percentage < 50
+                          ? "text-rose-600"
+                          : "text-emerald-600"
                       }
                     >
                       {s.percentage.toFixed(0)}%
@@ -236,8 +296,8 @@ export default function StudentPerformancePage({
                 ))}
               </div>
             </div>
-          ),
-        )}
+          );
+        })}
       </div>
 
       {filteredStudents.length === 0 && !loading && (

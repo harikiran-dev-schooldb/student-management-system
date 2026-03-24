@@ -11,13 +11,8 @@ export async function POST(
   { params }: { params: Promise<{ schoolId: string }> }
 ) {
   try {
-
-    /* 1️⃣ Resolve tenant */
-
     const { schoolId: schoolSlug } = await params;
     const schoolId = await resolveSchoolId(schoolSlug);
-
-    /* 2️⃣ Auth */
 
     const user = await fetchUserInfo(schoolSlug);
 
@@ -29,7 +24,8 @@ export async function POST(
       studentIds,
       fromClassId,
       toClassId,
-      academicYearId,
+      fromAcademicYearId, // ✅ NEW
+      toAcademicYearId,   // ✅ NEW
     } = await req.json();
 
     if (
@@ -37,7 +33,8 @@ export async function POST(
       studentIds.length === 0 ||
       !fromClassId ||
       !toClassId ||
-      !academicYearId
+      !fromAcademicYearId ||
+      !toAcademicYearId
     ) {
       return NextResponse.json(
         { error: "Invalid payload" },
@@ -45,7 +42,7 @@ export async function POST(
       );
     }
 
-    /* 3️⃣ Validate classes */
+    /* Validate classes */
 
     const [fromClass, toClass] = await Promise.all([
       prisma.class.findFirst({
@@ -63,13 +60,13 @@ export async function POST(
       );
     }
 
-    /* 4️⃣ Validate enrollments */
+    /* Validate CURRENT enrollments */
 
     const enrollments = await prisma.studentEnrollment.findMany({
       where: {
         studentId: { in: studentIds },
         classId: Number(fromClassId),
-        academicYearId,
+        academicYearId: Number(fromAcademicYearId), // ✅ FIX
         schoolId,
         status: "ACTIVE",
       },
@@ -77,39 +74,34 @@ export async function POST(
 
     if (enrollments.length !== studentIds.length) {
       return NextResponse.json(
-        { error: "Some students not found in the selected class" },
+        { error: "Some students not found in current class/year" },
         { status: 400 }
       );
     }
 
-    /* 5️⃣ Promotion transaction */
+    /* Promotion */
 
     await prisma.$transaction(async (tx) => {
-
       for (const enrollment of enrollments) {
 
-        /* mark old enrollment */
-
+        // mark old
         await tx.studentEnrollment.update({
           where: { id: enrollment.id },
           data: { status: "PROMOTED" },
         });
 
-        /* create new enrollment */
-
+        // create new (NEXT YEAR)
         await tx.studentEnrollment.create({
           data: {
             studentId: enrollment.studentId,
             classId: Number(toClassId),
-            academicYearId,
+            academicYearId: Number(toAcademicYearId), // ✅ FIX
             schoolId,
             status: "ACTIVE",
             promotedFromId: enrollment.id,
           },
         });
-
       }
-
     });
 
     return NextResponse.json(
@@ -118,7 +110,6 @@ export async function POST(
     );
 
   } catch (error) {
-
     console.error("Promotion error:", error);
 
     return NextResponse.json(

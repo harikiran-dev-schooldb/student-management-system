@@ -164,7 +164,7 @@ const StudentFeePage = async ({ params }: StudentFeePageProps) => {
                       <span className="capitalize">{student.gender}</span>
                       <span className="w-1 h-1 bg-gray-300 rounded-full" />
                       <span className="bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded text-xs font-mono text-gray-600 dark:text-gray-300">
-                        ID: {student.id}
+                        ID: {student.admissionNo}
                       </span>
                     </p>
                   </div>

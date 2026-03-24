@@ -1,5 +1,6 @@
 import StudentPerformancePage from "@/components/StudentPerformancePage";
-import prisma from "@/lib/prisma";
+import { resolveSchoolId } from "@/lib/resolveSchool";
+import { tenantPrisma } from "@/lib/tenant-prisma";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
 import { notFound } from "next/navigation";
 
@@ -10,9 +11,12 @@ interface PageProps {
 export default async function Page({ params }: PageProps) {
   // 1️⃣ Resolve slug
   const { schoolId: slug } = await params;
+  const schoolId = await resolveSchoolId(slug);
+
+  const db = tenantPrisma(schoolId);
 
   // 2️⃣ Get internal school ID
-  const school = await prisma.schoolInfo.findUnique({
+  const school = await db.schoolInfo.findUnique({
     where: { schoolId: slug },
     select: { id: true },
   });
