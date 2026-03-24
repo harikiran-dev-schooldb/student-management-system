@@ -5,14 +5,15 @@ import { getGenderStats } from "./gender";
 import { getAttendanceStats } from "./attendance";
 import { getFinanceStats } from "./finance";
 import { getRecentEvents } from "./events";
+import { redis } from "@/lib/redis";
 
 export async function getAdminDashboardData(
     schoolSlug: string,
     targetDate: Date
 ): Promise<AdminDashboardData> {
-
     const schoolId = await resolveSchoolId(schoolSlug);
 
+    // 🔹 Normalize dates (important for consistency)
     const end = new Date(targetDate);
     end.setHours(23, 59, 59, 999);
 
@@ -20,13 +21,18 @@ export async function getAdminDashboardData(
     start.setDate(start.getDate() - 29);
     start.setHours(0, 0, 0, 0);
 
-    const [
-        counts,
-        genderStats,
-        attendance,
-        finance,
-        events,
-    ] = await Promise.all([
+    const cacheKey = `dashboard:admin:${schoolId}:${start.toISOString()}:${end.toISOString()}`;
+
+    /* ---------- Cache (top-level) ---------- */
+    try {
+        const cached = await redis.get<AdminDashboardData>(cacheKey);
+        if (cached) return cached;
+    } catch (err) {
+        console.error("Dashboard cache GET error:", err);
+    }
+
+    /* ---------- Parallel fetch (fault-tolerant) ---------- */
+    const results = await Promise.allSettled([
         getUserCounts(schoolId),
         getGenderStats(schoolId),
         getAttendanceStats(schoolId, start, end),
@@ -34,11 +40,42 @@ export async function getAdminDashboardData(
         getRecentEvents(schoolId, start, end),
     ]);
 
-    return {
+    const [
+        countsRes,
+        genderRes,
+        attendanceRes,
+        financeRes,
+        eventsRes,
+    ] = results;
+
+
+    const counts =
+        countsRes.status === "fulfilled"
+            ? countsRes.value
+            : {
+                adminCount: 0,
+                teacherCount: 0,
+                studentCount: 0,
+            };
+
+    const data: AdminDashboardData = {
         ...counts,
-        genderStats,
-        attendance,
-        finance,
-        events,
+        genderStats:
+            genderRes.status === "fulfilled" ? genderRes.value : [],
+        attendance:
+            attendanceRes.status === "fulfilled" ? attendanceRes.value : [],
+        finance:
+            financeRes.status === "fulfilled" ? financeRes.value : [],
+        events:
+            eventsRes.status === "fulfilled" ? eventsRes.value : [],
     };
+
+    /* ---------- Cache (safe) ---------- */
+    try {
+        await redis.set(cacheKey, data, { ex: 300 }); // 5 min
+    } catch (err) {
+        console.error("Dashboard cache SET error:", err);
+    }
+
+    return data;
 }

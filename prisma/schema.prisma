@@ -601,6 +601,7 @@ model Attendance {
   @@index([schoolId, date])
   @@index([academicYearId, studentId])
   @@index([schoolId, classId, date])
+  @@index([schoolId, classId, present])
 }
 
 model CancelledReceipt {

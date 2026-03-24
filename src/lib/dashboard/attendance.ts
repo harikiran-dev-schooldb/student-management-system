@@ -2,33 +2,51 @@ import prisma from "@/lib/prisma";
 import { redis } from "@/lib/redis";
 import { AttendanceRecord } from "../../../types";
 
+type AttendanceRow = {
+  date: Date;
+  present: bigint; // COUNT returns bigint in Postgres
+};
+
 export async function getAttendanceStats(
   schoolId: string,
   start: Date,
   end: Date
 ): Promise<AttendanceRecord[]> {
-  const key = `dashboard:attendance:${schoolId}:${start.toISOString()}`;
+  const key = `dashboard:attendance:${schoolId}:${start.toISOString()}:${end.toISOString()}`;
 
-  const cached = await redis.get<AttendanceRecord[]>(key);
-  if (cached) return cached;
+  // 🔹 Cache read (safe)
+  try {
+    const cached = await redis.get<AttendanceRecord[]>(key);
+    if (cached) return cached;
+  } catch (err) {
+    console.error("Redis GET error:", err);
+  }
 
-  const attendanceRaw = await prisma.attendance.groupBy({
-    by: ["date"],
-    where: {
-      schoolId,
-      date: { gte: start, lte: end },
-      present: true,
-    },
-    _count: { studentId: true },
-    orderBy: { date: "asc" },
-  });
+  // 🔹 Raw SQL (faster than groupBy)
+  const attendanceRaw = await prisma.$queryRaw<
+    { date: Date; present: number }[]
+  >`
+  SELECT date, COUNT("studentId")::int as present
+  FROM "Attendance"
+  WHERE "schoolId" = ${schoolId}
+    AND date BETWEEN ${start} AND ${end}
+    AND present = true
+  GROUP BY date
+  ORDER BY date ASC
+`;
 
+  // 🔹 Transform (handle bigint)
   const attendance: AttendanceRecord[] = attendanceRaw.map((row) => ({
     date: row.date.toISOString().split("T")[0],
-    present: row._count.studentId,
+    present: row.present, // convert bigint → number
   }));
 
-  await redis.set(key, attendance, { ex: 300 });
+  // 🔹 Cache write (safe)
+  try {
+    await redis.set(key, attendance, { ex: 300 });
+  } catch (err) {
+    console.error("Redis SET error:", err);
+  }
 
   return attendance;
 }

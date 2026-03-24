@@ -6,7 +6,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import ClientProviders from "../../providers";
 import I18nProvider from "@/components/I18nProvider";
-// import { SpeedInsights } from "@vercel/speed-insights/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
 
 const inter = Inter({
@@ -67,8 +67,8 @@ export default function RootLayout({
             <ClientProviders>{children}</ClientProviders>
           </I18nProvider>
 
-          {/* <Analytics /> */}
-          {/* <SpeedInsights /> */}
+          <Analytics />
+          <SpeedInsights />
         </body>
       </html>
     </ClerkProvider>
