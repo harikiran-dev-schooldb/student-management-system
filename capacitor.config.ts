@@ -7,7 +7,7 @@ const config: CapacitorConfig = {
   webDir: 'public', // can stay, but won't be used when server.url is set
 
   server: {
-    url: 'https://schooldb.co.in/select-school', // ✅ IMPORTANT (no www)
+    url: 'https://schooldb.co.in', // ✅ IMPORTANT (no www)
     cleartext: false,
     allowNavigation: ['schooldb.co.in', '*.schooldb.co.in']
   },
