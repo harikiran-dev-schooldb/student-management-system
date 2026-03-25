@@ -826,6 +826,14 @@ model Otp {
   @@index([phone])
 }
 
+model DeviceToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String?
+  schoolId  String?
+  createdAt DateTime @default(now())
+}
+
 enum LessonDay {
   MONDAY
   TUESDAY

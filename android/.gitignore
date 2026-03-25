@@ -62,7 +62,11 @@ captures/
 .cxx/
 
 # Google Services (e.g. APIs or Firebase)
-# google-services.json
+android/app/google-services.json
+
+# Firebase Service Account Key
+config/firebase-service-account.json
+config/firebase-service-account-*.json
 
 # Freeline
 freeline.py

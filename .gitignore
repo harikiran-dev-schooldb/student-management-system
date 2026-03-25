@@ -41,3 +41,10 @@ next-env.d.ts
 
 # clerk configuration (can include secrets)
 /.clerk/
+
+# Google Services (e.g. APIs or Firebase)
+android/app/google-services.json
+
+# Firebase Service Account Key
+config/firebase-service-account.json
+config/firebase-service-account-*.json
