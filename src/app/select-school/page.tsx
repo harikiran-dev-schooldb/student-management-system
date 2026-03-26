@@ -1,13 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 export default function SelectSchool() {
-
     const router = useRouter();
     const [query, setQuery] = useState("");
     const [schools, setSchools] = useState<any[]>([]);
+
+    // ✅ 1. Check cache on load
+    useEffect(() => {
+        const schoolId = localStorage.getItem("schoolId");
+
+        if (schoolId) {
+            router.replace(`/${schoolId}/login`);
+        }
+    }, []);
 
     async function searchSchools(value: string) {
         setQuery(value);
@@ -25,12 +33,13 @@ export default function SelectSchool() {
     function selectSchool(schoolId: string, schoolName: string) {
         localStorage.setItem("schoolId", schoolId);
         localStorage.setItem("schoolName", schoolName);
-        router.push(`/${schoolId}/login`);
+
+        // ✅ Use replace (better UX)
+        router.replace(`/${schoolId}/login`);
     }
 
     return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
-
             <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-6">
 
                 <h1 className="text-2xl font-semibold text-center mb-2">
@@ -49,7 +58,6 @@ export default function SelectSchool() {
                 />
 
                 <div className="space-y-2">
-
                     {schools.map((school) => (
                         <div
                             key={school.id}
@@ -59,11 +67,9 @@ export default function SelectSchool() {
                             <p className="font-medium">{school.name}</p>
                         </div>
                     ))}
-
                 </div>
 
             </div>
-
         </div>
     );
 }
