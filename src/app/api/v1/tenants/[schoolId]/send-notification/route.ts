@@ -1,12 +1,12 @@
 import prisma from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { resolveSchoolId } from "@/lib/resolveSchool";
-import { google } from "google-auth-library";
+import { GoogleAuth } from "google-auth-library";
 
 const PROJECT_ID = "school-db-s2024";
 
 async function getAccessToken() {
-  const auth = new google.auth.GoogleAuth({
+  const auth = new GoogleAuth({
     keyFile: "config/firebase-service-account.json",
     scopes: ["https://www.googleapis.com/auth/firebase.messaging"],
   });
