@@ -5,38 +5,76 @@ import { useRouter } from "next/navigation";
 
 export default function SelectSchool() {
     const router = useRouter();
+
     const [query, setQuery] = useState("");
     const [schools, setSchools] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [searching, setSearching] = useState(false);
 
-    // ✅ 1. Check cache on load
+    // 🔥 Check auth + school on load
     useEffect(() => {
         const schoolId = localStorage.getItem("schoolId");
+        const token = localStorage.getItem("token");
+        const role = localStorage.getItem("role");
 
-        if (schoolId) {
-            router.replace(`/${schoolId}/login`);
-        }
-    }, []);
-
-    async function searchSchools(value: string) {
-        setQuery(value);
-
-        if (!value) {
-            setSchools([]);
+        // ✅ Fully logged in → dashboard
+        if (schoolId && token && role) {
+            router.replace(`/${schoolId}/${role}`);
             return;
         }
 
-        const res = await fetch(`/api/v1/public/school/search?q=${value}`);
-        const data = await res.json();
-        setSchools(data);
+        // ✅ School selected → login
+        if (schoolId) {
+            router.replace(`/${schoolId}/login`);
+            return;
+        }
+
+        // ❌ New user → show page
+        setLoading(false);
+    }, [router]);
+
+    // 🔎 Debounced search
+    useEffect(() => {
+        const delay = setTimeout(() => {
+            if (query) {
+                searchSchools(query);
+            } else {
+                setSchools([]);
+            }
+        }, 400); // debounce
+
+        return () => clearTimeout(delay);
+    }, [query]);
+
+    async function searchSchools(value: string) {
+        try {
+            setSearching(true);
+
+            const res = await fetch(
+                `/api/v1/public/school/search?q=${encodeURIComponent(value)}`
+            );
+
+            if (!res.ok) throw new Error("Failed to fetch");
+
+            const data = await res.json();
+            setSchools(data || []);
+        } catch (err) {
+            console.error("Search error:", err);
+            setSchools([]);
+        } finally {
+            setSearching(false);
+        }
     }
 
     function selectSchool(schoolId: string, schoolName: string) {
         localStorage.setItem("schoolId", schoolId);
         localStorage.setItem("schoolName", schoolName);
 
-        // ✅ Use replace (better UX)
         router.replace(`/${schoolId}/login`);
     }
+
+    // ⏳ Prevent flicker
+    if (loading) return null;
 
     return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
@@ -54,19 +92,35 @@ export default function SelectSchool() {
                     className="w-full border rounded-lg px-4 py-3 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Search your school..."
                     value={query}
-                    onChange={(e) => searchSchools(e.target.value)}
+                    onChange={(e) => setQuery(e.target.value)}
                 />
 
-                <div className="space-y-2">
+                <div className="space-y-2 max-h-72 overflow-y-auto">
+
+                    {searching && (
+                        <p className="text-sm text-gray-400 text-center">
+                            Searching...
+                        </p>
+                    )}
+
+                    {!searching && schools.length === 0 && query && (
+                        <p className="text-sm text-gray-400 text-center">
+                            No schools found
+                        </p>
+                    )}
+
                     {schools.map((school) => (
                         <div
                             key={school.id}
-                            onClick={() => selectSchool(school.schoolId, school.name)}
+                            onClick={() =>
+                                selectSchool(school.schoolId, school.name)
+                            }
                             className="p-3 border rounded-lg hover:bg-blue-50 cursor-pointer transition"
                         >
                             <p className="font-medium">{school.name}</p>
                         </div>
                     ))}
+
                 </div>
 
             </div>
