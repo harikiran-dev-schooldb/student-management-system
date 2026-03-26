@@ -8,30 +8,7 @@ export default function SelectSchool() {
 
     const [query, setQuery] = useState("");
     const [schools, setSchools] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
     const [searching, setSearching] = useState(false);
-
-    // 🔥 Check auth + school on load
-    useEffect(() => {
-        const schoolId = localStorage.getItem("schoolId");
-        const token = localStorage.getItem("token");
-        const role = localStorage.getItem("role");
-
-        // ✅ Fully logged in → dashboard
-        if (schoolId && token && role) {
-            router.replace(`/${schoolId}/${role}`);
-            return;
-        }
-
-        // ✅ School selected → login
-        if (schoolId) {
-            router.replace(`/${schoolId}/login`);
-            return;
-        }
-
-        // ❌ New user → show page
-        setLoading(false);
-    }, [router]);
 
     // 🔎 Debounced search
     useEffect(() => {
@@ -72,9 +49,6 @@ export default function SelectSchool() {
 
         router.replace(`/${schoolId}/login`);
     }
-
-    // ⏳ Prevent flicker
-    if (loading) return null;
 
     return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
