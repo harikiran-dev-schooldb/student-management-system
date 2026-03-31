@@ -8,7 +8,7 @@ import { resolveSchoolId } from "@/lib/resolveSchool";
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { schoolId: string } } // ✅ FIXED
+  { params }: { params: Promise<{ schoolId: string }> }
 ) {
   try {
     /* ==============================
@@ -22,7 +22,7 @@ export async function POST(
     /* ==============================
        2️⃣ RESOLVE SCHOOL
     ============================== */
-    const { schoolId: slug } = params;
+    const { schoolId: slug } = await params;
     const schoolId = await resolveSchoolId(slug);
 
     /* ==============================
