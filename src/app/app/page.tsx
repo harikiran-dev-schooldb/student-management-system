@@ -19,7 +19,7 @@ export default function AppEntry() {
 
         // ✅ School selected → login
         if (schoolId) {
-            router.replace(`/${schoolId}/login`);
+            router.replace(`/${schoolId}`);
             return;
         }
 

@@ -12,6 +12,8 @@ const PUBLIC_ROUTES = [
   "/platform",
   "/pricing",
   "/unauthorized",
+  "/privacy-policy",
+
 ];
 
 export default clerkMiddleware(async (auth, req) => {

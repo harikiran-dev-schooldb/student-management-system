@@ -9,6 +9,7 @@ import I18nProvider from "@/components/I18nProvider";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
 import PushNotificationManager from "@/components/PushNotificationManager";
+import Script from "next/script";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -65,6 +66,11 @@ export default function RootLayout({
       <html lang="en" suppressHydrationWarning>
         <body className={`${inter.className} min-h-screen flex flex-col`}>
           <I18nProvider>
+            {/* ✅ Cashfree SDK */}
+            <Script
+              src="https://sdk.cashfree.com/js/v3/cashfree.js"
+              strategy="afterInteractive"
+            />
             <ClientProviders><PushNotificationManager />{children}</ClientProviders>
           </I18nProvider>
 

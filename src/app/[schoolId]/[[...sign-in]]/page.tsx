@@ -61,13 +61,11 @@ export default function Page() {
   // --- Auth & Theme Hooks ---
   const { isLoaded: isUserLoaded, isSignedIn, user } = useUser();
   const { isLoaded: isSignInLoaded, signIn, setActive } = useSignIn();
-  const { isLoaded: isSessionLoaded } = useSession();
   const router = useRouter();
   const { theme, setTheme } = useTheme();
 
   // --- State ---
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [password, setPassword] = useState("");
   const [otpCode, setOtpCode] = useState("");
   const [pendingVerification, setPendingVerification] = useState(false);
   const [resendTimer, setResendTimer] = useState(0);
@@ -110,13 +108,15 @@ export default function Page() {
   }, [schoolId]);
 
   useEffect(() => {
+    if (!isUserLoaded || !isSignedIn) return;
+
     const resolveRole = async () => {
       if (hasRedirected) return;
       setHasRedirected(true);
 
       try {
         const res = await fetch(
-          `/api/v1/tenants/${schoolId}/auth/resolve-role`,
+          `/api/v1/tenants/${schoolId}/auth/resolve-role`
         );
 
         if (!res.ok) {
@@ -132,7 +132,7 @@ export default function Page() {
     };
 
     resolveRole();
-  }, [isSignedIn, schoolId, router]);
+  }, [isUserLoaded, isSignedIn, schoolId, router]);
 
   useEffect(() => {
     if (pendingVerification) otpInputRef.current?.focus();

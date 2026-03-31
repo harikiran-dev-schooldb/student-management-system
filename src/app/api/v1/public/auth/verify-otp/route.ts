@@ -25,21 +25,30 @@ export async function POST(req: Request) {
       .replace(/^91/, "");
 
     /* ================================
-       3️⃣ Verify OTP
+       3️⃣ Verify OTP (WITH BYPASS)
     ================================ */
-    const otpRecord = await prisma.otp.findFirst({
-      where: {
-        phone: normalizedPhone,
-        otp,
-        expiresAt: { gt: new Date() },
-      },
-    });
+    let otpRecord: any = null;
 
-    if (!otpRecord) {
-      return Response.json(
-        { error: "Invalid or expired OTP" },
-        { status: 401 }
-      );
+    const isTestUser =
+      normalizedPhone === "9999999999" && otp === "123456";
+
+    if (isTestUser) {
+      console.log("✅ Test OTP bypass login");
+    } else {
+      otpRecord = await prisma.otp.findFirst({
+        where: {
+          phone: normalizedPhone,
+          otp,
+          expiresAt: { gt: new Date() },
+        },
+      });
+
+      if (!otpRecord) {
+        return Response.json(
+          { error: "Invalid or expired OTP" },
+          { status: 401 }
+        );
+      }
     }
 
     /* ================================
@@ -77,7 +86,7 @@ export async function POST(req: Request) {
     }
 
     /* ================================
-       6️⃣ Ensure Clerk user (safe)
+       6️⃣ Ensure Clerk user
     ================================ */
     let clerkId = profile.clerk_id;
 
@@ -102,7 +111,7 @@ export async function POST(req: Request) {
     }
 
     /* ================================
-       7️⃣ Merge metadata safely
+       7️⃣ Merge metadata
     ================================ */
     const existingUser = await client.users.getUser(clerkId);
 
@@ -115,17 +124,21 @@ export async function POST(req: Request) {
     });
 
     /* ================================
-       8️⃣ Create short-lived sign-in token
+       8️⃣ Create Clerk sign-in token
     ================================ */
     const { token } = await client.signInTokens.createSignInToken({
       userId: clerkId,
-      expiresInSeconds: 60, // 🔥 important (avoid reuse conflicts)
+      expiresInSeconds: 60,
     });
 
     /* ================================
-       9️⃣ Cleanup OTP (one-time use)
+       9️⃣ Cleanup OTP (skip for test user)
     ================================ */
-    await prisma.otp.delete({ where: { id: otpRecord.id }, });
+    if (otpRecord) {
+      await prisma.otp.delete({
+        where: { id: otpRecord.id },
+      });
+    }
 
     /* ================================
        🔟 Response

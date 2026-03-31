@@ -17,25 +17,31 @@ export async function POST(req: Request) {
       );
     }
 
-    const normalizedPhone = phone.replace("+91", "");
+    /* ================================
+       1️⃣ Normalize phone (FIXED)
+    ================================ */
+    const normalizedPhone = phone
+      .replace(/\D/g, "")
+      .replace(/^91/, "");
 
-    /* -----------------------------
-       1️⃣ Find School
-    ----------------------------- */
-
+    /* ================================
+       2️⃣ Validate school
+    ================================ */
     const school = await prisma.schoolInfo.findFirst({
       where: { schoolId },
       select: { id: true },
     });
 
     if (!school) {
-      return Response.json({ error: "Invalid school" }, { status: 400 });
+      return Response.json(
+        { error: "Invalid school" },
+        { status: 400 }
+      );
     }
 
-    /* -----------------------------
-       2️⃣ Check User Profile
-    ----------------------------- */
-
+    /* ================================
+       3️⃣ Check user profile
+    ================================ */
     const profile = await prisma.profile.findFirst({
       where: { phone: normalizedPhone },
       include: {
@@ -45,6 +51,33 @@ export async function POST(req: Request) {
       },
     });
 
+    /* ================================
+       ✅ TEST OTP BYPASS
+    ================================ */
+    if (normalizedPhone === "9999999999") {
+      console.log("✅ Test OTP bypass triggered");
+
+      await prisma.otp.deleteMany({
+        where: { phone: normalizedPhone },
+      });
+
+      await prisma.otp.create({
+        data: {
+          phone: normalizedPhone,
+          otp: "123456",
+          expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+        },
+      });
+
+      return Response.json({
+        success: true,
+        message: "Test OTP generated",
+      });
+    }
+
+    /* ================================
+       4️⃣ Validate real user
+    ================================ */
     if (!profile || profile.users.length === 0) {
       return Response.json(
         { error: "User not registered for this school" },
@@ -52,10 +85,9 @@ export async function POST(req: Request) {
       );
     }
 
-    /* -----------------------------
-       3️⃣ Generate OTP
-    ----------------------------- */
-
+    /* ================================
+       5️⃣ Generate OTP
+    ================================ */
     const otp = randomInt(100000, 999999).toString();
 
     await prisma.otp.deleteMany({
@@ -74,10 +106,9 @@ export async function POST(req: Request) {
       console.log("Generated OTP:", otp);
     }
 
-    /* -----------------------------
-       4️⃣ Send WhatsApp OTP
-    ----------------------------- */
-
+    /* ================================
+       6️⃣ Send WhatsApp OTP
+    ================================ */
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 8000);
 
@@ -100,23 +131,13 @@ export async function POST(req: Request) {
             components: [
               {
                 type: "body",
-                parameters: [
-                  {
-                    type: "text",
-                    text: otp,
-                  },
-                ],
+                parameters: [{ type: "text", text: otp }],
               },
               {
                 type: "button",
                 sub_type: "url",
                 index: "0",
-                parameters: [
-                  {
-                    type: "text",
-                    text: otp,
-                  },
-                ],
+                parameters: [{ type: "text", text: otp }],
               },
             ],
           },
@@ -127,8 +148,6 @@ export async function POST(req: Request) {
     clearTimeout(timeout);
 
     const waData = await waResponse.json();
-
-    console.log("WhatsApp status:", waResponse.status);
 
     if (!waResponse.ok) {
       console.error("WhatsApp API error:", waData);

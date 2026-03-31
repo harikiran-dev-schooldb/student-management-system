@@ -257,11 +257,11 @@ export async function POST(
     });
 
     return NextResponse.json({ success: true }, { status: 200 });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Attendance POST error:", error);
 
     return NextResponse.json(
-      { error: "Failed to save attendance" },
+      { error: error.message || "Failed to save attendance" },
       { status: 500 },
     );
   }

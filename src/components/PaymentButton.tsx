@@ -1,8 +1,6 @@
 "use client";
 import { useState } from "react";
 import Script from "next/script";
-import { useParams } from "next/navigation";
-import { tenantFetch } from "@/lib/tenantFetch";
 import { useSchoolSlug } from "./hooks/getschool";
 
 interface PaymentButtonProps {

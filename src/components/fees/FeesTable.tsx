@@ -41,6 +41,11 @@ interface FeesTableProps {
   studentMobile?: string;
 }
 
+type CashfreeOrderResponse = {
+  payment_session_id: string;
+  order_id: string;
+};
+
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
@@ -80,6 +85,7 @@ const StatCard = ({
 
 type RazorpayOrderResponse = {
   orderId: string;
+  amount: number;
 };
 
 const InputGroup = ({
@@ -204,138 +210,51 @@ const FeesTable: React.FC<FeesTableProps> = ({
     };
   }
 
+
   // --- Razorpay Logic ---
   const api = useTenantApi();
 
   const initiateOnlinePayment = async (
     feesToPay: StudentFee[],
-    totalAmount: number,
+    totalAmount: number
   ) => {
     setIsProcessing(true);
 
+    const studentId = feesToPay[0]?.studentId;
+    if (!studentId) throw new Error("Student ID missing");
+
+    const terms = feesToPay.map((f) => f.term);
+    const academicYearId = feesToPay[0]?.academicYearId;
+
     try {
-      // 1. Create Order (Tenant-aware)
-      const data = await api.post<RazorpayOrderResponse>("/razorpay/order", {
+      // 1️⃣ Create Order
+      const res = await api.post<CashfreeOrderResponse>("/cashfree/order", {
+        studentId,
         amount: totalAmount,
+        terms,
+        academicYearId,
+        customer_name: studentName,
+        customer_phone: studentMobile,
       });
 
-      if (!data.orderId) throw new Error("Failed to create order");
-
-      // 2. Razorpay Options
-      const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        amount: totalAmount * 100,
-        currency: "INR",
-        name: "School Fees",
-        description:
-          feesToPay.length > 1
-            ? `Bulk Payment (${feesToPay.length} terms)`
-            : `Fee Payment: ${feesToPay[0].term}`,
-        order_id: data.orderId,
-        prefill: {
-          name: studentName,
-          email: studentEmail,
-          contact: studentMobile,
-        },
-        theme: { color: "#4F46E5" },
-        handler: async function (response: any) {
-          await processSuccessfulPayment(
-            feesToPay,
-            totalAmount,
-            response.razorpay_payment_id,
-            response.razorpay_order_id,
-            response.razorpay_signature,
-          );
-        },
-        modal: {
-          ondismiss: function () {
-            setIsProcessing(false);
-          },
-        },
-      };
-
-      const paymentObject = new window.Razorpay(options);
-      paymentObject.open();
-    } catch (error) {
-      console.error(error);
-      toast.error("Online payment initialization failed");
-      setIsProcessing(false);
-    }
-  };
-
-  const processSuccessfulPayment = async (
-    feesToPay: StudentFee[],
-    totalAmountPaid: number,
-    transactionId: string,
-    orderId: string,
-    signature: string,
-  ) => {
-    try {
-      const studentId = feesToPay[0]?.studentId;
-      if (!studentId) throw new Error("No student ID found in selection");
-
-      // --- STEP 1: Verify and Record Main Transaction ---
-      await api.post("/razorpay/verify", {
-        orderCreationId: orderId,
-        razorpayPaymentId: transactionId,
-        razorpaySignature: signature,
-        studentId: studentId,
-        amount: totalAmountPaid,
-      });
-
-      // --- STEP 2: Update Individual Fee Terms ---
-      for (const fee of feesToPay) {
-        const feeDue = calculateDueAmount(fee);
-        const amountForThisFee =
-          feesToPay.length > 1 ? feeDue : totalAmountPaid;
-
-        const payload = {
-          studentId: fee.studentId,
-          term: fee.term,
-          amount: amountForThisFee,
-          discountAmount: 0,
-          fineAmount: 0,
-          receiptDate: new Date().toISOString(),
-          receiptNo: `ONL-${transactionId.slice(-6)}`,
-          remarks: `Online Payment: ${transactionId}`,
-          academicYearId: fee.academicYearId,
-          paymentMode: "ONLINE",
-          transactionId,
-          orderId,
-        };
-
-        await api.post("/fees/transactions", payload);
+      if (!res.payment_session_id) {
+        throw new Error("No payment session id");
       }
 
-      // --- STEP 3: Optimistic UI Update ---
-      setRowData((prev) =>
-        prev.map((f) => {
-          const matched = feesToPay.find((sf) => sf.id === f.id);
-          if (matched) {
-            const paidNow =
-              feesToPay.length > 1 ? calculateDueAmount(f) : totalAmountPaid;
-            return {
-              ...f,
-              paidAmount: (f.paidAmount ?? 0) + paidNow,
-              receiptNo: `ONL-${transactionId.slice(-6)}`,
-            };
-          }
-          return f;
-        }),
-      );
+      // 2️⃣ Initialize Cashfree SDK
+      const cashfree = (window as any).Cashfree({
+        mode: "sandbox", // change to "production" later
+      });
 
-      toast.success("Payment Successful!");
-      if (isModalOpen) setIsModalOpen(false);
-      setRowSelection({});
-      router.refresh();
-    } catch (error: any) {
-      console.error("Transaction Failed:", error);
-      // Show the actual error message from the backend if available
-      toast.error(
-        error.message ||
-        "Payment verified but database update failed. Contact Admin.",
-      );
-    } finally {
+      // 3️⃣ Open Checkout
+      await cashfree.checkout({
+        paymentSessionId: res.payment_session_id,
+        redirectTarget: "_self", // or "_blank"
+      });
+
+    } catch (error) {
+      console.error(error);
+      toast.error("Payment initiation failed");
       setIsProcessing(false);
     }
   };
@@ -382,9 +301,8 @@ const FeesTable: React.FC<FeesTableProps> = ({
   const handleManualFormSubmit = async () => {
     if (selectedFees.length === 0) return;
 
-    // Check payment mode
     if (selectedPaymentMode === "ONLINE") {
-      // Redirect manual "ONLINE" selection to Razorpay flow
+      setIsModalOpen(false); // ✅ add this
       await initiateOnlinePayment(selectedFees, amount);
       return;
     }

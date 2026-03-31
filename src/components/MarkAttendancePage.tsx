@@ -301,6 +301,7 @@ export default function MarkAttendancePage({ role, teacherClassId }: Props) {
     } catch (error) {
       console.error(error);
       toast.error("Failed to submit attendance");
+      console.error("Attendance POST error:", error);
     } finally {
       setSubmitting(false);
     }
