@@ -4,15 +4,13 @@ const config: CapacitorConfig = {
   appId: 'com.schooldb.app',
   appName: 'SchoolSync',
 
-  webDir: 'public', // can stay, but won't be used when server.url is set
+  webDir: 'public',
 
   server: {
-    url: 'https://schooldb.co.in/',
+    url: 'https://schooldb.co.in/select-school',
     cleartext: false,
     allowNavigation: ['schooldb.co.in', '*.schooldb.co.in']
-  },
-
-  
+  }, 
 };
 
 export default config;

@@ -16,6 +16,39 @@ export default function SelectSchool() {
   const [query, setQuery] = useState("");
   const [schools, setSchools] = useState<School[]>([]);
   const [searching, setSearching] = useState(false);
+  const [checking, setChecking] = useState(true);
+
+  // ✅ Check existing user/session on load
+  useEffect(() => {
+    init();
+  }, []);
+
+  async function init() {
+    try {
+      const [{ value: schoolId }, { value: token }, { value: role }] =
+        await Promise.all([
+          Preferences.get({ key: "schoolId" }),
+          Preferences.get({ key: "token" }),
+          Preferences.get({ key: "role" }),
+        ]);
+
+      // 🔐 Logged in → dashboard
+      if (schoolId && token && role) {
+        router.replace(`/${schoolId}/${role}`);
+        return;
+      }
+
+      // 🏫 School already selected → login
+      if (schoolId) {
+        router.replace(`/${schoolId}/login`);
+        return;
+      }
+    } catch (err) {
+      console.error("Init error:", err);
+    } finally {
+      setChecking(false);
+    }
+  }
 
   // 🔎 Debounced search
   useEffect(() => {
@@ -25,7 +58,7 @@ export default function SelectSchool() {
     }
 
     const delay = setTimeout(() => {
-      searchSchools(query);
+      searchSchools(query.trim());
     }, 400);
 
     return () => clearTimeout(delay);
@@ -55,14 +88,24 @@ export default function SelectSchool() {
 
   async function selectSchool(schoolId: string, schoolName: string) {
     try {
-      // ✅ Capacitor storage (persistent + reliable in mobile)
-      await Preferences.set({ key: "schoolId", value: schoolId });
-      await Preferences.set({ key: "schoolName", value: schoolName });
+      await Promise.all([
+        Preferences.set({ key: "schoolId", value: schoolId }),
+        Preferences.set({ key: "schoolName", value: schoolName }),
+      ]);
 
       router.replace(`/${schoolId}/login`);
     } catch (error) {
       console.error("Storage error:", error);
     }
+  }
+
+  // ⏳ Initial loading (prevent flicker)
+  if (checking) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <p className="text-gray-500 text-sm">Loading...</p>
+      </div>
+    );
   }
 
   return (
