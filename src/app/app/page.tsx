@@ -11,16 +11,13 @@ export default function AppEntry() {
         const token = localStorage.getItem("token");
         const role = localStorage.getItem("role");
 
-        // ✅ Logged in → dashboard
+        // AppEntry
         if (schoolId && token && role) {
             router.replace(`/${schoolId}/${role}`);
-            return;
-        }
-
-        // ✅ School selected → login
-        if (schoolId) {
-            router.replace(`/${schoolId}`);
-            return;
+        } else if (schoolId) {
+            router.replace(`/${schoolId}/login`);
+        } else {
+            router.replace("/select-school");
         }
 
         // ❌ New user → select school
