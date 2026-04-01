@@ -1,28 +1,55 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Preferences } from "@capacitor/preferences";
 
 export default function AppEntry() {
-    const router = useRouter();
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        const schoolId = localStorage.getItem("schoolId");
-        const token = localStorage.getItem("token");
-        const role = localStorage.getItem("role");
+  useEffect(() => {
+    init();
+  }, []);
 
-        // AppEntry
-        if (schoolId && token && role) {
-            router.replace(`/${schoolId}/${role}`);
-        } else if (schoolId) {
-            router.replace(`/${schoolId}/login`);
-        } else {
-            router.replace("/select-school");
-        }
+  async function init() {
+    try {
+      const [{ value: schoolId }, { value: token }, { value: role }] =
+        await Promise.all([
+          Preferences.get({ key: "schoolId" }),
+          Preferences.get({ key: "token" }),
+          Preferences.get({ key: "role" }),
+        ]);
 
-        // ❌ New user → select school
-        router.replace("/select-school");
-    }, [router]);
+      // ✅ Logged in → dashboard
+      if (schoolId && token && role) {
+        router.replace(`/${schoolId}/${role}`);
+        return;
+      }
 
-    return null; // no UI = instant redirect
+      // ✅ School selected → login
+      if (schoolId) {
+        router.replace(`/${schoolId}/login`);
+        return;
+      }
+
+      // ❌ New user → select school
+      router.replace("/select-school");
+
+    } catch (error) {
+      console.error("App init error:", error);
+      router.replace("/select-school");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // ✅ Loading UI (important for mobile)
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-gray-50">
+      <p className="text-gray-500 text-sm">
+        Loading...
+      </p>
+    </div>
+  );
 }
