@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { Preferences } from "@capacitor/preferences";
 
 type School = {
@@ -11,12 +10,15 @@ type School = {
 };
 
 export default function SelectSchool() {
-  const router = useRouter();
-
   const [query, setQuery] = useState("");
   const [schools, setSchools] = useState<School[]>([]);
   const [searching, setSearching] = useState(false);
   const [checking, setChecking] = useState(true);
+
+  // ✅ Central navigation handler (important)
+  function navigate(path: string) {
+    window.location.href = path;
+  }
 
   // ✅ Check existing user/session on load
   useEffect(() => {
@@ -34,13 +36,13 @@ export default function SelectSchool() {
 
       // 🔐 Logged in → dashboard
       if (schoolId && token && role) {
-        router.replace(`/${schoolId}/${role}`);
+        navigate(`/${schoolId}/${role}`);
         return;
       }
 
       // 🏫 School already selected → login
       if (schoolId) {
-        router.replace(`/${schoolId}/login`);
+        navigate(`/${schoolId}/login`);
         return;
       }
     } catch (err) {
@@ -93,7 +95,9 @@ export default function SelectSchool() {
         Preferences.set({ key: "schoolName", value: schoolName }),
       ]);
 
-      router.replace(`/${schoolId}/login`);
+      // ✅ FIXED navigation
+      navigate(`/${schoolId}/login`);
+
     } catch (error) {
       console.error("Storage error:", error);
     }

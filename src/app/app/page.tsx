@@ -1,16 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { Preferences } from "@capacitor/preferences";
+import { Capacitor } from "@capacitor/core";
 
 export default function AppEntry() {
-  const router = useRouter();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     init();
   }, []);
+
+  function navigate(path: string) {
+    // ✅ Always safe for Capacitor
+    window.location.href = path;
+  }
 
   async function init() {
     try {
@@ -21,35 +25,32 @@ export default function AppEntry() {
           Preferences.get({ key: "role" }),
         ]);
 
-      // ✅ Logged in → dashboard
+      // 🔐 Logged in → dashboard
       if (schoolId && token && role) {
-        router.replace(`/${schoolId}/${role}`);
+        navigate(`/${schoolId}/${role}`);
         return;
       }
 
-      // ✅ School selected → login
+      // 🏫 School selected → login
       if (schoolId) {
-        router.replace(`/${schoolId}/login`);
+        navigate(`/${schoolId}/login`);
         return;
       }
 
-      // ❌ New user → select school
-      router.replace("/select-school");
+      // 🆕 New user → select school
+      navigate("/select-school");
 
     } catch (error) {
       console.error("App init error:", error);
-      router.replace("/select-school");
+      navigate("/select-school");
     } finally {
       setLoading(false);
     }
   }
 
-  // ✅ Loading UI (important for mobile)
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-50">
-      <p className="text-gray-500 text-sm">
-        Loading...
-      </p>
+      <p className="text-gray-500 text-sm">Loading...</p>
     </div>
   );
 }
