@@ -16,7 +16,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:api": "jest tests/api",
-    "test:all-apis": "tsx scripts/testAllApis.ts"
+    "test:all-apis": "tsx scripts/testAllApis.ts",
+    "build:school": "node scripts/build-school.js"
   },
   "dependencies": {
     "@capacitor/android": "^8.2.0",
@@ -146,5 +147,21 @@
   },
   "eslintConfig": {
     "extends": "next/core-web-vitals"
-  }
+  },
+  "description": "Official Product Website  \r https://schooldb.co.in",
+  "main": "jest.config.js",
+  "directories": {
+    "test": "tests"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/harikiran-dev-schooldb/student-management-system.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/harikiran-dev-schooldb/student-management-system/issues"
+  },
+  "homepage": "https://github.com/harikiran-dev-schooldb/student-management-system#readme"
 }

@@ -1,16 +1,15 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.schooldb.app',
-  appName: 'SchoolSync',
-
-  webDir: 'public',
+  appId: 'com.schooldb.test',      // unique per school
+  appName: 'Test School',          // branding
+  webDir: '.next',
 
   server: {
-    url: 'https://schooldb.co.in/select-school',
+    url: 'https://schooldb.co.in/testing_school',
     cleartext: false,
     allowNavigation: ['schooldb.co.in', '*.schooldb.co.in']
-  }, 
+  },
 };
 
 export default config;

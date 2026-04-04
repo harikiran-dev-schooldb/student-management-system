@@ -47,7 +47,7 @@
     "src/app/(dashboard)/list/teachers/.page copy.tsx",
     "scripts/syncUsersToClerk.ts",
     "src/components/ServerMenu"
-  ],
+, "mcp-server/tools/fees/getPendingFees.js", "mcp-server/server.js", "mcp-server/prisma.js"  ],
   "exclude": [
     "node_modules"
   ]
