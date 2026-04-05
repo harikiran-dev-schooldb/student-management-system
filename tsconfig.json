@@ -1,54 +1,40 @@
 {
   "compilerOptions": {
     "target": "es2017",
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext"
-    ],
-    "types": ["jest","node"],
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "types": ["jest", "node"],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
     "esModuleInterop": true,
-    "module": "ESNext", // Ensure ESNext module support
-    "moduleResolution": "bundler", // Node-style module resolution
+    "module": "ESNext",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
     "baseUrl": "./src",
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
+    "plugins": [{ "name": "next" }],
     "paths": {
-      "@/lib/*": [
-        "lib/*"
-      ],
-      "@/components/*": [
-        "components/*"
-      ],
-      "@/*": [
-        "*"
-      ],
-      "@/types/*": [
-        "/types/*"
-      ]
+      "@/lib/*": ["lib/*"],
+      "@/components/*": ["components/*"],
+      "@/*": ["*"],
+      "@/types/*": ["types/*"]
     }
   },
   "include": [
     "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    ".next/types/**/*.ts",
-    "src/app/(dashboard)/list/teachers/.page copy.tsx",
-    "scripts/syncUsersToClerk.ts",
-    "src/components/ServerMenu"
-, "mcp-server/tools/fees/getPendingFees.js", "mcp-server/server.js", "mcp-server/prisma.js"  ],
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    ".next/types/**/*.ts"
+  ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "android",
+    "android/**",
+    ".next",
+    "dist",
+    "build"
   ]
 }
