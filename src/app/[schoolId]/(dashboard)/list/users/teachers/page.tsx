@@ -272,13 +272,6 @@ const TeacherListPage = async ({
       {/* Table */}
       <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500 mt-4">
 
-        {/* Empty */}
-        {data.length === 0 && (
-          <div className="p-10 text-center text-slate-500">
-            No teachers found
-          </div>
-        )}
-
         {data.length === 0 ? (
           <div className="p-10 text-center text-slate-500">
             No teachers found

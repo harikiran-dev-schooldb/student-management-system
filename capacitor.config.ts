@@ -1,7 +1,7 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.schooldb.test',      // unique per school
+  appId: 'com.schooldb.com',      // unique per school
   appName: 'Test School',          // branding
   webDir: '.next',
 

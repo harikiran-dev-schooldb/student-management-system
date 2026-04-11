@@ -17,7 +17,9 @@ export default async function DashboardLayout({
   return (
     <>
       <PageNavbar schoolId={schoolId} />
-      <DashboardClientLayout>{children}</DashboardClientLayout>
+      <DashboardClientLayout schoolId={schoolId}>
+        {children}
+      </DashboardClientLayout>
     </>
   );
 }

@@ -224,9 +224,6 @@ const HomeworkListPage = async ({
         sortKey={sortKey}
         sortOrder={sortOrder}
       />
-
-      {/* Pagination */}
-      <Pagination page={parseInt(p)} count={count} />
     </div>
   );
 };

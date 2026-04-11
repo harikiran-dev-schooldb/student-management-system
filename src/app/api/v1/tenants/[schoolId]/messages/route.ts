@@ -4,6 +4,17 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { tenantPrisma } from "@/lib/tenant-prisma";
 import { tenantSlugGuard } from "@/lib/tenantGuard";
+import { messaging } from "@/lib/firebase-admin";
+
+// ✅ ADD THIS FUNCTION HERE
+async function sendPush(tokens: string[], title: string, body: string) {
+  if (!tokens.length) return;
+
+  await messaging.sendEachForMulticast({
+    tokens,
+    notification: { title, body },
+  });
+}
 
 export async function POST(
   req: NextRequest,
@@ -75,6 +86,20 @@ export async function POST(
         },
       });
 
+      const tokens = await db.deviceToken.findMany({
+        where: {
+          userId: studentId,
+          schoolId,
+        },
+        select: { token: true },
+      });
+
+      await sendPush(
+        tokens.map(t => t.token),
+        "New Message",
+        message
+      );
+
       return NextResponse.json({ success: true, data: newMessage }, { status: 201 });
     }
 
@@ -106,6 +131,25 @@ export async function POST(
           schoolId,
         },
       });
+
+      const students = await db.studentEnrollment.findMany({
+        where: {
+          classId: Number(classId),
+          schoolId,
+          status: "ACTIVE",
+        },
+        select: { studentId: true },
+      });
+
+      const tokens = await db.deviceToken.findMany({
+        where: {
+          userId: { in: students.map(s => s.studentId) },
+          schoolId,
+        },
+        select: { token: true },
+      });
+
+      await sendPush(tokens.map(t => t.token), "Class Update", message);
 
       return NextResponse.json({ success: true, data: newMessage }, { status: 201 });
     }
@@ -140,6 +184,27 @@ export async function POST(
         })),
       });
 
+      const students = await db.studentEnrollment.findMany({
+        where: {
+          schoolId,
+          status: "ACTIVE",
+          class: {
+            gradeId: Number(gradeId),
+          },
+        },
+        select: { studentId: true },
+      });
+
+      const tokens = await db.deviceToken.findMany({
+        where: {
+          userId: { in: students.map(s => s.studentId) },
+          schoolId,
+        },
+        select: { token: true },
+      });
+
+      await sendPush(tokens.map(t => t.token), "Grade Update", message);
+
       return NextResponse.json(
         {
           success: true,
@@ -159,6 +224,14 @@ export async function POST(
         type,
         date: now,
         schoolId,
+      },
+    });
+
+    await messaging.send({
+      topic: `school_${schoolId}`,
+      notification: {
+        title: "School Announcement",
+        body: message,
       },
     });
 

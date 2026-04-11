@@ -54,6 +54,8 @@ model SchoolInfo {
   teachers                Teacher[]
   teacherClassAssignments TeacherClassAssignment[]
   classes                 Class[]
+  auditlog                AuditLog[]
+  paymentaccount          PaymentAccount[]
 }
 
 model Admin {
@@ -173,8 +175,8 @@ model Announcement {
   title       String
   description String
   date        DateTime
-  branchId Int?
-  gradeId  Int?
+  branchId    Int?
+  gradeId     Int?
   classId     Int?
   schoolId    String
   Class       Class?     @relation(fields: [classId], references: [id])
@@ -192,8 +194,8 @@ model Messages {
   date      DateTime    @default(now())
   classId   Int?
   schoolId  String
-  branchId Int?
-  gradeId  Int?
+  branchId  Int?
+  gradeId   Int?
   Class     Class?      @relation(fields: [classId], references: [id])
   school    SchoolInfo  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   Student   Student?    @relation(fields: [studentId], references: [id], onDelete: Cascade)
@@ -207,8 +209,8 @@ model Event {
   description String
   startTime   DateTime
   endTime     DateTime
-  branchId Int?
-  gradeId  Int?
+  branchId    Int?
+  gradeId     Int?
   classId     Int?
   schoolId    String
   Class       Class?     @relation(fields: [classId], references: [id])
@@ -696,6 +698,27 @@ model FeePayment {
   @@index([studentId])
 }
 
+model PaymentAccount {
+  id        String @id @default(cuid())
+  schoolId  String
+  branchId  Int?
+  gradeId   Int?
+  accountId String // Razorpay/Cashfree account
+
+  school SchoolInfo @relation(fields: [schoolId], references: [id])
+}
+
+model AuditLog {
+  id        String     @id @default(cuid())
+  action    String
+  entity    String
+  entityId  String
+  userId    String?
+  schoolId  String
+  school    SchoolInfo @relation(fields: [schoolId], references: [id])
+  createdAt DateTime   @default(now())
+}
+
 model StudentEnrollment {
   id             Int              @id @default(autoincrement())
   studentId      String
@@ -750,19 +773,19 @@ model IdentityJob {
 }
 
 model UploadSession {
-  id           String   @id @default(uuid())
-  schoolId     String
+  id       String @id @default(uuid())
+  schoolId String
 
-  total        Int
-  processed    Int      @default(0)
-  created      Int      @default(0)
-  updated      Int      @default(0)
-  failed       Int      @default(0)
+  total     Int
+  processed Int @default(0)
+  created   Int @default(0)
+  updated   Int @default(0)
+  failed    Int @default(0)
 
-  status       String   @default("processing") // processing | done | failed
+  status String @default("processing") // processing | done | failed
 
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model IdentityBackfillJob {
@@ -775,6 +798,7 @@ model IdentityBackfillJob {
   failed    Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
   @@index([schoolId, status])
 }
 
@@ -832,6 +856,48 @@ model DeviceToken {
   userId    String?
   schoolId  String?
   createdAt DateTime @default(now())
+}
+
+model Bus {
+  id          String @id @default(cuid())
+  number      String
+  driverName  String
+  driverPhone String
+  schoolId    String
+
+  routeId String?
+  route   Route?  @relation(fields: [routeId], references: [id])
+
+  createdAt DateTime @default(now())
+}
+
+model Route {
+  id       String @id @default(cuid())
+  name     String
+  schoolId String
+
+  stops Stop[]
+  buses Bus[]
+}
+
+model Stop {
+  id        String @id @default(cuid())
+  name      String
+  latitude  Float
+  longitude Float
+  order     Int
+  routeId   String
+
+  route Route @relation(fields: [routeId], references: [id])
+}
+
+model StudentTransport {
+  id        String @id @default(cuid())
+  studentId String
+  busId     String
+  stopId    String
+
+  assignedAt DateTime @default(now())
 }
 
 enum LessonDay {
