@@ -8,6 +8,7 @@ import { SidebarProvider } from "@/components/context/SidebarContext";
 import BottomNav from "./mobile/BottomNav";
 import { useEffect } from "react";
 import { PushNotifications } from "@capacitor/push-notifications";
+import { Capacitor } from "@capacitor/core";
 
 type Role = "admin" | "teacher" | "student";
 
@@ -28,7 +29,14 @@ export default function DashboardClientLayout({
   useEffect(() => {
     console.log("🚀 Initializing Push Notifications");
 
-    // Request permission
+    // ❌ STOP if not native
+    if (!Capacitor.isNativePlatform()) {
+      console.log("❌ Not running on native platform");
+      return;
+    }
+
+    console.log("✅ Running on native platform");
+
     PushNotifications.requestPermissions().then((result) => {
       if (result.receive === "granted") {
         PushNotifications.register();
@@ -37,26 +45,20 @@ export default function DashboardClientLayout({
       }
     });
 
-    // Token received
     PushNotifications.addListener("registration", async (token) => {
-      console.log("📱 FCM Token from plugin:", token.value);
+      console.log("📱 FCM Token:", token.value);
 
-      try {
-        await fetch(`/api/v1/tenants/${schoolId}/save-token`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ token: token.value }),
-        });
+      await fetch(`/api/v1/tenants/${schoolId}/save-token`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ token: token.value }),
+      });
 
-        console.log("✅ Token saved to DB");
-      } catch (err) {
-        console.error("❌ Save failed", err);
-      }
+      console.log("✅ Token saved");
     });
 
-    // Error
     PushNotifications.addListener("registrationError", (err) => {
       console.error("❌ FCM Error:", err);
     });
