@@ -94,6 +94,11 @@ INSERT INTO "FeeStructure" ("gradeId", "startDate", "dueDate", "termFees", "term
 VALUES (5, NOW(), NOW(), 8000, 'TERM_1', 'Y2025_2026')
 RETURNING id;
 
+INSERT INTO "AcademicYear" 
+(name, "startDate", "endDate", "isActive", "schoolId", id)
+VALUES 
+('2024-25', '2024-04-01', '2025-03-31', true, 'test', 1);
+
 
 
 
@@ -227,14 +232,14 @@ INSERT INTO "SchoolInfo" (
   "id","name","address","phone","email","website","logo",
   "taxId","receiptHeader","receiptFooter","createdAt","updatedAt","schoolId"
 ) VALUES (
-  'testing_school',
-  'KOTAK SALESIAN SCHOOL',
+  'test',
+  'SCHOOL FOR TESTING',
   '17-309, Golla Veedhi, Old Gopalapatnam',
-  '9949523412',
-  'kotakschoolvsp@gmail.com',
-  'https://kotaksalesianschool-vizag.com/',
+  '7801049830',
+  'schooldb@gmail.com',
+  'https://schooldb.co.in',
   NULL,
-  'AP050',
+  'SCHOOLDB001',
   '(Affiliated to the Council for the I.S.C. Examination, New Delhi) Affiliation No. AP/050 - Dt. 04-11-1987',
   'Fees once paid are not refundable.',
   NOW(),
@@ -250,7 +255,7 @@ INSERT INTO "Profile" (
   "id","clerk_id","phone","activeUserId"
 ) VALUES (
   'cmjf4q3hm00006cjq2nnukul3',
-  'user_34hDQUMuHoPtvaWMWsrnYaAYztu',
+  'user_3AyaVVBhoVJMhDN7S00wPeMKZex',
   '7801049830',
   NULL
 );
@@ -267,7 +272,7 @@ INSERT INTO "LinkedUser" (
   'admin001',
   'admin',
   'cmjf4q3hm00006cjq2nnukul3',
-  'testing_school'
+  'test'
 );
 
 SELECT * FROM "LinkedUser";
@@ -280,13 +285,12 @@ WHERE "id" = 'cmjf4q3hm00006cjq2nnukul3';
 
 -- 5️⃣ Admin
 INSERT INTO "Admin" (
-  "id","username","password","name","parentName","gender","email",
+  "id","username","name","parentName","gender","email",
   "phone","address","dob","img","bloodType","createdAt",
   "clerk_id","profileId","linkedUserId","schoolId"
 ) VALUES (
   'cmjf4q3i600026cjqnm2xzto4',
   'admin001',
-  'tester0001',  -- 🔐 use bcrypt
   'A HARIKIRAN',
   'A SRINIVASARAO',
   'Male',
@@ -300,13 +304,13 @@ INSERT INTO "Admin" (
   'user_34hDQUMuHoPtvaWMWsrnYaAYztu',
   'cmjf4q3hm00006cjq2nnukul3',
   'cmjf4q3hv00016cjqg8jf9op8',
-  'testing_school'
+  'test'
 );
 
 INSERT INTO "Branch" (id, name, type, "order", "schoolId") VALUES
-(1, 'Kinder Garten', 'KINDERGARTEN', 1, 'testing_school'),
-(2, 'Primary', 'PRIMARY', 2, 'testing_school'),
-(3, 'Secondary', 'HIGHER', 3, 'testing_school');
+(1, 'Kinder Garten', 'KINDERGARTEN', 1, 'test'),
+(2, 'Primary', 'PRIMARY', 2, 'test'),
+(3, 'Secondary', 'HIGHER', 3, 'test');
 
 SELECT id,  role FROM "LinkedUser";
 
