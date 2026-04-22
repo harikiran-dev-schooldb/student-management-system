@@ -16,11 +16,6 @@ const PUBLIC_ROUTES = [
 
 ];
 
-const PUBLIC_TENANT_ROUTES = [
-  ["payment", "success"],
-  ["payment", "failed"],
-];
-
 export default clerkMiddleware(async (auth, req) => {
   const { pathname } = req.nextUrl;
 
@@ -42,14 +37,13 @@ export default clerkMiddleware(async (auth, req) => {
     return NextResponse.next();
   }
 
-  /**
- * 🟢 Payment success should be public (no auth)
- */
+  // ✅ Allow payment verification API (no auth)
 if (
-  segments.length >= 3 &&
-  PUBLIC_TENANT_ROUTES.some(
-    ([a, b]) => segments[1] === a && segments[2] === b
-  )
+  segments[0] === "api" &&
+  segments[1] === "v1" &&
+  segments[2] === "tenants" &&
+  segments[4] === "cashfree" &&
+  segments[5] === "verify-payment"
 ) {
   return NextResponse.next();
 }
