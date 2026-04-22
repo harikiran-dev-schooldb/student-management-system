@@ -20,36 +20,43 @@ export default function PaymentSuccessPage() {
   const api = useTenantApi();
 
   useEffect(() => {
-    if (!orderId || !schoolId) return;
+  if (!orderId || !schoolId) return;
 
-    let interval: NodeJS.Timeout;
+  let interval: NodeJS.Timeout;
 
-    const checkPayment = async () => {
-      try {
-        const res = await api.get<PaymentStatusResponse>(
-          `/payment/status?orderId=${orderId}`
-        );
+  const checkPayment = async () => {
+    try {
+      const res = await fetch(
+        `/api/v1/tenants/${schoolId}/cashfree/verify-payment?order_id=${orderId}`
+      );
 
-        if (res.status === "SUCCESS") {
-          setStatus("SUCCESS");
-          clearInterval(interval);
-        } else if (res.status === "FAILED") {
-          setStatus("FAILED");
-          clearInterval(interval);
-        } else {
-          setStatus("PENDING");
-        }
-      } catch {
-        setStatus("ERROR");
+      const data = await res.json();
+
+      if (data.status === "PAID") {
+  setStatus("SUCCESS");
+  clearInterval(interval);
+
+  setTimeout(() => {
+    window.location.href = `/${schoolId}`;
+  }, 2000);
+      } else if (data.status === "FAILED") {
+        setStatus("FAILED");
         clearInterval(interval);
+      } else {
+        setStatus("PENDING");
       }
-    };
+    } catch (err) {
+      console.error(err);
+      setStatus("ERROR");
+      clearInterval(interval);
+    }
+  };
 
-    checkPayment();
-    interval = setInterval(checkPayment, 2000);
+  checkPayment();
+  interval = setInterval(checkPayment, 2000);
 
-    return () => clearInterval(interval);
-  }, [orderId, schoolId]);
+  return () => clearInterval(interval);
+}, [orderId, schoolId]);
 
   return (
     <div className="flex flex-col items-center justify-center h-screen gap-3">

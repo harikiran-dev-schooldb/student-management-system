@@ -16,70 +16,36 @@ export default function PaymentButton({
   const schoolId = useSchoolSlug();
 
   const handlePayment = async () => {
-    setLoading(true);
+  setLoading(true);
 
-    try {
-      const res = await fetch(`/api/v1/tenants/${schoolId}/razorpay/order`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount }),
-      });
+  try {
+    const res = await fetch(`/api/v1/tenants/${schoolId}/cashfree/order`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ amount }),
+    });
 
-      const data = await res.json();
-      if (!data.orderId) throw new Error("Order creation failed");
+    const data = await res.json();
 
-      const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        amount: amount * 100,
-        currency: "INR",
-        name: "Kotak Salesian School",
-        description: "Fee Payment",
-        order_id: data.orderId,
-        handler: async function (response: any) {
-          const verifyRes = await fetch(
-            `/api/v1/tenants/${schoolId}/razorpay/verify`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                orderCreationId: data.orderId,
-                razorpayPaymentId: response.razorpay_payment_id,
-                razorpaySignature: response.razorpay_signature,
-                studentId,
-                amount,
-              }),
-            },
-          );
+    const cashfree = (window as any).Cashfree({
+      mode: "sandbox",
+    });
 
-          const verifyData = await verifyRes.json();
+    await cashfree.checkout({
+      paymentSessionId: data.payment_session_id,
+      redirectTarget: "_self",
+    });
 
-          if (verifyData.success) {
-            alert("Payment Successful!");
-            window.location.reload();
-          } else {
-            alert("Payment Verification Failed.");
-          }
-        },
-        theme: { color: "#3399cc" },
-      };
-
-      const paymentObject = new (window as any).Razorpay(options);
-      paymentObject.open();
-    } catch (error) {
-      console.error(error);
-      alert("Something went wrong.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  } catch (error) {
+    console.error(error);
+    alert("Something went wrong.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <>
-      {/* Load Razorpay Script */}
-      <Script
-        id="razorpay-checkout-js"
-        src="https://checkout.razorpay.com/v1/checkout.js"
-      />
 
       <button
         onClick={handlePayment}

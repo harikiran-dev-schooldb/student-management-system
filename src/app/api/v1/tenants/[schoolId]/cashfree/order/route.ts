@@ -70,9 +70,9 @@ export async function POST(
             customer_phone: customer_phone || "9999999999",
           },
           order_meta: {
-            return_url: `${baseUrl}/${slug}/payment/success?order_id={order_id}`,
-            notify_url: `${baseUrl}/${slug}/api/cashfree/webhook`,
-          },
+  return_url: `${baseUrl}/${slug}/payment/success?order_id={order_id}`,
+  notify_url: `${baseUrl}/api/v1/tenants/${slug}/cashfree/webhook`,
+},
         }),
       }
     );
