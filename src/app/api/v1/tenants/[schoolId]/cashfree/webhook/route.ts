@@ -15,7 +15,9 @@ export async function POST(req: NextRequest) {
     /* -------------------------------
        2️⃣ Signature from header
     -------------------------------- */
-    const signature = req.headers.get("x-webhook-signature");
+    const signature =
+  req.headers.get("x-webhook-signature") ||
+  req.headers.get("x-cf-signature");
 
     if (!signature) {
       console.error("❌ Missing signature");
@@ -26,9 +28,9 @@ export async function POST(req: NextRequest) {
        3️⃣ Generate expected signature
     -------------------------------- */
     const expectedSignature = crypto
-      .createHmac("sha256", process.env.CASHFREE_SECRET_KEY!)
-      .update(rawBody)
-      .digest("base64");
+  .createHmac("sha256", process.env.CASHFREE_SECRET_KEY!)
+  .update(rawBody)
+  .digest("hex");
 
     /* -------------------------------
        4️⃣ Compare signatures
@@ -37,6 +39,8 @@ export async function POST(req: NextRequest) {
       console.error("❌ Invalid signature");
       return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
     }
+
+    console.log([...req.headers.entries()]);
 
     /* -------------------------------
        5️⃣ Now safe to parse JSON

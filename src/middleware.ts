@@ -42,8 +42,7 @@ if (
   segments[0] === "api" &&
   segments[1] === "v1" &&
   segments[2] === "tenants" &&
-  segments[4] === "cashfree" &&
-  segments[5] === "verify-payment"
+  segments[4] === "cashfree"
 ) {
   return NextResponse.next();
 }
