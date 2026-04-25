@@ -1,4 +1,5 @@
 "use client";
+
 import { useState } from "react";
 import Script from "next/script";
 import { useSchoolSlug } from "./hooks/getschool";
@@ -16,36 +17,75 @@ export default function PaymentButton({
   const schoolId = useSchoolSlug();
 
   const handlePayment = async () => {
-  setLoading(true);
+    if (!amount || amount <= 0) {
+      alert("Invalid amount");
+      return;
+    }
 
-  try {
-    const res = await fetch(`/api/v1/tenants/${schoolId}/cashfree/order`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ amount }),
-    });
+    setLoading(true);
 
-    const data = await res.json();
+    try {
+      /* -------------------------------
+         1️⃣ Create Order (Backend)
+      -------------------------------- */
+      const res = await fetch(
+        `/api/v1/tenants/${schoolId}/cashfree/order`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            amount,
+            studentId,
+          }),
+        }
+      );
 
-    const cashfree = (window as any).Cashfree({
-      mode: "sandbox",
-    });
+      const data = await res.json();
 
-    await cashfree.checkout({
-      paymentSessionId: data.payment_session_id,
-      redirectTarget: "_self",
-    });
+      if (!res.ok || !data?.payment_session_id) {
+        throw new Error(data?.error || "Order creation failed");
+      }
 
-  } catch (error) {
-    console.error(error);
-    alert("Something went wrong.");
-  } finally {
-    setLoading(false);
-  }
-};
+      /* -------------------------------
+         2️⃣ Ensure SDK Loaded
+      -------------------------------- */
+      if (!(window as any).Cashfree) {
+        throw new Error("Payment SDK not loaded. Refresh page.");
+      }
+
+      /* -------------------------------
+         3️⃣ Init Cashfree
+      -------------------------------- */
+      const cashfree = (window as any).Cashfree({
+        mode:
+          process.env.NODE_ENV === "production"
+            ? "production"
+            : "sandbox",
+      });
+
+      /* -------------------------------
+         4️⃣ Open Checkout
+      -------------------------------- */
+      await cashfree.checkout({
+        paymentSessionId: data.payment_session_id,
+        redirectTarget: "_self",
+      });
+
+    } catch (error: any) {
+      console.error("Payment error:", error);
+      alert(error.message || "Payment failed");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <>
+      {/* ✅ Load Cashfree SDK */}
+      <Script
+        src="https://sdk.cashfree.com/js/v3/cashfree.js"
+        strategy="afterInteractive"
+      />
 
       <button
         onClick={handlePayment}

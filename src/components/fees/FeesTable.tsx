@@ -83,11 +83,6 @@ const StatCard = ({
   </div>
 );
 
-type RazorpayOrderResponse = {
-  orderId: string;
-  amount: number;
-};
-
 const InputGroup = ({
   label,
   value,
@@ -215,49 +210,63 @@ const FeesTable: React.FC<FeesTableProps> = ({
   const api = useTenantApi();
 
   const initiateOnlinePayment = async (
-    feesToPay: StudentFee[],
-    totalAmount: number
-  ) => {
-    setIsProcessing(true);
+  feesToPay: StudentFee[],
+  totalAmount: number
+) => {
+  setIsProcessing(true);
 
+  try {
     const studentId = feesToPay[0]?.studentId;
     if (!studentId) throw new Error("Student ID missing");
 
     const terms = feesToPay.map((f) => f.term);
     const academicYearId = feesToPay[0]?.academicYearId;
 
-    try {
-      // 1️⃣ Create Order
-      const res = await api.post<CashfreeOrderResponse>("/cashfree/order", {
-        studentId,
-        amount: totalAmount,
-        terms,
-        academicYearId,
-        customer_name: studentName,
-        customer_phone: studentMobile,
-      });
+    /* -------------------------------
+       1️⃣ Create Order
+    -------------------------------- */
+    const res = await api.post<CashfreeOrderResponse>("/cashfree/order", {
+      studentId,
+      amount: totalAmount,
+      terms,
+      academicYearId,
+      customer_name: studentName,
+      customer_phone: studentMobile,
+    });
 
-      if (!res.payment_session_id) {
-        throw new Error("No payment session id");
-      }
-
-      // 2️⃣ Initialize Cashfree SDK
-      const cashfree = (window as any).Cashfree({
-        mode: "sandbox", // change to "production" later
-      });
-
-      // 3️⃣ Open Checkout
-      await cashfree.checkout({
-        paymentSessionId: res.payment_session_id,
-        redirectTarget: "_self", // or "_blank"
-      });
-
-    } catch (error) {
-      console.error(error);
-      toast.error("Payment initiation failed");
-      setIsProcessing(false);
+    if (!res.payment_session_id) {
+      throw new Error("No payment session id");
     }
-  };
+
+    /* -------------------------------
+       2️⃣ Wait for SDK
+    -------------------------------- */
+    if (!(window as any).Cashfree) {
+      throw new Error("Cashfree SDK not loaded");
+    }
+
+    const cashfree = (window as any).Cashfree({
+      mode:
+        process.env.NODE_ENV === "production"
+          ? "production"
+          : "sandbox",
+    });
+
+    /* -------------------------------
+       3️⃣ Open Checkout
+    -------------------------------- */
+    await cashfree.checkout({
+      paymentSessionId: res.payment_session_id,
+      redirectTarget: "_self",
+    });
+
+  } catch (error: any) {
+    console.error(error);
+    toast.error(error.message || "Payment failed");
+  } finally {
+    setIsProcessing(false);
+  }
+};
 
   // --- Admin Manual Collection Handlers ---
 
@@ -676,10 +685,14 @@ const FeesTable: React.FC<FeesTableProps> = ({
 
   return (
     <div className="w-full space-y-6 animate-in fade-in duration-500">
+
       <Script
-        id="razorpay-checkout-js"
-        src="https://checkout.razorpay.com/v1/checkout.js"
-      />
+
+      src="https://sdk.cashfree.com/js/v3/cashfree.js"
+
+      strategy="afterInteractive"
+
+    />
 
       {/* --- Stats Grid --- */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
