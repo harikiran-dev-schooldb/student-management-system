@@ -27,6 +27,11 @@ export async function POST(
     const appId = process.env.CASHFREE_APP_ID;
     const secretKey = process.env.CASHFREE_SECRET_KEY;
 
+    console.log("NODE_ENV:", process.env.NODE_ENV);
+    console.log("APP_ID:", appId);
+    console.log("SECRET_KEY:", secretKey);
+    console.log("BASE URL:", baseUrl);
+
     if (!baseUrl || !appId || !secretKey) {
       throw new Error("Missing required environment variables");
     }

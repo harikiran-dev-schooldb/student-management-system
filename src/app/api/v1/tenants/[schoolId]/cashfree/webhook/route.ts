@@ -40,9 +40,10 @@ if (!signature || !timestamp) {
       .update(timestamp + rawBody)
       .digest("base64");
 
-    if (!isTestWebhook && signature !== expectedSignature) {
-  return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
-}
+    if (signature !== expectedSignature) {
+      console.error("❌ Invalid signature");
+      return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+    }
 
     /* -------------------------------
        3️⃣ PARSE BODY
