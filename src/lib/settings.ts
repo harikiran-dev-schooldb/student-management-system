@@ -121,7 +121,8 @@ export const routeAccessMap: RouteAccessMap = {
 
    "/list/performance.*": ["admin"],
    "/list/promote.*": ["admin"],
-
+   "/list/admin/payment-accounts.*": ["admin"],
+   
    /* =========================
       PROFILE
    ========================== */

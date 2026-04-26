@@ -701,12 +701,16 @@ model FeePayment {
 model PaymentAccount {
   id        String @id @default(cuid())
   schoolId  String
-  branchId  Int?
-  gradeId   Int?
-  accountId String // Razorpay/Cashfree account
+  branchId  Int     // ✅ make required
+  gradeId   Int     // ✅ make required
+  accountId String
 
   school SchoolInfo @relation(fields: [schoolId], references: [id])
+
+  @@unique([schoolId, branchId, gradeId]) // 🔥 FIX
 }
+
+
 
 model AuditLog {
   id        String     @id @default(cuid())

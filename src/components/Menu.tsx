@@ -227,6 +227,12 @@ const menuSections: MenuSection[] = [
         visible: ["admin"],
       },
       {
+            label: "Accounts",
+            href: "/list/admin/payment-accounts",
+            icon: User,
+            visible: ["admin"],
+          },
+      {
         label: "Promote Students",
         href: "/list/promote",
         icon: School,
