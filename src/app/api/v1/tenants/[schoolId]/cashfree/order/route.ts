@@ -20,29 +20,16 @@ export async function POST(
   { params }: { params: Promise<{ schoolId: string }> }
 ) {
   try {
-    /* -------------------------------
-       1️⃣ ENV VALIDATION
-    -------------------------------- */
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
-    const appId = process.env.CASHFREE_APP_ID;
-    const secretKey = process.env.CASHFREE_SECRET_KEY;
+    /* ---------------- ENV ---------------- */
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL!;
+    const appId = process.env.CASHFREE_APP_ID!;
+    const secretKey = process.env.CASHFREE_SECRET_KEY!;
 
-    console.log("NODE_ENV:", process.env.NODE_ENV);
-    console.log("BASE URL:", baseUrl);
-
-    if (!baseUrl || !appId || !secretKey) {
-      throw new Error("Missing required environment variables");
-    }
-
-    /* -------------------------------
-       2️⃣ TENANT RESOLUTION
-    -------------------------------- */
+    /* ---------------- TENANT ---------------- */
     const { schoolId: slug } = await params;
     const schoolId = await resolveSchoolId(slug);
 
-    /* -------------------------------
-       3️⃣ BODY VALIDATION
-    -------------------------------- */
+    /* ---------------- BODY ---------------- */
     const body: CreateOrderBody = await req.json();
 
     const {
@@ -54,33 +41,58 @@ export async function POST(
       terms,
     } = body;
 
-    if (!amount || amount <= 0) {
-      return NextResponse.json({ error: "Invalid amount" }, { status: 400 });
+    if (!amount || !studentId || !academicYearId || !terms?.length) {
+      return NextResponse.json({ error: "Invalid input" }, { status: 400 });
     }
 
-    if (!studentId) {
-      return NextResponse.json({ error: "Student ID required" }, { status: 400 });
+    /* ---------------- GET STUDENT ---------------- */
+    const student = await prisma.student.findUnique({
+      where: { id: studentId },
+      select: {
+        id: true,
+        schoolId: true,
+        enrollments: {
+          where: { schoolId },
+          orderBy: { academicYearId: "desc" },
+          take: 1,
+          include: {
+            class: {
+              include: {
+                Grade: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!student || student.enrollments.length === 0) {
+      throw new Error("Student enrollment not found");
     }
 
-    if (!academicYearId) {
-      return NextResponse.json(
-        { error: "Academic year required" },
-        { status: 400 }
+    const enrollment = student.enrollments[0];
+    const gradeId = enrollment.class.gradeId;
+    const branchId = enrollment.class.Grade.branchId;
+
+    /* ---------------- GET ACCOUNT MAPPING ---------------- */
+    const account = await prisma.paymentAccount.findFirst({
+      where: {
+        schoolId,
+        gradeId,
+        branchId,
+      },
+    });
+
+    if (!account) {
+      throw new Error(
+        `No payment account mapping for grade ${gradeId} / branch ${branchId}`
       );
     }
 
-    if (!terms || !Array.isArray(terms) || terms.length === 0) {
-      return NextResponse.json({ error: "Terms required" }, { status: 400 });
-    }
-
-    /* -------------------------------
-       4️⃣ GENERATE ORDER ID
-    -------------------------------- */
+    /* ---------------- ORDER ID ---------------- */
     const orderId = `order_${slug}_${Date.now()}`;
 
-    /* -------------------------------
-       5️⃣ SAVE PAYMENT INTENT
-    -------------------------------- */
+    /* ---------------- SAVE PAYMENT ---------------- */
     await prisma.feePayment.create({
       data: {
         orderId,
@@ -91,13 +103,14 @@ export async function POST(
         metadata: {
           terms,
           academicYearId,
+          gradeId,
+          branchId,
+          accountId: account.accountId, // useful for debugging
         },
       },
     });
 
-    /* -------------------------------
-       6️⃣ CASHFREE ORDER CREATE
-    -------------------------------- */
+    /* ---------------- CASHFREE ---------------- */
     const base =
       process.env.NODE_ENV === "production"
         ? "https://api.cashfree.com/pg"
@@ -115,12 +128,22 @@ export async function POST(
         order_id: orderId,
         order_amount: amount,
         order_currency: "INR",
+
+        /* 🔥 EASY SPLIT */
+        order_splits: [
+          {
+            vendor_id: account.accountId, // 🔥 KEY LINE
+            amount: amount,
+          },
+        ],
+
         customer_details: {
           customer_id: `cust_${Date.now()}`,
           customer_name: customer_name || "Student",
           customer_phone: customer_phone || "9999999999",
           customer_email: "test@test.com",
         },
+
         order_meta: {
           return_url: `${baseUrl}/${slug}/payment/success?order_id={order_id}`,
           notify_url: `${baseUrl}/api/v1/tenants/${slug}/cashfree/webhook`,
@@ -130,9 +153,7 @@ export async function POST(
 
     const data = await cfRes.json();
 
-    /* -------------------------------
-       7️⃣ HANDLE FAILURE (ROLLBACK)
-    -------------------------------- */
+    /* ---------------- ERROR ---------------- */
     if (!cfRes.ok) {
       console.error("❌ Cashfree error:", data);
 
@@ -142,24 +163,23 @@ export async function POST(
       });
 
       return NextResponse.json(
-        { error: data.message || "Order creation failed" },
+        { error: data.message || "Order failed" },
         { status: 400 }
       );
     }
 
-    /* -------------------------------
-       8️⃣ SUCCESS RESPONSE
-    -------------------------------- */
+    /* ---------------- SUCCESS ---------------- */
     return NextResponse.json({
       success: true,
       order_id: data.order_id,
       payment_session_id: data.payment_session_id,
     });
+
   } catch (err: any) {
     console.error("🔥 Order API error:", err);
 
     return NextResponse.json(
-      { error: err.message || "Internal server error" },
+      { error: err.message || "Internal error" },
       { status: 500 }
     );
   }
