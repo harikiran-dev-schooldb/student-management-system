@@ -22,29 +22,50 @@ export default function PaymentSuccessPage() {
   useEffect(() => {
   if (!orderId || !schoolId) return;
 
+  let attempts = 0;
+  const maxAttempts = 8;
   let interval: NodeJS.Timeout;
 
   const checkPayment = async () => {
     try {
+      attempts++;
+
       const res = await fetch(
         `/api/v1/tenants/${schoolId}/cashfree/verify-payment?order_id=${orderId}`
       );
 
       const data = await res.json();
 
-      if (data.status === "PAID") {
-  setStatus("SUCCESS");
-  clearInterval(interval);
+      console.log("VERIFY:", data);
 
-  setTimeout(() => {
-    window.location.href = `/${schoolId}`;
-  }, 2000);
-      } else if (data.status === "FAILED") {
+      // ✅ SUCCESS
+      if (data.status === "SUCCESS") {
+        setStatus("SUCCESS");
+        clearInterval(interval);
+
+        setTimeout(() => {
+          window.location.href = `/${schoolId}`;
+        }, 2000);
+
+        return;
+      }
+
+      // ❌ FAILED
+      if (data.status === "FAILED") {
         setStatus("FAILED");
         clearInterval(interval);
-      } else {
-        setStatus("PENDING");
+        return;
       }
+
+      // ⏳ STILL PENDING
+      setStatus("PENDING");
+
+      // ⛔ STOP AFTER LIMIT
+      if (attempts >= maxAttempts) {
+        setStatus("TIMEOUT");
+        clearInterval(interval);
+      }
+
     } catch (err) {
       console.error(err);
       setStatus("ERROR");
@@ -67,16 +88,30 @@ export default function PaymentSuccessPage() {
       )}
 
       {status === "SUCCESS" && (
-        <p className="text-green-600 text-lg font-semibold">
-          Payment Successful ✅
-        </p>
-      )}
+  <div className="text-green-600 text-lg font-semibold">
+    Payment Successful ✅
+    <div className="mt-3">
+      <a
+        href={`/${schoolId}`}
+        className="px-4 py-2 bg-green-600 text-white rounded"
+      >
+        Go to Dashboard
+      </a>
+    </div>
+  </div>
+)}
 
       {status === "FAILED" && (
         <p className="text-red-600 text-lg font-semibold">
           Payment Failed ❌
         </p>
       )}
+
+      {status === "TIMEOUT" && (
+  <p className="text-gray-600">
+    Payment received. Updating status... Please wait or refresh.
+  </p>
+)}
 
       {status === "ERROR" && (
         <p className="text-gray-500">

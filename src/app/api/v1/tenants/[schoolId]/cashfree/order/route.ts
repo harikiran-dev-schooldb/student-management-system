@@ -4,46 +4,79 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { resolveSchoolId } from "@/lib/resolveSchool";
+import { Term } from "@prisma/client";
+
+type CreateOrderBody = {
+  amount: number;
+  customer_name?: string;
+  customer_phone?: string;
+  studentId: string;
+  academicYearId: number;
+  terms: Term[];
+};
 
 export async function POST(
   req: NextRequest,
-{ params }: { params: Promise<{ schoolId: string }> }
+  { params }: { params: Promise<{ schoolId: string }> }
 ) {
   try {
     /* -------------------------------
-       1️⃣ ENV
+       1️⃣ ENV VALIDATION
     -------------------------------- */
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL!;
-    const appId = process.env.CASHFREE_APP_ID!;
-    const secretKey = process.env.CASHFREE_SECRET_KEY!;
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+    const appId = process.env.CASHFREE_APP_ID;
+    const secretKey = process.env.CASHFREE_SECRET_KEY;
 
     if (!baseUrl || !appId || !secretKey) {
-      throw new Error("Missing environment variables");
+      throw new Error("Missing required environment variables");
     }
 
     /* -------------------------------
-       2️⃣ Tenant
+       2️⃣ TENANT RESOLUTION
     -------------------------------- */
     const { schoolId: slug } = await params;
     const schoolId = await resolveSchoolId(slug);
 
     /* -------------------------------
-       3️⃣ Body
+       3️⃣ BODY VALIDATION
     -------------------------------- */
-    const { amount, customer_name, customer_phone, studentId } =
-      await req.json();
+    const body: CreateOrderBody = await req.json();
+
+    const {
+      amount,
+      customer_name,
+      customer_phone,
+      studentId,
+      academicYearId,
+      terms,
+    } = body;
 
     if (!amount || amount <= 0) {
       return NextResponse.json({ error: "Invalid amount" }, { status: 400 });
     }
 
+    if (!studentId) {
+      return NextResponse.json({ error: "Student ID required" }, { status: 400 });
+    }
+
+    if (!academicYearId) {
+      return NextResponse.json(
+        { error: "Academic year required" },
+        { status: 400 }
+      );
+    }
+
+    if (!terms || !Array.isArray(terms) || terms.length === 0) {
+      return NextResponse.json({ error: "Terms required" }, { status: 400 });
+    }
+
     /* -------------------------------
-       4️⃣ Order ID
+       4️⃣ GENERATE ORDER ID
     -------------------------------- */
     const orderId = `order_${slug}_${Date.now()}`;
 
     /* -------------------------------
-       5️⃣ Save in DB (IMPORTANT)
+       5️⃣ SAVE PAYMENT INTENT
     -------------------------------- */
     await prisma.feePayment.create({
       data: {
@@ -51,19 +84,23 @@ export async function POST(
         amount,
         status: "PENDING",
         schoolId,
-        studentId: studentId || null,
+        studentId,
+        metadata: {
+          terms,
+          academicYearId,
+        },
       },
     });
 
     /* -------------------------------
-       6️⃣ Cashfree API
+       6️⃣ CASHFREE ORDER CREATE
     -------------------------------- */
     const base =
       process.env.NODE_ENV === "production"
         ? "https://api.cashfree.com/pg"
         : "https://sandbox.cashfree.com/pg";
 
-    const response = await fetch(`${base}/orders`, {
+    const cfRes = await fetch(`${base}/orders`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -88,12 +125,14 @@ export async function POST(
       }),
     });
 
-    const data = await response.json();
+    const data = await cfRes.json();
 
-    if (!response.ok) {
+    /* -------------------------------
+       7️⃣ HANDLE FAILURE (ROLLBACK)
+    -------------------------------- */
+    if (!cfRes.ok) {
       console.error("❌ Cashfree error:", data);
 
-      // rollback DB
       await prisma.feePayment.update({
         where: { orderId },
         data: { status: "FAILED" },
@@ -106,7 +145,7 @@ export async function POST(
     }
 
     /* -------------------------------
-       7️⃣ Response
+       8️⃣ SUCCESS RESPONSE
     -------------------------------- */
     return NextResponse.json({
       success: true,
@@ -117,7 +156,7 @@ export async function POST(
     console.error("🔥 Order API error:", err);
 
     return NextResponse.json(
-      { error: err.message || "Internal error" },
+      { error: err.message || "Internal server error" },
       { status: 500 }
     );
   }
