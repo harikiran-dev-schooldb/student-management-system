@@ -116,6 +116,9 @@ export async function POST(
         ? "https://api.cashfree.com/pg"
         : "https://sandbox.cashfree.com/pg";
 
+    const platformFee = 10;
+    const totalAmount = amount + platformFee;
+
     const cfRes = await fetch(`${base}/orders`, {
       method: "POST",
       headers: {
@@ -126,7 +129,7 @@ export async function POST(
       },
       body: JSON.stringify({
         order_id: orderId,
-        order_amount: amount,
+        order_amount: totalAmount,
         order_currency: "INR",
 
         /* 🔥 EASY SPLIT */
@@ -134,6 +137,10 @@ export async function POST(
           {
             vendor_id: account.accountId, // 🔥 KEY LINE
             amount: amount,
+          },
+          {
+            vendor_id: "schooldb_platform_fee",
+            amount: platformFee,
           },
         ],
 
