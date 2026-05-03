@@ -4,7 +4,6 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { resolveSchoolId } from "@/lib/resolveSchool";
-import { Term } from "@prisma/client";
 
 type CreateOrderBody = {
   amount: number;
@@ -12,7 +11,7 @@ type CreateOrderBody = {
   customer_phone?: string;
   studentId: string;
   academicYearId: number;
-  terms: Term[];
+  terms: string[];
 };
 
 export async function POST(
