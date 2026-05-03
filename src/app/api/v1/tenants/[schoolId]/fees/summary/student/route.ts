@@ -34,10 +34,11 @@ export async function GET(
 
     const { searchParams } = new URL(req.url);
     const academicYearParam = searchParams.get("academicYear");
-    const academicYearId = academicYearParam ? Number(academicYearParam) : undefined;
+    const academicYearId = academicYearParam
+      ? Number(academicYearParam)
+      : undefined;
 
     if (!academicYearId) {
-
       return NextResponse.json(
         { error: "academicYear is required" },
         { status: 400 },
@@ -47,10 +48,7 @@ export async function GET(
     /* ---------- Validate Academic Year ---------- */
 
     const year = await prisma.academicYear.findFirst({
-      where: {
-        id: academicYearId,
-        schoolId,
-      },
+      where: { id: academicYearId, schoolId },
     });
 
     if (!year) {
@@ -60,85 +58,91 @@ export async function GET(
       );
     }
 
-    /* ---------- Fetch Student Fees Breakdown ---------- */
+    /* ---------- Fetch Student Fees ---------- */
 
     const fees = await prisma.studentFees.findMany({
       where: {
         studentId: user.studentId,
-        academicYearId: year.id,
+        academicYearId,
         schoolId,
       },
       include: {
         feeStructure: {
           select: {
-            term: true,
-            termFees: true,
-            abacusFees: true,
+            amount: true,
+            feeType: true,
+          },
+        },
+        feeCycle: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
           },
         },
       },
-      orderBy: {
-        term: "asc",
-      },
+      orderBy: [
+        { feeCycleId: "asc" },
+        { feeType: "asc" },
+      ],
     });
 
-    /* ---------- Aggregate Totals (DB Level) ---------- */
+    /* ---------- Totals ---------- */
 
     const totals = await prisma.studentFees.aggregate({
       where: {
         studentId: user.studentId,
-        academicYearId: year.id,
+        academicYearId,
         schoolId,
       },
       _sum: {
         paidAmount: true,
         discountAmount: true,
         fineAmount: true,
+        dueAmount: true,
       },
     });
 
     const totalPaid = totals._sum.paidAmount ?? 0;
     const totalDiscount = totals._sum.discountAmount ?? 0;
     const totalFine = totals._sum.fineAmount ?? 0;
+    const totalDue = totals._sum.dueAmount ?? 0;
 
-    /* ---------- Calculate Expected + Breakdown ---------- */
+    /* ---------- Breakdown ---------- */
 
     let totalExpected = 0;
 
     const breakdown = fees.map((f) => {
-      const expected =
-        (f.feeStructure.termFees ?? 0) +
-        (f.feeStructure.abacusFees ?? 0);
-
+      const expected = f.feeStructure.amount ?? 0;
       const paid = f.paidAmount ?? 0;
       const discount = f.discountAmount ?? 0;
       const fine = f.fineAmount ?? 0;
 
-      const due = expected - (paid + discount) + fine;
+      const due = f.dueAmount ?? 0;
 
       totalExpected += expected;
 
       return {
-        term: f.term,
+        feeCycle: {
+          id: f.feeCycle?.id,
+          name: f.feeCycle?.name,
+          type: f.feeCycle?.type,
+        },
+        feeType: f.feeStructure.feeType,
         expected,
         paid,
         discount,
         fine,
-        due: due < 0 ? 0 : due,
+        due,
       };
     });
-
-    /* ---------- Final Due ---------- */
-
-    const totalDue =
-      totalExpected - (totalPaid + totalDiscount) + totalFine;
 
     return NextResponse.json({
       totalExpected,
       totalPaid,
       totalDiscount,
       totalFine,
-      totalDue: totalDue < 0 ? 0 : totalDue,
+      totalDue,
       isFullyPaid: totalDue <= 0,
       breakdown,
     });

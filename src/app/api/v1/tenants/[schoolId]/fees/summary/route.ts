@@ -15,9 +15,11 @@ export async function GET(
     const db = tenantPrisma(schoolId);
 
     const { searchParams } = new URL(req.url);
+
     const from = searchParams.get("from");
     const to = searchParams.get("to");
     const academicYear = searchParams.get("academicYear");
+    const feeCycleId = searchParams.get("feeCycleId");
 
     const where: any = {
       schoolId,
@@ -47,7 +49,11 @@ export async function GET(
     }
 
     if (academicYear) {
-      where.academicYearId = academicYear;
+      where.academicYearId = Number(academicYear);
+    }
+
+    if (feeCycleId) {
+      where.feeCycleId = Number(feeCycleId);
     }
 
     /* ================================
@@ -66,11 +72,11 @@ export async function GET(
     });
 
     /* ================================
-       2️⃣ Term-wise Summary
+       2️⃣ FeeCycle-wise Summary
     ================================= */
 
-    const termWise = await db.feeTransaction.groupBy({
-      by: ["term"],
+    const cycleWiseRaw = await db.feeTransaction.groupBy({
+      by: ["feeCycleId"],
       where,
       _sum: {
         amount: true,
@@ -78,6 +84,30 @@ export async function GET(
         fineAmount: true,
       },
     });
+
+    // 🔥 handle nulls (migration-safe)
+    const cycleIds = cycleWiseRaw
+      .map((c) => c.feeCycleId)
+      .filter((id): id is number => id !== null);
+
+    const cycles = await db.feeCycle.findMany({
+      where: { id: { in: cycleIds } },
+      select: { id: true, name: true },
+    });
+
+    const cycleMap = Object.fromEntries(
+      cycles.map((c) => [c.id, c.name])
+    );
+
+    const cycleWise = cycleWiseRaw.map((c) => ({
+      feeCycleId: c.feeCycleId,
+      name: c.feeCycleId
+        ? cycleMap[c.feeCycleId] || "Unknown"
+        : "Unassigned",
+      amount: Number(c._sum.amount ?? 0),
+      discount: Number(c._sum.discountAmount ?? 0),
+      fine: Number(c._sum.fineAmount ?? 0),
+    }));
 
     /* ================================
        3️⃣ Class-wise Summary
@@ -148,9 +178,13 @@ export async function GET(
 
     const classWise = Object.values(classWiseMap);
 
+    /* ================================
+       RESPONSE
+    ================================= */
+
     return NextResponse.json({
       paymentMode,
-      termWise,
+      feeCycleWise: cycleWise,
       classWise,
     });
 

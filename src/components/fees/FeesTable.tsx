@@ -157,53 +157,50 @@ const FeesTable: React.FC<FeesTableProps> = ({
 
   // --- Calculations Helpers ---
   const academicYears = useMemo(() => {
-    const years = new Set<string>();
+  const years = new Set<string>();
 
-    for (const d of data) {
-      if (d.academicYear?.name) years.add(d.academicYear.name);
+  for (const d of data) {
+    if (d.academicYear?.name) {
+      years.add(d.academicYear.name);
+    } else {
+      years.add(String(d.academicYearId));
     }
-
-    return [...years].sort((a, b) => {
-      const startA = Number(a.split("-")[0]);
-      const startB = Number(b.split("-")[0]);
-      return startA - startB;
-    });
-  }, [data]);
-
-  function getTotalFees(fee: StudentFee) {
-    return (
-      (fee.feeStructure?.termFees ?? 0) + (fee.feeStructure?.abacusFees ?? 0)
-    );
   }
 
-  function calculateDueAmount(fee: StudentFee) {
-    const total = getTotalFees(fee);
-    const paid = fee.paidAmount ?? 0;
-    const discountAmt = fee.discountAmount ?? 0;
-    // Fine is usually added to the total payable, but typically database stores 'fineAmount' separately.
-    // Assuming standard logic: Due = (Total + Fine) - (Paid + Discount)
-    // Or if Fine is just recorded: Due = Total - Paid - Discount + Fine
-    return total - paid - discountAmt + (fee.fineAmount ?? 0);
-  }
+  return [...years].sort((a, b) => {
+    const startA = Number(a.split("-")[0]);
+    const startB = Number(b.split("-")[0]);
+    return startA - startB;
+  });
+}, [data]);
 
-  function getFeeStatus(fee: StudentFee) {
-    const due = calculateDueAmount(fee);
-    const paid = fee.paidAmount ?? 0;
-    const total = getTotalFees(fee);
+  // -------------------- FIXED HELPERS --------------------
 
-    let status: "Paid" | "Partial" | "Unpaid" = "Unpaid";
-    if (due <= 0) status = "Paid";
-    else if (paid > 0) status = "Partial";
+function getTotalFees(fee: StudentFee) {
+  return fee.feeStructure?.amount ?? 0;
+}
 
-    return {
-      status,
-      paidAmount: paid,
-      totalFees: total,
-      isCollectDisabled: due <= 0,
-      isZero: paid === 0,
-      dueAmount: due,
-    };
-  }
+function calculateDueAmount(fee: StudentFee) {
+  return fee.dueAmount ?? 0;
+}
+
+function getFeeStatus(fee: StudentFee) {
+  const due = calculateDueAmount(fee);
+  const paid = fee.paidAmount ?? 0;
+
+  let status: "Paid" | "Partial" | "Unpaid" = "Unpaid";
+  if (due <= 0) status = "Paid";
+  else if (paid > 0) status = "Partial";
+
+  return {
+    status,
+    paidAmount: paid,
+    totalFees: getTotalFees(fee),
+    isCollectDisabled: due <= 0,
+    isZero: paid === 0,
+    dueAmount: due,
+  };
+}
 
 
   // --- Razorpay Logic ---
@@ -219,8 +216,10 @@ const FeesTable: React.FC<FeesTableProps> = ({
     const studentId = feesToPay[0]?.studentId;
     if (!studentId) throw new Error("Student ID missing");
 
-    const terms = feesToPay.map((f) => f.term);
+
     const academicYearId = feesToPay[0]?.academicYearId;
+    const feeCycleIds = feesToPay.map((f) => f.feeCycleId);
+
 
     /* -------------------------------
        1️⃣ Create Order
@@ -228,7 +227,7 @@ const FeesTable: React.FC<FeesTableProps> = ({
     const res = await api.post<CashfreeOrderResponse>("/cashfree/order", {
       studentId,
       amount: totalAmount,
-      terms,
+      feeCycleIds,
       academicYearId,
       customer_name: studentName,
       customer_phone: studentMobile,
@@ -325,8 +324,7 @@ const FeesTable: React.FC<FeesTableProps> = ({
         const amountToPay = selectedFees.length > 1 ? feeDue : amount;
 
         const payload = {
-          studentId: fee.studentId,
-          term: fee.term,
+          studentFeesId: fee.id,
           amount: amountToPay,
           discountAmount: selectedFees.length === 1 ? discount : 0, // No custom discount on bulk
           fineAmount: selectedFees.length === 1 ? fine : 0,
@@ -383,60 +381,52 @@ const FeesTable: React.FC<FeesTableProps> = ({
 
   // --- Export CSV ---
   const handleExportCSV = () => {
-    const headers = [
-      "Term",
-      "Year",
-      "Total Fees",
-      "Paid Amount",
-      "Due Amount",
-      "Status",
-      "Receipt No",
-    ];
-    const rows = rowData.map((row) => [
-      row.term,
-      row.academicYear?.name,
-      getTotalFees(row),
-      row.paidAmount || 0,
-      calculateDueAmount(row),
-      getFeeStatus(row).status,
-      row.receiptNo || row.feeTransactions?.[0]?.receiptNo || "-",
-    ]);
+  const headers = [
+    "Cycle",
+    "Year",
+    "Total Fees",
+    "Paid Amount",
+    "Due Amount",
+    "Status",
+    "Receipt No",
+  ];
 
-    const csvContent =
-      "data:text/csv;charset=utf-8," +
-      [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
+  const rows = rowData.map((row) => [
+    row.feeCycle?.name ?? "—",
+    row.academicYear?.name ?? row.academicYearId,
+    getTotalFees(row),
+    row.paidAmount || 0,
+    calculateDueAmount(row),
+    getFeeStatus(row).status,
+    row.receiptNo || row.feeTransactions?.[0]?.receiptNo || "-",
+  ]);
 
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute(
-      "download",
-      `fees_report_${new Date().toISOString().split("T")[0]}.csv`,
-    );
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+  const csvContent =
+    "data:text/csv;charset=utf-8," +
+    [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
 
-  // --- Cancellation ---
+  const link = document.createElement("a");
+  link.href = encodeURI(csvContent);
+  link.download = `fees_${Date.now()}.csv`;
+  link.click();
+};
+
   const handleCancel = useCallback(
-    async (fee: StudentFee) => {
-      try {
-        await api.post("/fees/transactions/cancel", {
-          studentId: fee.studentId,
-          term: fee.term,
-          academicYear: fee.academicYear,
-          reason: "Admin cancelled term",
-        });
+  async (fee: StudentFee) => {
+    try {
+      await api.post("/fees/transactions/cancel", {
+        studentFeesId: fee.id, // ✅ ONLY THIS
+        reason: "Admin cancelled fee",
+      });
 
-        toast.success("Term cancelled successfully");
-        router.refresh();
-      } catch (e: any) {
-        toast.error(e.message || "Failed to cancel");
-      }
-    },
-    [router],
-  );
+      toast.success("Fee cancelled successfully");
+      router.refresh();
+    } catch (e: any) {
+      toast.error(e.message || "Failed to cancel");
+    }
+  },
+  [router],
+);
 
   // --- Table Configuration ---
   const columns = useMemo<ColumnDef<StudentFee>[]>(() => {
@@ -485,16 +475,16 @@ const FeesTable: React.FC<FeesTableProps> = ({
         ),
       },
       {
-        accessorKey: "term",
-        header: "Term",
-        cell: ({ getValue }) => (
-          <span className="font-semibold text-slate-700 dark:text-slate-200">
-            {getValue() as string}
-          </span>
-        ),
-      },
+  accessorFn: (row) => row.feeCycle?.name,
+  header: "Cycle",
+  cell: ({ getValue }) => (
+    <span className="font-semibold text-slate-700 dark:text-slate-200">
+      {getValue() as string || "—"}
+    </span>
+  ),
+},
       {
-        accessorFn: (row) => row.academicYear?.name,
+        accessorFn: (row) => row.academicYear?.name ?? row.academicYearId,
         header: "Year",
         cell: ({ getValue }) => (
           <span className="text-xs text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-full">
@@ -628,24 +618,28 @@ const FeesTable: React.FC<FeesTableProps> = ({
 
   // --- Filtering & Sorting Data ---
   const filteredData = useMemo(() => {
-    const baseData = selectedAcademicYear
-      ? rowData.filter((row) => row.academicYear?.name === selectedAcademicYear)
-      : rowData;
+  const baseData = selectedAcademicYear
+    ? rowData.filter(
+        (row) =>
+          row.academicYear?.name === selectedAcademicYear ||
+          String(row.academicYearId) === selectedAcademicYear
+      )
+    : rowData;
 
-    // Custom Sort: Year then Term
-    const TERM_ORDER: Record<string, number> = {
-      TERM_1: 1,
-      TERM_2: 2,
-      TERM_3: 3,
-      FINAL: 4,
-    };
-    return [...baseData].sort((a, b) => {
-      const yearA = Number(a.academicYear?.name.split("-")[0]);
-      const yearB = Number(b.academicYear?.name.split("-")[0]);
-      if (yearA !== yearB) return yearA - yearB;
-      return (TERM_ORDER[a.term] ?? 99) - (TERM_ORDER[b.term] ?? 99);
-    });
-  }, [rowData, selectedAcademicYear]);
+  return [...baseData].sort((a, b) => {
+    const yearA = Number(
+      (a.academicYear?.name ?? a.academicYearId).toString().split("-")[0]
+    );
+    const yearB = Number(
+      (b.academicYear?.name ?? b.academicYearId).toString().split("-")[0]
+    );
+
+    if (yearA !== yearB) return yearA - yearB;
+
+    // ✅ Sort by cycle instead of term
+    return (a.feeCycle?.id ?? 0) - (b.feeCycle?.id ?? 0);
+  });
+}, [rowData, selectedAcademicYear]);
 
   // --- Table Instance ---
   const table = useReactTable({
@@ -661,25 +655,18 @@ const FeesTable: React.FC<FeesTableProps> = ({
 
   // --- Summary Statistics ---
   const summary = useMemo(() => {
-    return filteredData.reduce(
-      (acc, curr) => {
-        const total = getTotalFees(curr);
-        const paid = curr.paidAmount ?? 0;
-        const discountAmt = curr.discountAmount ?? 0;
-        const fineAmt = curr.fineAmount ?? 0;
-        // Calculation logic
-        const due = total - paid - discountAmt + fineAmt;
-
-        return {
-          total: acc.total + total,
-          paid: acc.paid + paid,
-          discount: acc.discount + discountAmt,
-          due: acc.due + (due > 0 ? due : 0),
-        };
-      },
-      { total: 0, paid: 0, discount: 0, due: 0 },
-    );
-  }, [filteredData]);
+  return filteredData.reduce(
+    (acc, curr) => {
+      return {
+        total: acc.total + getTotalFees(curr),
+        paid: acc.paid + (curr.paidAmount ?? 0),
+        discount: acc.discount + (curr.discountAmount ?? 0),
+        due: acc.due + (curr.dueAmount ?? 0), // ✅ FIXED
+      };
+    },
+    { total: 0, paid: 0, discount: 0, due: 0 },
+  );
+}, [filteredData]);
 
   const selectedCount = Object.keys(rowSelection).length;
 
@@ -740,17 +727,18 @@ const FeesTable: React.FC<FeesTableProps> = ({
             All
           </button>
           {academicYears.map((y) => (
-            <button
-              key={y}
-              onClick={() => setSelectedAcademicYear(y)}
-              className={`text-xs px-3 py-1.5 rounded-full whitespace-nowrap transition border ${selectedAcademicYear === y
-                ? "bg-slate-800 text-white border-slate-800"
-                : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
-                }`}
-            >
-              {y.replace("Y", "").replace("_", "-")}
-            </button>
-          ))}
+  <button
+    key={y}
+    onClick={() => setSelectedAcademicYear(y)}
+    className={`text-xs px-3 py-1.5 rounded-full ${
+      selectedAcademicYear === y
+        ? "bg-slate-800 text-white"
+        : "bg-white text-gray-600"
+    }`}
+  >
+    {String(y).replace("Y", "").replace("_", "-")}
+  </button>
+))}
         </div>
 
         {/* Right Actions */}
@@ -892,13 +880,15 @@ const FeesTable: React.FC<FeesTableProps> = ({
                       )}
                     <div>
                       <h3 className="font-bold text-slate-800 dark:text-slate-200">
-                        {row.original.term}
-                      </h3>
-                      <p className="text-[10px] text-slate-500 font-mono">
-                        {row.original.academicYear?.name
-                          .replace("Y", "")
-                          .replace("_", "-")}
-                      </p>
+  {row.original.feeCycle?.name ?? "—"}
+</h3>
+
+<p className="text-[10px] text-slate-500 font-mono">
+  {(row.original.academicYear?.name ?? row.original.academicYearId)
+    .toString()
+    .replace("Y", "")
+    .replace("_", "-")}
+</p>
                     </div>
                   </div>
                   <StatusBadge status={status} />

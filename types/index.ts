@@ -14,6 +14,8 @@ import {
 } from "@prisma/client";
 import { ClassSelect } from "./query-types";
 
+export type FeeType = "TUITION" | "BUS" | "EXAM" | "OTHER";
+
 export type CurrentEnrollment = {
   academicYearId: number;
   class: {
@@ -29,18 +31,27 @@ export type CurrentEnrollment = {
   };
 };
 
+export type FeeCycle = {
+  id: number;
+  name: string;
+  startDate: Date;
+  dueDate: Date;
+  type: string;
+  order: number;
+};
+
 export type FeeStructure = {
   id: number;
   gradeId: number;
-  startDate: string; // or Date, based on usage
-  dueDate: string; // ✅ Add this line
-  termFees: number;
-  abacusFees: number | null;
-  term: string; // Or enum Term if you have it
-  academicYear: string; // Or enum if defined
+  feeCycleId: number;
+  feeType: FeeType; // or enum later
+  amount: number;
+  academicYearId: number;
 };
 
-
+export type FeeStructureWithRelations = FeeStructure & {
+  feeCycle?: FeeCycle;
+};
 
 export type GenderStat = {
   gender: Gender;
@@ -72,10 +83,24 @@ export type AdminDashboardData = UserCounts & {
 
 // Define individual StudentFees entry
 export type StudentFees = {
-  paidAmount?: number;
-  discountAmount?: number;
-  fineAmount?: number; // fineAmount missing earlier, added it
-  feeStructure?: FeeStructure; // studentFees can have feeStructure
+  id: number;
+  studentId: string;
+  feeStructureId: number;
+  feeCycleId: number;
+
+  paidAmount: number;
+  discountAmount: number;
+  fineAmount: number;
+  dueAmount: number;
+
+  receiptDate?: string | null;
+  receiptNo?: string | null;
+  remarks?: string | null;
+
+  paymentMode?: PaymentMode;
+
+  feeStructure?: FeeStructure;
+  feeCycle?: FeeCycle;
 };
 
 // Define StudentTotalFees entry
@@ -83,7 +108,7 @@ export type StudentTotalFees = {
   id: number;
   studentId: string;
   schoolId: string;
-  academicYearId: string;
+  academicYearId: number;
 
   totalPaidAmount: number;
   totalDiscountAmount: number;
@@ -111,7 +136,7 @@ export type MessageContext = {
   schoolName: string;
 
   amount?: number;
-  term?: string;
+  feeCycleName?: string;
   date?: Date;
 
   additionalInfo?: string;
@@ -153,17 +178,23 @@ export interface StudentFeesTable {
   id: number;
   studentId: string;
   feeStructureId: number;
-  term: string;
+  feeCycleId: number;
+
   paidAmount: number;
   discountAmount: number;
   fineAmount: number;
-  abacusPaidAmount?: number | null;
+  dueAmount: number;
+
   receivedDate: string | null;
   receiptDate: string | null;
+
   paymentMode: string;
+
   feeStructure: FeeStructure;
+  feeCycle: FeeCycle;
+
   feeTransactions: FeeTransaction[];
-  collectedAmount?: number;
+
   receiptNo?: string | null;
   remarks?: string | null;
   updatedByName?: string | null;
@@ -190,36 +221,48 @@ export const dropdownUI =
 
 export interface StudentFee {
   id: number;
+
+  /* ---------- Core ---------- */
   studentId: string;
-  term: string;
+  academicYearId: number;
+  feeCycleId: number;
+
+  /* ---------- Amounts ---------- */
   paidAmount: number;
   discountAmount: number;
   fineAmount: number;
+  dueAmount: number;
 
-  receiptDate?: string;
-  receiptNo?: string;
-  remarks?: string;
+  /* ---------- Payment Info ---------- */
+  receiptDate?: string | null;
+  receiptNo?: string | null;
+  remarks?: string | null;
+  paymentMode?: PaymentMode | null;
 
-  paymentMode: PaymentMode;
-
-  academicYearId: number;
-
-  // ✅ ADD THIS
+  /* ---------- Relations ---------- */
   academicYear?: {
     id: number;
     name: string;
-  };
+  } | null;
 
+  feeCycle?: {
+    id: number;
+    name: string;
+  } | null;
+
+  /* ---------- Fee Definition ---------- */
   feeStructure?: {
     id: number;
-    termFees?: number;
-    abacusFees?: number;
-    dueDate?: string;
-  };
+    amount: number;
+    feeType: FeeType;
+  } | null;
 
+  /* ---------- Optional: Transactions ---------- */
   feeTransactions?: {
-    receiptNo?: string;
-    remarks?: string;
+    id?: number;
+    receiptNo?: string | null;
+    amount?: number;
+    date?: string;
   }[];
 }
 
@@ -366,7 +409,7 @@ export type StudentsList = {
 };
 
 export type FeesList = Grade & {
-  feestructure: FeeStructure[];
+  feestructure: FeeStructureWithRelations[];
 };
 
 // Types

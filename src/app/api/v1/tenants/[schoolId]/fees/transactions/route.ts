@@ -6,14 +6,17 @@ import { resolveSchoolId } from "@/lib/resolveSchool";
 import { PaymentMode } from "@prisma/client";
 import { currentUser } from "@clerk/nextjs/server";
 import { tenantPrisma } from "@/lib/tenant-prisma";
-import { calculateDueAmount, getAssignedFee } from "@/lib/fees/fees";
 import { getMessageContent } from "@/lib/utils/messageUtils";
 import { buildReceiptNumber } from "@/lib/fees/generateReceipt";
 import { generateFeeRemark } from "@/lib/fees/generateRemark";
 
+/* ======================================================
+   POST: RECORD PAYMENT
+====================================================== */
+
 export async function POST(
   req: NextRequest,
-  { params }: { params: Promise<{ schoolId: string }> },
+  { params }: { params: Promise<{ schoolId: string }> }
 ) {
   try {
     const { schoolId: slug } = await params;
@@ -21,7 +24,6 @@ export async function POST(
     const db = tenantPrisma(schoolId);
 
     const user = await currentUser();
-
     if (!user) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
@@ -31,8 +33,7 @@ export async function POST(
     const body = await req.json();
 
     const {
-      studentId,
-      term,
+      studentFeesId,
       academicYearId,
       amount = 0,
       discountAmount = 0,
@@ -42,10 +43,10 @@ export async function POST(
       paymentMode = PaymentMode.CASH,
     } = body;
 
-    if (!studentId || !term || !academicYearId) {
+    if (!studentFeesId || !academicYearId) {
       return NextResponse.json(
-        { message: "studentId, term, academicYearId required" },
-        { status: 400 },
+        { message: "studentFeesId, academicYearId required" },
+        { status: 400 }
       );
     }
 
@@ -54,80 +55,69 @@ export async function POST(
         ? new Date(receiptDate)
         : new Date();
 
-
-    const autoRemark = remarks || generateFeeRemark(term, parsedReceiptDate);
-
     const academicYear = await db.academicYear.findUnique({
       where: { id: academicYearId },
       select: { name: true },
     });
 
     if (!academicYear) {
-      throw new Error("Academic year not found");
+      return NextResponse.json(
+        { message: "Academic year not found" },
+        { status: 400 }
+      );
     }
 
-
-
-
     const result = await db.$transaction(async (tx) => {
-
-      // 1️⃣ increment receipt sequence safely
-      const seq = await tx.receiptSequence.upsert({
-        where: {
-          schoolId_academicYearId: {
-            schoolId,
-            academicYearId,
-          },
-        },
-        update: {
-          currentNo: { increment: 1 },
-        },
-        create: {
-          schoolId,
-          academicYearId,
-          currentNo: 1,
-        },
-        select: {
-          currentNo: true,
-        },
-      });
-
-      const generatedReceiptNo = buildReceiptNumber(
-        academicYear.name,
-        seq.currentNo
-      );
-
-      /* ===============================
-         Fetch StudentFees
-      =============================== */
+      /* =========================
+         1️⃣ Fetch Student Fee
+      ========================= */
 
       const studentFee = await tx.studentFees.findUnique({
-        where: {
-          studentId_academicYear_term: {
-            studentId,
-            academicYearId,
-            term,
-            schoolId,
-          },
-        },
+        where: { id: studentFeesId },
         include: {
+          student: true,
+          feeCycle: true,
           feeStructure: true,
         },
       });
 
-      if (!studentFee) {
-        throw new Error("Student fee record not found");
+      if (!studentFee) throw new Error("Student fee not found");
+
+      const currentDue = studentFee.dueAmount ?? 0;
+
+      const effectivePayment =
+        Number(amount) + Number(discountAmount) - Number(fineAmount);
+
+      if (effectivePayment > currentDue) {
+        throw new Error(`Overpayment not allowed. Due: ₹${currentDue}`);
       }
 
-      const currentDue = calculateDueAmount(studentFee);
+      const cycleName = studentFee.feeCycle?.name ?? "Fee";
 
-      if (amount > currentDue) {
-        throw new Error("Overpayment not allowed");
-      }
+      const autoRemark =
+        remarks || generateFeeRemark(cycleName, parsedReceiptDate);
 
-      /* ===============================
-         Update StudentFees
-      =============================== */
+      /* =========================
+         2️⃣ Generate Receipt
+      ========================= */
+
+      const seq = await tx.receiptSequence.upsert({
+        where: {
+          schoolId_academicYearId: { schoolId, academicYearId },
+        },
+        update: { currentNo: { increment: 1 } },
+        create: { schoolId, academicYearId, currentNo: 1 },
+        select: { currentNo: true },
+      });
+
+      const receiptNo = buildReceiptNumber(
+        academicYear.name,
+        seq.currentNo
+      );
+
+      /* =========================
+         3️⃣ Update StudentFees
+      ========================= */
 
       const updatedFee = await tx.studentFees.update({
         where: { id: studentFee.id },
@@ -135,29 +125,26 @@ export async function POST(
           paidAmount: { increment: amount },
           discountAmount: { increment: discountAmount },
           fineAmount: { increment: fineAmount },
+
+          // ✅ CORRECT FORMULA
+          dueAmount: {
+            decrement: amount + discountAmount - fineAmount,
+          },
+
           receiptDate: parsedReceiptDate,
           paymentMode,
           remarks: autoRemark,
         },
       });
 
-      const assignedFee = getAssignedFee(studentFee);
-
-      const newDue = calculateDueAmount({
-        ...studentFee,
-        paidAmount: studentFee.paidAmount + amount,
-        discountAmount: studentFee.discountAmount + discountAmount,
-        fineAmount: studentFee.fineAmount + fineAmount,
-      });
-
-      /* ===============================
-         Update StudentTotalFees
-      =============================== */
+      /* =========================
+         4️⃣ Update StudentTotalFees
+      ========================= */
 
       const updatedTotal = await tx.studentTotalFees.upsert({
         where: {
           studentId_academicYearId_schoolId: {
-            studentId,
+            studentId: studentFee.studentId,
             schoolId,
             academicYearId,
           },
@@ -166,97 +153,84 @@ export async function POST(
           totalPaidAmount: { increment: amount },
           totalDiscountAmount: { increment: discountAmount },
           totalFineAmount: { increment: fineAmount },
-          dueAmount: newDue,
+
+          // ✅ CORRECT
+          dueAmount: {
+            decrement: amount + discountAmount - fineAmount,
+          },
         },
         create: {
-          studentId,
+          studentId: studentFee.studentId,
           schoolId,
           academicYearId,
           totalPaidAmount: amount,
           totalDiscountAmount: discountAmount,
           totalFineAmount: fineAmount,
+
+          totalFeeAmount: 0, // safer, avoid wrong aggregation
           totalAbacusAmount: 0,
-          totalFeeAmount: assignedFee,
-          dueAmount: newDue,
+
+          dueAmount:
+            (studentFee.dueAmount ?? 0) -
+            (amount + discountAmount - fineAmount),
         },
       });
 
-      /* ===============================
-         Create FeeTransaction
-      =============================== */
+      /* =========================
+         5️⃣ Create Transaction
+      ========================= */
 
       const transaction = await tx.feeTransaction.create({
         data: {
-          studentId,
+          studentId: studentFee.studentId,
           studentFeesId: studentFee.id,
-          term,
+          feeCycleId: studentFee.feeCycleId,
           academicYearId,
           amount,
           discountAmount,
           fineAmount,
           receiptDate: parsedReceiptDate,
-          receiptNo: generatedReceiptNo,
+          receiptNo,
           paymentMode,
           remarks: autoRemark,
           updatedByName,
+          transactionType: "PAYMENT",
           schoolId,
         },
       });
 
-      /* ===============================
-         Fetch Student + Class
-      =============================== */
-
-      const student = await tx.student.findUnique({
-        where: { id: studentId },
-        select: {
-          id: true,
-          name: true,
-          enrollments: {
-            select: {
-              class: {
-                select: { id: true, name: true },
-              },
-            },
-            take: 1,
-          },
-        },
-      });
+      /* =========================
+         6️⃣ Notification
+      ========================= */
 
       const school = await tx.schoolInfo.findUnique({
         where: { id: schoolId },
         select: { name: true },
       });
 
-      if (student && school) {
-        await tx.messages.create({
-          data: {
-            type: "FEE_COLLECTION",
-            message: getMessageContent("FEE_COLLECTION", {
-              studentName: student.name,
-              className: student.enrollments?.[0]?.class?.name ?? null,
-              schoolName: school.name,
-              amount,
-              term,
-              date: parsedReceiptDate,
-            }),
-            studentId,
-            classId: student.enrollments?.[0]?.class?.id,
-            schoolId,
+      await tx.messages.create({
+        data: {
+          type: "FEE_COLLECTION",
+          message: getMessageContent("FEE_COLLECTION", {
+            studentName: studentFee.student.name,
+            className: null,
+            schoolName: school?.name ?? "School",
+            amount,
+            feeCycleName: cycleName, // ✅ FIXED
             date: parsedReceiptDate,
-          },
-        });
-      }
+          }),
+          studentId: studentFee.studentId,
+          schoolId,
+          date: parsedReceiptDate,
+        },
+      });
 
       return { updatedFee, updatedTotal, transaction };
     });
 
     return NextResponse.json(
-      {
-        message: "Payment recorded successfully",
-        ...result,
-      },
-      { status: 200 },
+      { message: "Payment recorded successfully", ...result },
+      { status: 200 }
     );
 
   } catch (error: any) {
@@ -264,10 +238,14 @@ export async function POST(
 
     return NextResponse.json(
       { message: error.message || "Payment failed" },
-      { status: 400 },
+      { status: 400 }
     );
   }
 }
+
+/* ======================================================
+   GET: FETCH TRANSACTIONS
+====================================================== */
 
 export async function GET(
   req: NextRequest,
@@ -283,16 +261,12 @@ export async function GET(
     const from = searchParams.get("from");
     const to = searchParams.get("to");
 
-    const where: any = {
-      schoolId,
-    };
+    const where: any = { schoolId };
 
     if (from || to) {
       where.receiptDate = {};
 
-      if (from) {
-        where.receiptDate.gte = new Date(from);
-      }
+      if (from) where.receiptDate.gte = new Date(from);
 
       if (to) {
         const end = new Date(to);
@@ -304,15 +278,14 @@ export async function GET(
     const transactions = await db.feeTransaction.findMany({
       where,
       include: {
+        feeCycle: { select: { name: true } },
         student: {
           select: {
             id: true,
             name: true,
             enrollments: {
               select: {
-                class: {
-                  select: { name: true },
-                },
+                class: { select: { name: true } },
               },
               take: 1,
             },
@@ -325,22 +298,26 @@ export async function GET(
     });
 
     const formatted = transactions.map((t) => ({
-      ...t,
+      id: t.id,
+      receiptNo: t.receiptNo,
+      amount: Number(t.amount),
+      discountAmount: Number(t.discountAmount ?? 0),
+      fineAmount: Number(t.fineAmount ?? 0),
+      feeCycle: t.feeCycle?.name ?? "Unknown",
+      paymentMode: t.paymentMode,
+      receiptDate: t.receiptDate,
+
       student: t.student
         ? {
             id: t.student.id,
             name: t.student.name,
-            Class: {
-              name:
-                t.student.enrollments?.[0]?.class?.name ?? null,
-            },
+            className:
+              t.student.enrollments?.[0]?.class?.name ?? null,
           }
         : null,
     }));
 
-    return NextResponse.json({
-      data: formatted,
-    });
+    return NextResponse.json({ data: formatted });
 
   } catch (error: any) {
     console.error("Fetch transactions error:", error);

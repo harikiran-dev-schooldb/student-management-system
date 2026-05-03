@@ -1,4 +1,5 @@
 export const dynamic = "force-dynamic";
+
 import ClassFilterDropdown from "@/components/FilterDropdown";
 import FormContainer from "@/components/FormContainer";
 import Pagination from "@/components/Pagination";
@@ -14,66 +15,74 @@ import { Prisma } from "@prisma/client";
 import { Filter } from "lucide-react";
 import IconButton from "@/components/IconButton";
 import { FeesList, SearchParams } from "../../../../../../../types";
-import { FeeGradeSelect } from "../../../../../../../types/query-types";
 import { tenantPrisma } from "@/lib/tenant-prisma";
-import { buildClassHierarchyFilter, buildGradeFilter } from "@/lib/filters/buildHierarchyFilter";
+import { buildGradeFilter } from "@/lib/filters/buildHierarchyFilter";
 
-// Row Renderer
+/* =========================
+   ROW RENDER
+========================= */
+
 const renderRow = (grade: FeesList, role: string | null) => {
   if (!grade.feestructure?.length) return null;
 
-  return grade.feestructure.map((fee) => {
-    const total = (fee.termFees ?? 0) + (fee.abacusFees ?? 0);
+  return grade.feestructure.map((fee) => (
+    <tr
+      key={fee.id}
+      className="text-sm border-b border-gray-200 even:bg-gray-50 hover:bg-gray-100 
+                 dark:border-gray-700 dark:even:bg-gray-800 dark:hover:bg-gray-700"
+    >
+      <td className="p-2">{grade.level}</td>
 
-    return (
-      <tr
-        key={fee.id}
-        className="text-sm border-b border-gray-200 even:bg-gray-50 hover:bg-gray-100 
-                   dark:border-gray-700 dark:even:bg-gray-800 dark:hover:bg-gray-700"
-      >
-        <td className="p-2">{grade.level}</td>
-        <td>{fee.term}</td>
-        <td>{total}</td>
-        <td className="hidden md:table-cell">
-          {fee.startDate
-            ? new Intl.DateTimeFormat("en-GB").format(new Date(fee.startDate))
-            : "-"}
+      {/* Fee Cycle */}
+      <td>{fee.feeCycle?.name ?? "-"}</td>
+
+      {/* Fee Type */}
+      <td>{fee.feeType}</td>
+
+      {/* Amount */}
+      <td>{fee.amount ?? 0}</td>
+
+      {/* Due Date */}
+      <td className="hidden md:table-cell">
+        {fee.feeCycle?.dueDate
+          ? new Intl.DateTimeFormat("en-GB").format(
+              new Date(fee.feeCycle.dueDate)
+            )
+          : "-"}
+      </td>
+
+      {role === "admin" && (
+        <td className="p-2">
+          <div className="flex items-center gap-2">
+            <FormContainer table="fees" type="update" data={fee} />
+            <FormContainer table="fees" type="delete" id={fee.id} />
+          </div>
         </td>
-        <td className="hidden md:table-cell">
-          {fee.dueDate
-            ? new Intl.DateTimeFormat("en-GB").format(new Date(fee.dueDate))
-            : "-"}
-        </td>
-        {role === "admin" && (
-          <td className="p-2">
-            <div className="flex items-center gap-2">
-              <FormContainer table="fees" type="update" data={fee} />
-              <FormContainer table="fees" type="delete" id={fee.id} />
-            </div>
-          </td>
-        )}
-      </tr>
-    );
-  });
+      )}
+    </tr>
+  ));
 };
 
-// Columns
+/* =========================
+   COLUMNS
+========================= */
+
 const getColumns = (role: string | null) => [
   { header: "Grade", accessor: "level" },
-  { header: "Term", accessor: "feestructure.term" },
-  { header: "Term Fees", accessor: "feestructure.termFees" },
-  {
-    header: "Start Date",
-    accessor: "feestructure.startDate",
-    className: "hidden md:table-cell",
-  },
+  { header: "Cycle", accessor: "feeCycle.name" },
+  { header: "Type", accessor: "feeType" },
+  { header: "Amount", accessor: "amount" },
   {
     header: "Due Date",
-    accessor: "feestructure.dueDate",
+    accessor: "feeCycle.dueDate",
     className: "hidden md:table-cell",
   },
   ...(role === "admin" ? [{ header: "Actions", accessor: "action" }] : []),
 ];
+
+/* =========================
+   PAGE
+========================= */
 
 const FeesListPage = async ({
   searchParams,
@@ -100,8 +109,6 @@ const FeesListPage = async ({
       : resolvedSearchParams.page || "1"
   );
 
-
-
   const sortOrder =
     resolvedSearchParams.sort === "desc" ? "desc" : "asc";
 
@@ -112,6 +119,10 @@ const FeesListPage = async ({
   const { role } = await fetchUserInfo(slug);
   const columns = getColumns(role);
 
+  /* =========================
+     ACADEMIC YEAR
+  ========================= */
+
   const latestAcademicYear = await db.academicYear.findFirst({
     orderBy: { id: "desc" },
     select: { id: true },
@@ -120,6 +131,9 @@ const FeesListPage = async ({
   const academicYearId =
     Number(resolvedSearchParams.academicYear) || latestAcademicYear?.id;
 
+  /* =========================
+     FILTERS
+  ========================= */
 
   const branchId = resolvedSearchParams.branchId;
   const gradeId = resolvedSearchParams.gradeId;
@@ -134,17 +148,24 @@ const FeesListPage = async ({
     }),
   };
 
+  /* =========================
+     DATA
+  ========================= */
+
   const [grades, totalCount] = await Promise.all([
     db.grade.findMany({
       where: whereClause,
       select: {
-        ...FeeGradeSelect,
+        id: true,
+        level: true,
         feestructure: {
           where: academicYearId
             ? { academicYearId }
             : undefined,
-          select: FeeGradeSelect.feestructure.select,
-        }
+          include: {
+            feeCycle: true, // 🔥 IMPORTANT
+          },
+        },
       },
       orderBy: { [sortKey]: sortOrder },
       take: ITEM_PER_PAGE,
@@ -161,6 +182,10 @@ const FeesListPage = async ({
 
   const Path = `/${slug}/list/fees/manage`;
 
+  /* =========================
+     UI
+  ========================= */
+
   return (
     <div className="flex-1 p-4 bg-white dark:bg-gray-900 text-black dark:text-white">
       {/* Top Controls */}
@@ -171,8 +196,8 @@ const FeesListPage = async ({
 
         <div className="flex flex-col items-center w-full gap-4 md:flex-row md:w-auto">
           <TableSearch />
-          {/* Academic Year Dropdown */}
           <AcademicYearDropdown basePath={Path} />
+
           <ClassFilterDropdown
             classes={[]}
             grades={allGrades}
@@ -180,13 +205,14 @@ const FeesListPage = async ({
             basePath={Path}
             showClassFilter={false}
           />
-          <div className="flex flex-col items-center w-full gap-4 md:flex-row md:w-auto">
-            <div className="flex items-center self-end gap-4">
-              <ResetFiltersButton basePath={Path} />
-              <IconButton icon={Filter} />
-              <SortButton sortKey="level" />
-              {role === "admin" && <FormContainer table="fees" type="create" />}
-            </div>
+
+          <div className="flex items-center gap-4">
+            <ResetFiltersButton basePath={Path} />
+            <IconButton icon={Filter} />
+            <SortButton sortKey="level" />
+            {role === "admin" && (
+              <FormContainer table="fees" type="create" />
+            )}
           </div>
         </div>
       </div>

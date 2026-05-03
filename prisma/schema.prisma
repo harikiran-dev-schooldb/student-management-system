@@ -56,6 +56,7 @@ model SchoolInfo {
   classes                 Class[]
   auditlog                AuditLog[]
   paymentaccount          PaymentAccount[]
+  feeCycles               FeeCycle[]
 }
 
 model Admin {
@@ -481,87 +482,119 @@ model SubjectTeacher {
   @@index([subjectId, schoolId])
 }
 
-model FeeStructure {
-  id             Int           @id @default(autoincrement())
-  gradeId        Int
-  startDate      DateTime
-  dueDate        DateTime
-  termFees       Int
-  abacusFees     Int?
-  term           Term
+model FeeCycle {
+  id        Int      @id @default(autoincrement())
+  name      String // "Term 1", "June", "Quarter 1"
+  order     Int
+  startDate DateTime
+  dueDate   DateTime
+  type      String // TERM | MONTH | CUSTOM
+
   schoolId       String
   academicYearId Int
-  academicYear   AcademicYear  @relation(fields: [academicYearId], references: [id])
-  grade          Grade         @relation("GradeToFeesStructure", fields: [gradeId], references: [id])
-  school         SchoolInfo    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  studentFees    StudentFees[]
 
-  @@unique([gradeId, term, academicYearId, schoolId])
+  school       SchoolInfo   @relation(fields: [schoolId], references: [id])
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
+
+  feeStructures FeeStructure[]
+
+  studentFees StudentFees[]
+
+  feeTransactions   FeeTransaction[]
+  cancelledReceipts CancelledReceipt[]
+
+  @@unique([name, schoolId, academicYearId])
+  @@index([schoolId])
+}
+
+model FeeStructure {
+  id         Int     @id @default(autoincrement())
+  gradeId    Int
+  feeCycleId Int?
+  amount     Int?
+  feeType    String?
+
+  schoolId       String
+  academicYearId Int
+
+  feeCycle     FeeCycle?     @relation(fields: [feeCycleId], references: [id])
+  academicYear AcademicYear  @relation(fields: [academicYearId], references: [id])
+  grade        Grade         @relation("GradeToFeesStructure", fields: [gradeId], references: [id])
+  school       SchoolInfo    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  studentFees  StudentFees[]
+
+  @@unique([gradeId, feeCycleId, feeType, academicYearId, schoolId])
   @@index([schoolId])
 }
 
 model FeeTransaction {
-  id              Int          @id @default(autoincrement())
-  studentId       String
-  studentFeesId   Int
-  term            Term
-  amount          Decimal      @default(0) @db.Decimal(12, 2)
-  discountAmount  Decimal      @default(0) @db.Decimal(12, 2)
-  fineAmount      Decimal      @default(0) @db.Decimal(12, 2)
-  receiptDate     DateTime
-  receivedDate    DateTime?    @default(now())
-  receiptNo       String
-  paymentMode     PaymentMode  @default(CASH)
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  id            Int    @id @default(autoincrement())
+  studentId     String
+  studentFeesId Int
+  feeCycleId    Int?
+
+  amount         Decimal @default(0) @db.Decimal(12, 2)
+  discountAmount Decimal @default(0) @db.Decimal(12, 2)
+  fineAmount     Decimal @default(0) @db.Decimal(12, 2)
+
+  receiptDate  DateTime
+  receivedDate DateTime?   @default(now())
+  receiptNo    String
+  paymentMode  PaymentMode @default(CASH)
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
   remarks         String?
-  transactionType String       @default("PAYMENT")
+  transactionType String    @default("PAYMENT")
   updatedByName   String?
   deletedAt       DateTime?
-  schoolId        String
-  academicYearId  Int
-  academicYear    AcademicYear @relation(fields: [academicYearId], references: [id])
-  school          SchoolInfo   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  studentFees     StudentFees  @relation("FeeTransactionStudentFees", fields: [studentFeesId], references: [id], onDelete: Cascade)
-  student         Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  schoolId       String
+  academicYearId Int
+
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
+  school       SchoolInfo   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  studentFees  StudentFees  @relation("FeeTransactionStudentFees", fields: [studentFeesId], references: [id], onDelete: Cascade)
+  student      Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  feeCycle     FeeCycle?    @relation(fields: [feeCycleId], references: [id])
 
   @@unique([receiptNo, schoolId])
   @@index([schoolId])
   @@index([studentFeesId])
-  @@index([schoolId, receiptDate])
-  @@index([academicYearId, receiptDate])
-  @@index([studentId, academicYearId])
-  @@index([studentId, term])
-  @@index([schoolId, studentId, receiptDate])
+  @@index([feeCycleId])
 }
 
 model StudentFees {
-  id               Int              @id @default(autoincrement())
-  studentId        String
-  feeStructureId   Int
-  term             Term
-  paidAmount       Int              @default(0)
-  abacusPaidAmount Int?
-  discountAmount   Int              @default(0)
-  fineAmount       Int              @default(0)
-  receiptDate      DateTime?
-  receivedDate     DateTime?        @default(now())
-  paymentMode      PaymentMode      @default(CASH)
-  receiptNo        String?
-  remarks          String?          @default("")
-  updatedByName    String?
-  schoolId         String
-  academicYearId   Int
-  feeTransactions  FeeTransaction[] @relation("FeeTransactionStudentFees")
-  academicYear     AcademicYear     @relation(fields: [academicYearId], references: [id])
-  feeStructure     FeeStructure     @relation(fields: [feeStructureId], references: [id])
-  school           SchoolInfo       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  student          Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  id             Int     @id @default(autoincrement())
+  studentId      String
+  feeStructureId Int
+  feeCycleId     Int?
+  feeType        String?
 
-  @@unique([studentId, academicYearId, term, schoolId], name: "studentId_academicYear_term")
+  paidAmount     Int  @default(0)
+  dueAmount      Int?
+  discountAmount Int  @default(0)
+  fineAmount     Int  @default(0)
+
+  receiptDate   DateTime?
+  receivedDate  DateTime?   @default(now())
+  paymentMode   PaymentMode @default(CASH)
+  receiptNo     String?
+  remarks       String?     @default("")
+  updatedByName String?
+
+  schoolId       String
+  academicYearId Int
+
+  feeTransactions FeeTransaction[] @relation("FeeTransactionStudentFees")
+  academicYear    AcademicYear     @relation(fields: [academicYearId], references: [id])
+  feeStructure    FeeStructure     @relation(fields: [feeStructureId], references: [id])
+  feeCycle        FeeCycle?        @relation(fields: [feeCycleId], references: [id])
+  school          SchoolInfo       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student         Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, feeCycleId, feeType, academicYearId, schoolId])
   @@index([schoolId])
-  @@index([studentId, academicYearId])
-  @@index([studentId, term])
 }
 
 model StudentTotalFees {
@@ -607,24 +640,28 @@ model Attendance {
 }
 
 model CancelledReceipt {
-  id                String     @id @default(cuid())
+  id                String   @id @default(cuid())
   studentId         String
-  term              Term
-  originalReceiptNo String
-  cancelledDate     DateTime   @default(now())
+  feeCycleId        Int?
+  academicYearId    Int
+  originalReceiptNo String?
+  cancelledDate     DateTime @default(now())
   cancelledBy       String?
   reason            String?
-  cancelledAmount   Decimal    @default(0) @db.Decimal(12, 2)
-  cancelledDiscount Decimal    @default(0) @db.Decimal(12, 2)
-  cancelledFine     Decimal    @default(0) @db.Decimal(12, 2)
-  cancelledTotal    Decimal    @default(0) @db.Decimal(12, 2)
+  cancelledAmount   Decimal  @default(0) @db.Decimal(12, 2)
+  cancelledDiscount Decimal  @default(0) @db.Decimal(12, 2)
+  cancelledFine     Decimal  @default(0) @db.Decimal(12, 2)
+  cancelledTotal    Decimal  @default(0) @db.Decimal(12, 2)
   schoolId          String
-  school            SchoolInfo @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  student           Student    @relation(fields: [studentId], references: [id])
+
+  school       SchoolInfo   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student      Student      @relation(fields: [studentId], references: [id])
+  feeCycle     FeeCycle?    @relation(fields: [feeCycleId], references: [id])
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
 
   @@index([studentId])
-  @@index([term])
-  @@index([originalReceiptNo])
+  @@index([feeCycleId])
+  @@index([academicYearId])
   @@index([schoolId])
 }
 
@@ -701,16 +738,14 @@ model FeePayment {
 model PaymentAccount {
   id        String @id @default(cuid())
   schoolId  String
-  branchId  Int     // ✅ make required
-  gradeId   Int     // ✅ make required
+  branchId  Int // ✅ make required
+  gradeId   Int // ✅ make required
   accountId String
 
   school SchoolInfo @relation(fields: [schoolId], references: [id])
 
   @@unique([schoolId, branchId, gradeId]) // 🔥 FIX
 }
-
-
 
 model AuditLog {
   id        String     @id @default(cuid())
@@ -838,6 +873,8 @@ model AcademicYear {
   studentFees             StudentFees[]
   studentTotalFees        StudentTotalFees[]
   teacherClassAssignments TeacherClassAssignment[]
+  feeCycles               FeeCycle[]
+  cancelledReceipts       CancelledReceipt[]
 
   @@unique([name, schoolId])
   @@index([schoolId, isActive])

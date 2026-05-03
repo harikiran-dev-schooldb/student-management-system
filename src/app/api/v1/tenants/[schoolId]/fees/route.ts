@@ -18,28 +18,22 @@ export async function POST(
 
     const {
       gradeId,
-      term,
+      feeCycleId,
+      feeType,       // TUITION / BUS / etc
+      amount,
       academicYear,
-      startDate,
-      dueDate,
-      termFees,
-      abacusFees = 0,
     } = body;
 
-    if (!gradeId || !term || !academicYear) {
+    if (!gradeId || !feeCycleId || !feeType || !academicYear) {
       return NextResponse.json(
-        { error: "gradeId, term, academicYear required" },
+        { error: "gradeId, feeCycleId, feeType, academicYear required" },
         { status: 400 },
       );
     }
 
     /* ---------- Validate Grade ---------- */
-
     const grade = await db.grade.findFirst({
-      where: {
-        id: gradeId,
-        schoolId,
-      },
+      where: { id: gradeId, schoolId },
     });
 
     if (!grade) {
@@ -49,13 +43,29 @@ export async function POST(
       );
     }
 
-    /* ---------- Check existing ---------- */
+    /* ---------- Validate FeeCycle ---------- */
+    const cycle = await db.feeCycle.findFirst({
+      where: {
+        id: feeCycleId,
+        schoolId,
+        academicYearId: academicYear,
+      },
+    });
 
+    if (!cycle) {
+      return NextResponse.json(
+        { error: "Invalid fee cycle" },
+        { status: 400 },
+      );
+    }
+
+    /* ---------- Check existing ---------- */
     const existing = await db.feeStructure.findUnique({
       where: {
-        gradeId_term_academicYearId_schoolId: {
+        gradeId_feeCycleId_feeType_academicYearId_schoolId: {
           gradeId,
-          term,
+          feeCycleId,
+          feeType,
           academicYearId: academicYear,
           schoolId,
         },
@@ -69,17 +79,14 @@ export async function POST(
       );
     }
 
-    /* ---------- Create Fee Structure ---------- */
-
+    /* ---------- Create ---------- */
     const fee = await db.feeStructure.create({
       data: {
         gradeId,
-        term,
+        feeCycleId,
+        feeType,
+        amount: Number(amount),
         academicYearId: academicYear,
-        startDate: new Date(startDate),
-        dueDate: new Date(dueDate),
-        termFees: Number(termFees),
-        abacusFees: Number(abacusFees),
         schoolId,
       },
     });
@@ -115,34 +122,34 @@ export async function GET(
     const gradeId = searchParams.get("gradeId");
     const classId = searchParams.get("classId");
     const academicYear = searchParams.get("academicYear");
+    const feeCycleId = searchParams.get("feeCycleId");
+    const feeType = searchParams.get("feeType");
 
     const page = Number(searchParams.get("page") || 1);
     const limit = Number(searchParams.get("limit") || 20);
-
     const skip = (page - 1) * limit;
 
     const where: any = { schoolId };
 
-    if (studentId) {
-      where.studentId = studentId;
-    }
-
-    if (academicYear) {
-      where.academicYearId = academicYear;
-    }
+    if (studentId) where.studentId = studentId;
+    if (academicYear) where.academicYearId = Number(academicYear);
+    if (feeCycleId) where.feeCycleId = Number(feeCycleId);
+    if (feeType) where.feeType = feeType;
 
     if (gradeId) {
       where.feeStructure = {
-        is: {
-          gradeId: Number(gradeId),
-        },
+        is: { gradeId: Number(gradeId) },
       };
     }
 
     if (classId) {
       where.student = {
         is: {
-          classId: Number(classId),
+          enrollments: {
+            some: {
+              classId: Number(classId),
+            },
+          },
         },
       };
     }
@@ -154,9 +161,8 @@ export async function GET(
         where,
         skip,
         take: limit,
-        orderBy: {
-          studentId: "desc",
-        },
+        orderBy: { studentId: "desc" },
+
         include: {
           student: {
             select: {
@@ -179,9 +185,22 @@ export async function GET(
 
           feeStructure: {
             select: {
-              term: true,
-              academicYearId: true,
-              termFees: true,
+              amount: true,
+              feeType: true,
+              feeCycle: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+          },
+
+          feeCycle: {
+            select: {
+              id: true,
+              name: true,
+              type: true,
             },
           },
 

@@ -11,7 +11,7 @@ export function getMessageContent(
     className,
     schoolName,
     amount,
-    term,
+    feeCycleName,
     date,
     additionalInfo,
     leaveType,
@@ -40,21 +40,21 @@ export function getMessageContent(
 
     /* ---------------- FEE DUE ---------------- */
     case "FEE_RELATED":
-      return `Dear Parent, the fee for ${
-        term ?? "the current term"
-      } is pending for ${studentName}${classLabel}.${
-        formattedAmount ? ` Amount payable: ${formattedAmount}.` : ""
-      } Kindly arrange payment at the earliest.${footer}`;
+  return `Dear Parent, the fee for ${
+    feeCycleName ?? "the current cycle"
+  } is pending for ${studentName}${classLabel}.${
+    formattedAmount ? ` Amount payable: ${formattedAmount}.` : ""
+  } Kindly arrange payment at the earliest.${footer}`;
 
-    /* ---------------- FEE RECEIVED ---------------- */
-    case "FEE_COLLECTION":
-      return `Dear Parent, fee payment for ${
-        term ?? "the current term"
-      } has been received for ${studentName}${classLabel}.${
-        formattedAmount ? ` Amount received: ${formattedAmount}.` : ""
-      } Receipt date: ${
-        formattedDate || "today"
-      }. Thank you for your cooperation.${footer}`;
+      /* ---------------- FEE COLLECTION ---------------- */
+case "FEE_COLLECTION":
+  return `Dear Parent, fee payment for ${
+    feeCycleName ?? "the current cycle"
+  } has been received for ${studentName}${classLabel}.${
+    formattedAmount ? ` Amount received: ${formattedAmount}.` : ""
+  } Receipt date: ${
+    formattedDate || "today"
+  }. Thank you for your cooperation.${footer}`;
 
     /* ---------------- ANNOUNCEMENT ---------------- */
     case "ANNOUNCEMENT":

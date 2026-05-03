@@ -4,7 +4,6 @@ export const runtime = "nodejs";
 import prisma from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { resolveSchoolId } from "@/lib/resolveSchool";
-import { Term } from "@prisma/client";
 
 export async function POST(
   req: NextRequest,
@@ -13,8 +12,6 @@ export async function POST(
   try {
     const { schoolId: schoolSlug } = await params;
     const schoolId = await resolveSchoolId(schoolSlug);
-
-    console.log("Bulk fee structure upload for school:", schoolId);
 
     const { feeStructures } = await req.json();
 
@@ -28,21 +25,9 @@ export async function POST(
     const errors: string[] = [];
     const validRecords: any[] = [];
 
-    /* ---------------- Date Parser ---------------- */
+    /* ---------------- Fetch reference data ---------------- */
 
-    const parseDate = (value: string) => {
-      const parts = value.split("-");
-      if (parts.length !== 3) return null;
-
-      const [dd, mm, yyyy] = parts;
-      const parsed = new Date(`${yyyy}-${mm}-${dd}`);
-
-      return isNaN(parsed.getTime()) ? null : parsed;
-    };
-
-    /* ---------------- Fetch reference data once ---------------- */
-
-    const [grades, academicYears] = await Promise.all([
+    const [grades, academicYears, feeCycles] = await Promise.all([
       prisma.grade.findMany({
         where: { schoolId },
         select: { id: true },
@@ -52,12 +37,24 @@ export async function POST(
         where: { schoolId },
         select: { id: true, name: true },
       }),
+
+      prisma.feeCycle.findMany({
+        where: { schoolId },
+        select: { id: true, name: true, academicYearId: true },
+      }),
     ]);
 
     const gradeSet = new Set(grades.map((g) => g.id));
 
     const academicYearMap = new Map(
       academicYears.map((y) => [y.name, y.id])
+    );
+
+    const feeCycleMap = new Map(
+      feeCycles.map((c) => [
+        `${c.name}_${c.academicYearId}`,
+        c.id,
+      ])
     );
 
     /* ---------------- Validation ---------------- */
@@ -68,51 +65,42 @@ export async function POST(
 
       if (
         !row.gradeId ||
-        !row.term ||
-        !row.termFees ||
-        !row.startDate ||
-        !row.dueDate ||
+        !row.feeCycle ||
+        !row.feeType ||
+        !row.amount ||
         !row.academicYear
       ) {
         errors.push(`Row ${rowNo}: Missing required fields`);
         continue;
       }
 
-      if (!Object.values(Term).includes(row.term as Term)) {
-        errors.push(`Row ${rowNo}: Invalid term`);
-        continue;
-      }
-
-      const academicYearId = academicYearMap.get(row.academicYear);
-
-      if (!academicYearId) {
-        errors.push(`Row ${rowNo}: Invalid academic year`);
-        continue;
-      }
-
-      const startDate = parseDate(row.startDate);
-      const dueDate = parseDate(row.dueDate);
-
-      if (!startDate || !dueDate) {
-        errors.push(`Row ${rowNo}: Invalid date format`);
-        continue;
-      }
-
       const gradeId = Number(row.gradeId);
-
       if (!gradeSet.has(gradeId)) {
         errors.push(`Row ${rowNo}: Invalid grade`);
         continue;
       }
 
+      const academicYearId = academicYearMap.get(row.academicYear);
+      if (!academicYearId) {
+        errors.push(`Row ${rowNo}: Invalid academic year`);
+        continue;
+      }
+
+      const feeCycleId = feeCycleMap.get(
+        `${row.feeCycle}_${academicYearId}`
+      );
+
+      if (!feeCycleId) {
+        errors.push(`Row ${rowNo}: Invalid fee cycle`);
+        continue;
+      }
+
       validRecords.push({
         gradeId,
-        term: row.term as Term,
+        feeCycleId,
+        feeType: row.feeType,
+        amount: Number(row.amount),
         academicYearId,
-        termFees: Number(row.termFees),
-        abacusFees: row.abacusFees ? Number(row.abacusFees) : 0,
-        startDate,
-        dueDate,
       });
     }
 
@@ -129,18 +117,16 @@ export async function POST(
       for (const record of validRecords) {
         await tx.feeStructure.upsert({
           where: {
-            gradeId_term_academicYearId_schoolId: {
+            gradeId_feeCycleId_feeType_academicYearId_schoolId: {
               gradeId: record.gradeId,
-              term: record.term,
+              feeCycleId: record.feeCycleId,
+              feeType: record.feeType,
               academicYearId: record.academicYearId,
               schoolId,
             },
           },
           update: {
-            startDate: record.startDate,
-            dueDate: record.dueDate,
-            termFees: record.termFees,
-            abacusFees: record.abacusFees,
+            amount: record.amount,
           },
           create: {
             ...record,

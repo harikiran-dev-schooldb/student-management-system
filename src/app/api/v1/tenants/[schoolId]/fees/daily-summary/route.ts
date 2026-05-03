@@ -16,6 +16,9 @@ export async function GET(
     const { searchParams } = new URL(req.url);
 
     const academicYearId = searchParams.get("academicYear");
+    const feeCycleId = searchParams.get("feeCycleId");
+    const feeType = searchParams.get("feeType");
+
     const fromParam = searchParams.get("from");
     const toParam = searchParams.get("to");
 
@@ -32,7 +35,7 @@ export async function GET(
     from.setHours(0, 0, 0, 0);
     to.setHours(23, 59, 59, 999);
 
-    /* ---------------- Base Where ---------------- */
+    /* ---------------- Where ---------------- */
 
     const where: any = {
       schoolId,
@@ -44,33 +47,49 @@ export async function GET(
       },
     };
 
-    if (academicYearId) {
-      where.academicYearId = academicYearId;
+    if (academicYearId) where.academicYearId = Number(academicYearId);
+    if (feeCycleId) where.feeCycleId = Number(feeCycleId);
+
+    if (feeType) {
+      where.studentFees = {
+        feeType,
+      };
     }
 
-    /* ---------------- Fetch Transactions ---------------- */
+    /* ---------------- Fetch ---------------- */
 
     const transactions = await db.feeTransaction.findMany({
       where,
       select: {
         receiptDate: true,
         amount: true,
+        discountAmount: true,
+        fineAmount: true,
       },
       orderBy: {
         receiptDate: "asc",
       },
     });
 
-    /* ---------------- Aggregate By Date ---------------- */
+    /* ---------------- Aggregate ---------------- */
 
     const dailyMap = new Map<string, number>();
 
     for (const txn of transactions) {
-      const dateKey = txn.receiptDate.toISOString().split("T")[0];
+      // 🔥 safer date key (local date, no timezone shift)
+      const dateKey = new Date(txn.receiptDate)
+        .toLocaleDateString("en-CA"); // YYYY-MM-DD
+
+      const net =
+        Number(txn.amount) +
+        Number(txn.fineAmount ?? 0) -
+        Number(txn.discountAmount ?? 0);
 
       const prev = dailyMap.get(dateKey) || 0;
-      dailyMap.set(dateKey, prev + Number(txn.amount));
+      dailyMap.set(dateKey, prev + net);
     }
+
+    /* ---------------- Format ---------------- */
 
     const summary = Array.from(dailyMap.entries()).map(
       ([date, collected]) => ({

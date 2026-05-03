@@ -87,21 +87,25 @@ export async function createStudentWithIdentity(
       });
 
       if (feeStructures.length > 0) {
-        await tx.studentFees.createMany({
-          data: feeStructures.map((f) => ({
-            studentId: newStudent.id,
-            feeStructureId: f.id,
-            academicYearId: academicYear.id,
-            term: f.term,
-            paidAmount: 0,
-            discountAmount: 0,
-            fineAmount: 0,
-            abacusPaidAmount: 0,
-            paymentMode: "CASH",
-            schoolId,
-          })),
-        });
-      }
+  await tx.studentFees.createMany({
+    data: feeStructures.map((f) => ({
+      studentId: newStudent.id,
+      feeStructureId: f.id,
+      feeCycleId: f.feeCycleId, // ✅ use relation
+      academicYearId: academicYear.id,
+
+      paidAmount: 0,
+      discountAmount: 0,
+      fineAmount: 0,
+
+      dueAmount: f.amount ?? 0, // ✅ CRITICAL
+
+      paymentMode: "CASH",
+      schoolId,
+    })),
+    skipDuplicates: true, // ✅ prevent duplicates
+  });
+}
 
       // ✅ ADD THIS (you missed)
       await tx.studentTotalFees.create({

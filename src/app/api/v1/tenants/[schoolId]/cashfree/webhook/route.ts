@@ -4,50 +4,51 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import crypto from "crypto";
-import { Term, Prisma } from "@prisma/client";
 
 export async function POST(req: NextRequest) {
   try {
     console.log("🔥 WEBHOOK HIT");
 
-    /* -------------------------------
-       1️⃣ RAW BODY
-    -------------------------------- */
     const rawBody = await req.text();
 
-    /* -------------------------------
-       2️⃣ SIGNATURE VERIFY
-    -------------------------------- */
+    /* =========================
+       SIGNATURE VERIFY
+    ========================= */
+
     const signature =
       req.headers.get("x-webhook-signature") ||
       req.headers.get("x-cf-signature");
 
-const timestamp = req.headers.get("x-webhook-timestamp");
+    const timestamp = req.headers.get("x-webhook-timestamp");
 
-/* ✅ Allow Cashfree test webhook */
-const isTestWebhook = req.headers.get("user-agent")?.includes("Cashfree");
+    const isTestWebhook = req.headers
+      .get("user-agent")
+      ?.includes("Cashfree");
 
-if (!signature || !timestamp) {
-  if (process.env.NODE_ENV !== "production" || isTestWebhook) {
-    console.log("⚠️ Skipping signature check (test mode)");
-  } else {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-}
+    if (!signature || !timestamp) {
+      if (process.env.NODE_ENV !== "production" || isTestWebhook) {
+        console.log("⚠️ Skipping signature check (test)");
+      } else {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+    } else {
+      const expectedSignature = crypto
+        .createHmac("sha256", process.env.CASHFREE_SECRET_KEY!)
+        .update(timestamp + rawBody)
+        .digest("base64");
 
-    const expectedSignature = crypto
-      .createHmac("sha256", process.env.CASHFREE_SECRET_KEY!)
-      .update(timestamp + rawBody)
-      .digest("base64");
-
-    if (signature !== expectedSignature) {
-      console.error("❌ Invalid signature");
-      return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+      if (signature !== expectedSignature) {
+        return NextResponse.json(
+          { error: "Invalid signature" },
+          { status: 401 }
+        );
+      }
     }
 
-    /* -------------------------------
-       3️⃣ PARSE BODY
-    -------------------------------- */
+    /* =========================
+       PARSE BODY
+    ========================= */
+
     const body = JSON.parse(rawBody);
 
     const event = body?.type;
@@ -57,9 +58,10 @@ if (!signature || !timestamp) {
       return NextResponse.json({ status: "ignored" });
     }
 
-    /* -------------------------------
-       4️⃣ FETCH PAYMENT
-    -------------------------------- */
+    /* =========================
+       FETCH PAYMENT
+    ========================= */
+
     const existing = await prisma.feePayment.findUnique({
       where: { orderId },
     });
@@ -68,9 +70,6 @@ if (!signature || !timestamp) {
       return NextResponse.json({ status: "not_found" });
     }
 
-    /* -------------------------------
-       5️⃣ IDEMPOTENCY
-    -------------------------------- */
     if (existing.status === "SUCCESS") {
       return NextResponse.json({ status: "already_processed" });
     }
@@ -80,14 +79,13 @@ if (!signature || !timestamp) {
     const paymentAmount = Number(payment?.payment_amount);
     const transactionId = String(payment?.cf_payment_id);
 
-    /* =========================================================
-       🚀 SUCCESS FLOW
-    ========================================================= */
+    /* =========================
+       SUCCESS FLOW
+    ========================= */
+
     if (event === "PAYMENT_SUCCESS_WEBHOOK") {
       await prisma.$transaction(async (tx) => {
-        /* -------------------------------
-           1️⃣ Update FeePayment
-        -------------------------------- */
+        /* 1️⃣ Update payment */
         await tx.feePayment.update({
           where: { orderId },
           data: {
@@ -98,75 +96,50 @@ if (!signature || !timestamp) {
           },
         });
 
-        /* -------------------------------
-           2️⃣ Extract metadata safely
-        -------------------------------- */
+        /* 2️⃣ Metadata */
         const metadata = (existing.metadata ?? {}) as {
-          terms?: string[];
+          feeCycleIds?: number[];
           academicYearId?: number;
         };
+
+        const { feeCycleIds = [], academicYearId } = metadata;
+
+        if (!feeCycleIds.length || !academicYearId) {
+          throw new Error("Missing feeCycleIds / academicYearId");
+        }
 
         const studentId = existing.studentId;
         const schoolId = existing.schoolId;
 
-        const terms: Term[] = (metadata.terms ?? []).filter((t) =>
-          Object.values(Term).includes(t as Term)
-        ) as Term[];
-
-        const academicYearId = metadata.academicYearId;
-
-        if (!terms.length || !academicYearId) {
-          console.error("❌ Missing metadata");
-          return;
-        }
-
-        /* -------------------------------
-           3️⃣ Fetch StudentFees (typed)
-        -------------------------------- */
+        /* 3️⃣ Fetch student fees */
         const feesList = await tx.studentFees.findMany({
           where: {
             studentId,
             academicYearId,
-            term: { in: terms },
+            feeCycleId: { in: feeCycleIds },
           },
           include: {
-            feeStructure: {
-              select: {
-                termFees: true,
-                abacusFees: true,
-              },
-            },
+            feeStructure: true,
+            feeCycle: true,
+          },
+          orderBy: {
+            feeCycleId: "asc",
           },
         });
 
-        type FeeWithStructure = Prisma.StudentFeesGetPayload<{
-          include: {
-            feeStructure: {
-              select: {
-                termFees: true;
-                abacusFees: true;
-              };
-            };
-          };
-        }>;
-
         let remaining = paymentAmount;
 
-        /* -------------------------------
-           4️⃣ Process fees
-        -------------------------------- */
-        for (const fee of feesList as FeeWithStructure[]) {
+        /* 4️⃣ Process payments */
+        for (const fee of feesList) {
           if (remaining <= 0) break;
 
-          const total =
-            (fee.feeStructure?.termFees ?? 0) +
-            (fee.feeStructure?.abacusFees ?? 0);
+          const expected = fee.feeStructure?.amount ?? 0;
 
           const paid = fee.paidAmount ?? 0;
           const discount = fee.discountAmount ?? 0;
           const fine = fee.fineAmount ?? 0;
 
-          const due = total - paid - discount + fine;
+          const due = expected - paid - discount + fine;
 
           if (due <= 0) continue;
 
@@ -177,7 +150,7 @@ if (!signature || !timestamp) {
             data: {
               studentId,
               studentFeesId: fee.id,
-              term: fee.term,
+              feeCycleId: fee.feeCycleId,
               amount: payAmount,
               receiptDate: new Date(),
               receiptNo: `ONLINE-${Date.now()}`,
@@ -187,12 +160,13 @@ if (!signature || !timestamp) {
             },
           });
 
-          /* Update student fees */
+          /* Update studentFees */
           await tx.studentFees.update({
             where: { id: fee.id },
             data: {
-              paidAmount: {
-                increment: payAmount,
+              paidAmount: { increment: payAmount },
+              dueAmount: {
+                decrement: payAmount,
               },
             },
           });
@@ -200,9 +174,7 @@ if (!signature || !timestamp) {
           remaining -= payAmount;
         }
 
-        /* -------------------------------
-           5️⃣ Update totals
-        -------------------------------- */
+        /* 5️⃣ Update totals */
         const totals = await tx.studentFees.aggregate({
           where: {
             studentId,
@@ -212,6 +184,7 @@ if (!signature || !timestamp) {
             paidAmount: true,
             discountAmount: true,
             fineAmount: true,
+            dueAmount: true,
           },
         });
 
@@ -224,27 +197,32 @@ if (!signature || !timestamp) {
             },
           },
           update: {
-            totalPaidAmount: totals._sum.paidAmount || 0,
-            totalDiscountAmount: totals._sum.discountAmount || 0,
-            totalFineAmount: totals._sum.fineAmount || 0,
+            totalPaidAmount: totals._sum.paidAmount ?? 0,
+            totalDiscountAmount: totals._sum.discountAmount ?? 0,
+            totalFineAmount: totals._sum.fineAmount ?? 0,
+            dueAmount: totals._sum.dueAmount ?? 0,
           },
           create: {
             studentId,
             schoolId,
             academicYearId,
-            totalPaidAmount: totals._sum.paidAmount || 0,
-            totalDiscountAmount: totals._sum.discountAmount || 0,
-            totalFineAmount: totals._sum.fineAmount || 0,
+            totalPaidAmount: totals._sum.paidAmount ?? 0,
+            totalDiscountAmount: totals._sum.discountAmount ?? 0,
+            totalFineAmount: totals._sum.fineAmount ?? 0,
+            totalFeeAmount: 0,
+            totalAbacusAmount: 0,
+            dueAmount: totals._sum.dueAmount ?? 0,
           },
         });
       });
 
-      console.log("✅ FULL PAYMENT PROCESSED:", orderId);
+      console.log("✅ PAYMENT PROCESSED:", orderId);
     }
 
-    /* -------------------------------
+    /* =========================
        FAILED FLOW
-    -------------------------------- */
+    ========================= */
+
     if (event === "PAYMENT_FAILED_WEBHOOK") {
       await prisma.feePayment.update({
         where: { orderId },
@@ -255,6 +233,9 @@ if (!signature || !timestamp) {
     return NextResponse.json({ status: "OK" });
   } catch (err) {
     console.error("❌ Webhook error:", err);
-    return NextResponse.json({ error: "Webhook failed" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Webhook failed" },
+      { status: 500 }
+    );
   }
 }

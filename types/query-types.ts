@@ -274,17 +274,29 @@ export type TeacherWithDetails = Prisma.TeacherGetPayload<{
 // -------------------------------
 
 export const FeeGradeSelect = {
+
   id: true,
   level: true,
   feestructure: {
     select: {
       id: true,
-      term: true,
-      termFees: true,
-      abacusFees: true,
-      startDate: true,
-      dueDate: true,
-      academicYear: true,
+      amount: true,
+      feeType: true,
+      feeCycle: {
+        select: {
+          id: true,
+          name: true,
+          startDate: true,
+          dueDate: true,
+        },
+      },
+
+      academicYear: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
     },
   },
 } satisfies Prisma.GradeSelect;

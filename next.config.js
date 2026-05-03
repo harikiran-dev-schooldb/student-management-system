@@ -8,14 +8,8 @@ const withBundleAnalyzer = bundleAnalyzer({
 const nextConfig = {
   reactStrictMode: true,
 
-  // REQUIRED for Capacitor static build
-
   images: {
     unoptimized: true,
-  },
-
-  eslint: {
-    ignoreDuringBuilds: true,
   },
 
   experimental: {

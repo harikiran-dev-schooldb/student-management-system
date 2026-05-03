@@ -1,4 +1,3 @@
-// lib/fees.ts
 import { tenantPrisma } from "./tenant-prisma";
 
 export async function getGroupedStudentFees(
@@ -18,10 +17,10 @@ export async function getGroupedStudentFees(
       paidAmount: true,
       discountAmount: true,
       fineAmount: true,
-      abacusPaidAmount: true,
+      dueAmount: true, // ✅ SOURCE OF TRUTH
       feeStructure: {
         select: {
-          termFees: true,
+          amount: true, // ✅ NEW FIELD
         },
       },
     },
@@ -34,15 +33,14 @@ export async function getGroupedStudentFees(
       totalPaidAmount: number;
       totalDiscountAmount: number;
       totalFineAmount: number;
-      totalAbacusAmount: number;
       totalFeeAmount: number;
       dueAmount: number;
-      status: string;
+      status: "Paid" | "Partial" | "Unpaid";
     }
   >();
 
   for (const fee of fees) {
-    const termFee = fee.feeStructure?.termFees || 0;
+    const totalFee = fee.feeStructure?.amount ?? 0;
 
     if (!feeMap.has(fee.studentId)) {
       feeMap.set(fee.studentId, {
@@ -50,26 +48,30 @@ export async function getGroupedStudentFees(
         totalPaidAmount: 0,
         totalDiscountAmount: 0,
         totalFineAmount: 0,
-        totalAbacusAmount: 0,
         totalFeeAmount: 0,
         dueAmount: 0,
-        status: "Not Paid",
+        status: "Unpaid",
       });
     }
 
     const agg = feeMap.get(fee.studentId)!;
 
-    agg.totalPaidAmount += fee.paidAmount;
-    agg.totalDiscountAmount += fee.discountAmount;
-    agg.totalFineAmount += fee.fineAmount;
-    agg.totalAbacusAmount += fee.abacusPaidAmount || 0;
-    agg.totalFeeAmount += termFee;
-    agg.dueAmount += termFee - fee.paidAmount;
+    agg.totalPaidAmount += fee.paidAmount ?? 0;
+    agg.totalDiscountAmount += fee.discountAmount ?? 0;
+    agg.totalFineAmount += fee.fineAmount ?? 0;
+    agg.totalFeeAmount += totalFee;
+    agg.dueAmount += fee.dueAmount ?? 0;
   }
 
+  /* ---------- STATUS LOGIC ---------- */
   for (const agg of feeMap.values()) {
-    agg.status =
-      agg.totalPaidAmount >= agg.totalFeeAmount ? "Paid" : "Not Paid";
+    if (agg.dueAmount <= 0) {
+      agg.status = "Paid";
+    } else if (agg.totalPaidAmount > 0) {
+      agg.status = "Partial";
+    } else {
+      agg.status = "Unpaid";
+    }
   }
 
   return Array.from(feeMap.values());

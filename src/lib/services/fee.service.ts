@@ -1,26 +1,26 @@
 import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
 
-
-
-export async function assignFeesToStudent(tx: any, {
-  studentId,
-  gradeId,
-  academicYearId,
-  schoolId,
-}: {
-  studentId: string;
-  gradeId: number;
-  academicYearId: number;
-  schoolId: string;
-}) {
+/* ----------------------------------------
+   Assign Fees
+---------------------------------------- */
+export async function assignFeesToStudent(
+  tx: Prisma.TransactionClient | any,
+  {
+    studentId,
+    gradeId,
+    academicYearId,
+    schoolId,
+  }: {
+    studentId: string;
+    gradeId: number;
+    academicYearId: number;
+    schoolId: string;
+  }
+) {
   const feeStructures: Prisma.FeeStructureGetPayload<{}>[] =
     await tx.feeStructure.findMany({
-      where: {
-        gradeId,
-        academicYearId,
-        schoolId,
-      },
+      where: { gradeId, academicYearId, schoolId },
     });
 
   if (feeStructures.length === 0) return;
@@ -29,11 +29,11 @@ export async function assignFeesToStudent(tx: any, {
     data: feeStructures.map((f) => ({
       studentId,
       feeStructureId: f.id,
-      term: f.term,
+      feeCycleId: f.feeCycleId,
       paidAmount: 0,
       discountAmount: 0,
       fineAmount: 0,
-      abacusPaidAmount: 0,
+      dueAmount: f.amount ?? 0,
       paymentMode: "CASH",
       academicYearId,
       schoolId,
@@ -41,14 +41,8 @@ export async function assignFeesToStudent(tx: any, {
     skipDuplicates: true,
   });
 
-  const totalFeeAmount = feeStructures.reduce(
-    (sum: number, f) =>
-      sum + Number(f.termFees || 0) + Number(f.abacusFees || 0),
-    0
-  );
-
-  const totalAbacusAmount = feeStructures.reduce(
-    (sum: number, f) => sum + Number(f.abacusFees || 0),
+  const totalFeeAmount = feeStructures.reduce<number>(
+    (sum, f) => sum + (f.amount ?? 0),
     0
   );
 
@@ -62,7 +56,6 @@ export async function assignFeesToStudent(tx: any, {
     },
     update: {
       totalFeeAmount,
-      totalAbacusAmount,
       dueAmount: totalFeeAmount,
     },
     create: {
@@ -70,7 +63,6 @@ export async function assignFeesToStudent(tx: any, {
       academicYearId,
       schoolId,
       totalFeeAmount,
-      totalAbacusAmount,
       totalPaidAmount: 0,
       totalDiscountAmount: 0,
       totalFineAmount: 0,
@@ -79,6 +71,9 @@ export async function assignFeesToStudent(tx: any, {
   });
 }
 
+/* ----------------------------------------
+   Recalculate Totals
+---------------------------------------- */
 export async function recalcStudentTotals({
   studentId,
   schoolId,
@@ -88,33 +83,37 @@ export async function recalcStudentTotals({
   schoolId: string;
   academicYearId: number;
 }) {
-  const fees = await prisma.studentFees.findMany({
-    where: { studentId, schoolId, academicYearId },
-    include: { feeStructure: true },
-  });
+  const fees: Prisma.StudentFeesGetPayload<{}>[] =
+    await prisma.studentFees.findMany({
+      where: { studentId, schoolId, academicYearId },
+    });
 
-  const totalFee = fees.reduce(
-    (sum, f) =>
-      sum +
-      Number(f.feeStructure?.termFees || 0) +
-      Number(f.feeStructure?.abacusFees || 0),
+  const totalPaid = fees.reduce<number>(
+    (sum, f) => sum + (f.paidAmount ?? 0),
     0
   );
 
-  const tx = await prisma.feeTransaction.aggregate({
-    where: { studentId, schoolId, academicYearId },
-    _sum: {
-      amount: true,
-      discountAmount: true,
-      fineAmount: true,
-    },
-  });
+  const totalDiscount = fees.reduce<number>(
+    (sum, f) => sum + (f.discountAmount ?? 0),
+    0
+  );
 
-  const paid = Number(tx._sum.amount || 0);
-  const discount = Number(tx._sum.discountAmount || 0);
-  const fine = Number(tx._sum.fineAmount || 0);
+  const totalFine = fees.reduce<number>(
+    (sum, f) => sum + (f.fineAmount ?? 0),
+    0
+  );
 
-  const due = totalFee - paid - discount + fine;
+  const totalDue = fees.reduce<number>(
+    (sum, f) => sum + (f.dueAmount ?? 0),
+    0
+  );
+
+  /* ----------------------------------------
+     Safer totalFee calculation
+     (what student actually owes originally)
+  ---------------------------------------- */
+  const totalFeeAmount =
+    totalPaid + totalDiscount + totalDue - totalFine;
 
   await prisma.studentTotalFees.update({
     where: {
@@ -125,11 +124,11 @@ export async function recalcStudentTotals({
       },
     },
     data: {
-      totalFeeAmount: totalFee,
-      totalPaidAmount: paid,
-      totalDiscountAmount: discount,
-      totalFineAmount: fine,
-      dueAmount: due,
+      totalFeeAmount,
+      totalPaidAmount: totalPaid,
+      totalDiscountAmount: totalDiscount,
+      totalFineAmount: totalFine,
+      dueAmount: totalDue,
     },
   });
 }

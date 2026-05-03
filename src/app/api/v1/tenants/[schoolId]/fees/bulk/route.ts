@@ -29,7 +29,7 @@ export async function POST(
       );
     }
 
-    // ✅ Fetch active academic year ONCE (optimization)
+    // ✅ Fetch active academic year
     const activeYear = await db.academicYear.findFirst({
       where: { schoolId, isActive: true },
     });
@@ -45,56 +45,41 @@ export async function POST(
 
     const processRecord = async (record: any) => {
       const {
-        studentId,
-        term,
+        studentFeesId,
         amount = 0,
         discountAmount = 0,
         fineAmount = 0,
         receiptDate,
-        receiptNo,
         remarks,
         paymentMode = PaymentMode.CASH,
       } = record;
 
       // ✅ Validation
-      if (!studentId || !term || Number(amount) < 0) {
+      if (!studentFeesId || Number(amount) < 0) {
         return {
-          studentId,
+          studentFeesId,
           status: "error",
-          message: "Missing required fields",
+          message: "studentFeesId and valid amount required",
         };
       }
 
-
-
       try {
         await db.$transaction(async (tx) => {
-          // ✅ Check student
-          const student = await tx.student.findUnique({
-            where: { id: studentId },
-          });
-
-          if (!student) throw new Error("Student not found");
-
+          // ✅ Fetch Student Fee
           const studentFee = await tx.studentFees.findUnique({
-            where: {
-              studentId_academicYear_term: {
-                studentId,
-                academicYearId: activeYear.id,
-                term,
-                schoolId,
-              },
+            where: { id: studentFeesId },
+            include: {
+              feeStructure: true,
+              feeCycle: true,
+              student: true,
             },
-            include: { feeStructure: true },
           });
 
           if (!studentFee) {
             throw new Error("Student fee record not found");
           }
 
-          const totalFees =
-            (studentFee.feeStructure.termFees || 0) +
-            (studentFee.feeStructure.abacusFees || 0);
+          const totalFees = studentFee.feeStructure.amount || 0;
 
           const due =
             totalFees -
@@ -111,7 +96,7 @@ export async function POST(
             throw new Error(`Overpayment not allowed. Due: ₹${due}`);
           }
 
-          // 🔥 Generate receipt sequence safely
+          // 🔥 Generate receipt sequence
           const seq = await tx.receiptSequence.upsert({
             where: {
               schoolId_academicYearId: {
@@ -132,33 +117,36 @@ export async function POST(
             },
           });
 
-          // 🔥 Generate receipt number using your function
           const generatedReceiptNo = buildReceiptNumber(
             activeYear.name,
             seq.currentNo
           );
 
-
-          // ✅ Update studentFees
+          // ✅ Update StudentFees
           await tx.studentFees.update({
             where: { id: studentFee.id },
             data: {
               paidAmount: { increment: Number(amount) },
               discountAmount: { increment: Number(discountAmount) },
               fineAmount: { increment: Number(fineAmount) },
+              dueAmount: {
+                decrement: Number(amount),
+              },
               paymentMode,
               remarks,
-              receiptDate: receiptDate ? new Date(receiptDate) : new Date(),
+              receiptDate: receiptDate
+                ? new Date(receiptDate)
+                : new Date(),
               receiptNo: generatedReceiptNo,
               updatedByName: user?.userId,
             },
           });
 
-          // ✅ Update totals
+          // ✅ Update StudentTotalFees
           await tx.studentTotalFees.upsert({
             where: {
               studentId_academicYearId_schoolId: {
-                studentId,
+                studentId: studentFee.studentId,
                 academicYearId: activeYear.id,
                 schoolId,
               },
@@ -170,7 +158,7 @@ export async function POST(
               totalFeeAmount: { increment: incoming },
             },
             create: {
-              studentId,
+              studentId: studentFee.studentId,
               schoolId,
               academicYearId: activeYear.id,
               totalPaidAmount: Number(amount),
@@ -182,12 +170,12 @@ export async function POST(
             },
           });
 
-          // ✅ Create transaction
+          // ✅ Create Transaction
           await tx.feeTransaction.create({
             data: {
-              studentId,
+              studentId: studentFee.studentId,
               studentFeesId: studentFee.id,
-              term,
+              feeCycleId: studentFee.feeCycleId!,
               academicYearId: activeYear.id,
               amount: Number(amount),
               discountAmount: Number(discountAmount),
@@ -205,10 +193,13 @@ export async function POST(
           });
         });
 
-        return { studentId, status: "success" };
+        return {
+          studentFeesId,
+          status: "success",
+        };
       } catch (err: any) {
         return {
-          studentId,
+          studentFeesId,
           status: "error",
           message: err.message,
         };
@@ -218,12 +209,13 @@ export async function POST(
     // ✅ Batch processing
     for (let i = 0; i < records.length; i += CONCURRENCY_LIMIT) {
       const batch = records.slice(i, i + CONCURRENCY_LIMIT);
-      const batchResults = [];
 
+      const batchResults = [];
       for (const r of batch) {
         const result = await processRecord(r);
         batchResults.push(result);
       }
+
       results.push(...batchResults);
     }
 
@@ -232,6 +224,7 @@ export async function POST(
       processed: records.length,
       results,
     });
+
   } catch (error) {
     console.error("Bulk fee error:", error);
 
