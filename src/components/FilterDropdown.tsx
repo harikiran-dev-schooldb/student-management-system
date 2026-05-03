@@ -218,11 +218,9 @@ const StatusFilter = ({ basePath }: StatusFilterProps) => {
         value={currentStatus}
       >
         <option value="">Status</option>
-        <option value="Not Paid">Not Paid</option>
-        <option value="1 Term Paid">1 Term Paid</option>
-        <option value="2 Terms Paid">2 Terms Paid</option>
-        <option value="3 Terms Paid">3 Terms Paid</option>
-        <option value="Fully Paid">Fully Paid</option>
+        <option value="NOT_PAID">Not Paid</option>
+        <option value="PARTIAL">Partial</option>
+        <option value="FULLY_PAID">Fully Paid</option>
       </select>
     </div>
   );

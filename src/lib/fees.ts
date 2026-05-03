@@ -8,71 +8,51 @@ export async function getGroupedStudentFees(
 
   const db = tenantPrisma(schoolId);
 
-  const fees = await db.studentFees.findMany({
-    where: {
-      studentId: { in: studentIds },
-    },
-    select: {
-      studentId: true,
-      paidAmount: true,
-      discountAmount: true,
-      fineAmount: true,
-      dueAmount: true, // ✅ SOURCE OF TRUTH
-      feeStructure: {
-        select: {
-          amount: true, // ✅ NEW FIELD
-        },
-      },
-    },
-  });
-
-  const feeMap = new Map<
-    string,
+  const result = await db.$queryRaw<
     {
       studentId: string;
-      totalPaidAmount: number;
-      totalDiscountAmount: number;
-      totalFineAmount: number;
-      totalFeeAmount: number;
-      dueAmount: number;
-      status: "Paid" | "Partial" | "Unpaid";
-    }
-  >();
+      totalPaidAmount: unknown;
+      totalDiscountAmount: unknown;
+      totalFineAmount: unknown;
+      dueAmount: unknown;
+      totalFeeAmount: unknown;
+    }[]
+  >`
+    SELECT 
+      sf."studentId",
+      COALESCE(SUM(sf."paidAmount"), 0) as "totalPaidAmount",
+      COALESCE(SUM(sf."discountAmount"), 0) as "totalDiscountAmount",
+      COALESCE(SUM(sf."fineAmount"), 0) as "totalFineAmount",
+      COALESCE(SUM(sf."dueAmount"), 0) as "dueAmount",
+      COALESCE(SUM(fs."amount"), 0) as "totalFeeAmount"
+    FROM "StudentFees" sf
+    LEFT JOIN "FeeStructure" fs 
+      ON fs.id = sf."feeStructureId"
+    WHERE sf."studentId" = ANY(${studentIds})
+    GROUP BY sf."studentId"
+  `;
 
-  for (const fee of fees) {
-    const totalFee = fee.feeStructure?.amount ?? 0;
+  return result.map((r) => {
+    // 🔥 Normalize everything to Number
+    const totalPaidAmount = Number(r.totalPaidAmount);
+    const totalDiscountAmount = Number(r.totalDiscountAmount);
+    const totalFineAmount = Number(r.totalFineAmount);
+    const totalFeeAmount = Number(r.totalFeeAmount);
+    const dueAmount = Number(r.dueAmount);
 
-    if (!feeMap.has(fee.studentId)) {
-      feeMap.set(fee.studentId, {
-        studentId: fee.studentId,
-        totalPaidAmount: 0,
-        totalDiscountAmount: 0,
-        totalFineAmount: 0,
-        totalFeeAmount: 0,
-        dueAmount: 0,
-        status: "Unpaid",
-      });
-    }
+    let status: "Paid" | "Partial" | "Unpaid" = "Unpaid";
 
-    const agg = feeMap.get(fee.studentId)!;
+    if (dueAmount <= 0) status = "Paid";
+    else if (totalPaidAmount > 0) status = "Partial";
 
-    agg.totalPaidAmount += fee.paidAmount ?? 0;
-    agg.totalDiscountAmount += fee.discountAmount ?? 0;
-    agg.totalFineAmount += fee.fineAmount ?? 0;
-    agg.totalFeeAmount += totalFee;
-    agg.dueAmount += fee.dueAmount ?? 0;
-  }
-
-  /* ---------- STATUS LOGIC ---------- */
-  for (const agg of feeMap.values()) {
-    if (agg.dueAmount <= 0) {
-      agg.status = "Paid";
-    } else if (agg.totalPaidAmount > 0) {
-      agg.status = "Partial";
-    } else {
-      agg.status = "Unpaid";
-    }
-  }
-
-  return Array.from(feeMap.values());
+    return {
+      studentId: r.studentId,
+      totalPaidAmount,
+      totalDiscountAmount,
+      totalFineAmount,
+      totalFeeAmount,
+      dueAmount,
+      status,
+    };
+  });
 }

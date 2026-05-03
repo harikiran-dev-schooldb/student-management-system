@@ -1,13 +1,11 @@
 import clsx from "clsx";
 import ClassFilterDropdown, {
-  GenderFilter,
-  StatusFilter,
+  GenderFilter
 } from "@/components/FilterDropdown";
 import Pagination from "@/components/Pagination";
 import SortButton from "@/components/SortButton";
 import Table from "@/components/Table";
 import TableSearch from "@/components/TableSearch";
-import { getGroupedStudentFees } from "@/lib/fees";
 import prisma from "@/lib/prisma";
 import { ITEM_PER_PAGE } from "@/lib/settings";
 import { fetchUserInfo } from "@/lib/utils/server-utils";
@@ -23,19 +21,21 @@ import { tenantPrisma } from "@/lib/tenant-prisma";
 import FeeStudentCard from "@/components/FeeStudentCard";
 
 const renderRow = (
-  item: FeeColectList,
+  item: FeeColectList & {
+    totalPaidAmount: number;
+    totalFeeAmount: number;
+    totalDiscountAmount: number;
+    dueAmount: number;
+  },
   role: string | null,
-  feeMap: Map<string, any>,
-  schoolId: string,
+  schoolId: string
 ) => {
-  const studentFee = feeMap.get(item.id);
+  const paidAmount = item.totalPaidAmount;
+const totalFeeAmount = item.totalFeeAmount;
+const discountAmount = item.totalDiscountAmount;
+const abacusAmount = 0; // or add if you support it
 
-  const paidAmount = studentFee?.totalPaidAmount ?? 0;
-  const abacusAmount = studentFee?.totalAbacusAmount ?? 0;
-  const totalFeeAmount = studentFee?.totalFeeAmount ?? 0;
-  const discountAmount =
-    item.totalFees?.[0]?.totalDiscountAmount?.toNumber?.() ?? 0;
-  const dueAmount = totalFeeAmount - paidAmount - abacusAmount - discountAmount;
+const dueAmount = item.dueAmount;
   const isPreKg = item.enrollments[0]?.class.name?.trim().toLowerCase() === "pre kg";
 
   const { status } = getTermStatus({
@@ -45,6 +45,13 @@ const renderRow = (
     totalFeeAmount,
     isPreKg,
   });
+
+  const normalizedStatus =
+  status === "Fully Paid"
+    ? "FULLY_PAID"
+    : status === "Not Paid"
+    ? "NOT_PAID"
+    : "PARTIAL";
 
   return (
     <tr
@@ -90,7 +97,7 @@ const renderRow = (
       <td className="hidden md:table-cell text-gray-700 dark:text-gray-200">
         {paidAmount}
       </td>
-      <td
+      {/* <td
         className={clsx(
           "",
           status === "Fully Paid" && "text-LamaGreen dark:text-LamaGreen",
@@ -99,7 +106,7 @@ const renderRow = (
         )}
       >
         {status}
-      </td>
+      </td> */}
 
       <td className="p-2">
         {role === "admin" && (
@@ -148,7 +155,7 @@ const getColumns = (role: string | null) => [
     accessor: "paidAmount",
     className: "hidden md:table-cell",
   },
-  { header: "Status", accessor: "status", className: "", sortable: true },
+  // { header: "Status", accessor: "status", className: "", sortable: true },
   ...(role === "admin" ? [{ header: "Actions", accessor: "action" }] : []),
 ];
 
@@ -194,8 +201,6 @@ const StudentFeeListPage = async ({
   const branchId = Array.isArray(rawBranchId)
     ? rawBranchId[0]
     : rawBranchId;
-
-  const classIdNum = classId ? Number(classId) : undefined;
 
   // 6️⃣ Build where clause (NO nested "where")
   const query: Prisma.StudentWhereInput = {
@@ -246,45 +251,109 @@ const StudentFeeListPage = async ({
   // 7️⃣ Tenant-safe queries
   const [data, count] = await db.$transaction([
     db.student.findMany({
-      where: query,
-      orderBy: [
-        { [sortKey]: sortOrder },
-        { name: "asc" },
-      ],
-      select: StudentFeeSelect,
-      take: ITEM_PER_PAGE,
-      skip: ITEM_PER_PAGE * (parseInt(p) - 1),
-    }),
+  where: query,
+  orderBy: [
+    { [sortKey]: sortOrder },
+    { name: "asc" },
+  ],
+  take: ITEM_PER_PAGE,
+  skip: ITEM_PER_PAGE * (parseInt(p) - 1),
+  select: {
+    ...StudentFeeSelect,
+
+    studentFees: {
+      select: {
+        paidAmount: true,
+        discountAmount: true,
+        fineAmount: true,
+        dueAmount: true,
+        feeStructure: {
+          select: {
+            amount: true,
+          },
+        },
+      },
+    },
+  },
+}),
     db.student.count({ where: query }),
   ]);
 
-  const branches = role === "admin" ? await db.branch.findMany() : [];
+  const [branches, grades, classes] = await Promise.all([
+  role === "admin" ? db.branch.findMany() : Promise.resolve([]),
 
-  const grades = role === "admin"
-    ? await db.grade.findMany({
-      where: {
-        ...(branchId && { branchId: Number(branchId) }),
-      },
-    })
-    : [];
+  role === "admin"
+    ? db.grade.findMany({
+        where: {
+          ...(branchId && { branchId: Number(branchId) }),
+        },
+      })
+    : Promise.resolve([]),
 
-  const classes = role === "admin"
-    ? await db.class.findMany({
-      where: {
-        ...(gradeId && { gradeId: Number(gradeId) }),
-        ...(branchId && {
-          Grade: {
-            branchId: Number(branchId),
-          },
-        }),
-      },
-    })
-    : [];
+  role === "admin"
+    ? db.class.findMany({
+        where: {
+          ...(gradeId && { gradeId: Number(gradeId) }),
+          ...(branchId && {
+            Grade: {
+              branchId: Number(branchId),
+            },
+          }),
+        },
+      })
+    : Promise.resolve([]),
+]);
 
-  // 9️⃣ Fetch grouped fees
-  const studentIds = data.map((s) => s.id);
-  const rawGroupedFees = await getGroupedStudentFees(school.id, studentIds);
-  const feeMap = new Map(rawGroupedFees.map((fee) => [fee.studentId, fee]));
+const enrichedData = data.map((item) => {
+  let totalPaidAmount = 0;
+  let totalDiscountAmount = 0;
+  let totalFineAmount = 0;
+  let totalFeeAmount = 0;
+  let dueAmount = 0;
+
+  for (const fee of item.studentFees ?? []) {
+    totalPaidAmount += Number(fee.paidAmount ?? 0);
+    totalDiscountAmount += Number(fee.discountAmount ?? 0);
+    totalFineAmount += Number(fee.fineAmount ?? 0);
+    totalFeeAmount += Number(fee.feeStructure?.amount ?? 0);
+    dueAmount += Number(fee.dueAmount ?? 0);
+  }
+
+  return {
+    ...item,
+    totalPaidAmount,
+    totalDiscountAmount,
+    totalFineAmount,
+    totalFeeAmount,
+    dueAmount: totalFeeAmount - totalPaidAmount - totalDiscountAmount,
+  };
+});
+
+const filteredData = enrichedData.filter((item) => {
+  const filterStatus = resolvedSearchParams.status;
+
+  if (!filterStatus) return true;
+
+  const { status } = getTermStatus({
+    dueAmount: item.dueAmount,
+    paidAmount: item.totalPaidAmount,
+    abacusAmount: 0,
+    totalFeeAmount: item.totalFeeAmount,
+    isPreKg:
+      item.enrollments[0]?.class.name?.trim().toLowerCase() === "pre kg",
+  });
+
+  const normalizedStatus =
+    status === "Fully Paid"
+      ? "FULLY_PAID"
+      : status === "Not Paid"
+      ? "NOT_PAID"
+      : "PARTIAL";
+
+  return normalizedStatus === filterStatus;
+});
+
+
 
   const Path = `/${slug}/list/fees/collect`;
 
@@ -309,7 +378,7 @@ const StudentFeeListPage = async ({
               basePath={Path}
             />
             <GenderFilter basePath={Path} />
-            <StatusFilter basePath={Path} />
+            {/* <StatusFilter basePath={Path} /> */}
             <div className="flex flex-col md:flex-row items-center gap-4 w-full">
               <div className="flex items-center gap-4">
                 <ResetFiltersButton basePath={Path} />
@@ -332,8 +401,8 @@ const StudentFeeListPage = async ({
             <div className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden shadow-sm">
               <Table
                 columns={columns}
-                renderRow={(item) => renderRow(item, role, feeMap, slug)}
-                data={data}
+                renderRow={(item) => renderRow(item, role, slug)}
+                data={filteredData}
                 sortKey={sortKey}
                 sortOrder={sortOrder}
               />
@@ -342,17 +411,11 @@ const StudentFeeListPage = async ({
 
           {/* ================= MOBILE + TABLET CARDS ================= */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 lg:hidden mt-4">
-            {data.map((item) => {
-              const studentFee = feeMap.get(item.id);
-
-              const paidAmount = Number(studentFee?.totalPaidAmount ?? 0);
-              const totalFeeAmount = Number(studentFee?.totalFeeAmount ?? 0);
-
-              const discountAmount = Number(
-                item.totalFees?.[0]?.totalDiscountAmount ?? 0
-              );
-
-              const dueAmount = totalFeeAmount - paidAmount - discountAmount;
+            {filteredData.map((item) => {
+              const paidAmount = item.totalPaidAmount;
+              const totalFeeAmount = item.totalFeeAmount;
+              const discountAmount = item.totalDiscountAmount;
+              const dueAmount = item.dueAmount;
 
               const safeItem = {
                 id: item.id,

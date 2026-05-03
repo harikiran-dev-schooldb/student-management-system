@@ -218,7 +218,7 @@ function getFeeStatus(fee: StudentFee) {
 
 
     const academicYearId = feesToPay[0]?.academicYearId;
-    const feeCycleIds = feesToPay.map((f) => f.feeCycleId);
+    const terms = feesToPay.map((f) => f.feeCycle?.name); // TERM_1, TERM_2
 
 
     /* -------------------------------
@@ -227,7 +227,7 @@ function getFeeStatus(fee: StudentFee) {
     const res = await api.post<CashfreeOrderResponse>("/cashfree/order", {
       studentId,
       amount: totalAmount,
-      feeCycleIds,
+      terms,
       academicYearId,
       customer_name: studentName,
       customer_phone: studentMobile,

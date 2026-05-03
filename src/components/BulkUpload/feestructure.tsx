@@ -18,11 +18,9 @@ import { useSchoolSlug } from "../hooks/getschool";
 
 type FeeStructureCSV = {
   gradeId: string;
-  abacusFees: string;
-  termFees: string;
-  term: string;
-  startDate: string;
-  dueDate: string;
+  feeCycle: string;
+  feeType: string;
+  amount: string;
   academicYear: string;
 };
 
@@ -46,37 +44,61 @@ export default function BulkFeeStructureUpload() {
   };
 
   const processFile = (file: File) => {
-    setFileName(file.name);
-    setSuccess(false);
-    setErrors([]);
+  setFileName(file.name);
+  setSuccess(false);
+  setErrors([]);
 
-    Papa.parse<FeeStructureCSV>(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (results) => {
-        const parsed = results.data;
-        const err: string[] = [];
+  Papa.parse<FeeStructureCSV>(file, {
+    header: true,
+    skipEmptyLines: true,
+    complete: (results) => {
+      const err: string[] = [];
+      const parsed = results.data.map((row) => ({
+  gradeId: row.gradeId?.trim(),
+  feeCycle: row.feeCycle?.trim(),
+  feeType: row.feeType?.trim(),
+  amount: row.amount?.trim(),
+  academicYear: row.academicYear?.trim(),
+}));
 
-        parsed.forEach((row, index) => {
-          const missing = [];
-          if (!row.gradeId) missing.push("gradeId");
-          if (!row.abacusFees) missing.push("abacusFees");
-          if (!row.termFees) missing.push("termFees");
-          if (!row.term) missing.push("term");
-          if (!row.startDate) missing.push("startDate");
-          if (!row.dueDate) missing.push("dueDate");
-          if (!row.academicYear) missing.push("academicYear");
+const validFeeCycles = ["TERM_1", "TERM_2", "TERM_3", "TERM_4"];
+const validFeeTypes = ["TERM_FEES", "ABACUS"];
 
-          if (missing.length) {
-            err.push(`Row ${index + 2}: missing ${missing.join(", ")}`);
-          }
-        });
+      parsed.forEach((row, index) => {
+        const missing = [];
 
-        setErrors(err);
-        setFeeStructures(parsed);
-      },
-    });
-  };
+        if (!row.gradeId) missing.push("gradeId");
+        if (!row.feeCycle) missing.push("feeCycle");
+        if (!row.feeType) missing.push("feeType");
+        if (!row.amount) missing.push("amount");
+        if (!row.academicYear) missing.push("academicYear");
+
+        if (row.gradeId && isNaN(Number(row.gradeId))) {
+          missing.push("gradeId must be number");
+        }
+
+        if (row.feeCycle && !validFeeCycles.includes(row.feeCycle)) {
+          missing.push("invalid feeCycle");
+        }
+
+        if (row.feeType && !validFeeTypes.includes(row.feeType)) {
+          missing.push("invalid feeType");
+        }
+
+        if (row.amount && isNaN(Number(row.amount))) {
+          missing.push("amount must be number");
+        }
+
+        if (missing.length) {
+          err.push(`Row ${index + 2}: ${missing.join(", ")}`);
+        }
+      });
+
+      setErrors(err);
+      setFeeStructures(parsed);
+    },
+  });
+};
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -197,7 +219,7 @@ export default function BulkFeeStructureUpload() {
                   </div>
                   <div className="space-y-2">
                     <h3 className="text-2xl font-bold text-zinc-800 dark:text-zinc-100">
-                      Upload Fee Config
+                      Upload Fee Structure CSV
                     </h3>
                     <p className="text-zinc-500 dark:text-zinc-400 max-w-sm mx-auto">
                       Drag and drop your file here, or click to browse. Supports standard .csv formatting.
