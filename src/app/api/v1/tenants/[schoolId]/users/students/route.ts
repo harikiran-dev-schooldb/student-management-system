@@ -6,6 +6,7 @@ import { fetchUserInfo } from "@/lib/utils/server-utils";
 import { studentschema } from "@/lib/formValidationSchemas";
 import { createOrUpdateIdentity } from "@/lib/services/identity.service";
 import { assignFeesToStudent } from "@/lib/services/fee.service";
+import { Gender, Prisma } from "@prisma/client";
 
 export const runtime = "nodejs";
 
@@ -190,6 +191,178 @@ export async function POST(
 
     return NextResponse.json(
       { message: "Internal server error", error: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ schoolId: string }> },
+) {
+  try {
+    /* -------------------------------------------------------
+       1️⃣ Resolve Tenant
+    ------------------------------------------------------- */
+    const { schoolId: schoolSlug } = await params;
+
+    const schoolId = await resolveSchoolId(
+      schoolSlug
+    );
+
+    /* -------------------------------------------------------
+       2️⃣ Authorize
+    ------------------------------------------------------- */
+    const user = await fetchUserInfo(schoolSlug);
+
+    if (!user) {
+      return NextResponse.json(
+        { message: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    /* -------------------------------------------------------
+       3️⃣ Query Params
+    ------------------------------------------------------- */
+    const { searchParams } = new URL(req.url);
+
+    const page =
+      Number(searchParams.get("page")) || 1;
+
+    const limit =
+      Number(searchParams.get("limit")) || 20;
+
+    const search =
+      searchParams.get("search") || "";
+
+    const gender =
+      searchParams.get("gender");
+
+    const skip = (page - 1) * limit;
+
+    /* -------------------------------------------------------
+       4️⃣ Build Query
+    ------------------------------------------------------- */
+    const where: Prisma.StudentWhereInput = {
+  schoolId,
+
+  ...(gender && {
+    gender: gender as Gender,
+  }),
+
+  ...(search && {
+    OR: [
+      {
+        name: {
+          contains: search,
+          mode: "insensitive",
+        },
+      },
+
+      {
+        admissionNo: {
+          contains: search,
+        },
+      },
+
+      {
+        phone: {
+          contains: search,
+        },
+      },
+    ],
+  }),
+};
+
+    /* -------------------------------------------------------
+       5️⃣ Fetch Data
+    ------------------------------------------------------- */
+    const [students, total] =
+      await prisma.$transaction([
+        prisma.student.findMany({
+          where,
+
+          orderBy: {
+            createdAt: "desc",
+          },
+
+          skip,
+
+          take: limit,
+
+          select: {
+            id: true,
+            name: true,
+            admissionNo: true,
+            phone: true,
+            gender: true,
+            fatherName: true,
+            img: true,
+
+            enrollments: {
+              where: {
+                academicYear: {
+                  isActive: true,
+                },
+              },
+
+              take: 1,
+
+              select: {
+                class: {
+                  select: {
+                    section: true,
+
+                    Grade: {
+                      select: {
+                        level: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        }),
+
+        prisma.student.count({
+          where,
+        }),
+      ]);
+
+    /* -------------------------------------------------------
+       6️⃣ Response
+    ------------------------------------------------------- */
+    return NextResponse.json(
+      {
+        success: true,
+
+        data: students,
+
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(
+            total / limit
+          ),
+        },
+      },
+      { status: 200 }
+    );
+  } catch (error: any) {
+    console.error(
+      "Students fetch error:",
+      error
+    );
+
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Internal server error",
+        error: error.message,
+      },
       { status: 500 }
     );
   }

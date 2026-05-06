@@ -190,10 +190,12 @@ export async function GET(
 
     /* ---------------- FILTER BY BRANCH ---------------- */
     if (branchId) {
-      where.Grade = {
-        branchId: Number(branchId),
-      };
-    }
+  where.Grade = {
+    is: {
+      branchId: Number(branchId),
+    },
+  };
+}
 
     const classes = await prisma.class.findMany({
       where,
