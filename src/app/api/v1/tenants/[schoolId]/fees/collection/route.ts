@@ -46,6 +46,7 @@ export async function GET(
     if (classId) {
       where.student = {
         enrollments: {
+          where: { status: "ACTIVE" },
           some: {
             classId: Number(classId),
           },
@@ -103,6 +104,7 @@ export async function GET(
             admissionNo: true,
             name: true,
             enrollments: {
+              where: { status: "ACTIVE" },
               select: {
                 class: {
                   select: {

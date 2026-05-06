@@ -19,6 +19,7 @@ import { FeeColectList, SearchParams } from "../../../../../../../types";
 import { StudentFeeSelect } from "../../../../../../../types/query-types";
 import { tenantPrisma } from "@/lib/tenant-prisma";
 import FeeStudentCard from "@/components/FeeStudentCard";
+import StudentFeesExcelDownload from "@/components/StudentFeesExcelDownload";
 
 const renderRow = (
   item: FeeColectList & {
@@ -279,6 +280,57 @@ const StudentFeeListPage = async ({
     db.student.count({ where: query }),
   ]);
 
+  const exportDataRaw = await db.student.findMany({
+  where: query,
+  orderBy: [
+    { [sortKey]: sortOrder },
+    { name: "asc" },
+  ],
+  select: {
+    ...StudentFeeSelect,
+
+    studentFees: {
+      select: {
+        paidAmount: true,
+        discountAmount: true,
+        fineAmount: true,
+        dueAmount: true,
+        feeStructure: {
+          select: {
+            amount: true,
+          },
+        },
+      },
+    },
+  },
+});
+
+const exportData = exportDataRaw.map((item) => {
+  let totalPaidAmount = 0;
+  let totalDiscountAmount = 0;
+  let totalFineAmount = 0;
+  let totalFeeAmount = 0;
+
+  for (const fee of item.studentFees ?? []) {
+    totalPaidAmount += Number(fee.paidAmount ?? 0);
+    totalDiscountAmount += Number(fee.discountAmount ?? 0);
+    totalFineAmount += Number(fee.fineAmount ?? 0);
+    totalFeeAmount += Number(fee.feeStructure?.amount ?? 0);
+  }
+
+  return {
+    ...item,
+    totalPaidAmount,
+    totalDiscountAmount,
+    totalFineAmount,
+    totalFeeAmount,
+    dueAmount:
+      totalFeeAmount -
+      totalPaidAmount -
+      totalDiscountAmount,
+  };
+});
+
   const [branches, grades, classes] = await Promise.all([
   role === "admin" ? db.branch.findMany() : Promise.resolve([]),
 
@@ -384,6 +436,9 @@ const filteredData = enrichedData.filter((item) => {
                 <ResetFiltersButton basePath={Path} />
                 <IconButton icon={Filter} />
                 <SortButton sortKey="id" />
+                <StudentFeesExcelDownload
+  data={JSON.parse(JSON.stringify(exportData))}
+/>
               </div>
             </div>
           </div>

@@ -5,12 +5,17 @@ import { tenantFetch } from "@/lib/tenantFetch";
 import { useSchoolSlug } from "@/components/hooks/getschool";
 import { Summary3D } from "@/components/ui/summaryCards";
 import CustomSelect from "@/components/ui/CustomSelect";
+import { Download } from "lucide-react";
+import ExcelJS from "exceljs";
+import { saveAs } from "file-saver";
+
+/* ================= TYPES ================= */
 
 type Defaulter = {
   id: number;
-  dueAmount: number;
-  totalPaidAmount: number;
-  totalFeeAmount: number;
+  dueAmount: string;
+  totalPaidAmount: string;
+  totalFeeAmount: string;
   student: {
     id: string;
     name: string;
@@ -20,9 +25,11 @@ type Defaulter = {
   };
 };
 
+/* ================= COMPONENT ================= */
+
 export default function DefaultersPage() {
   const schoolId = useSchoolSlug();
-
+  console.log("SCHOOL ID:", schoolId);
   const [data, setData] = useState<Defaulter[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -44,105 +51,188 @@ export default function DefaultersPage() {
     halfPaid: 0,
     severe: 0,
   });
-
+  
+  
   const limit = 50;
-
-  /* ---------------- FETCH ---------------- */
-
+  
+  /* ---------------- LOAD FILTER DATA ---------------- */
+  
   useEffect(() => {
-    async function loadBranches() {
-      const res = await tenantFetch(schoolId, "/branches");
-      setBranches(res?.data || []);
-    }
+  if (!schoolId) return;
 
-    if (schoolId) loadBranches();
-  }, [schoolId]);
+  tenantFetch(schoolId, "/branches").then((res) =>
+    setBranches(Array.isArray(res) ? res : [])
+  );
+}, [schoolId]);
 
-  useEffect(() => {
-    if (!branchId) return;
+useEffect(() => {
+  if (!branchId) return;
 
-    async function loadGrades() {
+  tenantFetch(schoolId, `/grades?branchId=${branchId}`).then((res) => {
+    setGrades(Array.isArray(res) ? res : []);
+    setGradeId("");
+    setClasses([]);
+  });
+}, [branchId]);
+
+useEffect(() => {
+  if (!gradeId) return;
+
+  tenantFetch(schoolId, `/classes?gradeId=${gradeId}`).then((res) => {
+    setClasses(Array.isArray(res) ? res : []);
+    setClassId("");
+  });
+}, [gradeId]);
+
+/* ---------------- FETCH DATA ---------------- */
+
+useEffect(() => {
+  if (!schoolId) return;
+  
+  const controller = new AbortController();
+  
+  async function fetchData() {
+    setLoading(true);
+    
+    try {
+      const qs = new URLSearchParams({
+        page: String(page),
+        limit: String(limit),
+        ...(search && { search }),
+        ...(branchId && { branchId }),
+        ...(gradeId && { gradeId }),
+        ...(classId && { classId }),
+      });
+      
       const res = await tenantFetch(
-        schoolId,
-        `/grades?branchId=${branchId}`
-      );
+  schoolId,
+  `/reports/fees/defaulters?${qs.toString()}`,
+  { signal: controller.signal }
+);
 
-      setGrades(res?.data || []);
-      setGradeId("");
-      setClasses([]);
-    }
+setData(res?.items ?? []);
 
-    loadGrades();
-  }, [branchId]);
+setTotalPages(res?.pagination?.totalPages ?? 1);
 
-  useEffect(() => {
-    if (!gradeId) return;
-
-    async function loadClasses() {
-      const res = await tenantFetch(
-        schoolId,
-        `/classes?gradeId=${gradeId}`
-      );
-      setClasses(res?.data || []);
-      setClassId("");
-    }
-
-    loadClasses();
-  }, [gradeId]);
-
-  /* ---------------- FETCH DATA ---------------- */
-  useEffect(() => {
-    async function fetchData() {
-      setLoading(true);
-
-      try {
-        const qs = new URLSearchParams({
-          page: String(page),
-          limit: String(limit),
-          ...(search && { search }),
-          ...(branchId && { branchId }),
-          ...(gradeId && { gradeId }),
-          ...(classId && { classId }),
-        });
-
-        const res = await tenantFetch(
-          schoolId,
-          `/reports/fees/defaulters?${qs.toString()}`
-        );
-
-        setData(res?.data || []);
-        setTotalPages(res?.pagination?.totalPages || 1);
-        setSummary(res?.summary || {});
-      } catch (err) {
+setSummary(
+  res?.summary ?? {
+    totalStudents: 0,
+    totalDue: 0,
+    halfPaid: 0,
+    severe: 0,
+  }
+);
+    } catch (err) {
+      if ((err as any).name !== "AbortError") {
         console.error(err);
-      } finally {
-        setLoading(false);
+      }
+    } finally {
+      setLoading(false);
       }
     }
 
-    if (schoolId) fetchData();
+    fetchData();
+
+    return () => controller.abort();
   }, [schoolId, page, search, branchId, gradeId, classId]);
 
+  const downloadExcel = async () => {
+  try {
+    const qs = new URLSearchParams({
+      page: "1",
+      limit: "100000",
+      ...(search && { search }),
+      ...(branchId && { branchId }),
+      ...(gradeId && { gradeId }),
+      ...(classId && { classId }),
+    });
+
+    const res = await tenantFetch(
+      schoolId,
+      `/reports/fees/defaulters?${qs.toString()}`
+    );
+
+    const rows = res?.items ?? [];
+
+    const workbook = new ExcelJS.Workbook();
+
+    const worksheet = workbook.addWorksheet("Defaulters");
+
+    worksheet.columns = [
+      { header: "Admission No", key: "admissionNo", width: 18 },
+      { header: "Student Name", key: "name", width: 30 },
+      { header: "Class", key: "className", width: 18 },
+      { header: "Phone", key: "phone", width: 18 },
+      { header: "Total Fee", key: "totalFee", width: 18 },
+      { header: "Paid Amount", key: "paidAmount", width: 18 },
+      { header: "Due Amount", key: "dueAmount", width: 18 },
+    ];
+
+    rows.forEach((row: Defaulter) => {
+      worksheet.addRow({
+        admissionNo: row.student?.admissionNumber || "-",
+        name: row.student?.name || "-",
+        className: row.student?.className || "-",
+        phone: row.student?.phone || "-",
+        totalFee: Number(row.totalFeeAmount),
+        paidAmount: Number(row.totalPaidAmount),
+        dueAmount: Number(row.dueAmount),
+      });
+    });
+
+    worksheet.getRow(1).font = {
+      bold: true,
+    };
+
+    const buffer = await workbook.xlsx.writeBuffer();
+
+    const blob = new Blob([buffer], {
+      type:
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+
+    saveAs(
+      blob,
+      `Defaulters_Report_${new Date().toISOString().split("T")[0]}.xlsx`
+    );
+  } catch (err) {
+    console.error(err);
+  }
+};
 
   /* ---------------- UI ---------------- */
 
   return (
     <div className="flex flex-col gap-6 px-3 py-3">
+
       {/* HEADER */}
-      <div>
-        <h1 className="text-xl font-semibold">Defaulters Report</h1>
-        <p className="text-sm text-gray-500">
-          Students with pending dues
-        </p>
-      </div>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+  <div>
+    <h1 className="text-xl font-semibold">
+      Defaulters Report
+    </h1>
+
+    <p className="text-sm text-gray-500">
+      Students with pending dues
+    </p>
+  </div>
+
+  <button
+    onClick={downloadExcel}
+    disabled={data.length === 0}
+    className="flex items-center gap-2 px-4 py-2 bg-LamaBlue text-white rounded-lg hover:opacity-90 disabled:opacity-50"
+  >
+    <Download size={16} />
+    Export Excel
+  </button>
+</div>
 
       {/* FILTERS */}
       <div className="flex flex-col md:flex-row gap-4 p-4 border rounded-xl bg-white dark:bg-darkMode">
 
-        {/* SEARCH */}
         <input
           type="text"
-          placeholder="Search student..."
+          placeholder="Search name / phone / adm no"
           value={search}
           onChange={(e) => {
             setPage(1);
@@ -151,15 +241,14 @@ export default function DefaultersPage() {
           className="h-10 px-3 border rounded-md w-full md:w-64"
         />
 
-        {/* BRANCH */}
         <CustomSelect
           label="Branch"
           value={branchId}
           onChange={(v) => {
             setPage(1);
             setBranchId(v);
-            setGradeId("");   // 🔥 RESET
-  setClassId("");
+            setGradeId("");
+            setClassId("");
           }}
           options={[
             { value: "", label: "All Branches" },
@@ -170,7 +259,6 @@ export default function DefaultersPage() {
           ]}
         />
 
-        {/* GRADE */}
         <CustomSelect
           label="Grade"
           value={gradeId}
@@ -178,7 +266,6 @@ export default function DefaultersPage() {
             setPage(1);
             setGradeId(v);
             setClassId("");
-
           }}
           options={[
             { value: "", label: "All Grades" },
@@ -189,7 +276,6 @@ export default function DefaultersPage() {
           ]}
         />
 
-        {/* CLASS */}
         <CustomSelect
           label="Class"
           value={classId}
@@ -205,41 +291,21 @@ export default function DefaultersPage() {
             })),
           ]}
         />
-
       </div>
 
-      {/* SUMMARY CARDS */}
+      {/* SUMMARY */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <Summary3D
-          title="Total Defaulters"
-          value={summary.totalStudents}
-        />
-
-        <Summary3D
-          title="Total Due Amount"
-          value={`₹ ${summary.totalDue ?? 0}`}
-          highlight
-        />
-
-        <Summary3D
-          title="Half Paid Students"
-          value={summary.halfPaid}
-        />
-
-        <Summary3D
-          title="Severe Pending"
-          value={summary.severe}
-        />
+        <Summary3D title="Total Defaulters" value={summary.totalStudents} />
+        <Summary3D title="Total Due Amount" value={`₹ ${summary.totalDue ?? 0}`} highlight />
       </div>
 
-      {/* LOADING */}
+      {/* TABLE */}
       {loading ? (
         <div className="h-40 flex items-center justify-center text-gray-500">
           Loading...
         </div>
       ) : (
         <>
-          {/* TABLE */}
           <div className="rounded-lg border overflow-hidden bg-white dark:bg-darkMode">
             <table className="min-w-full text-sm">
               <thead className="bg-gray-100 dark:bg-white/5">
@@ -255,89 +321,65 @@ export default function DefaultersPage() {
               </thead>
 
               <tbody>
-                {data.length > 0 ? (
-                  data.map((row) => {
-                    const isSevere = Number(row.dueAmount) > 10000;
+                {data.map((row) => (
+                  <tr key={row.id} className="border-t hover:bg-gray-50 dark:hover:bg-white/5">
+                    <Td>{row.student?.admissionNumber}</Td>
+                    <Td>{row.student?.name}</Td>
+                    <Td>{row.student?.className}</Td>
+                    <Td>{row.student?.phone || "-"}</Td>
+                    <Td>₹ {Number(row.totalFeeAmount).toLocaleString()}</Td>
 
-                    return (
-                      <tr
-                        key={row.id}
-                        className={`border-t ${isSevere
-                          ? "bg-red-50 dark:bg-red-900/20"
-                          : "hover:bg-gray-50 dark:hover:bg-white/5"
-                          }`}
-                      >
-                        <Td>{row.student?.admissionNumber}</Td>
-                        <Td>{row.student?.name}</Td>
-                        <Td>{row.student?.className || "-"}</Td>
-                        <Td>{row.student?.phone || "-"}</Td>
-                        <Td>₹ {row.totalFeeAmount}</Td>
-                        <Td className="text-green-600">
-                          ₹ {row.totalPaidAmount}
-                        </Td>
-                        <Td className="font-bold text-red-600">
-                          ₹ {row.dueAmount}
-                        </Td>
-                      </tr>
-                    );
-                  })
-                ) : (
-                  <tr>
-                    <td colSpan={5} className="text-center py-10 text-gray-500">
-                      No data
-                    </td>
+<Td className="text-green-600">
+  ₹ {Number(row.totalPaidAmount).toLocaleString()}
+</Td>
+
+<Td className="font-bold text-red-600">
+  ₹ {Number(row.dueAmount).toLocaleString()}
+</Td>
                   </tr>
-                )}
+                ))}
               </tbody>
             </table>
           </div>
 
           {/* PAGINATION */}
-          {totalPages > 1 && (
-            <div className="flex justify-between items-center pt-3">
-              <span className="text-xs text-gray-500">
-                Page {page} of {totalPages}
-              </span>
+          <div className="flex justify-between items-center pt-3">
+            <span className="text-xs text-gray-500">
+              Page {page} of {totalPages}
+            </span>
 
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                  className="px-3 py-1 border rounded disabled:opacity-50"
-                >
-                  Prev
-                </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="px-3 py-1 border rounded"
+              >
+                Prev
+              </button>
 
-                <button
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                  className="px-3 py-1 border rounded disabled:opacity-50"
-                >
-                  Next
-                </button>
-              </div>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="px-3 py-1 border rounded"
+              >
+                Next
+              </button>
             </div>
-          )}
+          </div>
         </>
       )}
     </div>
   );
+  
 }
+/* ---------------- UI ---------------- */
 
-/* ---------------- UI HELPERS ---------------- */
-
-const Th = ({ children }: { children: React.ReactNode }) => (
+const Th = ({ children }: any) => (
   <th className="px-4 py-3 text-xs text-left uppercase text-gray-500">
     {children}
   </th>
 );
 
-const Td = ({
-  children,
-  className = "",
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) => (
+const Td = ({ children, className = "" }: any) => (
   <td className={`px-4 py-3 ${className}`}>{children}</td>
 );

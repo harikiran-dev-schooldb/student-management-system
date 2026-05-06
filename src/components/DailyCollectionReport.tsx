@@ -14,11 +14,6 @@ import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import { tenantFetch } from "@/lib/tenantFetch";
 
-/* ================= CONSTANTS ================= */
-
-const TERM_ORDER = ["TERM_1", "TERM_2", "TERM_3", "TERM_4"] as const;
-type TermKey = (typeof TERM_ORDER)[number];
-
 /* ================= TYPES ================= */
 
 type Transaction = {
@@ -27,34 +22,39 @@ type Transaction = {
   amount: number
   discountAmount?: number
   receiptDate: string
-  remarks?: string
-  term?: TermKey
   paymentMode?: "CASH" | "UPI" | "CARD" | "CHEQUE" | "NET_BANKING"
+
+  feeCycle?: {
+    id?: number
+    name?: string
+    type?: string
+  }
 
   student: {
     id: string
     admissionNo: string | null
     name: string | null
-    Class: {
-      name: string | null
-    } | null
+    className?: string | null
+    section?: string | null
   } | null
 }
+
+
 
 /* ================= COMPONENT ================= */
 
 export default function DailyCollectionReport() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTerm, setActiveTerm] = useState<TermKey | null>(null);
-  const [flipped, setFlipped] = useState<TermKey | null>(null);
+  const [activeCycle, setActiveCycle] = useState<number | null>(null);
+  const [flipped, setFlipped] = useState<number | null>(null);
   const { schoolId } = useParams<{ schoolId: string }>();
   const [summary, setSummary] = useState({
     totalTransactions: 0,
     totalCollected: 0,
     totalDiscount: 0,
   });
-  const [termSummary, setTermSummary] = useState<any[]>([])
+const [cycleSummary, setCycleSummary] = useState<any[]>([])
   const [paymentModeSummary, setPaymentModeSummary] = useState<any[]>([])
 
   // -- PAGINATION STATE --
@@ -67,6 +67,8 @@ export default function DailyCollectionReport() {
 
   const [from, setFrom] = useState(today);
   const [to, setTo] = useState(today);
+
+  
 
   /* ---------------- FETCH ---------------- */
 
@@ -90,7 +92,7 @@ export default function DailyCollectionReport() {
           totalDiscount: 0
         });
 
-        setTermSummary(data?.termSummary ?? [])
+        setCycleSummary(data?.feeCycleSummary ?? [])
         setPaymentModeSummary(data?.paymentModeSummary ?? [])
 
         setPage(1);
@@ -116,28 +118,30 @@ export default function DailyCollectionReport() {
     else paymentModes.BANK += p.amount
   })
 
-  const termData = termSummary.map((t: any) => ({
-    term: t.term,
-    amount: t.amount,
-    percent: Math.round((t.amount / (summary.totalCollected || 1)) * 100)
-  }))
+  const cycleData = cycleSummary.map((c: any) => ({
+  id: c.feeCycleId,
+  name: c.name,
+  amount: c.amount,
+  percent: Math.round((c.amount / (summary.totalCollected || 1)) * 100)
+}))
 
   /* ---------------- SORT & FILTER ---------------- */
 
   const filteredTransactions = useMemo(() => {
-    const base = activeTerm
-      ? transactions.filter((t) => t.term === activeTerm)
-      : transactions;
+  const base = activeCycle !== null
+    ? transactions.filter((t) => t.feeCycle?.id === activeCycle)
+    : transactions;
 
-    return [...base].sort(
-      (a, b) =>
-        new Date(b.receiptDate).getTime() - new Date(a.receiptDate).getTime(), // Descending by default is usually better for logs
-    );
-  }, [transactions, activeTerm]);
+  return [...base].sort(
+    (a, b) =>
+      new Date(b.receiptDate).getTime() -
+      new Date(a.receiptDate).getTime()
+  );
+}, [transactions, activeCycle]);
 
   useEffect(() => {
     setPage(1);
-  }, [activeTerm]);
+  }, [activeCycle]);
 
   /* ---------------- PAGINATION ---------------- */
 
@@ -167,7 +171,7 @@ export default function DailyCollectionReport() {
       { header: "Adm No", key: "admNo", width: 12 },
       { header: "Student Name", key: "student", width: 25 },
       { header: "Class", key: "class", width: 10 },
-      { header: "Term", key: "term", width: 15 },
+      { header: "Fee Cycle", key: "term", width: 15 },
       { header: "Payment Mode", key: "mode", width: 15 },
       { header: "Amount", key: "amount", width: 15 },
       { header: "Discount", key: "discount", width: 15 },
@@ -178,8 +182,8 @@ export default function DailyCollectionReport() {
         date: new Date(t.receiptDate).toLocaleDateString(),
         admNo: t.student?.admissionNo || "-",
         student: t.student?.name || "Unknown",
-        class: t.student?.Class?.name || "-",
-        term: t.term || "-",
+        class: t.student?.className || "-",
+        term:t.feeCycle?.name || "-",
         mode: t.paymentMode || "CASH",
         amount: t.amount,
         discount: t.discountAmount || 0,
@@ -286,19 +290,19 @@ export default function DailyCollectionReport() {
 
       {/* TERM BREAKDOWN */}
       <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {termData.map(({ term, amount, percent }) => (
-          <div key={term} className="[perspective:1200px]">
+        {cycleData.map(({ id,name, amount, percent }) => (
+          <div key={id} className="[perspective:1200px]">
             <div
               onClick={() => {
-                setActiveTerm(term === activeTerm ? null : term);
-                setFlipped(term === flipped ? null : term);
+                setActiveCycle(id === activeCycle ? null : id);
+                setFlipped(id === flipped ? null : id);
               }}
-              className={`relative rounded-xl border p-5 cursor-pointer bg-white dark:bg-darkMode border-gray-200 dark:border-white/10 transition-all duration-500 transform-gpu [transform-style:preserve-3d] ${term === activeTerm ? "ring-2 ring-yellow-400" : ""
-                } ${term === flipped ? "[transform:rotateY(180deg)]" : ""}`}
+              className={`relative rounded-xl border p-5 cursor-pointer bg-white dark:bg-darkMode border-gray-200 dark:border-white/10 transition-all duration-500 transform-gpu [transform-style:preserve-3d] ${name === activeCycle ? "ring-2 ring-yellow-400" : ""
+                } ${name === flipped ? "[transform:rotateY(180deg)]" : ""}`}
             >
               <div className="[backface-visibility:hidden]">
                 <p className="text-xs uppercase text-gray-500">
-                  {term.replace("_", " ")}
+                  {name}
                 </p>
                 <p className="text-2xl font-semibold mt-2">₹ {amount}</p>
               </div>
@@ -329,7 +333,9 @@ export default function DailyCollectionReport() {
             <p className="mt-1 font-medium text-gray-900 dark:text-gray-100">
               {t.student?.name ?? "-"}{" "}
               <span className="text-xs text-gray-500">
-                ({t.student?.Class?.name ?? "-"})
+                ({t.student?.className
+  ? `${t.student.className}${t.student.section ? ` - ${t.student.section}` : ""}`
+  : "-"})
               </span>
             </p>
             <div className="flex items-center justify-between mt-2">
@@ -337,7 +343,7 @@ export default function DailyCollectionReport() {
                 {new Date(t.receiptDate).toLocaleDateString()}
               </span>
               <span className="inline-block px-2 py-0.5 rounded-full bg-gray-100 dark:bg-white/10 text-xs text-gray-600 dark:text-gray-300">
-                {t.term?.replace("_", " ") ?? "-"}
+                {t.feeCycle?.name?.replace("_", " ") ?? "-"}
               </span>
             </div>
           </div>
@@ -352,7 +358,7 @@ export default function DailyCollectionReport() {
               <Th>Date</Th>
               <Th>Student</Th>
               <Th>Class</Th>
-              <Th>Term</Th>
+              <Th>Fee Cycle</Th>
               <Th>Mode</Th>
               <Th>Amount</Th>
             </tr>
@@ -373,11 +379,13 @@ export default function DailyCollectionReport() {
                       </span>
                     </div>
                   </Td>
-                  <Td>{t.student?.Class?.name}</Td>
+                    <Td>
+                      {t.student?.className ?? "-"}
+                    </Td>
                   <Td>
-                    <span className="px-2 py-1 bg-gray-100 dark:bg-white/10 rounded text-xs">
-                      {t.term}
-                    </span>
+                  <span className="px-2 py-1 bg-gray-100 dark:bg-white/10 rounded text-xs">
+                    {t.feeCycle?.name ?? "-"}
+                  </span>
                   </Td>
                   <Td>
                     <span

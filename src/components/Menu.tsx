@@ -140,12 +140,6 @@ const menuSections: MenuSection[] = [
             visible: ["admin", "teacher"],
           },
           {
-            label: "Student Fee Report",
-            href: "/list/reports/student-fees",
-            icon: FileText,
-            visible: ["admin"],
-          },
-          {
             label: "Day Wise Report",
             href: "/list/reports/daywise-fees",
             icon: BarChart3,
