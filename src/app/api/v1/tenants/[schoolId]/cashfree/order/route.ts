@@ -11,7 +11,7 @@ type CreateOrderBody = {
   customer_phone?: string;
   studentId: string;
   academicYearId: number;
-  terms: string[];
+  feeCycleIds: number[],
 };
 
 export async function POST(
@@ -37,10 +37,11 @@ export async function POST(
       customer_phone,
       studentId,
       academicYearId,
-      terms,
+
+      feeCycleIds,
     } = body;
 
-    if (!amount || !studentId || !academicYearId || !terms?.length) {
+    if (!amount || !studentId || !academicYearId || !feeCycleIds?.length) {
       return NextResponse.json({ error: "Invalid input" }, { status: 400 });
     }
 
@@ -50,6 +51,8 @@ export async function POST(
       select: {
         id: true,
         schoolId: true,
+        admissionNo: true,
+        name: true,
         enrollments: {
           where: { schoolId },
           orderBy: { academicYearId: "desc" },
@@ -71,22 +74,7 @@ export async function POST(
 
     const enrollment = student.enrollments[0];
     const gradeId = enrollment.class.gradeId;
-    const branchId = enrollment.class.Grade.branchId;
 
-    /* ---------------- GET ACCOUNT MAPPING ---------------- */
-    const account = await prisma.paymentAccount.findFirst({
-      where: {
-        schoolId,
-        gradeId,
-        branchId,
-      },
-    });
-
-    if (!account) {
-      throw new Error(
-        `No payment account mapping for grade ${gradeId} / branch ${branchId}`
-      );
-    }
 
     /* ---------------- ORDER ID ---------------- */
     const orderId = `order_${slug}_${Date.now()}`;
@@ -100,12 +88,20 @@ export async function POST(
         schoolId,
         studentId,
         metadata: {
-          terms,
-          academicYearId,
-          gradeId,
-          branchId,
-          accountId: account.accountId, // useful for debugging
-        },
+  feeCycleIds,
+  academicYearId,
+
+studentName: student.name,
+admissionNo: student.admissionNo,
+
+  gradeId,
+  gradeName: enrollment.class.Grade.level,
+
+  classId: enrollment.classId,
+  className:
+  enrollment.class.name ||
+  `${enrollment.class.Grade.level}-${enrollment.class.section}`,
+},
       },
     });
 
@@ -115,8 +111,6 @@ export async function POST(
         ? "https://api.cashfree.com/pg"
         : "https://sandbox.cashfree.com/pg";
 
-    const platformFee = 10;
-    const totalAmount = amount + platformFee;
 
     const cfRes = await fetch(`${base}/orders`, {
       method: "POST",
@@ -128,20 +122,8 @@ export async function POST(
       },
       body: JSON.stringify({
         order_id: orderId,
-        order_amount: totalAmount,
+        order_amount: amount,
         order_currency: "INR",
-
-        /* 🔥 EASY SPLIT */
-        order_splits: [
-          {
-            vendor_id: account.accountId, // 🔥 KEY LINE
-            amount: amount,
-          },
-          {
-            vendor_id: "schooldb_platform_fee",
-            amount: platformFee,
-          },
-        ],
 
         customer_details: {
           customer_id: `cust_${Date.now()}`,

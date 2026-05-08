@@ -211,6 +211,34 @@ export async function GET(
             branchId: true,
           },
         },
+
+      teacherClassAssignments: {
+
+      where: {
+
+        role: "SUPERVISOR",
+
+      },
+
+      select: {
+
+        teacher: {
+
+          select: {
+
+            id: true,
+
+            name: true,
+
+          },
+
+        },
+
+      },
+
+      take: 1,
+
+    },
       },
       orderBy: [
         { gradeId: "asc" },

@@ -171,3 +171,194 @@ export async function POST(
     );
   }
 }
+
+/* ======================================================
+   GET TEACHERS
+====================================================== */
+
+export async function GET(
+  req: NextRequest,
+  {
+    params,
+  }: {
+    params: Promise<{
+      schoolId: string;
+    }>;
+  }
+) {
+  try {
+    /* -----------------------------
+       AUTH
+    ----------------------------- */
+
+    const {
+      schoolId: schoolSlug,
+    } = await params;
+
+    const schoolId =
+      await resolveSchoolId(
+        schoolSlug
+      );
+
+    const user =
+      await fetchUserInfo(
+        schoolSlug
+      );
+
+    if (!user) {
+      return NextResponse.json(
+        {
+          error: "Unauthorized",
+        },
+        {
+          status: 401,
+        }
+      );
+    }
+
+    /* -----------------------------
+       QUERY PARAMS
+    ----------------------------- */
+
+    const { searchParams } =
+      new URL(req.url);
+
+    const search =
+      searchParams.get("search");
+
+    const gender =
+      searchParams.get("gender");
+
+    const classId =
+      searchParams.get("classId");
+
+    /* -----------------------------
+       WHERE
+    ----------------------------- */
+
+    const where: any = {
+      schoolId,
+
+      status: "ACTIVE",
+    };
+
+    /* SEARCH */
+
+    if (search) {
+      where.OR = [
+        {
+          name: {
+            contains: search,
+            mode:
+              "insensitive",
+          },
+        },
+
+        {
+          username: {
+            contains: search,
+            mode:
+              "insensitive",
+          },
+        },
+
+        {
+          phone: {
+            contains: search,
+          },
+        },
+      ];
+    }
+
+    /* GENDER */
+
+    if (gender) {
+      where.gender = gender;
+    }
+
+    /* CLASS */
+
+    if (classId) {
+      where.teacherClassAssignments =
+        {
+          some: {
+            classId:
+              Number(classId),
+          },
+        };
+    }
+
+    /* -----------------------------
+       QUERY
+    ----------------------------- */
+
+    const teachers =
+      await prisma.teacher.findMany(
+        {
+          where,
+
+          include: {
+            teacherClassAssignments:
+              {
+                include: {
+                  class: true,
+                },
+
+                where: {
+                  role:
+                    "SUPERVISOR",
+                },
+              },
+          },
+
+          orderBy: {
+            name: "asc",
+          },
+        }
+      );
+
+    /* -----------------------------
+       RESPONSE
+    ----------------------------- */
+
+    const formatted =
+      teachers.map((t) => ({
+        id: t.id,
+
+        username:
+          t.username,
+
+        name: t.name,
+        phone: t.phone,
+        gender: t.gender,
+        dob: t.dob,
+        img: t.img,
+        className:
+          t
+            .teacherClassAssignments?.[0]
+            ?.class?.name ||
+          null,
+      }));
+
+    return NextResponse.json({
+      success: true,
+
+      data: formatted,
+    });
+  } catch (error) {
+    console.error(
+      "Get Teachers Error:",
+      error
+    );
+
+    return NextResponse.json(
+      {
+        error:
+          "Failed to fetch teachers",
+      },
+      {
+        status: 500,
+      }
+    );
+  }
+}

@@ -63,16 +63,36 @@ export async function POST(req: NextRequest) {
     ========================= */
 
     const existing = await prisma.feePayment.findUnique({
-      where: { orderId },
-    });
+  where: { orderId },
+});
 
-    if (!existing) {
-      return NextResponse.json({ status: "not_found" });
-    }
+if (!existing) {
+  return NextResponse.json({
+    status: "not_found",
+  });
+}
 
-    if (existing.status === "SUCCESS") {
-      return NextResponse.json({ status: "already_processed" });
-    }
+/* 🔒 LOCK PAYMENT */
+const locked = await prisma.feePayment.updateMany({
+  where: {
+    orderId,
+    status: "PENDING",
+  },
+  data: {
+    status: "PROCESSING",
+  },
+});
+
+if (locked.count === 0) {
+  console.log(
+  "⚠️ Webhook skipped: already processing or completed",
+  orderId
+);
+
+  return NextResponse.json({
+    status: "already_processed",
+  });
+}
 
     const payment = body?.data?.payment;
 
@@ -92,15 +112,20 @@ export async function POST(req: NextRequest) {
             status: "SUCCESS",
             transactionId,
             amount: paymentAmount,
-            metadata: body,
+            metadata: {
+  ...(existing.metadata as object),
+  webhook: body,
+},
           },
         });
 
         /* 2️⃣ Metadata */
-        const metadata = (existing.metadata ?? {}) as {
-          feeCycleIds?: number[];
-          academicYearId?: number;
-        };
+        const metadata = (existing.metadata ?? {}) as any;
+
+const transactionCharge =
+  metadata.transactionCharge ?? 0;
+
+const feeAmount = paymentAmount - transactionCharge;
 
         const { feeCycleIds = [], academicYearId } = metadata;
 
@@ -127,7 +152,7 @@ export async function POST(req: NextRequest) {
           },
         });
 
-        let remaining = paymentAmount;
+        let remaining = feeAmount;
 
         /* 4️⃣ Process payments */
         for (const fee of feesList) {
@@ -153,7 +178,7 @@ export async function POST(req: NextRequest) {
               feeCycleId: fee.feeCycleId,
               amount: payAmount,
               receiptDate: new Date(),
-              receiptNo: `ONLINE-${Date.now()}`,
+              receiptNo: `ONL-${Date.now()}-${fee.id}`,
               paymentMode: "ONLINE",
               schoolId,
               academicYearId,

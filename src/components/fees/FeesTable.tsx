@@ -203,22 +203,27 @@ function getFeeStatus(fee: StudentFee) {
 }
 
 
-  // --- Razorpay Logic ---
+  // --- Cashfree Logic ---
   const api = useTenantApi();
 
+  
   const initiateOnlinePayment = async (
-  feesToPay: StudentFee[],
-  totalAmount: number
-) => {
-  setIsProcessing(true);
-
+    feesToPay: StudentFee[],
+    totalAmount: number
+  ) => {
+    setIsProcessing(true);
+    
+    const transactionCharge = 10;
+    const payableAmount = totalAmount + transactionCharge;
   try {
     const studentId = feesToPay[0]?.studentId;
     if (!studentId) throw new Error("Student ID missing");
 
 
     const academicYearId = feesToPay[0]?.academicYearId;
-    const terms = feesToPay.map((f) => f.feeCycle?.name); // TERM_1, TERM_2
+    const feeCycleIds = feesToPay
+  .map((f) => f.feeCycleId)
+  .filter(Boolean); 
 
 
     /* -------------------------------
@@ -226,8 +231,8 @@ function getFeeStatus(fee: StudentFee) {
     -------------------------------- */
     const res = await api.post<CashfreeOrderResponse>("/cashfree/order", {
       studentId,
-      amount: totalAmount,
-      terms,
+      amount: payableAmount,
+      feeCycleIds,
       academicYearId,
       customer_name: studentName,
       customer_phone: studentMobile,

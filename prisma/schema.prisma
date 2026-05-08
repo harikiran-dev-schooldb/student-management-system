@@ -1045,6 +1045,7 @@ enum PaymentStatus {
   PENDING
   SUCCESS
   FAILED
+  PROCESSING
 }
 
 enum BranchType {
