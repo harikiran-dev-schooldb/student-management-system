@@ -79,6 +79,10 @@ export async function POST(
     /* ---------------- ORDER ID ---------------- */
     const orderId = `order_${slug}_${Date.now()}`;
 
+    const transactionCharge = 10;
+
+    const totalAmount = amount + transactionCharge;
+
     /* ---------------- SAVE PAYMENT ---------------- */
     await prisma.feePayment.create({
       data: {
@@ -90,6 +94,13 @@ export async function POST(
         metadata: {
   feeCycleIds,
   academicYearId,
+
+  transactionCharge,
+
+      feeAmount: amount,
+
+      totalAmount,
+
 
 studentName: student.name,
 admissionNo: student.admissionNo,
@@ -122,7 +133,7 @@ admissionNo: student.admissionNo,
       },
       body: JSON.stringify({
         order_id: orderId,
-        order_amount: amount,
+        order_amount: totalAmount,
         order_currency: "INR",
 
         customer_details: {

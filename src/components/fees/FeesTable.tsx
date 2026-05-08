@@ -213,8 +213,7 @@ function getFeeStatus(fee: StudentFee) {
   ) => {
     setIsProcessing(true);
     
-    const transactionCharge = 10;
-    const payableAmount = totalAmount + transactionCharge;
+    const payableAmount = totalAmount;
   try {
     const studentId = feesToPay[0]?.studentId;
     if (!studentId) throw new Error("Student ID missing");
@@ -314,7 +313,13 @@ function getFeeStatus(fee: StudentFee) {
   const handleManualFormSubmit = async () => {
     if (selectedFees.length === 0) return;
 
+
+
     if (selectedPaymentMode === "ONLINE") {
+      console.log({
+  amount,
+  selectedPaymentMode,
+});
       setIsModalOpen(false); // ✅ add this
       await initiateOnlinePayment(selectedFees, amount);
       return;
