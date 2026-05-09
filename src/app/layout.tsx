@@ -8,7 +8,6 @@ import ClientProviders from "../../providers";
 import I18nProvider from "@/components/I18nProvider";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
-import PushNotificationManager from "@/components/PushNotificationManager";
 import Script from "next/script";
 
 const inter = Inter({
@@ -18,7 +17,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
+    process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
   ),
 
   title: {
@@ -71,7 +70,7 @@ export default function RootLayout({
               src="https://sdk.cashfree.com/js/v3/cashfree.js"
               strategy="afterInteractive"
             />
-            <ClientProviders><PushNotificationManager />{children}</ClientProviders>
+            <ClientProviders>{children}</ClientProviders>
           </I18nProvider>
 
           <Analytics />
