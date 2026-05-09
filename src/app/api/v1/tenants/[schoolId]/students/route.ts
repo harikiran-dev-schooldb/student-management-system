@@ -222,15 +222,6 @@ export async function GET(
       ];
     }
 
-    console.log(
-      "FINAL WHERE:",
-      JSON.stringify(
-        where,
-        null,
-        2
-      )
-    );
-
     /* -----------------------------------
        QUERY
     ----------------------------------- */

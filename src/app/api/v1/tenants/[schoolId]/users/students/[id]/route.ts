@@ -292,3 +292,96 @@ export async function PATCH(
   }
 }
 
+export async function GET(
+
+  req: NextRequest,
+
+  {
+
+    params,
+
+  }: {
+
+    params: Promise<{
+      schoolId: string;
+      id: string;
+    }>;
+  }
+
+) {
+
+  try {
+
+    const { id } = await params;
+
+    const student = await prisma.student.findUnique({
+  where: {
+    id,
+  },
+
+  include: {
+    enrollments: {
+      include: {
+        class: {
+          include: {
+            Grade: true,
+          },
+        },
+      },
+    },
+  },
+});
+
+    if (!student) {
+
+      return NextResponse.json(
+
+        {
+
+          error: "Student not found",
+
+        },
+
+        {
+
+          status: 404,
+
+        }
+
+      );
+
+    }
+
+    return NextResponse.json({
+  success: true,
+
+  data: {
+    id: student.id,
+    name: student.name,
+    fatherName: student.fatherName,
+    admissionNo: student.admissionNo,
+    img: student.img,
+    phone: student.phone,
+    email: student.email,
+    gender: student.gender,
+    bloodType: student.bloodType,
+    className:
+      student.enrollments?.[0]?.class?.name || null,
+    section:
+      student.enrollments?.[0]?.class?.section || null,
+    grade:
+      student.enrollments?.[0]?.class?.Grade?.level || null,
+  },
+});
+  } catch (error) {
+    console.log(error);
+    return NextResponse.json(
+      {
+        error: "Failed to fetch student",
+      },
+      {
+        status: 500,
+      }
+    );
+  }
+}
