@@ -185,3 +185,164 @@ export async function PUT(
     );
   }
 }
+
+export async function GET(
+  req: NextRequest,
+  {
+    params,
+  }: {
+    params: Promise<{
+      schoolId: string;
+      id: string;
+    }>;
+  }
+): Promise<NextResponse> {
+  try {
+    /* 1️⃣ Resolve tenant */
+
+    const {
+      schoolId: schoolSlug,
+      id: teacherId,
+    } = await params;
+
+    const schoolId =
+      await resolveSchoolId(schoolSlug);
+
+    const currentUser =
+      await fetchUserInfo(schoolSlug);
+
+    if (!currentUser) {
+      return NextResponse.json(
+        {
+          error: "Unauthorized",
+        },
+        {
+          status: 401,
+        }
+      );
+    }
+
+    /* 2️⃣ Fetch teacher */
+
+    const teacher =
+      await prisma.teacher.findFirst({
+        where: {
+          id: teacherId,
+          schoolId,
+        },
+
+        include: {
+          teacherClassAssignments: {
+            include: {
+              class: {
+                include: {
+                  Grade: true,
+
+                  _count: {
+                    select: {
+                      studentEnrollments: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+
+          _count: {
+            select: {
+              subjects: true,
+              lessons: true,
+            },
+          },
+        },
+      });
+
+    if (!teacher) {
+      return NextResponse.json(
+        {
+          error: "Teacher not found",
+        },
+        {
+          status: 404,
+        }
+      );
+    }
+
+    /* 3️⃣ Metrics */
+
+    const supervisorClass =
+      teacher.teacherClassAssignments.find(
+        (a) => a.role === "SUPERVISOR"
+      )?.class;
+
+    const totalStudents =
+      teacher.teacherClassAssignments.reduce(
+        (sum, a) =>
+          sum +
+          (a.class?._count
+            ?.studentEnrollments || 0),
+        0
+      );
+
+    /* 4️⃣ Response */
+
+    return NextResponse.json({
+      success: true,
+
+      data: {
+        id: teacher.id,
+
+        username: teacher.username,
+
+        name: teacher.name,
+
+        email: teacher.email,
+
+        phone: teacher.phone,
+
+        gender: teacher.gender,
+
+        bloodType: teacher.bloodType,
+
+        dob: teacher.dob,
+
+        img: teacher.img,
+
+        address: teacher.address,
+
+        parentName: teacher.parentName,
+
+        className:
+          supervisorClass?.name || null,
+
+        grade:
+          supervisorClass?.Grade?.level ||
+          null,
+
+        totalStudents,
+
+        subjectsCount:
+          teacher._count.subjects,
+
+        lessonsCount:
+          teacher._count.lessons,
+      },
+    });
+  } catch (error: any) {
+    console.error(
+      "Get Teacher Error:",
+      error
+    );
+
+    return NextResponse.json(
+      {
+        error:
+          error.message ||
+          "Failed to fetch teacher",
+      },
+      {
+        status: 500,
+      }
+    );
+  }
+}
