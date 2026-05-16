@@ -28,6 +28,7 @@ export const routeAccessMap: RouteAccessMap = {
    "/list/attendance/mark(.*)": ["admin", "teacher"],
    "/list/attendance/view(.*)": ["admin", "teacher"],
    "/list/attendance(.*)": ["student"],
+   "/list/staff-attendance(.*)": ["admin", "teacher"],
 
    /* =========================
       HOMEWORKS
@@ -206,5 +207,4 @@ export function parseDDMMYYYY(dob: string): Date | null {
 
 //   return `${slug}-${seq}-${datePart}`;
 // }
-
 

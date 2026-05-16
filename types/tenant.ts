@@ -29,4 +29,5 @@ export type TenantAccess = {
   profileId: string;
   classId?: number;
   studentId?: string;
+  teacherId?: string;
 };

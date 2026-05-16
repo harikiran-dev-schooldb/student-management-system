@@ -174,8 +174,12 @@ const StudentFeePage = async ({ params }: StudentFeePageProps) => {
                       type="update"
                       data={{
                         ...student,
+                        classId: studentClassId,
                         dob: student.dob
                           ? student.dob.toISOString().split("T")[0]
+                          : "",
+                        joinedDate: student.joinedDate
+                          ? student.joinedDate.toISOString().split("T")[0]
                           : "",
                       }}
                     />

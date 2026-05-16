@@ -140,12 +140,42 @@ const SingleStudentPage = async ({ params }: StudentSinglePageProps) => {
                     data={{
                       ...student,
                       studentId: student.id,
+                      classId,
                       dob: student.dob
                         ? student.dob.toISOString().split("T")[0]
+                        : "",
+                      joinedDate: student.joinedDate
+                        ? student.joinedDate.toISOString().split("T")[0]
                         : "",
                     }}
                   />
                 )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <InfoRow
+                  icon={Activity}
+                  label="PEN Number"
+                  value={student.penNo || "N/A"}
+                />
+
+                <InfoRow
+                  icon={Users}
+                  label="Category"
+                  value={student.category || "N/A"}
+                />
+
+                <InfoRow
+                  icon={Activity}
+                  label="Student Aadhar"
+                  value={student.studentAadhar || "N/A"}
+                />
+
+                <InfoRow
+                  icon={Activity}
+                  label="Father Aadhar"
+                  value={student.fatherAadhar || "N/A"}
+                />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -165,8 +195,8 @@ const SingleStudentPage = async ({ params }: StudentSinglePageProps) => {
                   value={
                     student.dob
                       ? new Intl.DateTimeFormat("en-GB").format(
-                        new Date(student.dob),
-                      )
+                          new Date(student.dob),
+                        )
                       : "N/A"
                   }
                 />
@@ -204,7 +234,7 @@ const SingleStudentPage = async ({ params }: StudentSinglePageProps) => {
               </div>
               <div>
                 <h2 className="text-lg font-bold text-gray-900 dark:text-white">
-                  {grade}
+                  {grade + " - " + section}
                 </h2>
                 <span className="text-xs font-medium text-gray-500 ">
                   Grade
@@ -234,10 +264,10 @@ const SingleStudentPage = async ({ params }: StudentSinglePageProps) => {
               </div>
               <div>
                 <h2 className="text-lg font-bold text-gray-900 dark:text-white">
-                  {section}
+                  {student.category || "N/A"}
                 </h2>
                 <span className="text-xs font-medium text-gray-500 ">
-                  Section
+                  Category
                 </span>
               </div>
             </div>

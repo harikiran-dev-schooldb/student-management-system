@@ -28,6 +28,7 @@ model SchoolInfo {
   assignmentGradeSubjects AssignmentGradeSubject[]
   assignmentSubmissions   AssignmentSubmission[]
   attendances             Attendance[]
+  staffAttendances        StaffAttendance[]
   branches                Branch[]
   cancelledReceipts       CancelledReceipt[]
   events                  Event[]
@@ -348,31 +349,54 @@ model Homework {
 }
 
 model Student {
-  id                    String                 @id @default(cuid())
-  username              String
-  name                  String
-  motherName            String?
-  fatherName            String?
-  penNo                 String?
-  studentAadhar         String?
-  fatherAadhar          String?
-  motherAadhar          String?
-  email                 String?
-  phone                 String
-  address               String
-  img                   String?
-  bloodType             String?
-  gender                Gender
-  dob                   DateTime
-  createdAt             DateTime               @default(now())
-  status                StudentStatus          @default(ACTIVE)
-  clerk_id              String?
-  profileId             String?
-  linkedUserId          String?                @unique
-  schoolId              String
-  leftAt                DateTime?
-  leftReason            String?
-  admissionNo           String?
+  id       String @id @default(cuid())
+  username String
+  name     String
+
+  // Parent Details
+  motherName          String?
+  fatherName          String?
+  fatherQualification String?
+  fatherProfession    String?
+  motherQualification String?
+  motherProfession    String?
+
+  // Government & Identity
+  penNo         String?
+  studentAadhar String?
+  fatherAadhar  String?
+  motherAadhar  String?
+
+  // Contact Details
+  email   String?
+  phone   String
+  address String
+
+  // Personal Details
+  img          String?
+  bloodType    String?
+  gender       Gender
+  dob          DateTime
+  joinedDate   DateTime?
+  nationality  String?
+  motherTongue String?
+  religion     Religion?
+  category     Category?
+
+  // System Fields
+  createdAt         DateTime      @default(now())
+  status            StudentStatus @default(ACTIVE)
+  clerk_id          String?
+  profileId         String?
+  linkedUserId      String?       @unique
+  schoolId          String
+  leftAt            DateTime?
+  leftReason        String?
+  admissionNo       String?
+  transportRequired Boolean       @default(false)
+  hostelRequired    Boolean       @default(false)
+
+  // Relations
   assignmentSubmissions AssignmentSubmission[]
   attendances           Attendance[]
   cancelledReceipts     CancelledReceipt[]
@@ -381,12 +405,14 @@ model Student {
   messages              Messages[]
   permissionSlips       PermissionSlip[]
   results               Result[]
-  linkedUser            LinkedUser?            @relation(fields: [linkedUserId], references: [id])
-  profile               Profile?               @relation(fields: [profileId], references: [id])
-  school                SchoolInfo             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  enrollments           StudentEnrollment[]
-  studentFees           StudentFees[]
-  totalFees             StudentTotalFees[]
+
+  linkedUser LinkedUser? @relation(fields: [linkedUserId], references: [id])
+  profile    Profile?    @relation(fields: [profileId], references: [id])
+  school     SchoolInfo  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  enrollments StudentEnrollment[]
+  studentFees StudentFees[]
+  totalFees   StudentTotalFees[]
 
   @@unique([username, schoolId])
   @@unique([admissionNo, schoolId])
@@ -434,6 +460,7 @@ model Teacher {
   leftReason              String?
   lessons                 Lesson[]
   subjects                SubjectTeacher[]
+  staffAttendances        StaffAttendance[]
   linkedUser              LinkedUser?              @relation(fields: [linkedUserId], references: [id])
   profile                 Profile?                 @relation(fields: [profileId], references: [id])
   school                  SchoolInfo               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
@@ -484,11 +511,11 @@ model SubjectTeacher {
 
 model FeeCycle {
   id        Int      @id @default(autoincrement())
-  name      String // "Term 1", "June", "Quarter 1"
+  name      String
   order     Int
   startDate DateTime
   dueDate   DateTime
-  type      String // TERM | MONTH | CUSTOM
+  type      String
 
   schoolId       String
   academicYearId Int
@@ -528,7 +555,7 @@ model FeeStructure {
 }
 
 model FeeTransaction {
-  id            Int    @id @default(autoincrement())
+  id            Int     @id @default(autoincrement())
   studentId     String
   studentFeesId Int
   feeCycleId    Int?
@@ -638,6 +665,30 @@ model Attendance {
   @@index([academicYearId, studentId])
   @@index([schoolId, classId, date])
   @@index([schoolId, classId, present])
+}
+
+model StaffAttendance {
+  id             Int                   @id @default(autoincrement())
+  date           DateTime
+  status         StaffAttendanceStatus @default(PRESENT)
+  checkIn        DateTime?
+  checkOut       DateTime?
+  remarks        String?
+  teacherId      String
+  schoolId       String
+  academicYearId Int
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  academicYear   AcademicYear          @relation(fields: [academicYearId], references: [id])
+  school         SchoolInfo            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teacher        Teacher               @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherId, date, academicYearId, schoolId])
+  @@index([schoolId])
+  @@index([schoolId, date])
+  @@index([teacherId, date])
+  @@index([academicYearId, teacherId])
+  @@index([schoolId, status])
 }
 
 model CancelledReceipt {
@@ -864,6 +915,7 @@ model AcademicYear {
   id                      Int                      @id @default(autoincrement())
   school                  SchoolInfo               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   attendance              Attendance[]
+  staffAttendances        StaffAttendance[]
   exams                   Exam[]
   examGradeSubject        ExamGradeSubject[]
   feeStructures           FeeStructure[]
@@ -1034,6 +1086,14 @@ enum UserStatus {
   TRANSFERRED
 }
 
+enum StaffAttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  HALF_DAY
+  ON_LEAVE
+}
+
 enum EnrollmentStatus {
   ACTIVE
   PROMOTED
@@ -1060,4 +1120,18 @@ enum BranchType {
 enum ClassTeacherRole {
   SUPERVISOR
   SUBJECT
+}
+
+enum Religion {
+  HINDU
+  MUSLIM
+  CHRISTIAN
+  OTHER
+}
+
+enum Category {
+  SC
+  ST
+  OBC
+  GENERAL
 }

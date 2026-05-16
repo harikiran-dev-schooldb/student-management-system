@@ -74,12 +74,22 @@ export const teacherschema = z.object({
 export type Teacherschema = z.infer<typeof teacherschema>;
 
 // Student Schema
+const optionalText = z.string().trim().optional().or(z.literal(""));
+const optionalDate = z.preprocess(
+  (value) => (value === "" || value === null ? undefined : value),
+  z.coerce.date().optional(),
+);
+
 export const studentschema = z.object({
   admissionNo: z.string().min(1, "Admission No is required"),
 
   name: z.string().min(1, "Name is required"),
   fatherName: z.string().min(1, "Father Name is required"),
   motherName: z.string().min(1, "Mother Name is required"),
+  fatherQualification: optionalText,
+  fatherProfession: optionalText,
+  motherQualification: optionalText,
+  motherProfession: optionalText,
 
   phone: z.string().regex(/^\d{10}$/, "Phone must be 10 digits"),
   address: z.string().min(1, "Address is required"),
@@ -94,12 +104,42 @@ export const studentschema = z.object({
     required_error: "Date of birth is required",
   }),
 
+  joinedDate: optionalDate,
+
+
   email: z.string().email().optional().nullable(),
   img: z.string().optional().nullable(),
-  penNo: z.string().optional(),
-  motherAadhar: z.string().optional(),
-  fatherAadhar: z.string().optional(),
-  studentAadhar: z.string().optional(),
+  penNo: optionalText,
+  motherAadhar: optionalText,
+  fatherAadhar: optionalText,
+  studentAadhar: optionalText,
+
+  nationality: optionalText,
+  motherTongue: optionalText,
+
+  religion: z
+  .enum([
+    "HINDU",
+    "MUSLIM",
+    "CHRISTIAN",
+    "OTHER",
+  ])
+  .optional(),
+
+  category: z
+  .enum([
+    "SC",
+    "ST",
+    "OBC",
+    "GENERAL",
+  ])
+  .optional(),
+
+  transportRequired:
+    z.boolean().default(false),
+
+  hostelRequired:
+    z.boolean().default(false),
 
   bloodType: z
     .enum([

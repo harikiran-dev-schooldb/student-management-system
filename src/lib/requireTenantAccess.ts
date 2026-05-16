@@ -89,6 +89,7 @@ export async function requireTenantAccess(): Promise<TenantAccess | null> {
 
     return {
       ...baseAccess,
+      teacherId: teacher?.id,
       classId: teacher?.teacherClassAssignments?.[0]?.classId,
     };
   }

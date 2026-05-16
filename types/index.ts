@@ -404,6 +404,9 @@ export type StudentsList = {
   dob: Date | string;
   phone: string | null;
   status: string;
+  categorty: string | null;
+  religion: string | null;
+  
 
   enrollments: CurrentEnrollment[];
 };

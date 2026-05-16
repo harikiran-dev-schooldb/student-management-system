@@ -96,6 +96,8 @@ export async function PUT(
     }
 
     const dob = new Date(data.dob);
+    const normalize = (val?: string | null) =>
+      val && val.trim() !== "" ? val : null;
 
     /* ---------- Transaction ---------- */
 
@@ -107,6 +109,10 @@ export async function PUT(
           name: data.name,
           fatherName: data.fatherName ?? null,
           motherName: data.motherName ?? null,
+          fatherQualification: normalize(data.fatherQualification),
+          fatherProfession: normalize(data.fatherProfession),
+          motherQualification: normalize(data.motherQualification),
+          motherProfession: normalize(data.motherProfession),
           email: data.email ?? null,
           phone: data.phone,
           address: data.address,
@@ -118,6 +124,13 @@ export async function PUT(
           studentAadhar: data.studentAadhar ?? null,
           img: data.img ?? null,
           dob,
+          joinedDate: data.joinedDate ? new Date(data.joinedDate) : null,
+          nationality: normalize(data.nationality),
+          motherTongue: normalize(data.motherTongue),
+          religion: data.religion ?? null,
+          category: data.category ?? null,
+          transportRequired: data.transportRequired ?? false,
+          hostelRequired: data.hostelRequired ?? false,
         },
       });
 

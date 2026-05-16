@@ -1,22 +1,14 @@
-import {
-  NextRequest,
-  NextResponse,
-} from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 import prisma from "@/lib/prisma";
 
 import { fetchUserInfo } from "@/lib/utils/server-utils";
 
-import {
-  StudentStatus,
-  Gender,
-  Prisma,
-} from "@prisma/client";
+import { StudentStatus, Gender, Prisma } from "@prisma/client";
 
 export const runtime = "nodejs";
 
-export const dynamic =
-  "force-dynamic";
+export const dynamic = "force-dynamic";
 
 export async function GET(
   req: NextRequest,
@@ -26,21 +18,16 @@ export async function GET(
     params: Promise<{
       schoolId: string;
     }>;
-  }
+  },
 ) {
   try {
     /* -----------------------------------
        AUTH
     ----------------------------------- */
 
-    const {
-      schoolId: schoolSlug,
-    } = await params;
+    const { schoolId: schoolSlug } = await params;
 
-    const user =
-      await fetchUserInfo(
-        schoolSlug
-      );
+    const user = await fetchUserInfo(schoolSlug);
 
     if (!user) {
       return NextResponse.json(
@@ -49,98 +36,79 @@ export async function GET(
         },
         {
           status: 403,
-        }
+        },
       );
     }
 
-    const schoolId =
-      user.schoolId;
+    const schoolId = user.schoolId;
 
     /* -----------------------------------
        QUERY PARAMS
     ----------------------------------- */
 
-    const { searchParams } =
-      new URL(req.url);
+    const { searchParams } = new URL(req.url);
 
-    const classId =
-      searchParams.get(
-        "classId"
-      );
+    const classId = searchParams.get("classId");
 
-    const gradeId =
-      searchParams.get(
-        "gradeId"
-      );
+    const gradeId = searchParams.get("gradeId");
 
-    const branchId =
-      searchParams.get(
-        "branchId"
-      );
+    const branchId = searchParams.get("branchId");
 
-    const gender =
-      searchParams.get(
-        "gender"
-      );
+    const gender = searchParams.get("gender");
 
-    const search =
-      searchParams.get(
-        "search"
-      );
+    const search = searchParams.get("search");
+
+    const religion = searchParams.get("religion");
+
+    const category = searchParams.get("category");
+
+    const transportRequired = searchParams.get("transportRequired");
+
+    const hostelRequired = searchParams.get("hostelRequired");
 
     /* -----------------------------------
        BASE WHERE
     ----------------------------------- */
 
-    const where: Prisma.StudentWhereInput =
-      {
-        schoolId,
+    const where: Prisma.StudentWhereInput = {
+      schoolId,
 
-        status:
-          StudentStatus.ACTIVE,
-      };
+      status: StudentStatus.ACTIVE,
+    };
 
     /* -----------------------------------
        STUDENT ACCESS
     ----------------------------------- */
 
-    if (
-      user.role === "student"
-    ) {
-      where.id =
-        user.studentId;
+    if (user.role === "student") {
+      where.id = user.studentId;
     }
 
     /* -----------------------------------
        ENROLLMENT FILTER
     ----------------------------------- */
 
-    const enrollmentFilter: any =
-      {
-        status: "ACTIVE",
-      };
+    const enrollmentFilter: any = {
+      status: "ACTIVE",
+    };
 
     /* -----------------------------------
        TEACHER ACCESS
     ----------------------------------- */
 
-    if (
-      user.role === "teacher"
-    ) {
+    if (user.role === "teacher") {
       if (!user.classId) {
         return NextResponse.json(
           {
-            error:
-              "Unauthorized",
+            error: "Unauthorized",
           },
           {
             status: 401,
-          }
+          },
         );
       }
 
-      enrollmentFilter.classId =
-        user.classId;
+      enrollmentFilter.classId = user.classId;
     }
 
     /* -----------------------------------
@@ -148,32 +116,24 @@ export async function GET(
     ----------------------------------- */
 
     if (classId) {
-      enrollmentFilter.classId =
-        Number(classId);
+      enrollmentFilter.classId = Number(classId);
     }
 
     /* -----------------------------------
        GRADE / BRANCH FILTER
     ----------------------------------- */
 
-    if (
-      gradeId ||
-      branchId
-    ) {
-      enrollmentFilter.class =
-        {};
+    if (gradeId || branchId) {
+      enrollmentFilter.class = {};
 
       if (gradeId) {
-        enrollmentFilter.class.gradeId =
-          Number(gradeId);
+        enrollmentFilter.class.gradeId = Number(gradeId);
       }
 
       if (branchId) {
-        enrollmentFilter.class.Grade =
-          {
-            branchId:
-              Number(branchId),
-          };
+        enrollmentFilter.class.Grade = {
+          branchId: Number(branchId),
+        };
       }
     }
 
@@ -190,8 +150,39 @@ export async function GET(
     ----------------------------------- */
 
     if (gender) {
-      where.gender =
-        gender as Gender;
+      where.gender = gender as Gender;
+    }
+
+    /* -----------------------------------
+   RELIGION FILTER
+----------------------------------- */
+
+    if (religion) {
+      where.religion = religion as any;
+    }
+
+    /* -----------------------------------
+   CATEGORY FILTER
+----------------------------------- */
+
+    if (category) {
+      where.category = category as any;
+    }
+
+    /* -----------------------------------
+   TRANSPORT FILTER
+----------------------------------- */
+
+    if (transportRequired) {
+      where.transportRequired = transportRequired === "true";
+    }
+
+    /* -----------------------------------
+   HOSTEL FILTER
+----------------------------------- */
+
+    if (hostelRequired) {
+      where.hostelRequired = hostelRequired === "true";
     }
 
     /* -----------------------------------
@@ -203,8 +194,7 @@ export async function GET(
         {
           name: {
             contains: search,
-            mode:
-              "insensitive",
+            mode: "insensitive",
           },
         },
 
@@ -226,95 +216,102 @@ export async function GET(
        QUERY
     ----------------------------------- */
 
-    const students =
-      await prisma.student.findMany(
-        {
-          where,
+    const students = await prisma.student.findMany({
+      where,
+
+      include: {
+        enrollments: {
+          where: {
+            status: "ACTIVE",
+          },
 
           include: {
-            enrollments: {
-              where: {
-                status:
-                  "ACTIVE",
-              },
-
+            class: {
               include: {
-                class: {
-                  include: {
-                    Grade: true,
-                  },
-                },
+                Grade: true,
               },
             },
           },
+        },
+      },
 
-          orderBy: {
-            name: "asc",
-          },
-        }
-      );
+      orderBy: {
+        name: "asc",
+      },
+    });
 
     /* -----------------------------------
        RESPONSE
     ----------------------------------- */
 
     const result =
-      students.map((s) => ({
-        id: s.id,
+  students.map((s) => ({
+    id: s.id,
 
-        admissionNo:
-          s.admissionNo,
+    admissionNo:
+      s.admissionNo,
 
-        name: s.name,
+    name: s.name,
 
-        phone: s.phone,
+    phone: s.phone,
 
-        gender: s.gender,
+    gender: s.gender,
 
-        fatherName:
-          s.fatherName,
+    fatherName:
+      s.fatherName,
 
-        img: s.img,
+    img: s.img,
 
-        classId:
-          s.enrollments?.[0]
-            ?.class?.id ??
-          null,
+    religion:
+      s.religion,
 
-        className:
-          s.enrollments?.[0]
-            ?.class?.name ??
-          null,
+    category:
+      s.category,
 
-        section:
-          s.enrollments?.[0]
-            ?.class?.section ??
-          null,
+    nationality:
+      s.nationality,
 
-        grade:
-          s.enrollments?.[0]
-            ?.class?.Grade
-            ?.level ?? null,
-      }));
+    motherTongue:
+      s.motherTongue,
 
-    return NextResponse.json(
-      result
-    );
+    transportRequired:
+      s.transportRequired,
+
+    hostelRequired:
+      s.hostelRequired,
+
+    joinedDate:
+      s.joinedDate,
+
+    classId:
+      s.enrollments?.[0]
+        ?.class?.id ?? null,
+
+    className:
+      s.enrollments?.[0]
+        ?.class?.name ?? null,
+
+    section:
+      s.enrollments?.[0]
+        ?.class?.section ?? null,
+
+    grade:
+      s.enrollments?.[0]
+        ?.class?.Grade
+        ?.level ?? null,
+  }));
+
+    return NextResponse.json(result);
   } catch (error: any) {
-    console.error(
-      "Students API Error:",
-      error
-    );
+    console.error("Students API Error:", error);
 
     return NextResponse.json(
       {
-        error:
-          error.message ||
-          "Failed to fetch students",
+        error: error.message || "Failed to fetch students",
       },
       {
         status: 500,
-      }
+      },
     );
   }
 }

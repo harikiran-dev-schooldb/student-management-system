@@ -18,7 +18,10 @@ import { SearchParams, StudentsList } from "../../../../../../../types";
 import { StudentSelect } from "../../../../../../../types/query-types";
 import { tenantPrisma } from "@/lib/tenant-prisma";
 import StudentCard from "@/components/StudentCard";
-import { buildClassHierarchyFilter, buildEnrollmentFilter } from "@/lib/filters/buildHierarchyFilter";
+import {
+  buildClassHierarchyFilter,
+  buildEnrollmentFilter,
+} from "@/lib/filters/buildHierarchyFilter";
 import Table from "@/components/Table";
 import StudentStatusDropdown from "@/components/StudentStatusDropdown";
 import Avatar from "@/components/Avatar";
@@ -47,7 +50,9 @@ const renderRow = (
         <h3 className="font-semibold text-darkMode dark:text-gray-100">
           {item.name}
         </h3>
-        <p className="text-xs text-darkMode dark:text-gray-300">{item.admissionNo}</p>
+        <p className="text-xs text-darkMode dark:text-gray-300">
+          {item.admissionNo}
+        </p>
       </div>
     </td>
 
@@ -127,7 +132,6 @@ const getColumns = (role: string | null) => [
   },
 ];
 
-
 const StudentListPage = async ({
   searchParams,
   params,
@@ -176,7 +180,6 @@ const StudentListPage = async ({
 
   const db = tenantPrisma(school.id);
 
-
   const classes = await db.class.findMany({
     where: buildClassHierarchyFilter({
       branchId: resolvedSearchParams.branchId,
@@ -192,7 +195,6 @@ const StudentListPage = async ({
     gradeId,
     classId,
   });
-
 
   if (role === "teacher" && activeTeacherId) {
     enrollmentFilter.class = {
@@ -232,12 +234,12 @@ const StudentListPage = async ({
     ...(gender ? { gender: gender as $Enums.Gender } : {}),
   };
 
-
-
   const grades = await db.grade.findMany();
 
   const allowedSortKeys = ["admissionNo", "name", "gender"];
-  const safeSortKey = allowedSortKeys.includes(sortKey) ? sortKey : "admissionNo";
+  const safeSortKey = allowedSortKeys.includes(sortKey)
+    ? sortKey
+    : "admissionNo";
 
   const [data, count] = await db.$transaction([
     db.student.findMany({
@@ -269,7 +271,6 @@ const StudentListPage = async ({
           <TableSearch />
           {role === "admin" && (
             <ClassFilterDropdown
-
               classes={classes}
               grades={grades}
               branches={branches}
@@ -292,9 +293,7 @@ const StudentListPage = async ({
       </div>
 
       {data.length === 0 ? (
-        <div className="p-10 text-center text-slate-500">
-          No students found
-        </div>
+        <div className="p-10 text-center text-slate-500">No students found</div>
       ) : (
         <>
           {/* Desktop Table */}
