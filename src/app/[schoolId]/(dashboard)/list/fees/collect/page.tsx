@@ -1,7 +1,5 @@
 import clsx from "clsx";
-import ClassFilterDropdown, {
-  GenderFilter
-} from "@/components/FilterDropdown";
+import ClassFilterDropdown, { GenderFilter } from "@/components/FilterDropdown";
 import Pagination from "@/components/Pagination";
 import SortButton from "@/components/SortButton";
 import Table from "@/components/Table";
@@ -21,6 +19,28 @@ import { tenantPrisma } from "@/lib/tenant-prisma";
 import FeeStudentCard from "@/components/FeeStudentCard";
 import StudentFeesExcelDownload from "@/components/StudentFeesExcelDownload";
 
+const calculateFeeTotals = (student: any) => {
+  let totalPaidAmount = 0;
+  let totalDiscountAmount = 0;
+  let totalFineAmount = 0;
+  let totalFeeAmount = 0;
+
+  for (const fee of student.studentFees ?? []) {
+    totalPaidAmount += Number(fee.paidAmount ?? 0);
+    totalDiscountAmount += Number(fee.discountAmount ?? 0);
+    totalFineAmount += Number(fee.fineAmount ?? 0);
+    totalFeeAmount += Number(fee.feeStructure?.amount ?? 0);
+  }
+
+  return {
+    totalPaidAmount,
+    totalDiscountAmount,
+    totalFineAmount,
+    totalFeeAmount,
+    dueAmount: totalFeeAmount - totalPaidAmount - totalDiscountAmount,
+  };
+};
+
 const renderRow = (
   item: FeeColectList & {
     totalPaidAmount: number;
@@ -29,30 +49,22 @@ const renderRow = (
     dueAmount: number;
   },
   role: string | null,
-  schoolId: string
+  schoolId: string,
 ) => {
   const paidAmount = item.totalPaidAmount;
-const totalFeeAmount = item.totalFeeAmount;
-const discountAmount = item.totalDiscountAmount;
-const abacusAmount = 0; // or add if you support it
+  const totalFeeAmount = item.totalFeeAmount;
+  const dueAmount = item.dueAmount;
 
-const dueAmount = item.dueAmount;
-  const isPreKg = item.enrollments[0]?.class.name?.trim().toLowerCase() === "pre kg";
+  const isPreKg =
+    item.enrollments[0]?.class.name?.trim().toLowerCase() === "pre kg";
 
   const { status } = getTermStatus({
     dueAmount,
     paidAmount,
-    abacusAmount,
+    abacusAmount: 0,
     totalFeeAmount,
     isPreKg,
   });
-
-  const normalizedStatus =
-  status === "Fully Paid"
-    ? "FULLY_PAID"
-    : status === "Not Paid"
-    ? "NOT_PAID"
-    : "PARTIAL";
 
   return (
     <tr
@@ -62,9 +74,9 @@ const dueAmount = item.dueAmount;
       <td className="flex items-center gap-2 p-2 text-gray-800 dark:text-gray-200">
         <div
           className="w-10 h-10 rounded-full
-             flex items-center justify-center
-             bg-gray-100 dark:bg-gray-800
-             md:hidden xl:flex"
+          flex items-center justify-center
+          bg-gray-100 dark:bg-gray-800
+          md:hidden xl:flex"
         >
           {item.img ? (
             <img
@@ -83,51 +95,45 @@ const dueAmount = item.dueAmount;
           <h3 className="font-semibold">
             {item.name} ({item.enrollments[0]?.class.name || "N/A"})
           </h3>
+
           <p className="text-xs">{item.admissionNo}</p>
         </div>
       </td>
-      <td className="hidden md:table-cell text-gray-700 dark:text-gray-200">
-        {item.fatherName || "N/A"}
-      </td>
-      <td className="hidden md:table-cell text-gray-800 dark:text-gray-200">
-        {item.phone}
-      </td>
-      <td className="text-gray-800 dark:text-gray-200 hidden md:table-cell">
+
+      <td className="hidden md:table-cell">{item.fatherName || "N/A"}</td>
+
+      <td className="hidden md:table-cell">{item.phone}</td>
+
+      <td className="hidden md:table-cell">
         {item.feeTransactions?.[0]?.receiptNo || "N/A"}
       </td>
-      <td className="hidden md:table-cell text-gray-700 dark:text-gray-200">
-        {paidAmount}
+
+      <td className="hidden md:table-cell">{paidAmount}</td>
+
+      <td>
+        <span
+          className={clsx(
+            "px-2 py-1 rounded-full text-xs font-medium",
+            status === "Fully Paid" && "bg-green-100 text-green-700",
+            status === "Not Paid" && "bg-red-100 text-red-700",
+            status.includes("Term") && "bg-orange-100 text-orange-700",
+          )}
+        >
+          {status}
+        </span>
       </td>
-      {/* <td
-        className={clsx(
-          "",
-          status === "Fully Paid" && "text-LamaGreen dark:text-LamaGreen",
-          status === "Not Paid" && "text-red-500 dark:text-red-400",
-          status.includes("Term") && "text-orange-500 dark:text-LamaYellow",
-        )}
-      >
-        {status}
-      </td> */}
 
       <td className="p-2">
         {role === "admin" && (
           <div className="flex items-center gap-2">
-            {/* Collect Fees Button */}
             <Link href={`/${schoolId}/list/fees/collect/${item.id}`}>
-              <button
-                className="flex items-center justify-center rounded-full w-8 h-8
-             bg-LamaSky dark:bg-LamaSkyLight"
-              >
+              <button className="flex items-center justify-center rounded-full w-8 h-8 bg-LamaSky">
                 <Eye className="w-4 h-4 text-black" />
               </button>
             </Link>
 
-            {/* Cancel Fees Button */}
             <Link href={`/${schoolId}/list/fees/cancel/${item.id}`}>
-              <button
-                className="flex items-center justify-center rounded-full w-8 h-8
-             bg-LamaPurple dark:bg-LamaPurple"
-              >
+              <button className="flex items-center justify-center rounded-full w-8 h-8 bg-LamaPurple">
                 <X className="w-4 h-4 text-black" />
               </button>
             </Link>
@@ -139,15 +145,23 @@ const dueAmount = item.dueAmount;
 };
 
 const getColumns = (role: string | null) => [
-  { header: "Student Name", accessor: "name", sortable: true },
+  {
+    header: "Student Name",
+    accessor: "name",
+    sortable: true,
+  },
   {
     header: "Parent Name",
     accessor: "parentName",
     className: "hidden md:table-cell",
   },
-  { header: "Mobile", accessor: "phone", className: "hidden md:table-cell" },
   {
-    header: "Reciept No",
+    header: "Mobile",
+    accessor: "phone",
+    className: "hidden md:table-cell",
+  },
+  {
+    header: "Receipt No",
     accessor: "receiptNo",
     className: "hidden md:table-cell",
   },
@@ -156,7 +170,10 @@ const getColumns = (role: string | null) => [
     accessor: "paidAmount",
     className: "hidden md:table-cell",
   },
-  // { header: "Status", accessor: "status", className: "", sortable: true },
+  {
+    header: "Status",
+    accessor: "status",
+  },
   ...(role === "admin" ? [{ header: "Actions", accessor: "action" }] : []),
 ];
 
@@ -167,31 +184,38 @@ const StudentFeeListPage = async ({
   searchParams: Promise<SearchParams>;
   params: Promise<{ schoolId: string }>;
 }) => {
-  // 1️⃣ Resolve route params
   const { schoolId: slug } = await params;
   const resolvedSearchParams = await searchParams;
 
-  // 2️⃣ Resolve internal school ID
   const school = await prisma.schoolInfo.findUnique({
-    where: { schoolId: slug },
-    select: { id: true },
+    where: {
+      schoolId: slug,
+    },
+    select: {
+      id: true,
+    },
   });
 
-  if (!school) throw new Error("Invalid school");
+  if (!school) {
+    throw new Error("Invalid school");
+  }
 
-  // 3️⃣ Tenant-scoped Prisma
   const db = tenantPrisma(school.id);
 
-  // 4️⃣ Auth
-  const { role, classId: teacherClassId } = await fetchUserInfo(slug);
+  const { role } = await fetchUserInfo(slug);
 
   const columns = getColumns(role);
 
-  // 5️⃣ Extract filters from searchParams
-  const { page, gradeId, classId, studentStatus, branchId: rawBranchId, ...queryParams } =
-    resolvedSearchParams;
+  const {
+    page,
+    gradeId,
+    classId,
+    studentStatus,
+    branchId: rawBranchId,
+    ...queryParams
+  } = resolvedSearchParams;
 
-  const p = page ? (Array.isArray(page) ? page[0] : page) : "1";
+  const currentPage = page ? Number(Array.isArray(page) ? page[0] : page) : 1;
 
   const sortOrder = resolvedSearchParams.sort === "desc" ? "desc" : "asc";
 
@@ -199,11 +223,12 @@ const StudentFeeListPage = async ({
     ? resolvedSearchParams.sortKey[0]
     : resolvedSearchParams.sortKey || "admissionNo";
 
-  const branchId = Array.isArray(rawBranchId)
-    ? rawBranchId[0]
-    : rawBranchId;
+  const branchId = Array.isArray(rawBranchId) ? rawBranchId[0] : rawBranchId;
 
-  // 6️⃣ Build where clause (NO nested "where")
+  const searchValue = Array.isArray(queryParams.search)
+    ? queryParams.search[0]
+    : queryParams.search;
+
   const query: Prisma.StudentWhereInput = {
     schoolId: school.id,
 
@@ -213,10 +238,14 @@ const StudentFeeListPage = async ({
 
     enrollments: {
       some: {
-        ...(classId && { classId: Number(classId) }),
+        ...(classId && {
+          classId: Number(classId),
+        }),
 
         class: {
-          ...(gradeId && { gradeId: Number(gradeId) }),
+          ...(gradeId && {
+            gradeId: Number(gradeId),
+          }),
 
           ...(branchId && {
             Grade: {
@@ -227,231 +256,184 @@ const StudentFeeListPage = async ({
       },
     },
 
-    ...(queryParams.search && {
+    ...(searchValue && {
       OR: [
         {
           name: {
-            contains: Array.isArray(queryParams.search)
-              ? queryParams.search[0]
-              : queryParams.search,
+            contains: searchValue,
             mode: "insensitive",
           },
         },
         {
           admissionNo: {
-            contains: Array.isArray(queryParams.search)
-              ? queryParams.search[0]
-              : queryParams.search,
+            contains: searchValue,
           },
         },
       ],
     }),
   };
 
+  const studentQuery = {
+    where: query,
 
-  // 7️⃣ Tenant-safe queries
-  const [data, count] = await db.$transaction([
-    db.student.findMany({
-  where: query,
-  orderBy: [
-    { [sortKey]: sortOrder },
-    { name: "asc" },
-  ],
-  take: ITEM_PER_PAGE,
-  skip: ITEM_PER_PAGE * (parseInt(p) - 1),
-  select: {
-    ...StudentFeeSelect,
-
-    studentFees: {
-      select: {
-        paidAmount: true,
-        discountAmount: true,
-        fineAmount: true,
-        dueAmount: true,
-        feeStructure: {
-          select: {
-            amount: true,
-          },
-        },
+    orderBy: [
+      {
+        [sortKey]: sortOrder,
       },
-    },
-  },
-}),
-    db.student.count({ where: query }),
-  ]);
-
-  const exportDataRaw = await db.student.findMany({
-  where: query,
-  orderBy: [
-    { [sortKey]: sortOrder },
-    { name: "asc" },
-  ],
-  select: {
-    ...StudentFeeSelect,
-
-    studentFees: {
-      select: {
-        paidAmount: true,
-        discountAmount: true,
-        fineAmount: true,
-        dueAmount: true,
-        feeStructure: {
-          select: {
-            amount: true,
-          },
-        },
+      {
+        name: "asc" as const,
       },
-    },
-  },
-});
+    ],
 
-const exportData = exportDataRaw.map((item) => {
-  let totalPaidAmount = 0;
-  let totalDiscountAmount = 0;
-  let totalFineAmount = 0;
-  let totalFeeAmount = 0;
+    select: {
+      ...StudentFeeSelect,
 
-  for (const fee of item.studentFees ?? []) {
-    totalPaidAmount += Number(fee.paidAmount ?? 0);
-    totalDiscountAmount += Number(fee.discountAmount ?? 0);
-    totalFineAmount += Number(fee.fineAmount ?? 0);
-    totalFeeAmount += Number(fee.feeStructure?.amount ?? 0);
-  }
+      studentFees: {
+        select: {
+          paidAmount: true,
+          discountAmount: true,
+          fineAmount: true,
+          dueAmount: true,
 
-  return {
-    ...item,
-    totalPaidAmount,
-    totalDiscountAmount,
-    totalFineAmount,
-    totalFeeAmount,
-    dueAmount:
-      totalFeeAmount -
-      totalPaidAmount -
-      totalDiscountAmount,
-  };
-});
-
-  const [branches, grades, classes] = await Promise.all([
-  role === "admin" ? db.branch.findMany() : Promise.resolve([]),
-
-  role === "admin"
-    ? db.grade.findMany({
-        where: {
-          ...(branchId && { branchId: Number(branchId) }),
-        },
-      })
-    : Promise.resolve([]),
-
-  role === "admin"
-    ? db.class.findMany({
-        where: {
-          ...(gradeId && { gradeId: Number(gradeId) }),
-          ...(branchId && {
-            Grade: {
-              branchId: Number(branchId),
+          feeStructure: {
+            select: {
+              amount: true,
             },
-          }),
+          },
         },
-      })
-    : Promise.resolve([]),
-]);
-
-const enrichedData = data.map((item) => {
-  let totalPaidAmount = 0;
-  let totalDiscountAmount = 0;
-  let totalFineAmount = 0;
-  let totalFeeAmount = 0;
-  let dueAmount = 0;
-
-  for (const fee of item.studentFees ?? []) {
-    totalPaidAmount += Number(fee.paidAmount ?? 0);
-    totalDiscountAmount += Number(fee.discountAmount ?? 0);
-    totalFineAmount += Number(fee.fineAmount ?? 0);
-    totalFeeAmount += Number(fee.feeStructure?.amount ?? 0);
-    dueAmount += Number(fee.dueAmount ?? 0);
-  }
-
-  return {
-    ...item,
-    totalPaidAmount,
-    totalDiscountAmount,
-    totalFineAmount,
-    totalFeeAmount,
-    dueAmount: totalFeeAmount - totalPaidAmount - totalDiscountAmount,
+      },
+    },
   };
-});
 
-const filteredData = enrichedData.filter((item) => {
-  const filterStatus = resolvedSearchParams.status;
+  const [data, count, exportDataRaw, branches, grades, classes] =
+    await Promise.all([
+      db.student.findMany({
+        ...studentQuery,
+        take: ITEM_PER_PAGE,
+        skip: ITEM_PER_PAGE * (currentPage - 1),
+      }),
 
-  if (!filterStatus) return true;
+      db.student.count({
+        where: query,
+      }),
 
-  const { status } = getTermStatus({
-    dueAmount: item.dueAmount,
-    paidAmount: item.totalPaidAmount,
-    abacusAmount: 0,
-    totalFeeAmount: item.totalFeeAmount,
-    isPreKg:
-      item.enrollments[0]?.class.name?.trim().toLowerCase() === "pre kg",
+      db.student.findMany(studentQuery),
+
+      role === "admin" ? db.branch.findMany() : Promise.resolve([]),
+
+      role === "admin"
+        ? db.grade.findMany({
+            where: {
+              ...(branchId && {
+                branchId: Number(branchId),
+              }),
+            },
+          })
+        : Promise.resolve([]),
+
+      role === "admin"
+        ? db.class.findMany({
+            where: {
+              ...(gradeId && {
+                gradeId: Number(gradeId),
+              }),
+
+              ...(branchId && {
+                Grade: {
+                  branchId: Number(branchId),
+                },
+              }),
+            },
+          })
+        : Promise.resolve([]),
+    ]);
+
+  const enrichedData = data.map((item) => ({
+    ...item,
+    ...calculateFeeTotals(item),
+  }));
+
+  const exportData = exportDataRaw.map((item) => ({
+    ...item,
+    ...calculateFeeTotals(item),
+  }));
+
+  const filteredData = enrichedData.filter((item) => {
+    const filterStatus = resolvedSearchParams.status;
+
+    if (!filterStatus) {
+      return true;
+    }
+
+    const { status } = getTermStatus({
+      dueAmount: item.dueAmount,
+      paidAmount: item.totalPaidAmount,
+      abacusAmount: 0,
+      totalFeeAmount: item.totalFeeAmount,
+
+      isPreKg:
+        item.enrollments[0]?.class.name?.trim().toLowerCase() === "pre kg",
+    });
+
+    const normalizedStatus =
+      status === "Fully Paid"
+        ? "FULLY_PAID"
+        : status === "Not Paid"
+          ? "NOT_PAID"
+          : "PARTIAL";
+
+    return normalizedStatus === filterStatus;
   });
 
-  const normalizedStatus =
-    status === "Fully Paid"
-      ? "FULLY_PAID"
-      : status === "Not Paid"
-      ? "NOT_PAID"
-      : "PARTIAL";
-
-  return normalizedStatus === filterStatus;
-});
-
-
-
-  const Path = `/${slug}/list/fees/collect`;
+  const path = `/${slug}/list/fees/collect`;
 
   return (
     <div className="flex-1 p-4 bg-white dark:bg-gray-900 text-black dark:text-white">
-      {/* Top Controls */}
+      {/* HEADER */}
       <div className="flex items-center justify-between mb-3">
         <h1 className="hidden text-lg font-semibold md:block">
           {role === "teacher"
-            ? `Fees Collection - ${data[0]?.enrollments[0].class.name ?? "Your Class"
-            } (${count})`
+            ? `Fees Collection - ${
+                data[0]?.enrollments[0]?.class?.name ?? "Your Class"
+              } (${count})`
             : `Fees Collection (${count})`}
         </h1>
 
         {role === "admin" && (
           <div className="flex flex-col items-center w-full gap-4 md:flex-row md:w-auto">
             <TableSearch />
+
             <ClassFilterDropdown
               branches={branches}
               classes={classes}
               grades={grades}
-              basePath={Path}
+              basePath={path}
             />
-            <GenderFilter basePath={Path} />
-            {/* <StatusFilter basePath={Path} /> */}
+
+            <GenderFilter basePath={path} />
+
             <div className="flex flex-col md:flex-row items-center gap-4 w-full">
               <div className="flex items-center gap-4">
-                <ResetFiltersButton basePath={Path} />
+                <ResetFiltersButton basePath={path} />
+
                 <IconButton icon={Filter} />
+
                 <SortButton sortKey="id" />
+
                 <StudentFeesExcelDownload
-  data={JSON.parse(JSON.stringify(exportData))}
-/>
+                  data={JSON.parse(JSON.stringify(exportData))}
+                />
               </div>
             </div>
           </div>
         )}
       </div>
 
-      {data.length === 0 ? (
-        <div className="p-10 text-center text-slate-500">
-          No students found
-        </div>
+      {filteredData.length === 0 ? (
+        <div className="p-10 text-center text-slate-500">No students found</div>
       ) : (
         <>
-          {/* ================= DESKTOP TABLE ================= */}
+          {/* DESKTOP */}
           <div className="hidden lg:block mt-4">
             <div className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden shadow-sm">
               <Table
@@ -464,36 +446,26 @@ const filteredData = enrichedData.filter((item) => {
             </div>
           </div>
 
-          {/* ================= MOBILE + TABLET CARDS ================= */}
+          {/* MOBILE */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 lg:hidden mt-4">
-            {filteredData.map((item) => {
-              const paidAmount = item.totalPaidAmount;
-              const totalFeeAmount = item.totalFeeAmount;
-              const discountAmount = item.totalDiscountAmount;
-              const dueAmount = item.dueAmount;
-
-              const safeItem = {
-                id: item.id,
-                name: item.name,
-                admissionNo: item.admissionNo,
-              };
-
-              return (
-                <FeeStudentCard
-                  key={item.id}
-                  item={safeItem}
-                  slug={slug}
-                  dueAmount={dueAmount}
-                  paidAmount={paidAmount}
-                />
-              );
-            })}
+            {filteredData.map((item) => (
+              <FeeStudentCard
+                key={item.id}
+                item={{
+                  id: item.id,
+                  name: item.name,
+                  admissionNo: item.admissionNo,
+                }}
+                slug={slug}
+                dueAmount={item.dueAmount}
+                paidAmount={item.totalPaidAmount}
+              />
+            ))}
           </div>
         </>
       )}
 
-      {/* Pagination */}
-      <Pagination page={parseInt(p)} count={count} />
+      <Pagination page={currentPage} count={count} />
     </div>
   );
 };

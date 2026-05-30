@@ -5,7 +5,6 @@ import { useUser } from "@clerk/nextjs";
 import MenuWrapper from "@/components/MenuWrapper";
 import SidebarShell from "@/components/Sidebar";
 import { SidebarProvider } from "@/components/context/SidebarContext";
-import BottomNav from "./mobile/BottomNav";
 
 type Role = "admin" | "teacher" | "student";
 
@@ -17,8 +16,7 @@ export default function DashboardClientLayout({
 }) {
   const { user } = useUser();
 
-  const role =
-    (user?.publicMetadata?.role as Role | undefined) ?? "student";
+  const role = (user?.publicMetadata?.role as Role | undefined) ?? "student";
 
   return (
     <SidebarProvider>
@@ -32,9 +30,6 @@ export default function DashboardClientLayout({
         <main className="flex-1 overflow-y-auto bg-white dark:bg-darkMode pb-16 md:pb-0">
           {children}
         </main>
-
-        {/* Mobile Bottom Nav */}
-        <BottomNav role={role} />
       </div>
     </SidebarProvider>
   );

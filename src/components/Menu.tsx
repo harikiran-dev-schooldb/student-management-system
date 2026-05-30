@@ -91,21 +91,21 @@ const menuSections: MenuSection[] = [
         visible: ["admin", "teacher"],
         dropdown: [
           {
-            label: "Mark Attendance",
+            label: "Student Attendance",
             href: "/list/attendance/mark",
             icon: CalendarCheck,
-            visible: ["admin", "teacher"],
-          },
-          {
-            label: "View Attendance",
-            href: "/list/attendance/view",
-            icon: BarChart3,
             visible: ["admin", "teacher"],
           },
           {
             label: "Staff Attendance",
             href: "/list/staff-attendance",
             icon: UserCheck,
+            visible: ["admin", "teacher"],
+          },
+          {
+            label: "Student Attendance Report",
+            href: "/list/attendance/view",
+            icon: BarChart3,
             visible: ["admin", "teacher"],
           },
         ],
@@ -190,12 +190,12 @@ const menuSections: MenuSection[] = [
         icon: Clock,
         visible: ["admin", "teacher"],
       },
-      {
-        label: "Assignments",
-        href: "/list/assignments",
-        icon: ClipboardCheck,
-        visible: ["admin", "teacher", "student"],
-      },
+      // {
+      //   label: "Assignments",
+      //   href: "/list/assignments",
+      //   icon: ClipboardCheck,
+      //   visible: ["admin", "teacher", "student"],
+      // },
       {
         label: "Exams",
         href: "/list/exams",
@@ -227,12 +227,12 @@ const menuSections: MenuSection[] = [
         icon: Activity,
         visible: ["admin"],
       },
-      {
-            label: "Accounts",
-            href: "/list/admin/payment-accounts",
-            icon: User,
-            visible: ["admin"],
-          },
+      // {
+      //   label: "Accounts",
+      //   href: "/list/admin/payment-accounts",
+      //   icon: User,
+      //   visible: ["admin"],
+      // },
       {
         label: "Promote Students",
         href: "/list/promote",
@@ -244,7 +244,6 @@ const menuSections: MenuSection[] = [
         icon: Upload,
         visible: ["admin"],
         dropdown: [
-
           {
             label: "Grades",
             href: "/list/reports/bulk-import/grades",
@@ -293,12 +292,12 @@ const menuSections: MenuSection[] = [
             icon: Clock,
             visible: ["admin", "teacher"],
           },
-          {
-            label: "Exams",
-            href: "/list/reports/bulk-import/exams",
-            icon: FileText,
-            visible: ["admin", "teacher"],
-          },
+          // {
+          //   label: "Exams",
+          //   href: "/list/reports/bulk-import/exams",
+          //   icon: FileText,
+          //   visible: ["admin", "teacher"],
+          // },
         ],
       },
     ],
@@ -434,10 +433,11 @@ export default function Menu({ role }: { role: Role }) {
                   onClick={handleClick}
                   className={`group relative flex items-center rounded-md py-2 transition-colors
                   ${isCollapsed ? "justify-center px-2" : "gap-3 px-4"}
-                  ${active
+                  ${
+                    active
                       ? "bg-gray-100 text-gray-900 dark:bg-darkMode dark:text-white"
                       : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-800 dark:hover:text-white"
-                    }`}
+                  }`}
                 >
                   <Icon size={18} />
 

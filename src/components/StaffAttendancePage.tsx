@@ -1,22 +1,29 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
+
 import { toast } from "react-toastify";
+
 import {
   Calendar,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Clock3,
   Download,
   Loader2,
   Save,
   Search,
   UserCheck,
-  Users,
+  UserX,
   XCircle,
 } from "lucide-react";
+
 import { tenantFetch } from "@/lib/tenantFetch";
+
 import { useSchoolSlug } from "./hooks/getschool";
 
 type StaffAttendanceStatus =
@@ -38,9 +45,6 @@ type StaffAttendanceRecord = {
   id: number;
   date: string;
   status: StaffAttendanceStatus;
-  checkIn?: string | null;
-  checkOut?: string | null;
-  remarks?: string | null;
   teacherId: string;
   teacher: StaffMember;
 };
@@ -57,37 +61,26 @@ type Props = {
 const statusOptions: {
   value: StaffAttendanceStatus;
   label: string;
-  className: string;
 }[] = [
   {
     value: "PRESENT",
     label: "Present",
-    className:
-      "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-300",
   },
   {
     value: "ABSENT",
     label: "Absent",
-    className:
-      "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/40 dark:bg-rose-950/30 dark:text-rose-300",
   },
   {
     value: "LATE",
     label: "Late",
-    className:
-      "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-300",
   },
   {
     value: "HALF_DAY",
     label: "Half Day",
-    className:
-      "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900/40 dark:bg-sky-950/30 dark:text-sky-300",
   },
   {
     value: "ON_LEAVE",
-    label: "On Leave",
-    className:
-      "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900/40 dark:bg-violet-950/30 dark:text-violet-300",
+    label: "Leave",
   },
 ];
 
@@ -95,27 +88,61 @@ const statusLabels = Object.fromEntries(
   statusOptions.map((status) => [status.value, status.label]),
 ) as Record<StaffAttendanceStatus, string>;
 
-function formatDate(date: string) {
-  return new Date(date).toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-}
-
 export default function StaffAttendancePage({ role }: Props) {
   const schoolId = useSchoolSlug();
+
   const today = new Date().toISOString().split("T")[0];
 
   const [date, setDate] = useState(today);
-  const [searchQuery, setSearchQuery] = useState("");
+
   const [teachers, setTeachers] = useState<StaffMember[]>([]);
+
   const [records, setRecords] = useState<StaffAttendanceRecord[]>([]);
+
+  const [expandedTeacher, setExpandedTeacher] = useState<string | null>(null);
+
+  const clickTimeout = useRef<NodeJS.Timeout | null>(null);
+
   const [attendance, setAttendance] = useState<
     Record<string, StaffAttendanceStatus>
   >({});
+
   const [loading, setLoading] = useState(false);
+
   const [submitting, setSubmitting] = useState(false);
+
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const itemsPerPage = 24;
+
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const inputClass =
+    "w-full h-10 px-3 rounded-lg text-sm border bg-white dark:bg-darkfg border-slate-200 dark:border-slate-700 text-darkfg dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors";
+
+  /* -------------------------------- */
+  /* Ctrl + F Focus */
+  /* -------------------------------- */
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === "f" || e.key === "F")) {
+        e.preventDefault();
+
+        searchInputRef.current?.focus();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  /* -------------------------------- */
+  /* Load Attendance */
+  /* -------------------------------- */
 
   const loadAttendance = async () => {
     if (!schoolId) return;
@@ -141,10 +168,12 @@ export default function StaffAttendancePage({ role }: Props) {
       });
 
       setTeachers(data.teachers);
+
       setRecords(data.attendance);
+
       setAttendance(initial);
     } catch (error: any) {
-      toast.error(error.message || "Failed to load staff attendance");
+      toast.error(error.message || "Failed to load attendance");
     } finally {
       setLoading(false);
     }
@@ -153,6 +182,10 @@ export default function StaffAttendancePage({ role }: Props) {
   useEffect(() => {
     loadAttendance();
   }, [schoolId, date]);
+
+  /* -------------------------------- */
+  /* Search */
+  /* -------------------------------- */
 
   const filteredTeachers = useMemo(() => {
     if (!searchQuery) return teachers;
@@ -167,10 +200,31 @@ export default function StaffAttendancePage({ role }: Props) {
     );
   }, [teachers, searchQuery]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
+  /* -------------------------------- */
+  /* Pagination */
+  /* -------------------------------- */
+
+  const totalPages = Math.ceil(filteredTeachers.length / itemsPerPage);
+
+  const visibleTeachers = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+
+    return filteredTeachers.slice(start, start + itemsPerPage);
+  }, [filteredTeachers, currentPage]);
+
+  /* -------------------------------- */
+  /* Stats */
+  /* -------------------------------- */
+
   const counts = useMemo(() => {
     return teachers.reduce(
       (acc, teacher) => {
         acc[attendance[teacher.id] ?? "PRESENT"] += 1;
+
         return acc;
       },
       {
@@ -183,19 +237,27 @@ export default function StaffAttendancePage({ role }: Props) {
     );
   }, [attendance, teachers]);
 
+  /* -------------------------------- */
+  /* Actions */
+  /* -------------------------------- */
+
   const setAll = (status: StaffAttendanceStatus) => {
-    const next: Record<string, StaffAttendanceStatus> = {};
+    const updated: Record<string, StaffAttendanceStatus> = {};
 
     filteredTeachers.forEach((teacher) => {
-      next[teacher.id] = status;
+      updated[teacher.id] = status;
     });
 
-    setAttendance((previous) => ({ ...previous, ...next }));
+    setAttendance((previous) => ({
+      ...previous,
+      ...updated,
+    }));
   };
 
   const saveAttendance = async () => {
     if (!teachers.length) {
       toast.error("No staff members found");
+
       return;
     }
 
@@ -204,118 +266,122 @@ export default function StaffAttendancePage({ role }: Props) {
     try {
       await tenantFetch(schoolId, "/staff-attendance", {
         method: "POST",
+
         body: JSON.stringify(
           teachers.map((teacher) => ({
             teacherId: teacher.id,
+
             date,
+
             status: attendance[teacher.id] ?? "PRESENT",
           })),
         ),
       });
 
-      toast.success("Staff attendance saved");
+      toast.success("Attendance saved successfully");
+
       await loadAttendance();
     } catch (error: any) {
-      toast.error(error.message || "Failed to save staff attendance");
+      toast.error(error.message || "Failed to save attendance");
     } finally {
       setSubmitting(false);
     }
   };
 
+  /* -------------------------------- */
+  /* Export Excel */
+  /* -------------------------------- */
+
   const exportToExcel = async () => {
     if (!teachers.length) {
-      toast.error("No staff attendance data to export");
+      toast.error("No attendance data available");
+
       return;
     }
 
-    const savedRecordMap = new Map(
-      records.map((record) => [record.teacherId, record]),
-    );
-
     const workbook = new ExcelJS.Workbook();
+
     const worksheet = workbook.addWorksheet("Staff Attendance");
 
     worksheet.columns = [
-      { header: "Staff Name", key: "name", width: 28 },
-      { header: "Username", key: "username", width: 18 },
-      { header: "Phone", key: "phone", width: 16 },
-      { header: "Date", key: "date", width: 16 },
-      { header: "Status", key: "status", width: 16 },
-      { header: "Saved", key: "saved", width: 12 },
+      {
+        header: "Teacher",
+        key: "name",
+        width: 28,
+      },
+      {
+        header: "Username",
+        key: "username",
+        width: 20,
+      },
+      {
+        header: "Phone",
+        key: "phone",
+        width: 16,
+      },
+      {
+        header: "Date",
+        key: "date",
+        width: 16,
+      },
+      {
+        header: "Status",
+        key: "status",
+        width: 18,
+      },
     ];
 
     teachers.forEach((teacher) => {
-      const savedRecord = savedRecordMap.get(teacher.id);
-      const selectedStatus = attendance[teacher.id] ?? "PRESENT";
-
       worksheet.addRow({
         name: teacher.name,
         username: teacher.username,
         phone: teacher.phone,
         date,
-        status: statusLabels[selectedStatus],
-        saved: savedRecord ? "Yes" : "No",
+        status: statusLabels[attendance[teacher.id] ?? "PRESENT"],
       });
     });
 
-    worksheet.getRow(1).font = { bold: true };
-    worksheet.views = [{ state: "frozen", ySplit: 1 }];
+    worksheet.getRow(1).font = {
+      bold: true,
+    };
+
+    worksheet.views = [
+      {
+        state: "frozen",
+        ySplit: 1,
+      },
+    ];
 
     const buffer = await workbook.xlsx.writeBuffer();
+
     saveAs(new Blob([buffer]), `Staff_Attendance_${date}.xlsx`);
   };
 
-  const inputClass =
-    "h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-darkfg transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-darkfg dark:text-slate-100";
-
   return (
-    <div className="min-h-screen space-y-6 bg-slate-50 p-4 dark:bg-darkMode md:p-6 lg:p-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold text-darkfg dark:text-white">
-            <UserCheck className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
-            Staff Attendance
-          </h1>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Mark and review daily staff attendance.
-          </p>
-        </div>
+    <div className="min-h-screen bg-slate-50 dark:bg-darkMode p-4 md:p-6 lg:p-8 space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-darkfg dark:text-white flex items-center gap-2">
+          <UserCheck className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+          Staff Attendance
+        </h1>
 
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={exportToExcel}
-            disabled={loading || !teachers.length}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-70 dark:border-slate-700 dark:bg-darkfg dark:text-slate-100 dark:hover:bg-slate-800"
-          >
-            <Download className="h-4 w-4" />
-            Excel
-          </button>
-
-          <button
-            type="button"
-            onClick={saveAttendance}
-            disabled={submitting || loading}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 text-sm font-medium text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            {submitting ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Save className="h-4 w-4" />
-            )}
-            Save Attendance
-          </button>
-        </div>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          Mark and manage daily teacher attendance.
+        </p>
       </div>
-
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-darkfg">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-[220px_1fr_auto] md:items-end">
+      {/* Control Panel */}
+      <div className="bg-white dark:bg-darkfg border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm p-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+          {/* Date */}
           <div>
-            <label className="mb-1.5 block text-xs font-semibold text-slate-500 dark:text-slate-400">
+            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">
               Date
             </label>
+
             <div className="relative">
-              <Calendar className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+              <Calendar className="absolute left-3 top-2.5 w-4 h-4 text-slate-400 pointer-events-none" />
+
               <input
                 type="date"
                 value={date}
@@ -325,156 +391,418 @@ export default function StaffAttendancePage({ role }: Props) {
             </div>
           </div>
 
+          {/* Search */}
           <div>
-            <label className="mb-1.5 block text-xs font-semibold text-slate-500 dark:text-slate-400">
+            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">
               Search Staff
             </label>
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+
+            <div className="relative group">
+              <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400 group-focus-within:text-indigo-500 pointer-events-none" />
+
               <input
+                ref={searchInputRef}
                 type="text"
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Search name, username or phone"
+                placeholder="Search teacher..."
                 className={`${inputClass} pl-9`}
               />
+
+              <div className="absolute right-3 top-2.5 hidden sm:flex items-center gap-1 pointer-events-none">
+                <kbd className="inline-flex h-5 items-center rounded border bg-slate-100 dark:bg-slate-800 px-1.5 font-mono text-[10px] text-slate-500">
+                  ⌘F
+                </kbd>
+              </div>
             </div>
           </div>
 
+          {/* Bulk Actions */}
           {role === "admin" && (
-            <div className="flex flex-wrap gap-2">
+            <>
               <button
                 type="button"
                 onClick={() => setAll("PRESENT")}
-                className="inline-flex h-10 items-center gap-2 rounded-lg border border-emerald-200 px-3 text-sm font-medium text-emerald-700 hover:bg-emerald-50 dark:border-emerald-900/40 dark:text-emerald-300 dark:hover:bg-emerald-950/30"
+                className="
+                  h-10 rounded-xl border
+                  border-emerald-200
+                  text-emerald-700
+                  hover:bg-emerald-50
+                  flex items-center justify-center gap-2
+                "
               >
-                <CheckCircle2 className="h-4 w-4" />
-                All Present
+                <UserCheck className="w-4 h-4" />
+                Mark All Present
               </button>
+
               <button
                 type="button"
                 onClick={() => setAll("ABSENT")}
-                className="inline-flex h-10 items-center gap-2 rounded-lg border border-rose-200 px-3 text-sm font-medium text-rose-700 hover:bg-rose-50 dark:border-rose-900/40 dark:text-rose-300 dark:hover:bg-rose-950/30"
+                className="
+                  h-10 rounded-xl border
+                  border-rose-200
+                  text-rose-700
+                  hover:bg-rose-50
+                  flex items-center justify-center gap-2
+                "
               >
-                <XCircle className="h-4 w-4" />
-                All Absent
+                <UserX className="w-4 h-4" />
+                Mark All Absent
               </button>
-            </div>
+            </>
           )}
         </div>
       </div>
-
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         {statusOptions.map((status) => (
           <div
             key={status.value}
-            className={`rounded-lg border px-4 py-3 ${status.className}`}
+            className="
+                rounded-xl border
+                px-4 py-3
+                bg-white dark:bg-darkfg
+                border-slate-200 dark:border-slate-800
+              "
           >
-            <p className="text-xs font-medium">{status.label}</p>
-            <p className="mt-1 text-2xl font-bold">{counts[status.value]}</p>
+            <p className="text-xs font-medium text-slate-500">{status.label}</p>
+
+            <p className="mt-1 text-2xl font-bold text-darkfg dark:text-white">
+              {counts[status.value]}
+            </p>
           </div>
         ))}
       </div>
-
-      <div className="rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-darkfg">
-        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-slate-800">
-          <div className="flex items-center gap-2">
-            <Users className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-            <h2 className="font-semibold text-darkfg dark:text-white">
-              Staff List
-            </h2>
-          </div>
-          {loading && <Loader2 className="h-5 w-5 animate-spin text-slate-400" />}
+      {/* Teacher Cards */}
+      {loading ? (
+        <div className="flex justify-center py-20">
+          <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
         </div>
-
-        {filteredTeachers.length === 0 ? (
-          <div className="p-10 text-center text-sm text-slate-500">
-            No staff members found
-          </div>
-        ) : (
-          <div className="divide-y divide-slate-100 dark:divide-slate-800">
-            {filteredTeachers.map((teacher) => {
+      ) : visibleTeachers.length === 0 ? (
+        <div className="p-10 text-center text-slate-500 rounded-xl border bg-white dark:bg-darkfg dark:border-slate-800">
+          No teachers found
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {visibleTeachers.map((teacher) => {
               const selected = attendance[teacher.id] ?? "PRESENT";
+
+              const isPresent = selected === "PRESENT";
+
+              const statusColor =
+                selected === "PRESENT"
+                  ? `
+              border-emerald-200 bg-emerald-50
+              dark:border-emerald-900/40 dark:bg-emerald-950/20
+            `
+                  : selected === "ABSENT"
+                    ? `
+              border-rose-200 bg-rose-50
+              dark:border-rose-900/40 dark:bg-rose-950/20
+            `
+                    : selected === "LATE"
+                      ? `
+              border-amber-200 bg-amber-50
+              dark:border-amber-900/40 dark:bg-amber-950/20
+            `
+                      : selected === "HALF_DAY"
+                        ? `
+              border-sky-200 bg-sky-50
+              dark:border-sky-900/40 dark:bg-sky-950/20
+            `
+                        : `
+              border-violet-200 bg-violet-50
+              dark:border-violet-900/40 dark:bg-violet-950/20
+            `;
 
               return (
                 <div
                   key={teacher.id}
-                  className="grid gap-4 p-4 md:grid-cols-[minmax(180px,1fr)_auto] md:items-center"
+                  role="button"
+                  tabIndex={0}
+                  /* Single Click */
+                  onClick={() => {
+                    if (clickTimeout.current) {
+                      clearTimeout(clickTimeout.current);
+
+                      clickTimeout.current = null;
+
+                      return;
+                    }
+
+                    clickTimeout.current = setTimeout(() => {
+                      setAttendance((previous) => ({
+                        ...previous,
+
+                        [teacher.id]:
+                          selected === "PRESENT" ? "ABSENT" : "PRESENT",
+                      }));
+
+                      clickTimeout.current = null;
+                    }, 220);
+                  }}
+                  /* Double Click */
+                  onDoubleClick={() => {
+                    if (clickTimeout.current) {
+                      clearTimeout(clickTimeout.current);
+
+                      clickTimeout.current = null;
+                    }
+
+                    setExpandedTeacher((previous) =>
+                      previous === teacher.id ? null : teacher.id,
+                    );
+                  }}
+                  className={`
+
+      relative flex items-center
+
+      p-4 rounded-2xl border-2
+
+      transition-all duration-200
+
+      text-left shadow-sm
+
+      hover:shadow-md
+
+      active:scale-[0.98]
+
+      cursor-pointer
+
+      overflow-hidden
+
+      group
+
+      ${statusColor}
+
+    `}
                 >
-                  <div className="min-w-0">
-                    <p className="truncate font-semibold text-darkfg dark:text-white">
+                  {/* Avatar */}
+                  <div
+                    className={`
+                h-12 w-12 rounded-full
+                flex items-center justify-center
+                text-sm font-bold mr-3
+                transition-colors
+                ${
+                  isPresent
+                    ? `
+                      bg-white dark:bg-slate-800
+                      text-emerald-700 dark:text-emerald-300
+                    `
+                    : `
+                      bg-white dark:bg-slate-800
+                      text-rose-600 dark:text-rose-300
+                    `
+                }
+              `}
+                  >
+                    {teacher.name.charAt(0)}
+                  </div>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <p
+                      className={`
+                  font-semibold text-sm truncate
+                  ${
+                    isPresent
+                      ? `
+                        text-emerald-800 dark:text-emerald-200
+                      `
+                      : `
+                        text-rose-700 dark:text-rose-300
+                      `
+                  }
+                `}
+                    >
                       {teacher.name}
                     </p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      {teacher.username} / {teacher.phone}
+
+                    <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                      {teacher.username}
+                    </p>
+
+                    <p className="text-xs text-slate-400 truncate">
+                      {teacher.phone}
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 sm:flex">
-                    {statusOptions.map((status) => (
-                      <button
-                        type="button"
-                        key={status.value}
-                        onClick={() =>
-                          setAttendance((previous) => ({
-                            ...previous,
-                            [teacher.id]: status.value,
-                          }))
-                        }
-                        className={`h-9 rounded-lg border px-3 text-xs font-semibold transition-colors ${
-                          selected === status.value
-                            ? status.className
-                            : "border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-                        }`}
-                      >
-                        {status.label}
-                      </button>
-                    ))}
+                  {/* Status Icon */}
+                  <div className="absolute top-3 right-3">
+                    {selected === "PRESENT" && (
+                      <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                    )}
+
+                    {selected === "ABSENT" && (
+                      <XCircle className="w-5 h-5 text-rose-500" />
+                    )}
+
+                    {selected === "LATE" && (
+                      <Clock3 className="w-5 h-5 text-amber-500" />
+                    )}
                   </div>
+
+                  {/* Status Badge */}
+                  <div
+                    className="
+                absolute bottom-3 right-3
+                text-[10px] font-bold uppercase tracking-wider
+              "
+                  >
+                    {statusLabels[selected]}
+                  </div>
+
+                  {/* Expanded Actions */}
+                  {expandedTeacher === teacher.id && (
+                    <div
+                      className="
+                  absolute inset-0
+                  bg-white/80 dark:bg-slate-900/80
+                  animate-in fade-in zoom-in-95 duration-150
+                  flex items-center justify-center
+                  rounded-2xl
+                  z-20
+                "
+                      onClick={() => setExpandedTeacher(null)}
+                    >
+                      <div className="grid grid-cols-2 gap-2 p-3 w-full max-w-[220px]">
+                        {statusOptions
+                          .filter(
+                            (status) =>
+                              status.value !== "PRESENT" &&
+                              status.value !== "ABSENT",
+                          )
+                          .map((status) => (
+                            <button
+                              key={status.value}
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+
+                                setAttendance((previous) => ({
+                                  ...previous,
+                                  [teacher.id]: status.value,
+                                }));
+
+                                setExpandedTeacher(null);
+                              }}
+                              className={`
+                        h-10 rounded-xl text-xs
+                        font-semibold border
+                        transition-all
+                        ${
+                          selected === status.value
+                            ? `
+                              bg-indigo-600
+                              text-white
+                              border-indigo-600
+                            `
+                            : `
+                              bg-white dark:bg-slate-900
+                              border-slate-200 dark:border-slate-700
+                              hover:bg-slate-100
+                              dark:hover:bg-slate-800
+                            `
+                        }
+                      `}
+                            >
+                              {status.label}
+                            </button>
+                          ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
-        )}
-      </div>
 
-      {records.length > 0 && (
-        <div className="rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-darkfg">
-          <div className="flex items-center gap-2 border-b border-slate-200 px-5 py-4 dark:border-slate-800">
-            <Clock3 className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-            <h2 className="font-semibold text-darkfg dark:text-white">
-              Saved Records
-            </h2>
-          </div>
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-4 py-4">
+              <button
+                type="button"
+                onClick={() =>
+                  setCurrentPage((previous) => Math.max(1, previous - 1))
+                }
+                disabled={currentPage === 1}
+                className="
+            p-2 rounded-full border
+            border-slate-200 dark:border-slate-800
+            hover:bg-slate-100 dark:hover:bg-slate-800
+            disabled:opacity-50
+          "
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-900/40 dark:text-slate-400">
-                <tr>
-                  <th className="px-5 py-3">Staff</th>
-                  <th className="px-5 py-3">Date</th>
-                  <th className="px-5 py-3">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {records.map((record) => (
-                  <tr key={record.id}>
-                    <td className="px-5 py-3 font-medium text-darkfg dark:text-white">
-                      {record.teacher.name}
-                    </td>
-                    <td className="px-5 py-3 text-slate-600 dark:text-slate-300">
-                      {formatDate(record.date)}
-                    </td>
-                    <td className="px-5 py-3 text-slate-600 dark:text-slate-300">
-                      {statusLabels[record.status]}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+              <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                Page {currentPage} of {totalPages}
+              </span>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setCurrentPage((previous) =>
+                    Math.min(totalPages, previous + 1),
+                  )
+                }
+                disabled={currentPage === totalPages}
+                className="
+            p-2 rounded-full border
+            border-slate-200 dark:border-slate-800
+            hover:bg-slate-100 dark:hover:bg-slate-800
+            disabled:opacity-50
+          "
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
+          )}
+        </>
       )}
+      ```
+      {/* Sticky Buttons */}
+      <div className="fixed bottom-6 right-6 z-50 flex gap-3">
+        <button
+          type="button"
+          onClick={exportToExcel}
+          className="
+            h-14 px-5 rounded-2xl
+            bg-white dark:bg-darkfg
+            border border-slate-200 dark:border-slate-700
+            shadow-xl
+            flex items-center gap-2
+          "
+        >
+          <Download className="w-5 h-5" />
+        </button>
+
+        <button
+          type="button"
+          onClick={saveAttendance}
+          disabled={submitting || loading}
+          className="
+            h-14 px-6 rounded-2xl
+            bg-emerald-600 hover:bg-emerald-700
+            text-white font-semibold
+            shadow-2xl
+            flex items-center gap-3
+            transition-all hover:-translate-y-1
+            active:scale-95
+            disabled:opacity-70
+          "
+        >
+          {submitting ? (
+            <Loader2 className="w-5 h-5 animate-spin" />
+          ) : (
+            <Save className="w-5 h-5" />
+          )}
+          Save Attendance
+        </button>
+      </div>
     </div>
   );
 }
