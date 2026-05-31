@@ -26,8 +26,10 @@ export async function POST(
 
     /* 2️⃣ Validate Request */
     const parsed = bulkGradeSchema.safeParse(await req.json());
+    console.log(JSON.stringify(await req.json(), null, 2));
 
     if (!parsed.success) {
+      console.log(parsed.error.flatten());
       return NextResponse.json(
         { errors: parsed.error.flatten() },
         { status: 400 }

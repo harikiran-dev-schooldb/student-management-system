@@ -419,6 +419,11 @@ model Student {
   @@index([schoolId])
   @@index([schoolId, createdAt])
   @@index([gender, status])
+  @@index([schoolId, status])
+@@index([schoolId, name])
+@@index([schoolId, admissionNo])
+@@index([schoolId, phone])
+@@index([schoolId, createdAt, status])
 }
 
 model Subject {
@@ -590,6 +595,14 @@ model FeeTransaction {
   @@index([schoolId])
   @@index([studentFeesId])
   @@index([feeCycleId])
+  @@index([schoolId, academicYearId])
+@@index([schoolId, studentId])
+@@index([schoolId, receiptDate])
+@@index([schoolId, createdAt])
+@@index([schoolId, feeCycleId])
+@@index([schoolId, transactionType])
+@@index([schoolId, studentId, academicYearId])
+@@index([schoolId, deletedAt])
 }
 
 model StudentFees {
@@ -623,6 +636,11 @@ model StudentFees {
 
   @@unique([studentId, feeCycleId, feeType, academicYearId, schoolId])
   @@index([schoolId])
+  @@index([schoolId, studentId])
+@@index([schoolId, academicYearId])
+@@index([schoolId, feeCycleId])
+@@index([studentId, academicYearId])
+@@index([schoolId, dueAmount])
 }
 
 model StudentTotalFees {
@@ -642,6 +660,9 @@ model StudentTotalFees {
 
   @@unique([studentId, academicYearId, schoolId])
   @@index([schoolId])
+  @@index([schoolId, academicYearId])
+@@index([studentId, academicYearId])
+@@index([schoolId, dueAmount])
 }
 
 model Attendance {
@@ -665,6 +686,9 @@ model Attendance {
   @@index([academicYearId, studentId])
   @@index([schoolId, classId, date])
   @@index([schoolId, classId, present])
+  @@index([schoolId, academicYearId, date])
+@@index([studentId, academicYearId, date])
+@@index([schoolId, classId, academicYearId, date])
 }
 
 model StaffAttendance {
@@ -826,6 +850,9 @@ model StudentEnrollment {
   @@unique([studentId, academicYearId, schoolId])
   @@index([academicYearId, classId])
   @@index([schoolId])
+  @@index([schoolId, academicYearId])
+@@index([schoolId, classId])
+@@index([studentId, status])
 }
 
 model ReceiptSequence {
@@ -963,6 +990,8 @@ model Bus {
   route   Route?  @relation(fields: [routeId], references: [id])
 
   createdAt DateTime @default(now())
+  @@index([schoolId])
+@@index([routeId])
 }
 
 model Route {
@@ -972,6 +1001,7 @@ model Route {
 
   stops Stop[]
   buses Bus[]
+  @@index([schoolId])
 }
 
 model Stop {
@@ -983,6 +1013,7 @@ model Stop {
   routeId   String
 
   route Route @relation(fields: [routeId], references: [id])
+
 }
 
 model StudentTransport {
@@ -992,6 +1023,9 @@ model StudentTransport {
   stopId    String
 
   assignedAt DateTime @default(now())
+  @@index([studentId])
+@@index([busId])
+@@index([stopId])
 }
 
 enum LessonDay {

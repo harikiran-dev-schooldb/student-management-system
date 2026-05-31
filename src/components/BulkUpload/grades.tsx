@@ -120,7 +120,7 @@ export default function BulkGradeUpload() {
       await api.post("/grades/bulk-upload", {
         grades: grades.map((g) => ({
           level: g.level.trim(),
-          branchId: g.branchId ? Number(g.branchId) : null,
+          branchId: g.branchId?.trim(),
         })),
       });
 
@@ -170,9 +170,10 @@ export default function BulkGradeUpload() {
             <div className="flex-1 flex flex-col items-center justify-center p-8 md:p-16">
               <div
                 className={`relative group cursor-pointer flex flex-col items-center justify-center w-full max-w-3xl h-80 rounded-3xl border-3 border-dashed transition-all duration-300 ease-out
-                  ${dragActive
-                    ? "border-indigo-500 bg-indigo-50/50 dark:bg-darkMode scale-[1.02] shadow-2xl shadow-indigo-500/10"
-                    : "border-zinc-200 dark:border-zinc-800 hover:border-indigo-400 dark:hover:border-indigo-500 hover:bg-zinc-50 dark:hover:bg-zinc-900"
+                  ${
+                    dragActive
+                      ? "border-indigo-500 bg-indigo-50/50 dark:bg-darkMode scale-[1.02] shadow-2xl shadow-indigo-500/10"
+                      : "border-zinc-200 dark:border-zinc-800 hover:border-indigo-400 dark:hover:border-indigo-500 hover:bg-zinc-50 dark:hover:bg-zinc-900"
                   }`}
                 onDragEnter={handleDrag}
                 onDragLeave={handleDrag}
@@ -195,10 +196,11 @@ export default function BulkGradeUpload() {
 
                 <div className="relative z-10 flex flex-col items-center gap-6 text-center p-6">
                   <div
-                    className={`p-5 rounded-2xl shadow-sm transition-all duration-300 ${dragActive
-                      ? "bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600"
-                      : "bg-white dark:bg-darkMode text-zinc-400 group-hover:text-indigo-500 group-hover:scale-110"
-                      }`}
+                    className={`p-5 rounded-2xl shadow-sm transition-all duration-300 ${
+                      dragActive
+                        ? "bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600"
+                        : "bg-white dark:bg-darkMode text-zinc-400 group-hover:text-indigo-500 group-hover:scale-110"
+                    }`}
                   >
                     <UploadCloud className="w-10 h-10" />
                   </div>
@@ -298,11 +300,13 @@ export default function BulkGradeUpload() {
                     <thead className="text-xs font-bold uppercase tracking-wider bg-zinc-50 dark:bg-darkMode text-zinc-500 dark:text-zinc-400 sticky top-0 z-10 backdrop-blur-sm border-b border-zinc-200 dark:border-zinc-800">
                       <tr>
                         <th className="px-6 py-4 w-16 text-center">#</th>
-                        {Object.keys(grades[0] as Record<string, any>).map((key) => (
-                          <th key={key} className="px-6 py-4">
-                            {key}
-                          </th>
-                        ))}
+                        {Object.keys(grades[0] as Record<string, any>).map(
+                          (key) => (
+                            <th key={key} className="px-6 py-4">
+                              {key}
+                            </th>
+                          ),
+                        )}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800 bg-white dark:bg-darkMode">
