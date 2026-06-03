@@ -1,26 +1,27 @@
 import prisma from "@/lib/prisma";
 import FormModal from "./FormModal";
+import { tenantGuard } from "@/lib/tenantGuard";
 
 export type FormContainerProps = {
   table:
-  | "teacher"
-  | "student"
-  | "permissions"
-  | "subject"
-  | "class"
-  | "lesson"
-  | "exams"
-  | "assignment"
-  | "attendance"
-  | "event"
-  | "announcement"
-  | "fees"
-  | "admin"
-  | "fees_structure"
-  | "messages"
-  | "results"
-  | "homework"
-  | "examGradeSubjects";
+    | "teacher"
+    | "student"
+    | "permissions"
+    | "subject"
+    | "class"
+    | "lesson"
+    | "exams"
+    | "assignment"
+    | "attendance"
+    | "event"
+    | "announcement"
+    | "fees"
+    | "admin"
+    | "fees_structure"
+    | "messages"
+    | "results"
+    | "homework"
+    | "examGradeSubjects";
   type: "create" | "update" | "delete";
   data?: any;
   id?: number | string;
@@ -28,6 +29,16 @@ export type FormContainerProps = {
 
 const FormContainer = async ({ table, type, data, id }: FormContainerProps) => {
   let relatedData = {};
+  const tenant = await tenantGuard();
+
+  if ("error" in tenant) {
+    return null;
+  }
+
+  const { access } = tenant;
+
+  const schoolSlug = access.schoolSlug;
+  const schoolId = access.schoolId;
 
   if (type !== "delete") {
     switch (table) {
@@ -45,10 +56,12 @@ const FormContainer = async ({ table, type, data, id }: FormContainerProps) => {
 
       case "class":
         const classGrades = await prisma.grade.findMany({
+          where: { schoolId },
           select: { id: true, level: true },
         });
 
         const classTeachers = await prisma.teacher.findMany({
+          where: { schoolId },
           select: { id: true, name: true },
         });
 
@@ -57,6 +70,7 @@ const FormContainer = async ({ table, type, data, id }: FormContainerProps) => {
 
       case "teacher":
         const teacherSubjects = await prisma.subject.findMany({
+          where: { schoolId },
           select: { id: true, name: true },
         });
 
@@ -64,64 +78,69 @@ const FormContainer = async ({ table, type, data, id }: FormContainerProps) => {
         break;
 
       case "student":
-  const studentGrades = await prisma.grade.findMany({
-    select: { id: true, level: true },
-  });
+        const studentGrades = await prisma.grade.findMany({
+          where: { schoolId },
+          select: { id: true, level: true },
+        });
 
-  const studentClasses = await prisma.class.findMany({
-    include: {
-      _count: {
-        select: {
-          studentEnrollments: {
-            where: {
-              status: "ACTIVE",
-              academicYear: { isActive: true },
+        const studentClasses = await prisma.class.findMany({
+          where: { schoolId },
+          include: {
+            _count: {
+              select: {
+                studentEnrollments: {
+                  where: {
+                    status: "ACTIVE",
+                    academicYear: { isActive: true },
+                  },
+                },
+              },
+            },
+            Grade: true,
+          },
+        });
+
+        // ✅ FIXED → feeCycle based
+        const studentFees = await prisma.feeStructure.findMany({
+          where: { schoolId },
+          select: {
+            id: true,
+            gradeId: true,
+            amount: true,
+            feeType: true,
+
+            feeCycle: {
+              select: {
+                id: true,
+                name: true,
+                startDate: true,
+                dueDate: true,
+              },
+            },
+
+            academicYear: {
+              select: {
+                id: true,
+                name: true,
+              },
             },
           },
-        },
-      },
-      Grade: true,
-    },
-  });
+        });
 
-  // ✅ FIXED → feeCycle based
-  const studentFees = await prisma.feeStructure.findMany({
-  select: {
-    id: true,
-    gradeId: true,
-    amount: true,
-    feeType: true,
+        relatedData = {
+          classes: studentClasses,
+          grades: studentGrades,
+          feeStructures: studentFees,
+        };
+        break;
 
-    feeCycle: {
-      select: {
-        id: true,
-        name: true,
-        startDate: true,
-        dueDate: true,
-      },
-    },
-
-    academicYear: {
-      select: {
-        id: true,
-        name: true,
-      },
-    },
-  },
-});
-
-  relatedData = {
-    classes: studentClasses,
-    grades: studentGrades,
-    feeStructures: studentFees,
-  };
-  break;
-  
       case "exams":
         const examGrades = await prisma.grade.findMany({
+          where: { schoolId },
           select: { id: true, level: true },
         });
         const examSubjects = await prisma.subject.findMany({
+          where: { schoolId },
           select: { id: true, name: true },
         });
 
@@ -130,14 +149,17 @@ const FormContainer = async ({ table, type, data, id }: FormContainerProps) => {
 
       case "examGradeSubjects":
         const grades = await prisma.grade.findMany({
+          where: { schoolId },
           select: { id: true, level: true },
         });
 
         const subjects = await prisma.subject.findMany({
+          where: { schoolId },
           select: { id: true, name: true },
         });
 
         const exams = await prisma.exam.findMany({
+          where: { schoolId },
           select: { id: true, title: true },
         });
 
@@ -146,10 +168,12 @@ const FormContainer = async ({ table, type, data, id }: FormContainerProps) => {
 
       case "lesson":
         const lessonGrades = await prisma.grade.findMany({
+          where: { schoolId },
           select: { id: true, level: true },
         });
 
         const lessonClasses = await prisma.class.findMany({
+          where: { schoolId },
           include: {
             _count: {
               select: {
@@ -167,13 +191,14 @@ const FormContainer = async ({ table, type, data, id }: FormContainerProps) => {
 
         // Fetch related data for dropdowns or selection options
         const lessonSubjects = await prisma.subject.findMany({
+          where: { schoolId },
           select: { id: true, name: true },
         });
 
         const lessonTeachers = await prisma.teacher.findMany({
+          where: { schoolId },
           select: { id: true, name: true },
-        });  
-
+        });
         relatedData = {
           subjects: lessonSubjects,
           classes: lessonClasses,
@@ -184,48 +209,51 @@ const FormContainer = async ({ table, type, data, id }: FormContainerProps) => {
 
       case "homework":
         const classHomework = await prisma.class.findMany({
+          where: { schoolId },
           select: { id: true, gradeId: true, section: true }, // ✅ include gradeId
         });
 
         const gradeHomework = await prisma.grade.findMany({
+          where: { schoolId },
           select: { id: true, level: true },
         });
 
         relatedData = { classes: classHomework, grades: gradeHomework };
         break;
 
-case "fees":
-  const gradeFees = await prisma.grade.findMany({
-    select: { id: true, level: true },
-  });
+      case "fees":
+        const gradeFees = await prisma.grade.findMany({
+          where: { schoolId },
+          select: { id: true, level: true },
+        });
 
-  // ✅ NEW MODEL
-  const feeStructures = await prisma.feeStructure.findMany({
-  select: {
-    id: true,
-    gradeId: true,
-    amount: true,
-    feeType: true,
-    feeCycle: {
-      select: {
-        id: true,
-        name: true,
-      },
-    },
-    academicYear: {
-      select: {
-        id: true,
-        name: true,
-      },
-    },
-  },
-});
+        // ✅ NEW MODEL
+        const feeStructures = await prisma.feeStructure.findMany({
+          select: {
+            id: true,
+            gradeId: true,
+            amount: true,
+            feeType: true,
+            feeCycle: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+            academicYear: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        });
 
-  relatedData = {
-    grades: gradeFees,
-    feeStructures,
-  };
-  break;
+        relatedData = {
+          grades: gradeFees,
+          feeStructures,
+        };
+        break;
       case "announcement":
         const classAnnouncement = await prisma.class.findMany({
           select: { id: true, section: true },
@@ -239,7 +267,6 @@ case "fees":
         break;
 
       case "messages":
-
         // 🔥 BRANCHES
 
         const branchMessages = await prisma.branch.findMany({
@@ -248,7 +275,6 @@ case "fees":
 
         // 1️⃣ Grades
         const gradeMessages = await prisma.grade.findMany({
-
           select: { id: true, level: true },
         });
 
@@ -281,7 +307,6 @@ case "fees":
 
         // 3️⃣ Classes + Active Student Count
         const classMessages = await prisma.class.findMany({
-
           include: {
             _count: {
               select: {
@@ -313,13 +338,11 @@ case "fees":
       case "permissions":
         // 1️⃣ Grades (school scoped)
         const gradepermissions = await prisma.grade.findMany({
-
           select: { id: true, level: true },
         });
 
         // 2️⃣ Classes (school scoped)
         const classpermissions = await prisma.class.findMany({
-
           select: {
             id: true,
             gradeId: true,

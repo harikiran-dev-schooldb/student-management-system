@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { classSchema, ClassSchema } from "@/lib/formValidationSchemas";
-import React, { Dispatch, SetStateAction } from "react";
+import { Dispatch, SetStateAction } from "react";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 import { useSchoolSlug } from "../hooks/getschool";
@@ -146,8 +146,8 @@ const ClassForm = ({
         {isSubmitting
           ? "Submitting..."
           : type === "create"
-          ? "Create"
-          : "Update"}
+            ? "Create"
+            : "Update"}
       </button>
     </form>
   );
