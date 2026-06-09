@@ -1,0 +1,45 @@
+id,name,section,gradeId,supervisorId
+1,,A,1,staff_ks_063
+2,, A,2,staff_ks_001
+3,, B,2,staff_ks_002
+4,, A,3,staff_ks_003
+5,, B,3,staff_ks_004
+6,, C,3,staff_ks_005
+7,, A,4,staff_ks_007
+8,, B,4,staff_ks_008
+9,, C,4,staff_ks_009
+10,, D,4,staff_ks_012
+11,, A,5,staff_ks_015
+12,, B,5,staff_ks_016
+13,, C,5,staff_ks_017
+14,, D,5,staff_ks_018
+15,, A,6,staff_ks_019
+16,, B,6,staff_ks_020
+17,, C,6,staff_ks_022
+18,, D,6,staff_ks_025
+19,, A,7,staff_ks_028
+20,, B,7,staff_ks_029
+21,, C,7,staff_ks_030
+22,, D,7,staff_ks_032
+23,, A,8,staff_ks_033
+24,, B,8,staff_ks_034
+25,, C,8,staff_ks_036
+26,, D,8,staff_ks_037
+27,, A,9,staff_ks_038
+28,, B,9,staff_ks_039
+29,, C,9,staff_ks_040
+30,, D,9,staff_ks_041
+31,, A,10,staff_ks_043
+32,, B,10,staff_ks_044
+33,, C,10,staff_ks_045
+34,, D,10,staff_ks_046
+35,, A,11,staff_ks_048
+36,, B,11,staff_ks_050
+37,, C,11,staff_ks_052
+38,,D,11,staff_ks_014
+39,, A,12,staff_ks_054
+40,, B,12,staff_ks_055
+41,, C,12,staff_ks_056
+42,, A,13,staff_ks_057
+43,, B,13,staff_ks_061
+44,, C,13,staff_ks_062
