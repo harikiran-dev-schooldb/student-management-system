@@ -7,6 +7,7 @@ import { MessageType, Prisma } from "@prisma/client";
 import { SingleStudentSelect } from "../../../../../../../types/query-types";
 import { tenantSlugGuard } from "@/lib/tenantGuard";
 import { buildStudentFilter } from "@/lib/filters/studentFilter";
+import { notifyStudents } from "@/lib/notifications";
 
 /* =======================================================
    POST  /attendance  (Bulk Upsert)
@@ -255,6 +256,19 @@ export async function POST(
         });
       }
     });
+
+    const absentStudentIds = payload
+      .filter((entry) => !entry.present)
+      .map((entry) => entry.studentId);
+
+    if (absentStudentIds.length) {
+      await notifyStudents({
+        schoolId,
+        studentIds: absentStudentIds,
+        title: "Attendance alert",
+        body: "A student linked to this account was marked absent today.",
+      });
+    }
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error: any) {

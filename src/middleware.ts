@@ -30,6 +30,12 @@ export default clerkMiddleware(async (auth, req) => {
 
   const segments = pathname.split("/").filter(Boolean);
 
+  // Vercel Cron requests are authenticated by the route with CRON_SECRET.
+  // Let it reach the handler instead of interpreting `api` as a school slug.
+  if (pathname === "/api/internal/notifications/fee-reminders") {
+    return NextResponse.next();
+  }
+
   /**
    * 1️⃣ Public marketing routes
    */

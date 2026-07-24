@@ -1,8 +1,8 @@
 {
   "crons": [
     {
-      "path": "/api/v1/tenants/testing_school/jobs/process-identities",
-      "schedule": "0 0 * * *"
+      "path": "/api/internal/notifications/fee-reminders",
+      "schedule": "30 2 * * *"
     }
   ]
 }

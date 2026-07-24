@@ -177,6 +177,19 @@ RAZORPAY_KEY_ID="your_server_key_id"
 RAZORPAY_KEY_SECRET="your_server_key_secret"
 ```
 
+### Notifications
+
+To enable push notifications, configure Firebase Admin credentials and set a
+strong `CRON_SECRET` in Vercel. The scheduled fee-reminder job runs every day
+at 08:00 IST (`02:30 UTC`) and Vercel uses `CRON_SECRET` to authenticate it.
+
+```env
+FIREBASE_PROJECT_ID="your_firebase_project_id"
+FIREBASE_CLIENT_EMAIL="your_service_account_email"
+FIREBASE_PRIVATE_KEY="your_service_account_private_key"
+CRON_SECRET="a_long_random_secret"
+```
+
 ---
 
 ### 3️⃣ Migrations
